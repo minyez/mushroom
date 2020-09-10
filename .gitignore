@@ -1,0 +1,26 @@
+# ignore all complied files
+*.pyc
+__pycache__
+*.swp
+*.o
+.cache
+.DS_Store
+
+# jupyter checkpoints
+.ipynb_checkpoints
+*-checkpoint.ipynb
+
+# distribution
+build/
+dist/
+*.egg-info
+
+# example temporary files
+
+#editor and cache
+.idea/
+.vscode/
+.pytest_cache/
+.cache/
+
+message.txt
