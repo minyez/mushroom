@@ -1,5 +1,6 @@
 PROJ = mushroom
 VERSION = 0.0.1
+MESSAGE_FILE = message.txt
 DIST_FILES = mushroom \
 	     examples \
 	     doc \
@@ -13,6 +14,7 @@ DIST_FILES = mushroom \
 	     CHANGELOG \
 	     README.md
 DIST_TARBALL = dist/$(PROJ)-$(VERSION).tar.gz
+ans := "n"
 
 
 .PHONY: dist clean
@@ -27,3 +29,7 @@ $(DIST_TARBALL): $(DIST_FILES)
 
 clean:
 	rm -rf dist
+
+commit:
+	@echo "Commit message: $(MESSAGE_FILE)\n"; cat $(MESSAGE_FILE);
+	@if [[ ${ans} == "y" ]]; then git commit -F $(MESSAGE_FILE); else echo "\nTo proceed, add ans=y"; fi
