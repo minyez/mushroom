@@ -2,6 +2,7 @@ PROJ = mushroom
 VERSION = 0.0.1
 MESSAGE_FILE = message.txt
 DIST_TARBALL = dist/$(PROJ)-$(VERSION).tar.gz
+SED = gsed
 
 include .objects
 
@@ -13,6 +14,7 @@ $(DIST_TARBALL): $(DIST_FILES)
 	find . -name "*.log" -delete
 	mkdir -p dist/$(PROJ)-$(VERSION)
 	cp -r $^ dist/$(PROJ)-$(VERSION)/
+	$(SED) "/CircleCI/d;/codecov/,+1 d" README.md > dist/$(PROJ)-$(VERSION)/README.md
 	cd dist; tar --exclude=".DS_Store" \
 		--exclude="*.pyc" \
 		--exclude="__pycache__" \
