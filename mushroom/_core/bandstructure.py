@@ -393,10 +393,9 @@ class BandStructure(EnergyUnit):
                 self._vbmPerChannel[i, j] = self.eigen[i, j, vb]
                 if vb == self.nbands - 1:
                     self._hasInftyCbm = True
-                    info = "VBM index for spin-kpt channel ({},{}) equals nbands.".format(
-                        i+1, j+1)
+                    info = "VBM index for spin-kpt channel (%d,%d) equals nbands. %s"
                     self._logger.warning(
-                        info, "CBM for this channel set to infinity")
+                        info, i+1, j+1, "CBM for this channel set to infinity")
                     self._cbmPerChannel[i, j] = np.infty
                 else:
                     self._cbmPerChannel[i, j] = self.eigen[i, j, vb+1]

@@ -59,7 +59,7 @@ class Cell(LengthUnit):
 
     _err = CellError
     _dtype = 'float64'
-    _log = create_logger(__name__)
+    _logger = create_logger(__name__)
 
     def __init__(self, latt, atms, posi, unit='ang', **kwargs):
 
@@ -226,7 +226,7 @@ class Cell(LengthUnit):
             reverse (bool): if set True, larger value appears earlier
         '''
         _depth = 1
-        # self.print_log("Bubble sort with key:", key, ", indices:", indices, level=3, depth=_depth)
+        self._logger.debug("Bubble sort with key: %s, indices %r", key, indices)
         __ind = list(indices)
         __key = [key[_i] for _i in __ind]
         _n = len(__ind)
@@ -234,7 +234,7 @@ class Cell(LengthUnit):
         for _i in range(_n - 1):
             _li = _i
             _ri = _i+1
-            # self.print_log("Check index: ", _i, level=3, depth=_depth+2)
+            self._logger.debug("Check sort index: %d", _i)
             __dict = {True: __key[_li] > __key[_ri],
                       False: __key[_li] < __key[_ri]}
             if not __dict[reverse]:
