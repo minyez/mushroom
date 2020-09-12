@@ -1,0 +1,264 @@
+# -*- coding: utf-8 -*-
+"""this module defines the object to process .cif files"""
+import os
+import re
+import numpy as np
+import CifFile
+
+
+class Cif:
+    """Class to read CIF files and initialize atomic data by PyCIFRW
+
+    Args:
+        pcif (str): the path to cif file
+    """
+
+    def __init__(self, pcif):
+        if not os.path.isfile(pcif):
+            raise FileNotFoundError(pcif)
+        # data block
+        self._blk = CifFile.ReadCif(pcif, scantype="flex").first_block()
+        self.__init_inequiv()
+        self.__init_symmetry_operations()
+        self.latt = None
+        self.atms = None
+        self.posi = None
+        self.ref = None
+
+    def __init_inequiv(self):
+        """initialize the positions and symbols of all inequivalent atoms"""
+        posInequiv = []
+        atomsInequiv = []
+        natomsPerInequiv = []
+        for l in self._blk.GetLoop("_atom_site_fract_x"):
+            posOne = []
+            for a in ["_atom_site_fract_x", "_atom_site_fract_y", "_atom_site_fract_z"]:
+                p = conv_estimate_number(l.__getattribute__(a))
+                posOne.append(p)
+            posInequiv.append(posOne)
+            natomsPerInequiv.append(int(l._atom_site_symmetry_multiplicity))
+            # remove chemical valence
+            atomsInequiv.append(re.sub(r"[\d]+[+-]?", "", l._atom_site_type_symbol))
+        self.posiInequiv = posInequiv
+        self.atmsInequiv = atomsInequiv
+        self._natomsPerInequiv = natomsPerInequiv
+
+    def __init_symmetry_operations(self):
+        """get all symmetry operations"""
+        self.operations = {}
+        rots = []
+        trans = []
+        for l in self._blk.GetLoop("_symmetry_equiv_pos_site_id"):
+            r, t = Cif.decode_equiv_pos_string(l._symmetry_equiv_pos_as_xyz)
+            rots.append(r)
+            trans.append(t)
+        self.operations["rotations"] = tuple(rots)
+        self.operations["translations"] = tuple(trans)
+
+    def get_chemical_name(self):
+        """Return the chemical names stored in the head of a CIF file
+
+        Returns
+            3 str, systematic name, mineral name and structure type
+        """
+        sys = self._blk.GetItemValue("_chemical_name_systematic")
+        try:
+            mine = self._blk.GetItemValue("_chemical_name_mineral")
+        except KeyError:
+            mine = "N/A"
+        try:
+            struct = self._blk.GetItemValue("_chemical_name_structure_type")
+        except (KeyError, ValueError):
+            struct = "N/A"
+        return sys, mine, struct
+
+    def get_lattice_vectors(self):
+        """initialize the lattice vectors from cif
+
+        Returns
+            list, shape (3,3)
+        """
+        if self.latt is None:
+            latta, lattb, lattc = tuple(
+                map(
+                    lambda x: conv_estimate_number(self._blk.GetItemValue(x)),
+                    ["_cell_length_a", "_cell_length_b", "_cell_length_c"],
+                )
+            )
+            angles = []
+            for a in ["_cell_angle_alpha", "_cell_angle_beta", "_cell_angle_gamma"]:
+                angles.append(conv_estimate_number(self._blk.GetItemValue(a)))
+            self.latt = get_latt_vecs_from_latt_consts(latta, lattb, lattc, *angles)
+        return self.latt
+
+    def get_all_atoms(self):
+        """return the symbols and positions of all atoms
+        by performing symmetry operations on all inequivalent atoms
+
+        Returns:
+            two list, symbols and positions of all atoms, 
+            shape (n,) and (n,3) with n the total number of atoms
+        """
+        if self.atms is None or self.posi is None:
+            atms, posi = get_all_atoms_from_sym_ops(
+                self.atmsInequiv, self.posiInequiv, self.operations)
+            # pos = []
+            # atoms = []
+            # for r, t in zip(self.operations["rotations"], self.operations["translations"]):
+            #    for i, p in enumerate(self.posiInequiv):
+            #        a = np.add(np.dot(r, p), t)
+            #        # move to the lattice at origin
+            #        a = np.subtract(a, np.floor(a))
+            #        try:
+            #            for pPrev in pos:
+            #                if np.allclose(pPrev, a):
+            #                    raise ValueError
+            #        except ValueError:
+            #            continue
+            #        else:
+            #            atoms.append(self.atmsInequiv[i])
+            #            pos.append(a)
+            # consistency check
+            if sum(self._natomsPerInequiv) != len(atms):
+                raise IOError(
+                    "inconsistent number of atoms and entries after symmetry operations"
+                )
+            self.atms = atms
+            self.posi = posi
+        return self.atms, self.posi
+
+    def get_reference_str(self):
+        """Get the reference string
+
+        Returns:
+            str
+        """
+        if self.ref is None:
+            ref = "".join(
+                self._blk.GetItemValue("_publ_section_title").split("\n")
+            )
+            self.ref = ref
+        return self.ref
+
+    @staticmethod
+    def decode_equiv_pos_string(s):
+        """Convert a string representing symmetry operation in CIF file
+        to a rotation matrix R and a translation vector t
+
+        The relation between original and transformed fractional coordinate, x and x',
+        is
+
+        x' = Rx + t
+
+        Obviously, x, x' and t are treated as a column vector
+
+        Args:
+            s (str): a symmetry operation string found in 
+                _symmetry_equiv_pos_as_xyz item of a CIF file.
+
+        Returns:
+            two lists, shape (3,3) and (3,)
+        """
+        trans = [0, 0, 0]
+        rot = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
+        items = [x.strip() for x in s.split(",")]
+        if len(items) != 3:
+            raise ValueError("s does not seem to be a symmetry operation string")
+        for i in items:
+            if len(i) == 0:
+                raise ValueError("s does not seem to be a symmetry operation string")
+
+        d = {"x": 0, "y": 1, "z": 2}
+        for i in range(3):
+            stList = items[i].split("+")
+            for st in stList:
+                # loop in case that string like '-x-y' appears
+                while True:
+                    sign = 1
+                    try:
+                        if st.startswith("-"):
+                            sign = -1
+                            st = st[1:]
+                        if st[0] in d:
+                            rot[i][d[st[0]]] = sign
+                            st = st[1:]
+                        else:
+                            # confront number
+                            break
+                    except IndexError:
+                        # end of line
+                        break
+                if not st:
+                    # deal with fractional number x/y
+                    trans[i] = float(st[0]) / float(st[-1])
+        return rot, trans
+
+
+def get_all_atoms_from_sym_ops(ineqAtoms, ineqPos, symops, left_mult=True):
+    """Get atomic symbols and positions of all atoms in the cell
+    by performing symmetry operations on inequivalent atoms
+
+    Args:
+        inEqAtoms (list of str):
+        inEqPos (array-like):
+        symops (dict): dictionary containing symmetry operations
+        left_mult (bool)
+            True : x' = Rx + t
+            False: x'^T = x^T R + t^T
+    """
+    assert len(ineqAtoms) == len(ineqPos)
+    assert isinstance(symops, dict)
+    posi = []
+    atms = []
+    for r, t in zip(symops["rotations"], symops["translations"]):
+        if not left_mult:
+            r = np.transpose(r)
+        for i, p in enumerate(ineqPos):
+            a = np.add(np.dot(r, p), t)
+            # move to the lattice at origin
+            a = np.subtract(a, np.floor(a))
+            try:
+                for pPrev in posi:
+                    if np.allclose(pPrev, a):
+                        raise ValueError
+            except ValueError:
+                continue
+            else:
+                atms.append(ineqAtoms[i])
+                posi.append(a)
+    return atms, posi
+
+
+def conv_estimate_number(s):
+    """Convert a string representing a number with error to a float number.
+
+    Literally, string like '3.87(6)' will be converted to 3.876.
+    For now, estimate error in the parenthese is reserved.
+
+    Args:
+        s (str): number string
+
+    Retuns:
+        float
+    """
+    return float(re.sub(r"[\(\)]", "", s))
+
+
+def get_latt_vecs_from_latt_consts(a, b, c, alpha=90, beta=90, gamma=90):
+    """Convert lattice constants to lattice vectors in right-hand system
+
+    Currently support orthormrhobic lattice only!!!
+
+    Args:
+        a, b, c (float): length of lattice vectors
+        alpha, beta, gamma (float): angles between lattice vectors in degree.
+            90 used as default.
+    """
+    a = abs(a)
+    b = abs(b)
+    c = abs(c)
+    if alpha != 90 or beta != 90 or gamma != 90:
+        raise NotImplementedError
+    return [[a, 0, 0], [0, b, 0], [0, 0, c]]
+
+
