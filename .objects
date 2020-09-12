@@ -1,0 +1,11 @@
+DIST_FILES = mushroom \
+			examples \
+			doc \
+			workflows \
+			scripts \
+			requirements.txt \
+			LICENSE \
+			TODO.md \
+			Makefile \
+			CHANGELOG \
+			README.md

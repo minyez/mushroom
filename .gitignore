@@ -3,6 +3,7 @@
 __pycache__
 *.swp
 *.o
+*.log
 .cache
 .DS_Store
 

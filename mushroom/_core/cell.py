@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=bad-whitespace,too-many-lines
-'''Module that defines classes for crystal cell manipulation and symmtetry operation
+"""Module that defines classes for crystal cell manipulation and symmtetry operation
 
 The ``cell`` class and its subclasses accept the following kwargs when being instantialized:
 
@@ -15,7 +15,7 @@ The ``cell`` class and its subclasses accept the following kwargs when being ins
     - reference (str): the reference where the lattice structure is derived.
 
 When other keyword are parsed, they will be filtered out and no exception will be raised
-'''
+"""
 import json
 import os
 from collections import OrderedDict
@@ -29,14 +29,14 @@ from mushroom._core.unit import LengthUnit
 from mushroom._core.crystutils import (get_latt_consts_from_latt_vecs,
                                        periodic_duplicates_in_cell,
                                        select_dyn_flag_from_axis,
-                                       axis_list, sym_nat_from_atms,
-                                       atms_from_sym_nat)
+                                       axis_list)
 from mushroom._core.ioutils import get_str_indices
+from mushroom._core.logger import create_logger
 
 
 class CellError(Exception):
-    '''Exception in cell module
-    '''
+    """Exception in cell module
+    """
 
 
 class Cell(LengthUnit):
@@ -59,6 +59,7 @@ class Cell(LengthUnit):
 
     _err = CellError
     _dtype = 'float64'
+    _log = create_logger(__name__)
 
     def __init__(self, latt, atms, posi, unit='ang', **kwargs):
 
@@ -77,11 +78,7 @@ class Cell(LengthUnit):
         LengthUnit.__init__(self, lunit=unit)
         self._atms = [a.capitalize() for a in atms]
         self._parse_cellkw(**kwargs)
-        # check input consistency
-        self._check_consistency()
-        # move all atoms into the lattice (0,0,0)
-        # self.move_atoms_to_first_lattice()
-        # sanitize atoms arrangement
+        self._check_input_consistency()
         self._sanitize_atoms()
 
     def __len__(self):
@@ -143,7 +140,7 @@ class Cell(LengthUnit):
         '''
         return self.__reference
 
-    def _check_consistency(self):
+    def _check_input_consistency(self):
         try:
             assert self._coord_sys in ["C", "D"]
             assert np.shape(self._latt) == (3, 3)
