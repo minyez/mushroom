@@ -6,7 +6,7 @@ The ``cell`` class and its subclasses accept the following kwargs when being ins
 
     - coord_sys (str): Coordinate system for the internal positions,
       either "D" (Direct, default) or "C" (Cartesian)
-    - allRelax (bool) : default selective dynamics option for atoms.
+    - all_relax (bool) : default selective dynamics option for atoms.
       Set True (default) to allow all DOFs to relax
     - select_dyn (dict) : a dictionary with key-value pair as ``int: [bool, bool, bool]``, 
       which controls the selective dynamic option for atom with the particular index 
@@ -27,7 +27,10 @@ from mushroom._core.constants import PI
 from mushroom._core.cif import Cif
 from mushroom._core.unit import LengthUnit
 from mushroom._core.crystutils import (get_latt_consts_from_latt_vecs,
-                                       periodic_duplicates_in_cell)
+                                       periodic_duplicates_in_cell,
+                                       select_dyn_flag_from_axis,
+                                       axis_list, sym_nat_from_atms,
+                                       atms_from_sym_nat)
 from mushroom._core.ioutils import get_str_indices
 
 
@@ -130,7 +133,7 @@ class Cell(LengthUnit):
             "coord_sys": self._coord_sys,
             "comment": self.comment,
             "reference": self.__reference,
-            "allRelax": self._all_relax,
+            "all_relax": self._all_relax,
             "select_dyn": self._select_dyn
         }
         return _d
@@ -315,18 +318,18 @@ class Cell(LengthUnit):
         try:
             assert isinstance(atom, str)
         except:
-            raise self._error(
+            raise self._err(
                 "atom should be string, received {}".format(type(atom)))
         try:
             newPos = np.vstack([self._posi, coord])
         except ValueError:
-            raise self._error("Invalid coordinate: {}".format(coord))
+            raise self._err("Invalid coordinate: {}".format(coord))
         if sdFlag is not None:
             self._set_select_dyn({self.natm: sdFlag})
         self._posi = newPos
         self._atms.append(atom)
         self.move_atoms_to_first_lattice()
-        self.__sanitize_atoms()
+        self._sanitize_atoms()
 
     # TODO move atom
     def __move(self, ia):
@@ -566,7 +569,7 @@ class Cell(LengthUnit):
         if len(iats) != 0:
             new = {}
             for i in iats:
-                if i in range(self.nats):
+                if i in range(self.natm):
                     new.update(
                         {i: select_dyn_flag_from_axis(axis, relax=False)})
             self._set_select_dyn(new)
@@ -654,12 +657,12 @@ class Cell(LengthUnit):
             pjson (str): the path of JSON file
         '''
         if pjson is None or not os.path.isfile(pjson):
-            raise cls._error("JSON file not found: {}".format(pjson))
+            raise cls._err("JSON file not found: {}".format(pjson))
         with open(pjson, 'r') as h:
             try:
                 js = json.load(h)
             except json.JSONDecodeError:
-                raise cls._error(
+                raise cls._err(
                     "invalid JSON file for cell: {}".format(pjson))
         pargs = []
         factoryDict = {
@@ -693,15 +696,15 @@ class Cell(LengthUnit):
                         pargs.append(js.pop(x))
                     return m(*pargs, **js)
                 except KeyError:
-                    raise cls._error(
+                    raise cls._err(
                         "Required key not found in JSON: {}".format(x))
             else:
-                raise cls._error("Factory method unavailable: {}".format(fac))
+                raise cls._err("Factory method unavailable: {}".format(fac))
 
-        for _i, arg in enumerate(["latt", "atoms", "pos"]):
+        for _, arg in enumerate(["latt", "atoms", "pos"]):
             v = js.pop(arg, None)
             if v is None:
-                raise cls._error(
+                raise cls._err(
                     "invalid JSON file for cell: {}. No {}".format(pjson, arg))
             pargs.append(v)
         return cls(*pargs, **js)
@@ -715,8 +718,8 @@ class Cell(LengthUnit):
         # use chemical name as comment
         kw['comment'] = ', '.join(cif.get_chemical_name()) + ' type'
         latt = cif.get_lattice_vectors()
-        atoms, pos = cif.get_all_atoms()
-        return cls(latt, atoms, pos, **kw)
+        atms, posi = cif.get_all_atoms()
+        return cls(latt, atms, posi, **kw)
 
     @classmethod
     def create_from_cell(cls, cell):
@@ -734,7 +737,7 @@ class Cell(LengthUnit):
         try:
             assert isinstance(cell, Cell)
         except AssertionError:
-            raise cls._error(
+            raise cls._err(
                 "the input is not an object of Cell or its subclasses")
         kw = cell.get_kwargs()
         return cls(*cell.get_cell(), **kw)
@@ -745,7 +748,7 @@ class Cell(LengthUnit):
         latt = [[a, 0.0, 0.0], [0.0, b, 0.0], [0.0, 0.0, c]]
         if kind == "P":
             atms = [atom, ]
-            pos = [[0.0, 0.0, 0.0]]
+            posi = [[0.0, 0.0, 0.0]]
         if kind == "I":
             atms = [atom, ]*2
             posi = [[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]
@@ -1018,7 +1021,7 @@ class Cell(LengthUnit):
         try:
             assert 0.0 < u < 1.0
         except AssertionError:
-            raise cls._error(
+            raise cls._err(
                 "Internal coordinate should be in (0,1), get {}".format(u))
         _a = abs(a)
         _c = abs(c)
@@ -1053,7 +1056,7 @@ class Cell(LengthUnit):
         try:
             assert 0.0 < u < 1.0
         except AssertionError:
-            raise cls._error(
+            raise cls._err(
                 "Internal coordinate should be in (0,1), get {}".format(u))
         _a = abs(a)
         _c = abs(c)
@@ -1146,99 +1149,4 @@ class Cell(LengthUnit):
         if "comment" not in kwargs:
             kwargs.update({"comment": "Marcasite {}{}2".format(atom1, atom2)})
         return cls(latt, atms, posi, **kwargs)
-
-
-def atoms_from_sym_nat(sym, nat):
-    '''Generate ``atom`` list for ``Cell`` initilization from list of atomic symbols 
-    and number of atoms
-
-    Args :
-        sym (list of str) : atomic symbols
-        nat (list of int) : number of atoms for each symbol
-
-    Returns :
-        a list of str, containing symbol of each atom in the cell
-
-    Examples:
-    >>> atoms_from_sym_nat(["C", "Al", "F"], [2, 3, 1])
-    ["C", "C", "Al", "Al", "Al", "F"]
-    '''
-    assert len(sym) == len(nat)
-    _list = []
-    for _s, _n in zip(sym, nat):
-        _list.extend([_s, ] * _n)
-    return _list
-
-
-def sym_nat_from_atms(atms):
-    '''Generate lists of atomic symbols and number of atoms from whole atoms list
-
-    The order of appearence of the element is conserved in the output.
-
-    Args :
-        atms (list of str) : symbols of each atom in the cell
-
-    Returns :
-        list of str : atomic symbols
-        list of int : number of atoms for each symbol
-
-    Examples:
-    >>> sym_nat_from_atms(["C", "Al", "Al", "C", "Al", "F"])
-    ["C", "Al", "F"], [2, 3, 1]
-    '''
-    syms = []
-    nat_dict = {}
-    for at in atms:
-        if at in syms:
-            nat_dict[at] += 1
-        else:
-            syms.append(at)
-            nat_dict.update({at: 1})
-    return syms, [nat_dict[at] for at in syms]
-
-
-def select_dyn_flag_from_axis(axis, relax=False):
-    '''Generate selective dynamic flags, i.e. [bool, bool, bool]
-
-    Args:
-        relax (bool): if True, the flag for axis will be set as True.
-            Otherwise False
-    '''
-    assert isinstance(relax, bool)
-    _flag = [not relax, not relax, not relax]
-    _aList = axis_list(axis)
-    for _a in _aList:
-        _flag[_a-1] = not _flag[_a-1]
-    return _flag
-
-
-def axis_list(axis):
-    '''Generate axis indices from ``axis``
-
-    Args:
-        axis (int or list of int)
-
-    Returns:
-        tuple
-    '''
-    _aList = []
-    if isinstance(axis, int):
-        if axis == 0:
-            _aList = [1, 2, 3]
-        if axis in range(1, 4):
-            _aList = [axis]
-    elif isinstance(axis, (list, tuple)):
-        _aSet = list(set(axis))
-        for _a in _aSet:
-            try:
-                assert isinstance(_a, int)
-            except AssertionError:
-                pass
-            else:
-                if _a == 0:
-                    _aList = [1, 2, 3]
-                    break
-                if _a in range(1, 4):
-                    _aList.append(_a)
-    return tuple(_aList)
 

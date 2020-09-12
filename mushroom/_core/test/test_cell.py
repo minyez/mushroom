@@ -1,13 +1,14 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 import os
+import tempfile
+import json
+
 import unittest as ut
 
 import numpy as np
 
-from mushroom._core.cell import (Cell, CellError, atoms_from_sym_nat, axis_list,
-                                 periodic_duplicates_in_cell, sym_nat_from_atms)
+from mushroom._core.cell import (Cell, CellError)
 from mushroom._core.constants import ANG2AU, AU2ANG, PI
 from mushroom._core.ioutils import get_dirpath, get_matched_files
 
@@ -130,163 +131,159 @@ class cell_raise(ut.TestCase):
         self.assertRaises(CellError, Cell, latt, atms, posi)
 
 
-#class cell_factory_method(ut.TestCase):
-#    '''Test the class methods to generate commonly used lattice structure'''
-#
-#    def test_bravais_cubic(self):
-#        _pc = Cell.bravais_cP("C", a=5.0, coord_sys="D")
-#        self.assertEqual(1, len(_pc))
-#        self.assertEqual("D", _pc.coord_sys)
-#        _bcc = Cell.bravais_cI("C", a=5.0, primitive=False, unit="au")
-#        self.assertEqual("au", _bcc.unit)
-#        self.assertEqual(2, len(_bcc))
-#        _fcc = Cell.bravais_cF("C", a=5.0, primitive=False)
-#        self.assertEqual(4, len(_fcc))
-#        # primitive cell
-#        _pbcc = Cell.bravais_cI("C", a=5.0, primitive=True)
-#        self.assertEqual(1, len(_pbcc))
-#        self.assertAlmostEqual(5.0*np.sqrt(3.0)/2.0, _pbcc.alen[0])
-#        _pfcc = Cell.bravais_cF("C", a=5.0, primitive=True)
-#        self.assertEqual(1, len(_pfcc))
-#        self.assertAlmostEqual(5.0*np.sqrt(0.5), _pfcc.alen[0])
-#
-#    def test_bravais_orth(self):
-#        oP = Cell.bravais_oP("C", a=1.0, b=2.0, c=3.0)
-#        self.assertEqual(len(oP), 1)
-#        self.assertEqual(oP.vol, 6.0)
-#        oI = Cell.bravais_oI("C")
-#        self.assertEqual(len(oI), 2)
-#        oF = Cell.bravais_oF("C")
-#        self.assertEqual(len(oF), 4)
-#
-#    def test_typical_sysmtes(self):
-#        # both conventional and primitive
-#        for p in [True, False]:
-#            Cell.diamond("C", primitive=p)
-#            Cell.anatase("Ti", "O", primitive=p)
-#            Cell.rutile("Ti", "O", primitive=p)
-#            Cell.zincblende("Zn", "O", primitive=p)
-#        # primitive only
-#        Cell.perovskite("Ca", "Ti", "O")
-#        Cell.wurtzite("Zn", "O")
-#        Cell.pyrite()
-#        Cell.marcasite()
-#
-#    def test_read_from_json(self):
-#        import os
-#        import tempfile
-#        import json
-#
-#        self.assertRaisesRegex(CellError, "JSON file not found: None",
-#                               Cell.read_from_json, None)
-#        self.assertRaisesRegex(CellError, "JSON file not found: /abcdefg.json",
-#                               Cell.read_from_json, "/abcdefg.json")
-#        # raise for invalid json
-#        _tf = tempfile.NamedTemporaryFile()
-#        with open(_tf.name, 'w') as h:
-#            json.dump({}, h)
-#        self.assertRaisesRegex(CellError, "invalid JSON file for cell: {}".format(_tf.name),
-#                               Cell.read_from_json, _tf.name)
-#
-#        _dict = {"latt": [[5.0, 0.0, 0.0], [0.0, 5.0, 0.0], [0.0, 0.0, 5.0]]}
-#        with open(_tf.name, 'w') as h:
-#            json.dump(_dict, h)
-#        self.assertRaisesRegex(CellError,
-#                               "invalid JSON file for cell: {}. No {}".format(_tf.name, "atoms"),
-#                               Cell.read_from_json, _tf.name)
-#
-#        _dict = {
-#            "latt": [[5.0, 0.0, 0.0], [0.0, 5.0, 0.0], [0.0, 0.0, 5.0]],
-#            "atoms": ["C"],
-#        }
-#        with open(_tf.name, 'w') as h:
-#            json.dump(_dict, h)
-#        self.assertRaisesRegex(CellError,
-#                               "invalid JSON file for cell: {}. No {}".format(_tf.name, "pos"),
-#                               Cell.read_from_json, _tf.name)
-#
-#        # JSON with factory key
-#        _dict = {
-#            "factory": "zincblende",
-#            "atom1": "Zn",
-#            "a": 8.0, "unit": "au",
-#        }
-#        with open(_tf.name, 'w') as h:
-#            json.dump(_dict, h)
-#        self.assertRaisesRegex(CellError, "Required key not found in JSON: atom2",
-#                               Cell.read_from_json, _tf.name)
-#        # add atom2 and dump again
-#        _dict["atom2"] = "O"
-#        with open(_tf.name, 'w') as h:
-#            json.dump(_dict, h)
-#        _cell = Cell.read_from_json(_tf.name)
-#        self.assertEqual(_cell.unit, 'au')
-#        self.assertEqual(_cell.comment, "Zincblende ZnO")
-#        self.assertAlmostEqual(512, _cell.vol)
-#        _tf.close()
-#
-#        # test one file in testdata, Cell_1.json is tested here
-#        _path = os.path.join(os.path.dirname(__file__),
-#                             '..', 'testdata', 'Cell_1.json')
-#        _cell = Cell.read_from_json(_path)
-#        self.assertEqual(_cell.unit, "ang")
-#        self.assertEqual(_cell.coord_sys, "D")
-#        self.assertEqual(_cell.natoms, 2)
-#        self.assertListEqual(_cell.atoms, ["C", "C"])
-#
-#    def test_read_from_cif(self):
-#        dataDir = os.path.join(get_dirpath(__file__), '..', 'testdata')
-#        for fn in os.listdir(dataDir):
-#            if fn.endswith('.cif'):
-#                cif = os.path.join(dataDir, fn)
-#                Cell.read_from_cif(cif)
+class cell_factory_method(ut.TestCase):
+    """Test the class methods to generate commonly used lattice structure"""
+
+    def test_bravais_cubic(self):
+        pc = Cell.bravais_cP("C", a=5.0, coord_sys="D")
+        self.assertEqual(1, len(pc))
+        self.assertEqual("D", pc.coord_sys)
+        bcc = Cell.bravais_cI("C", a=5.0, primitive=False, unit="au")
+        self.assertEqual("au", bcc.unit)
+        self.assertEqual(2, len(bcc))
+        fcc = Cell.bravais_cF("C", a=5.0, primitive=False)
+        self.assertEqual(4, len(fcc))
+        # primitive cell
+        pbcc = Cell.bravais_cI("C", a=5.0, primitive=True)
+        self.assertEqual(1, len(pbcc))
+        self.assertAlmostEqual(5.0*np.sqrt(3.0)/2.0, pbcc.alen[0])
+        pfcc = Cell.bravais_cF("C", a=5.0, primitive=True)
+        self.assertEqual(1, len(pfcc))
+        self.assertAlmostEqual(5.0*np.sqrt(0.5), pfcc.alen[0])
+
+    def test_bravais_orth(self):
+        oP = Cell.bravais_oP("C", a=1.0, b=2.0, c=3.0)
+        self.assertEqual(len(oP), 1)
+        self.assertEqual(oP.vol, 6.0)
+        oI = Cell.bravais_oI("C")
+        self.assertEqual(len(oI), 2)
+        oF = Cell.bravais_oF("C")
+        self.assertEqual(len(oF), 4)
+
+    def test_typical_sysmtes(self):
+        # both conventional and primitive
+        for p in [True, False]:
+            Cell.diamond("C", primitive=p)
+            Cell.anatase("Ti", "O", primitive=p)
+            Cell.rutile("Ti", "O", primitive=p)
+            Cell.zincblende("Zn", "O", primitive=p)
+        # primitive only
+        Cell.perovskite("Ca", "Ti", "O")
+        Cell.wurtzite("Zn", "O")
+        Cell.pyrite()
+        Cell.marcasite()
+
+    def test_read_from_json(self):
+        self.assertRaisesRegex(CellError, "JSON file not found: None",
+                               Cell.read_from_json, None)
+        self.assertRaisesRegex(CellError, "JSON file not found: /abcdefg.json",
+                               Cell.read_from_json, "/abcdefg.json")
+        # raise for invalid json
+        tf = tempfile.NamedTemporaryFile()
+        with open(tf.name, 'w') as h:
+            json.dump({}, h)
+        self.assertRaisesRegex(CellError, "invalid JSON file for cell: {}".format(tf.name),
+                               Cell.read_from_json, tf.name)
+
+        jd= {"latt": [[5.0, 0.0, 0.0], [0.0, 5.0, 0.0], [0.0, 0.0, 5.0]]}
+        with open(tf.name, 'w') as h:
+            json.dump(jd, h)
+        self.assertRaisesRegex(CellError,
+                               "invalid JSON file for cell: {}. No {}".format(tf.name, "atoms"),
+                               Cell.read_from_json, tf.name)
+
+        jd = {
+            "latt": [[5.0, 0.0, 0.0], [0.0, 5.0, 0.0], [0.0, 0.0, 5.0]],
+            "atoms": ["C"],
+        }
+        with open(tf.name, 'w') as h:
+            json.dump(jd, h)
+        self.assertRaisesRegex(CellError,
+                               "invalid JSON file for cell: {}. No {}".format(tf.name, "pos"),
+                               Cell.read_from_json, tf.name)
+
+        # JSON with factory key
+        jd = {
+            "factory": "zincblende",
+            "atom1": "Zn",
+            "a": 8.0, "unit": "au",
+        }
+        with open(tf.name, 'w') as h:
+            json.dump(jd, h)
+        self.assertRaisesRegex(CellError, "Required key not found in JSON: atom2",
+                               Cell.read_from_json, tf.name)
+        # add atom2 and dump again
+        jd["atom2"] = "O"
+        with open(tf.name, 'w') as h:
+            json.dump(jd, h)
+        c = Cell.read_from_json(tf.name)
+        self.assertEqual(c.unit, 'au')
+        self.assertEqual(c.comment, "Zincblende ZnO")
+        self.assertAlmostEqual(512, c.vol)
+        tf.close()
+
+        # test one file in testdata, Cell_1.json is tested here
+        _path = os.path.join(os.path.dirname(__file__),
+                             'data', 'Cell_1.json')
+        c = Cell.read_from_json(_path)
+        self.assertEqual(c.unit, "ang")
+        self.assertEqual(c.coord_sys, "D")
+        self.assertEqual(c.natm, 2)
+        self.assertListEqual(c.atms, ["C", "C"])
+
+    def test_read_from_cif(self):
+        datadir = os.path.join(get_dirpath(__file__), 'data')
+        for fn in os.listdir(datadir):
+            if fn.endswith('.cif'):
+                cif = os.path.join(datadir, fn)
+                Cell.read_from_cif(cif)
 
 
-#class cell_select_dynamics(ut.TestCase):
-#    '''Test the functionality of selective dynamics
-#    '''
-#
-#    def test_fix_all(self):
-#        _c = Cell.bravais_cP("C")
-#        self.assertFalse(_c.useSelDyn)
-#        _c = Cell.bravais_cP("C", allRelax=False)
-#        self.assertTrue(_c.useSelDyn)
-#        self.assertListEqual([False, ]*3, _c.sdFlags(0))
-#        _c = Cell.bravais_cI("C", allRelax=False, primitive=False)
-#        self.assertTrue(_c.useSelDyn)
-#        self.assertListEqual([[False, ]*3, ]*2, _c.sdFlags())
-#
-#    def test_relax_all(self):
-#        _c = Cell.bravais_cI("C", allRelax=False, primitive=False,
-#                             selectDyn={1: [True, False, True]})
-#        _c.relax_all()
-#        self.assertListEqual(_c.sdFlags(1), [True, True, True])
-#        self.assertFalse(_c.useSelDyn)
-#
-#    def test_fix_some(self):
-#        _pc = Cell.bravais_cF("C", selectDyn={1: [False, True, True]})
-#        self.assertListEqual([True, ]*3, _pc.sdFlags(0))
-#        self.assertListEqual([False, True, True, ], _pc.sdFlags(1))
-#
-#    def test_fix_by_set_method(self):
-#        _pc = Cell.bravais_cF("C")
-#        _pc.set_fix(0, 1)
-#        self.assertListEqual([False, False, False], _pc.sdFlags(0))
-#        self.assertListEqual([False, False, False], _pc.sdFlags(1))
-#        _pc.set_fix(2, axis=1)
-#        self.assertListEqual([False, True, True], _pc.sdFlags(2))
-#        _pc.set_fix(3, axis=[2, 3])
-#        self.assertListEqual([True, False, False], _pc.sdFlags(3))
-#
-#    def test_relax_by_set_method(self):
-#        _pc = Cell.bravais_cF("C", allRelax=False)
-#        _pc.set_relax(0, 1)
-#        self.assertListEqual([True, True, True], _pc.sdFlags(0))
-#        self.assertListEqual([True, True, True], _pc.sdFlags(1))
-#        _pc.set_relax(2, axis=1)
-#        self.assertListEqual([True, False, False], _pc.sdFlags(2))
-#        _pc.set_relax(3, axis=[2, 3])
-#        self.assertListEqual([False, True, True], _pc.sdFlags(3))
+class cell_select_dynamics(ut.TestCase):
+    '''Test the functionality of selective dynamics
+    '''
+
+    def test_fix_all(self):
+        c = Cell.bravais_cP("C")
+        self.assertFalse(c.use_select_dyn)
+        c = Cell.bravais_cP("C", all_relax=False)
+        self.assertTrue(c.use_select_dyn)
+        self.assertListEqual([False, ]*3, c.sd_flag(0))
+        c = Cell.bravais_cI("C", all_relax=False, primitive=False)
+        self.assertTrue(c.use_select_dyn)
+        self.assertListEqual([[False, ]*3, ]*2, c.sd_flag())
+
+    def test_relax_all(self):
+        c = Cell.bravais_cI("C", all_relax=False, primitive=False,
+                             select_dyn={1: [True, False, True]})
+        c.relax_all()
+        self.assertListEqual(c.sd_flag(1), [True, True, True])
+        self.assertFalse(c.use_select_dyn)
+
+    def test_fix_some(self):
+        pc = Cell.bravais_cF("C", select_dyn={1: [False, True, True]})
+        self.assertListEqual([True, ]*3, pc.sd_flag(0))
+        self.assertListEqual([False, True, True, ], pc.sd_flag(1))
+
+    def test_fix_by_set_method(self):
+        pc = Cell.bravais_cF("C")
+        pc.set_fix(0, 1)
+        self.assertListEqual([False, False, False], pc.sd_flag(0))
+        self.assertListEqual([False, False, False], pc.sd_flag(1))
+        pc.set_fix(2, axis=1)
+        self.assertListEqual([False, True, True], pc.sd_flag(2))
+        pc.set_fix(3, axis=[2, 3])
+        self.assertListEqual([True, False, False], pc.sd_flag(3))
+
+    def test_relax_by_set_method(self):
+        pc = Cell.bravais_cF("C", all_relax=False)
+        pc.set_relax(0, 1)
+        self.assertListEqual([True, True, True], pc.sd_flag(0))
+        self.assertListEqual([True, True, True], pc.sd_flag(1))
+        pc.set_relax(2, axis=1)
+        self.assertListEqual([True, False, False], pc.sd_flag(2))
+        pc.set_relax(3, axis=[2, 3])
+        self.assertListEqual([False, True, True], pc.sd_flag(3))
 
 
 class cell_sort(ut.TestCase):
@@ -302,7 +299,7 @@ class cell_sort(ut.TestCase):
     #    # Cs atom is fixed
     #    _fix = [False, False, False]
 
-    #    _cell = Cell(_latt, _atoms, _pos, selectDyn={1: _fix})
+    #    _cell = Cell(_latt, _atoms, _pos, select_dyn={1: _fix})
     #    self.assertListEqual([0], _cell.get_sym_index("Cl"))
     #    self.assertListEqual([0], _cell["Cl"])
     #    self.assertListEqual([1], _cell.get_sym_index("Cs"))
@@ -311,7 +308,7 @@ class cell_sort(ut.TestCase):
     #    self.assertListEqual(_cell.atoms, ["Cs", "Cl"])
     #    self.assertListEqual([0], _cell.get_sym_index("Cs"))
     #    self.assertListEqual([1], _cell.get_sym_index("Cl"))
-    #    self.assertListEqual(_fix, _cell.sdFlags(0))
+    #    self.assertListEqual(_fix, _cell.sd_flag(0))
 
     #def test_sanitize_atoms_sic(self):
     #    _latt = [[1.0, 0.0, 0.0],
@@ -335,14 +332,14 @@ class cell_sort(ut.TestCase):
     #                    [0.75, 0.25, 0.75],  # C
     #                    [0.75, 0.75, 0.25]]  # C
     #    SiC = Cell(_latt, _atoms, _pos,
-    #               selectDyn={2: [False, False, False]})
+    #               select_dyn={2: [False, False, False]})
     #    # _latt._sanitize_atoms()
     #    self.assertListEqual(list(sorted(_atoms, reverse=True)),
     #                         SiC.atoms)
-    #    self.assertDictEqual({0: 'Si', 1: 'C'}, SiC.typeMapping)
+    #    self.assertDictEqual({0: 'Si', 1: 'C'}, SiC.type_mapping)
     #    self.assertTrue(np.array_equal(SiC.pos,
     #                                   np.array(_posSanitied, dtype=SiC._dtype)))
-    #    self.assertListEqual([False, False, False], SiC.sdFlags(1))
+    #    self.assertListEqual([False, False, False], SiC.sd_flag(1))
 
     def test_sort_posi_sic(self):
         """Test sorting atoms and their positions in SiC
@@ -374,99 +371,60 @@ class cell_sort(ut.TestCase):
                                            SiC.posi[:, axis]))
 
 
-#class test_cell_manipulation(ut.TestCase):
-#    '''Test manipulation methods for lattice and atoms
-#    '''
-#
-#    def test_add_atom_on_graphene(self):
-#        '''Test adding atoms in a graphene cell
-#        '''
-#        a = 5.2
-#        _latt = [[a/2, 0.0, 0.0],
-#                 [-a/2, a/2*np.sqrt(3.0), 0.0],
-#                 [0.0, 0.0, 15.0]]
-#        _atoms = ["C", "C", ]
-#        _pos = [[0.0, 0.0, 0.5],
-#                [1.0/3, 2.0/3, 0.5], ]
-#        gp = Cell(_latt, _atoms, _pos)
-#        self.assertRaisesRegex(CellError,
-#                               r"Invalid coordinate: *",
-#                               gp.add_atom, "H", [0.2, 0.3])
-#        self.assertRaisesRegex(CellError,
-#                               "atom should be string, received <class 'int'>",
-#                               gp.add_atom, 1, [0.2, 0.3, 0.4])
-#        gp.fix_all()
-#        gp.add_atom("H", [0.0, 0.0, 0.6], sdFlag=[False, False, True])
-#        self.assertEqual(gp.natoms, 3)
-#        self.assertListEqual(gp.atoms, ['C', 'C', 'H'])
-#        self.assertDictEqual(gp.typeMapping, {0: 'C', 1: 'H'})
-#        self.assertListEqual(gp.sdFlags(2), [False, False, True])
-#
-#    def test_atom_arrange_after_add_atom(self):
-#        '''Test if the atoms are correctly rearranged
-#        after adding new atom
-#        '''
-#        a = 2.0
-#        _latt = [[a, 0.0, 0.0],
-#                 [0.0, a, 0.0],
-#                 [0.0, 0.0, a]]
-#        _atoms = ["Na", "Cl", ]
-#        _pos = [[0.0, 0.0, 0.0],
-#                [0.5, 0.5, 0.5], ]
-#        brokenNaCl = Cell(_latt, _atoms, _pos)
-#        brokenNaCl.add_atom('Na', [0.0, 0.5, 0.5])
-#        self.assertListEqual(brokenNaCl.atoms, ['Na', 'Na', 'Cl'])
-#        brokenNaCl.add_atom('Na', [0.5, 0.0, 0.5])
-#        self.assertListEqual(brokenNaCl.atoms, ['Na', 'Na', 'Na', 'Cl'])
-#        brokenNaCl.add_atom('Cl', [0.5, 0.0, 0.0])
-#        self.assertListEqual(brokenNaCl.atoms, ['Na', 'Na', 'Na', 'Cl', 'Cl'])
-#        self.assertTrue(np.array_equal(brokenNaCl.pos,
-#                                       np.array([[0.0, 0.0, 0.0],
-#                                                 [0.0, 0.5, 0.5],
-#                                                 [0.5, 0.0, 0.5],
-#                                                 [0.5, 0.5, 0.5],
-#                                                 [0.5, 0.0, 0.0], ], dtype=brokenNaCl._dtype)))
+class test_cell_manipulation(ut.TestCase):
+   '''Test manipulation methods for lattice and atoms
+   '''
 
+   def test_add_atom_on_graphene(self):
+       '''Test adding atoms in a graphene cell
+       '''
+       a = 5.2
+       latt = [[a/2, 0.0, 0.0],
+               [-a/2, a/2*np.sqrt(3.0), 0.0],
+               [0.0, 0.0, 15.0]]
+       atms = ["C", "C", ]
+       posi = [[0.0, 0.0, 0.5],
+               [1.0/3, 2.0/3, 0.5], ]
+       gp = Cell(latt, atms, posi)
+       self.assertRaisesRegex(CellError,
+                              r"Invalid coordinate: *",
+                              gp.add_atom, "H", [0.2, 0.3])
+       self.assertRaisesRegex(CellError,
+                              "atom should be string, received <class 'int'>",
+                              gp.add_atom, 1, [0.2, 0.3, 0.4])
+       gp.fix_all()
+       gp.add_atom("H", [0.0, 0.0, 0.6], sdFlag=[False, False, True])
+       self.assertEqual(gp.natm, 3)
+       self.assertListEqual(gp.atms, ['C', 'C', 'H'])
+       self.assertDictEqual(gp.type_mapping, {0: 'C', 1: 'H'})
+       self.assertListEqual(gp.sd_flag(2), [False, False, True])
 
-#class test_cell_utils(ut.TestCase):
-#    '''Test the utility functions for ``Cell`` use
-#    '''
-#
-#    def test_periodic_duplates_in_cell(self):
-#
-#        _dupcs, _n = periodic_duplicates_in_cell([0.2, 0.4, 0.8])
-#        self.assertEqual(1, _n)
-#        self.assertTupleEqual(([0.2, 0.4, 0.8],), _dupcs)
-#        _dupcs, _n = periodic_duplicates_in_cell([0.2, 0.4, 0])
-#        self.assertEqual(2, _n)
-#        self.assertTupleEqual(([0.2, 0.4, 0], [0.2, 0.4, 1.0]), _dupcs)
-#        _dupcs, _n = periodic_duplicates_in_cell([0, 0.4, 0])
-#        self.assertEqual(4, _n)
-#        self.assertTupleEqual(([0, 0.4, 0], [1.0, 0.4, 0], [
-#                              0, 0.4, 1.0], [1.0, 0.4, 1.0]), _dupcs)
-#        _dupcs, _n = periodic_duplicates_in_cell([0, 0, 0])
-#        self.assertEqual(8, _n)
-#        self.assertTupleEqual(([0, 0, 0], [1.0, 0, 0], [0, 1.0, 0], [1.0, 1.0, 0], [
-#                              0, 0, 1.0], [1.0, 0, 1.0], [0, 1.0, 1.0], [1.0, 1.0, 1.0]), _dupcs)
-#        self.assertRaises(
-#            AssertionError, periodic_duplicates_in_cell, [1.0, 0.0, 0.0])
-#        self.assertRaises(
-#            AssertionError, periodic_duplicates_in_cell, [1.1, 0.0, 0.0])
-#
-#    def test_axis_list(self):
-#        self.assertSetEqual(set([1, 2, 3]), set(axis_list(0)))
-#        self.assertSetEqual(set([1, ]), set(axis_list(1)))
-#        self.assertSetEqual(set([1, 2]), set(axis_list([1, 2])))
-#
-#    def test_atoms_from_sym_nat(self):
-#        _atoms = atoms_from_sym_nat(["C", "Al", "F"], [2, 3, 1])
-#        self.assertListEqual(_atoms, ["C", "C", "Al", "Al", "Al", "F"])
-#
-#    def test_sym_nat_from_atoms(self):
-#        _syms, _nats = sym_nat_from_atoms(["C", "Al", "Al", "C", "Al", "F"])
-#        self.assertListEqual(_syms, ["C", "Al", "F"])
-#        self.assertListEqual(_nats, [2, 3, 1])
+   def test_atom_arrange_after_add_atom(self):
+       '''Test if the atoms are correctly rearranged
+       after adding new atom
+       '''
+       a = 2.0
+       latt = [[a, 0.0, 0.0],
+               [0.0, a, 0.0],
+               [0.0, 0.0, a]]
+       atms = ["Na", "Cl", ]
+       posi = [[0.0, 0.0, 0.0],
+               [0.5, 0.5, 0.5], ]
+       brokenNaCl = Cell(latt, atms, posi)
+       brokenNaCl.add_atom('Na', [0.0, 0.5, 0.5])
+       self.assertListEqual(brokenNaCl.atms, ['Na', 'Na', 'Cl'])
+       brokenNaCl.add_atom('Na', [0.5, 0.0, 0.5])
+       self.assertListEqual(brokenNaCl.atms, ['Na', 'Na', 'Na', 'Cl'])
+       brokenNaCl.add_atom('Cl', [0.5, 0.0, 0.0])
+       self.assertListEqual(brokenNaCl.atms, ['Na', 'Na', 'Na', 'Cl', 'Cl'])
+       self.assertTrue(np.array_equal(brokenNaCl.posi,
+                                      np.array([[0.0, 0.0, 0.0],
+                                                [0.0, 0.5, 0.5],
+                                                [0.5, 0.0, 0.5],
+                                                [0.5, 0.5, 0.5],
+                                                [0.5, 0.0, 0.0], ], dtype=brokenNaCl._dtype)))
 
 
 if __name__ == "__main__":
     ut.main()
+

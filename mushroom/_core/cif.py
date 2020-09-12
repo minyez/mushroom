@@ -5,7 +5,7 @@ import re
 import CifFile
 
 from mushroom._core.crystutils import get_latt_vecs_from_latt_consts, get_all_atoms_from_sym_ops
-from mushroom._core.math import conv_estimate_number
+from mushroom._core.data import conv_estimate_number
 
 
 class Cif:
@@ -190,9 +190,10 @@ class Cif:
                     except IndexError:
                         # end of line
                         break
-                if not st:
-                    # deal with fractional number x/y
-                    trans[i] = float(st[0]) / float(st[-1])
+                if len(st) == 0:
+                    continue
+                # deal with fractional number x/y
+                trans[i] = float(st[0]) / float(st[-1])
         return rot, trans
 
 

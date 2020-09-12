@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Utilities for processing crystall-related quantities"""
+from copy import deepcopy
 import numpy as np
 from mushroom._core.constants import PI
 
@@ -82,12 +83,12 @@ def get_all_atoms_from_sym_ops(ineq_atms, ineq_posi, symops, left_mult=True):
     return atms, posi
 
 
-def periodic_duplicates_in_cell(directCoord):
+def periodic_duplicates_in_cell(direct_coord):
     '''Return the coordinates and numbers of the duplicates of an atom
     in a cell due to lattice translation symmetry
 
     Args:
-        directCoord (array): the direct coordinate of an atom in the cell
+        direct_coord (array): the direct coordinate of an atom in the cell
 
     Note:
         The function works only when each component belongs to [0,1)
@@ -105,12 +106,11 @@ def periodic_duplicates_in_cell(directCoord):
     >>> periodic_duplicates_in_cell([0,0.4,0])
     (([0, 0.4, 0], [1.0, 0.4, 0], [0, 0.4, 1.0], [1.0, 0.4, 1.0]), 4)
     '''
-    from copy import deepcopy
-    _pos = np.array(directCoord, dtype="float64")
+    _pos = np.array(direct_coord, dtype="float64")
     assert np.shape(_pos) == (3,)
     assert all(_pos - 1.0 < 0)
     _dupcs = []
-    _dupcs.append(directCoord)
+    _dupcs.append(direct_coord)
     # non-zero component
     _n = 2 ** (3 - np.count_nonzero(_pos))
     _iszero = _pos == 0
@@ -121,3 +121,99 @@ def periodic_duplicates_in_cell(directCoord):
                 _c[i] = 1.0
             _dupcs.extend(_trans)
     return tuple(_dupcs), _n
+
+
+def atms_from_sym_nat(sym, nat):
+    '''Generate ``atom`` list for ``Cell`` initilization from list of atomic symbols 
+    and number of atoms
+
+    Args :
+        sym (list of str) : atomic symbols
+        nat (list of int) : number of atoms for each symbol
+
+    Returns :
+        a list of str, containing symbol of each atom in the cell
+
+    Examples:
+    >>> atms_from_sym_nat(["C", "Al", "F"], [2, 3, 1])
+    ["C", "C", "Al", "Al", "Al", "F"]
+    '''
+    assert len(sym) == len(nat)
+    _list = []
+    for _s, _n in zip(sym, nat):
+        _list.extend([_s, ] * _n)
+    return _list
+
+
+def sym_nat_from_atms(atms):
+    '''Generate lists of atomic symbols and number of atoms from whole atoms list
+
+    The order of appearence of the element is conserved in the output.
+
+    Args :
+        atms (list of str) : symbols of each atom in the cell
+
+    Returns :
+        list of str : atomic symbols
+        list of int : number of atoms for each symbol
+
+    Examples:
+    >>> sym_nat_from_atms(["C", "Al", "Al", "C", "Al", "F"])
+    ["C", "Al", "F"], [2, 3, 1]
+    '''
+    syms = []
+    nat_dict = {}
+    for at in atms:
+        if at in syms:
+            nat_dict[at] += 1
+        else:
+            syms.append(at)
+            nat_dict.update({at: 1})
+    return syms, [nat_dict[at] for at in syms]
+
+
+def select_dyn_flag_from_axis(axis, relax=False):
+    """Generate selective dynamic flags, i.e. [bool, bool, bool]
+
+    Args:
+        relax (bool): if True, the flag for axis will be set as True.
+            Otherwise False
+    """
+    assert isinstance(relax, bool)
+    _flag = [not relax, not relax, not relax]
+    _aList = axis_list(axis)
+    for _a in _aList:
+        _flag[_a-1] = not _flag[_a-1]
+    return _flag
+
+
+def axis_list(axis):
+    """Generate axis indices from ``axis``
+
+    Args:
+        axis (int or list of int)
+
+    Returns:
+        tuple
+    """
+    _aList = []
+    if isinstance(axis, int):
+        if axis == 0:
+            _aList = [1, 2, 3]
+        if axis in range(1, 4):
+            _aList = [axis]
+    elif isinstance(axis, (list, tuple)):
+        _aSet = list(set(axis))
+        for _a in _aSet:
+            try:
+                assert isinstance(_a, int)
+            except AssertionError:
+                pass
+            else:
+                if _a == 0:
+                    _aList = [1, 2, 3]
+                    break
+                if _a in range(1, 4):
+                    _aList.append(_a)
+    return tuple(_aList)
+
