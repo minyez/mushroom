@@ -22,5 +22,6 @@ dist/
 .vscode/
 .pytest_cache/
 .cache/
+.coverage
 
 message.txt

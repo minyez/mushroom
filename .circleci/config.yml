@@ -2,13 +2,14 @@ version: 2.1
 
 orbs:
   shellcheck: circleci/shellcheck@1.0.0
+  codecov: codecov/codecov@1.0.2
 
 workflows:
   version: 2.1
   test:
     jobs:
       - test-py371
-      - shellcheck/check
+      #- shellcheck/check
 jobs:
   test-py371: &test-template
     working_directory: ~/mushroom
@@ -24,6 +25,7 @@ jobs:
       - restore_cache:  # ensure this step occurs *before* installing dependencies
           key: deps9-{{ .Branch }}-{{ checksum "requirements.txt" }}
       - run:
+          name: Install dependencies
           command: |
             pip install -r requirements.txt
             pip install pytest pytest-cov codecov coverage
@@ -35,6 +37,9 @@ jobs:
       - run:
           command: |
             export PYTHONPATH="~/mushroom:$PYTHONPATH"
-            pytest | tee pytest-results
+            pytest --cov=./ --cov-report= | tee pytest-results
+            coverage report -m | tee coverage-report.txt
       - store_test_results:
           path: pytest-results
+      - codecov/upload:
+          file: coverage-report.txt

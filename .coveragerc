@@ -1,6 +1,6 @@
 [run]
 source = mushroom
-#omit = 
+omit = */test_*.py
 
 [report]
 ignore_errors = True

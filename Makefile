@@ -14,7 +14,7 @@ DIST_FILES = mushroom \
 	     CHANGELOG \
 	     README.md
 DIST_TARBALL = dist/$(PROJ)-$(VERSION).tar.gz
-ans := "n"
+ans := "y"
 
 
 .PHONY: dist clean
@@ -31,8 +31,8 @@ clean:
 	rm -rf dist
 
 test:
-	@echo "Run pytest"; pytest
+	@echo "Run pytest"; pytest --cov=./
 
 commit:
-	@echo "Commit message: $(MESSAGE_FILE)\n"; cat $(MESSAGE_FILE);
+	#@echo "Commit message: $(MESSAGE_FILE)\n"; cat $(MESSAGE_FILE);
 	@if [[ ${ans} == "y" ]]; then git commit -F $(MESSAGE_FILE); else echo "\nTo proceed, add ans=y"; fi
