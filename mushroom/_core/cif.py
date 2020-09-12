@@ -2,8 +2,10 @@
 """this module defines the object to process .cif files"""
 import os
 import re
-import numpy as np
 import CifFile
+
+from mushroom._core.crystutils import get_latt_vecs_from_latt_consts, get_all_atoms_from_sym_ops
+from mushroom._core.math import conv_estimate_number
 
 
 class Cif:
@@ -192,73 +194,5 @@ class Cif:
                     # deal with fractional number x/y
                     trans[i] = float(st[0]) / float(st[-1])
         return rot, trans
-
-
-def get_all_atoms_from_sym_ops(ineqAtoms, ineqPos, symops, left_mult=True):
-    """Get atomic symbols and positions of all atoms in the cell
-    by performing symmetry operations on inequivalent atoms
-
-    Args:
-        inEqAtoms (list of str):
-        inEqPos (array-like):
-        symops (dict): dictionary containing symmetry operations
-        left_mult (bool)
-            True : x' = Rx + t
-            False: x'^T = x^T R + t^T
-    """
-    assert len(ineqAtoms) == len(ineqPos)
-    assert isinstance(symops, dict)
-    posi = []
-    atms = []
-    for r, t in zip(symops["rotations"], symops["translations"]):
-        if not left_mult:
-            r = np.transpose(r)
-        for i, p in enumerate(ineqPos):
-            a = np.add(np.dot(r, p), t)
-            # move to the lattice at origin
-            a = np.subtract(a, np.floor(a))
-            try:
-                for pPrev in posi:
-                    if np.allclose(pPrev, a):
-                        raise ValueError
-            except ValueError:
-                continue
-            else:
-                atms.append(ineqAtoms[i])
-                posi.append(a)
-    return atms, posi
-
-
-def conv_estimate_number(s):
-    """Convert a string representing a number with error to a float number.
-
-    Literally, string like '3.87(6)' will be converted to 3.876.
-    For now, estimate error in the parenthese is reserved.
-
-    Args:
-        s (str): number string
-
-    Retuns:
-        float
-    """
-    return float(re.sub(r"[\(\)]", "", s))
-
-
-def get_latt_vecs_from_latt_consts(a, b, c, alpha=90, beta=90, gamma=90):
-    """Convert lattice constants to lattice vectors in right-hand system
-
-    Currently support orthormrhobic lattice only!!!
-
-    Args:
-        a, b, c (float): length of lattice vectors
-        alpha, beta, gamma (float): angles between lattice vectors in degree.
-            90 used as default.
-    """
-    a = abs(a)
-    b = abs(b)
-    c = abs(c)
-    if alpha != 90 or beta != 90 or gamma != 90:
-        raise NotImplementedError
-    return [[a, 0, 0], [0, b, 0], [0, 0, c]]
 
 

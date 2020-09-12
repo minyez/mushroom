@@ -30,6 +30,9 @@ $(DIST_TARBALL): $(DIST_FILES)
 clean:
 	rm -rf dist
 
+test:
+	@echo "Run pytest"; pytest
+
 commit:
 	@echo "Commit message: $(MESSAGE_FILE)\n"; cat $(MESSAGE_FILE);
 	@if [[ ${ans} == "y" ]]; then git commit -F $(MESSAGE_FILE); else echo "\nTo proceed, add ans=y"; fi
