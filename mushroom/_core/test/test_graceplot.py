@@ -46,23 +46,22 @@ class test_Font(ut.TestCase):
 
     f = Font()
 
-    def test_output(self):
+    def test_output_without_at(self):
         """test if the grace output of default colormap is as expected"""
-        s = """@map font 0 to "Times-Roman", "Times-Roman"
-@map font 1 to "Times-Italic", "Times-Italic"
-@map font 2 to "Times-Bold", "Times-Bold"
-@map font 3 to "Times-BoldItalic", "Times-BoldItalic"
-@map font 4 to "Helvetica", "Helvetica"
-@map font 5 to "Helvetica-Oblique", "Helvetica-Oblique"
-@map font 6 to "Helvetica-Bold", "Helvetica-Bold"
-@map font 7 to "Helvetica-BoldOblique", "Helvetica-BoldOblique"
-@map font 8 to "Courier", "Courier"
-@map font 9 to "Courier-Oblique", "Courier-Oblique"
-@map font 10 to "Courier-Bold", "Courier-Bold"
-@map font 11 to "Courier-BoldOblique", "Courier-BoldOblique"
-@map font 12 to "Symbol", "Symbol"
-@map font 13 to "ZapfDingbats", "ZapfDingbats"
-"""
+        s = """map font 0 to "Times-Roman", "Times-Roman"
+map font 1 to "Times-Italic", "Times-Italic"
+map font 2 to "Times-Bold", "Times-Bold"
+map font 3 to "Times-BoldItalic", "Times-BoldItalic"
+map font 4 to "Helvetica", "Helvetica"
+map font 5 to "Helvetica-Oblique", "Helvetica-Oblique"
+map font 6 to "Helvetica-Bold", "Helvetica-Bold"
+map font 7 to "Helvetica-BoldOblique", "Helvetica-BoldOblique"
+map font 8 to "Courier", "Courier"
+map font 9 to "Courier-Oblique", "Courier-Oblique"
+map font 10 to "Courier-Bold", "Courier-Bold"
+map font 11 to "Courier-BoldOblique", "Courier-BoldOblique"
+map font 12 to "Symbol", "Symbol"
+map font 13 to "ZapfDingbats", \"ZapfDingbats\""""
         self.assertEqual(str(self.f), s)
 
 if __name__ == "__main__":

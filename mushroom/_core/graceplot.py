@@ -13,22 +13,16 @@ The main purpose of this re-implementation is to write grace plot file elegantly
 without any concern about whether xmgrace is installed or not.
 Therefore, platform-related functions are discarded. (minyez)"""
 import sys
-<<<<<<< HEAD
 import time
-=======
->>>>>>> 8353cfd898ea4eaf01b9a12159bcc0dbdd0a9e30
 from io import TextIOWrapper
 from abc import abstractmethod
 from copy import deepcopy
 
 from numpy import shape
 from mushroom._core.data import Data
-<<<<<<< HEAD
 from mushroom._core.logger import create_logger
 
 _logger = create_logger(__name__)
-=======
->>>>>>> 8353cfd898ea4eaf01b9a12159bcc0dbdd0a9e30
 
 # pylint: disable=bad-whitespace
 _COLOR_MAP = {
@@ -82,6 +76,9 @@ class ColorMap:
         self._cn = _PREDEF_COLOR_NAMES
         self._n = _N_COLOR_MAP
 
+    def __getitem__(self, i):
+        return self._cm[i][3]
+
     def __str__(self):
         s = ""
         for i in range(self._n):
@@ -96,7 +93,7 @@ class ColorMap:
 
     def add(self, r, g, b, name=None):
         """Add a new color with its RGB value"""
-        self._valid_rgb(r, g, b)
+        _valid_rgb(r, g, b)
         if name is None:
             name = 'color' + str(self.n)
         elif self._check_color_name(name):
@@ -263,7 +260,6 @@ class BaseOutput:
         slist = []
         for attr, typ, _, f in self._attrs:
             s = {True: "@"}.get(with_at, "")
-<<<<<<< HEAD
             if not typ is bool:
                 s += self._marker + " " + attr.replace("_", " ") + " "
             if typ is list:
@@ -272,13 +268,6 @@ class BaseOutput:
             # special case for onoff
                 if attr == "onoff":
                     s += self._marker + " " + {True: 'on', False: 'off'}[self.__getattribute__(attr)]
-=======
-            s += self._marker + " " + attr.replace("_", " ") + " "
-            if typ is str:
-                s += "\"" + f.format(self.__getattribute__(attr)) + "\""
-            elif typ is list:
-                s += f.format(*self.__getattribute__(attr))
->>>>>>> 8353cfd898ea4eaf01b9a12159bcc0dbdd0a9e30
             else:
                 s += f.format(self.__getattribute__(attr))
             slist.append(s)
@@ -291,7 +280,6 @@ class BaseOutput:
         return self.__str__(self)
 
 
-<<<<<<< HEAD
 class Defaults(BaseOutput):
     """Default options at head"""
     def __init__(self, **kwarygs):
@@ -340,8 +328,6 @@ class Annotation(BaseOutput):
         BaseOutput.__init__(self, **kwargs)
 
 
-=======
->>>>>>> 8353cfd898ea4eaf01b9a12159bcc0dbdd0a9e30
 class Symbol(BaseOutput):
     """Symbols of marker
 
@@ -385,10 +371,7 @@ class Symbol(BaseOutput):
         return slist
 
 class Page(BaseOutput):
-<<<<<<< HEAD
     """Page"""
-=======
->>>>>>> 8353cfd898ea4eaf01b9a12159bcc0dbdd0a9e30
     def __init__(self, **kwargs):
         self._marker = "page"
         self._attrs = (
@@ -401,37 +384,18 @@ class Page(BaseOutput):
 
 class TimeStamp(BaseOutput):
     """Timestamp"""
-<<<<<<< HEAD
     def __init__(self, **kwargs):
         self._attrs = (
             ('onoff', bool, False, ""),
-=======
-    def __init__(self, on=False, **kwargs):
-        self.on = on
-        self._attrs = (
->>>>>>> 8353cfd898ea4eaf01b9a12159bcc0dbdd0a9e30
             ('color', int, 1, "{:d}"),
             ('rot', int, 0, "{:d}"),
             ('font', int, 0, "{:d}"),
             ('char_size', float, 1.0, "{:8f}"),
-<<<<<<< HEAD
             ('def', str, time.strftime("%a %b %d %H:%M:%S %Y"), "\"{:s}\""),
-=======
->>>>>>> 8353cfd898ea4eaf01b9a12159bcc0dbdd0a9e30
                 )
         self._marker = "timestamp"
         BaseOutput.__init__(self, **kwargs)
 
-<<<<<<< HEAD
-=======
-    def export(self, with_at=False):
-        slist = BaseOutput.export(self, with_at=with_at)
-        s = {True: "@"}.get(with_at, "")
-        s += self._marker + " " + {True: "on", False: "off"}[self.on]
-        slist = [s,] + slist
-        return slist
-
->>>>>>> 8353cfd898ea4eaf01b9a12159bcc0dbdd0a9e30
 
 class Tick:
     """Tick of axis"""
@@ -477,11 +441,7 @@ class Plot:
             slist += h.export()
         s = "\n".join(slist)
         # add @ to each header line
-<<<<<<< HEAD
         #s = self._comment_head + "@" + "\n@".join(s.split("\n"))
-=======
-        s = self._comment_head + "@" + "\n@".join(s.split("\n"))
->>>>>>> 8353cfd898ea4eaf01b9a12159bcc0dbdd0a9e30
         # export datasets
         return s
 
