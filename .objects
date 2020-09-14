@@ -3,6 +3,7 @@ DIST_FILES = mushroom \
 			doc \
 			workflows \
 			scripts \
+			external \
 			requirements.txt \
 			LICENSE \
 			TODO.md \

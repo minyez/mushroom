@@ -26,7 +26,10 @@ def create_logger(name, level=None, handler=None, stream=False):
           If set None, ROOT_HAND will be used.
       stream (bool) : if this logger will also print to stream"""
     logger = logging.getLogger(name)
-    if level:
+    if isinstance(level, int):
+        logger.setLevel(level)
+    elif isinstance(level, str):
+        level = logging._nameToLevel.get(level.upper(), None)
         logger.setLevel(level)
     else:
         logger.setLevel(LOGLEVEL)
