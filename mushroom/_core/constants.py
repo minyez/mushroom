@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-'''Module that defines math and physical constants to use
+"""Module that defines math and physical constants to use
 
 If not specified, constants are extracted from scipy.constants, 2019-03-07
-'''
+"""
 #pylint: disable=bad-whitespace
 
 PI = 3.141592653589793
