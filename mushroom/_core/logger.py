@@ -3,9 +3,25 @@
 
 import logging
 
-LOGLEVEL = logging.INFO
+def get_logging_level(ll):
+    """get the logging level if ll is a str"""
+    if isinstance(ll, str):
+        ll = logging._nameToLevel.get(ll.upper(), None)
+    return ll
+
+try:
+    from mushroom.__config__ import LOGLEVEL
+    LOGLEVEL = get_logging_level(LOGLEVEL)
+except ImportError:
+    LOGLEVEL = logging.INFO
+
+try:
+    from mushroom.__config__ import STREAM_LEVEL
+    STREAM_LEVEL = get_logging_level(STREAM_LEVEL)
+except ImportError:
+    STREAM_LEVEL = logging.WARNING
+
 LOGFILE = "mushroom.log"
-STREAM_LEVEL = logging.WARNING
 
 ROOT_HAND = logging.FileHandler(LOGFILE, mode='w')
 STREAM_HAND = logging.StreamHandler()
@@ -17,27 +33,22 @@ ROOT_HAND.setLevel(LOGLEVEL)
 STREAM_HAND.setFormatter(STREAM_FORM)
 STREAM_HAND.setLevel(STREAM_LEVEL)
 
-def create_logger(name, level=None, handler=None, stream=False):
+
+def create_logger(name, level=None, f_handler=True, s_handler=False):
     """create a logger object for recording log
     
     Args:
       name (str) : the name of logger. 
-      handler (logging handler object) : the handler.
-          If set None, ROOT_HAND will be used.
-      stream (bool) : if this logger will also print to stream"""
+      f_handler (bool) : if write to the file handler (file "mushroom.log").
+      s_handler (bool) : if write to the stream handler"""
     logger = logging.getLogger(name)
-    if isinstance(level, int):
-        logger.setLevel(level)
-    elif isinstance(level, str):
-        level = logging._nameToLevel.get(level.upper(), None)
-        logger.setLevel(level)
+    if level is not None:
+        logger.setLevel(get_logging_level(level))
     else:
         logger.setLevel(LOGLEVEL)
-    if handler:
-        logger.addHandler(handler)
-    else:
+    if f_handler:
         logger.addHandler(ROOT_HAND)
-    if stream:
+    if s_handler:
         logger.addHandler(STREAM_HAND)
     return logger
 

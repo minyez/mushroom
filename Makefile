@@ -1,6 +1,6 @@
 PROJ = mushroom
 VERSION = 0.0.1
-MESSAGE_FILE = message.txt
+MESSAGE_FILE = mcm.info
 DIST_TARBALL = dist/$(PROJ)-$(VERSION).tar.gz
 SED = gsed
 
@@ -31,4 +31,4 @@ test:
 	@echo "Run pytest"; pytest --cov=./
 
 commit:
-	git commit -F $(MESSAGE_FILE)
+	git commit -F $(MESSAGE_FILE); if (( $? == 0 ));then rm -f $(MESSAGE_FILE); touch $(MESSAGE_FILE); fi
