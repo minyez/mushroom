@@ -280,30 +280,19 @@ class BaseOutput:
         return self.__str__(self)
 
 
-class Defaults(BaseOutput):
+class Default(BaseOutput):
     """Default options at head"""
-    def __init__(self, **kwarygs):
-#@default linewidth 1.0
-#@default linestyle 1
-#@default color 1
-#@default pattern 1
-#@default font 0
-#@default char size 1.000000
-#@default symbol size 1.000000
-#@default sformat "%.8g"
-        self._marker = ""
+    def __init__(self, **kwargs):
+        self._marker = "default"
         self._attrs = (
-            ('onoff', bool, False, ""),
-            ("type", int, 2, "{:d}"),
-            ("char_size", float, 1., "{:8f}"),
-            ("font", int, 0, "{:d}"),
+            ("linewidth", float, 1., "{:3f}"),
+            ("linestyle", int, 1, "{:d}"),
             ("color", int, 1, "{:d}"),
-            ("rot", int, 0, "{:d}"),
-            ("format", str, "general", "{:s}"),
-            ("prec", int, 3, "{:d}"),
-            ("append", str, "\"\"", "{:s}"),
-            ("prepend", str, "\"\"", "{:s}"),
-            ("offset", list, [0.0, 0.0], "{:8f} , {:8f}"),
+            ("pattern", int, 1, "{:d}"),
+            ("font", int, 0, "{:d}"),
+            ("char_size", float, 1., "{:8f}"),
+            ("symbol_size", float, 1., "{:8f}"),
+            ("sformat", str, "%.8g", "\"{:s}\""),
             )
         BaseOutput.__init__(self, **kwargs)
 
@@ -429,13 +418,14 @@ class Plot:
         self._head = "version 50122\nlink page off\n"
         self._page = Page()
         self._timestamp = TimeStamp()
+        self._default = Default()
         self._graphs = [Graph(),]
         self._font = Font()
         self._use_qtgrace = qtgrace
 
     def __str__(self):
         """TODO print the whole agr file"""
-        header = [self._page, self._font, self._timestamp]
+        header = [self._page, self._font, self._default, self._timestamp]
         slist = []
         for h in header:
             slist += h.export()

@@ -25,4 +25,5 @@ dist/
 .cache/
 .coverage
 
-message.txt
+mcm.info
+commit.info
