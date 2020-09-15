@@ -22,7 +22,8 @@ from numpy import shape
 from mushroom._core.data import Data
 from mushroom._core.logger import create_logger
 
-_logger = create_logger(__name__)
+__NAME__ = "graceplot"
+_logger = create_logger(__NAME__, level="debug")
 
 # pylint: disable=bad-whitespace
 _COLOR_MAP = {
@@ -208,10 +209,18 @@ class Frame:
 
 class Axis:
     """Axis"""
-    def __init__(self):
-        self.major = Tick()
-        self.minor = Tick()
+    def __init__(self, **kwargs):
+        self.tick = Tick()
         self.ticklabel = TickLabel()
+
+    def set_major_tick(self):
+        raise NotImplementedError
+
+    def set_minor_tick(self):
+        raise NotImplementedError
+
+    def set_ticklabel(self):
+        raise NotImplementedError
 
 
 class Graph:
@@ -234,6 +243,30 @@ class Graph:
 class Line:
     """Line"""
 
+class Switch:
+    """Class for switch control"""
+    ON = 1
+    AUTO = -1
+    OFF = 0
+    @classmethod
+    def get_str(cls, i):
+        """get the correspond attribute string"""
+        d = {cls.ON: "on", cls.AUTO: "auto", cls.OFF: "off"}
+        return d.get(i)
+
+
+class Position:
+    """Class for position contorl"""
+    IN = -1
+    BOTH = 0
+    OUT = 1
+    @classmethod
+    def get_str(cls, i):
+        """get the correspond attribute string"""
+        d = {cls.IN: "in", cls.BOTH: "both", cls.OUT: "out"}
+        return d.get(i)
+
+
 class BaseOutput:
     """abstract class for printing element object
 
@@ -251,7 +284,10 @@ class BaseOutput:
             assert len(i) == 4
         assert isinstance(self._marker, str)
         for attr, typ, default, _ in self._attrs:
-            self.__setattr__(attr, typ(kwargs.get(attr, default)))
+            v = kwargs.get(attr, default)
+            if typ is not bool:
+                v = typ(v)
+            self.__setattr__(attr, v)
 
     def export(self, with_at=False):
         """export all object attributes as a list of string
@@ -260,60 +296,74 @@ class BaseOutput:
         slist = []
         for attr, typ, _, f in self._attrs:
             s = {True: "@"}.get(with_at, "")
-            if not typ is bool:
-                s += self._marker + " " + attr.replace("_", " ") + " "
-            if typ is list:
-                s += f.format(*self.__getattribute__(attr))
+            attrv = self.__getattribute__(attr)
+            _logger.debug("parsed export: %s , %s, %r", type(self).__name__, attr, attrv)
+            if typ in [list, tuple, set]:
+                s += self._marker + " " + attr.replace("_", " ") + " " + f.format(*attrv)
+            # special property
             elif typ is bool:
-            # special case for onoff
-                if attr == "onoff":
-                    s += self._marker + " " + {True: 'on', False: 'off'}[self.__getattribute__(attr)]
+                if attr.endswith("_switch"):
+                    temps = attr.replace("_switch", "") + " " + Switch.get_str(attrv)
+                if attr.endswith("_position"):
+                    temps = attr.replace("_position", "") + " " + Position.get_str(attrv)
+                s += self._marker + " " + temps.replace(self._marker, "").replace("_", " ")
             else:
-                s += f.format(self.__getattribute__(attr))
+                s += self._marker + " " + attr.replace("_", " ") + " " + f.format(attrv)
+            _logger.debug("exporting: %s", s)
             slist.append(s)
         return slist
 
     def __str__(self):
-        return "\n".join(self.export(with_at=True))
+        return "\n".join(self.export(with_at=False))
 
     def __repr__(self):
-        return self.__str__(self)
+        return self.__str__()
+
+    def str_at(self):
+        """print out the object as a string with an @ at the beginning"""
+        return "\n".join(self.export(with_at=True))
+
+    def str(self):
+        """print out the object as a string without beginning @
+        
+        The same as __str__"""
+        return self.__str__()
 
 
 class Default(BaseOutput):
     """Default options at head"""
+    _marker = "default"
+    _attrs = (
+        ("linewidth", float, 1., "{:3f}"),
+        ("linestyle", int, 1, "{:d}"),
+        ("color", int, 1, "{:d}"),
+        ("pattern", int, 1, "{:d}"),
+        ("font", int, 0, "{:d}"),
+        ("char_size", float, 1., "{:8f}"),
+        ("symbol_size", float, 1., "{:8f}"),
+        ("sformat", str, "%.8g", "\"{:s}\""),
+        )
     def __init__(self, **kwargs):
-        self._marker = "default"
-        self._attrs = (
-            ("linewidth", float, 1., "{:3f}"),
-            ("linestyle", int, 1, "{:d}"),
-            ("color", int, 1, "{:d}"),
-            ("pattern", int, 1, "{:d}"),
-            ("font", int, 0, "{:d}"),
-            ("char_size", float, 1., "{:8f}"),
-            ("symbol_size", float, 1., "{:8f}"),
-            ("sformat", str, "%.8g", "\"{:s}\""),
-            )
         BaseOutput.__init__(self, **kwargs)
 
 
 class Annotation(BaseOutput):
     """dataset annotation"""
+    _marker = "avalue"
+    _attrs = (
+        ("avalue_switch", bool, Switch.OFF, ""),
+        ("type", int, 2, "{:d}"),
+        ("char_size", float, 1., "{:8f}"),
+        ("font", int, 0, "{:d}"),
+        ("color", int, 1, "{:d}"),
+        ("rot", int, 0, "{:d}"),
+        ("format", str, "general", "{:s}"),
+        ("prec", int, 3, "{:d}"),
+        ("append", str, "\"\"", "{:s}"),
+        ("prepend", str, "\"\"", "{:s}"),
+        ("offset", list, [0.0, 0.0], "{:8f} , {:8f}"),
+        )
     def __init__(self, **kwarygs):
-        self._marker = "avalue"
-        self._attrs = (
-            ('onoff', bool, False, ""),
-            ("type", int, 2, "{:d}"),
-            ("char_size", float, 1., "{:8f}"),
-            ("font", int, 0, "{:d}"),
-            ("color", int, 1, "{:d}"),
-            ("rot", int, 0, "{:d}"),
-            ("format", str, "general", "{:s}"),
-            ("prec", int, 3, "{:d}"),
-            ("append", str, "\"\"", "{:s}"),
-            ("prepend", str, "\"\"", "{:s}"),
-            ("offset", list, [0.0, 0.0], "{:8f} , {:8f}"),
-            )
         BaseOutput.__init__(self, **kwargs)
 
 
@@ -335,21 +385,21 @@ class Symbol(BaseOutput):
     START = 10
     CHARACTER = 11
 
+    _marker = "symbol"
+    _attrs = (
+        ("size", float, 1., "{:8f}"),
+        ("color", int, 1, "{:d}"),
+        ("pattern", int, 1, "{:d}"),
+        ("fill_color", int, 1, "{:d}"),
+        ("fill_pattern", int, 1, "{:d}"),
+        ("linewidth", float, 1, "{:3f}"),
+        ("linestyle", int, 1, "{:d}"),
+        ("char", int, 1, "{:d}"),
+        ("char_font", int, 0, "{:d}"),
+        ("skip", int, 0, "{:d}"),
+            )
     def __init__(self, sym, **kwargs):
         self._sym = sym
-        self._marker = "symbol"
-        self._attrs = (
-            ("size", float, 1., "{:8f}"),
-            ("color", int, 1, "{:d}"),
-            ("pattern", int, 1, "{:d}"),
-            ("fill_color", int, 1, "{:d}"),
-            ("fill_pattern", int, 1, "{:d}"),
-            ("linewidth", float, 1, "{:3f}"),
-            ("linestyle", int, 1, "{:d}"),
-            ("char", int, 1, "{:d}"),
-            ("char_font", int, 0, "{:d}"),
-            ("skip", int, 0, "{:d}"),
-                )
         BaseOutput.__init__(self, **kwargs)
 
     def export(self, with_at=False):
@@ -361,37 +411,96 @@ class Symbol(BaseOutput):
 
 class Page(BaseOutput):
     """Page"""
+    _marker = "page"
+    _attrs = (
+        ("size", list, (792, 612), "{:d}, {:d}"),
+        ("scroll", float, 0.05, "{:.0%}"),
+        ("inout", float, 0.05, "{:.0%}"),
+            )
     def __init__(self, **kwargs):
-        self._marker = "page"
-        self._attrs = (
-            ("size", list, (792, 612), "{:d}, {:d}"),
-            ("scroll", float, 0.05, "{:.0%}"),
-            ("inout", float, 0.05, "{:.0%}"),
-                )
         BaseOutput.__init__(self, **kwargs)
 
 
 class TimeStamp(BaseOutput):
     """Timestamp"""
+    _marker = "timestamp"
+    _attrs = (
+        ('timestamp_switch', bool, Switch.OFF, ""),
+        ('color', int, 1, "{:d}"),
+        ('rot', int, 0, "{:d}"),
+        ('font', int, 0, "{:d}"),
+        ('char_size', float, 1.0, "{:8f}"),
+        ('def', str, time.strftime("%a %b %d %H:%M:%S %Y"), "\"{:s}\""),
+            )
     def __init__(self, **kwargs):
-        self._attrs = (
-            ('onoff', bool, False, ""),
-            ('color', int, 1, "{:d}"),
-            ('rot', int, 0, "{:d}"),
-            ('font', int, 0, "{:d}"),
-            ('char_size', float, 1.0, "{:8f}"),
-            ('def', str, time.strftime("%a %b %d %H:%M:%S %Y"), "\"{:s}\""),
-                )
-        self._marker = "timestamp"
         BaseOutput.__init__(self, **kwargs)
 
 
-class Tick:
-    """Tick of axis"""
+class Tick(BaseOutput):
+    """Tick of axis
+
+    Args:
+        major (float) : value between major ticks
+        minor (float) : value between minor ticks
+    """
+    _marker = 'tick'
+    _attrs = (
+            # TODO resolve "tick place rounded true"
+        ('tick_switch', bool, Switch.ON, ""),
+        ('tick_position', bool, Position.IN, ""),
+        ('default', int, 6, "{:d}"),
+        ('major', float, 1., "{:3f}"),
+        ('major_size', float, 0.5, "{:8f}"),
+        ('major_color', float, 1., "{:3f}"),
+        ('major_linewidth', float, 2.0, "{:3f}"),
+        ('major_linestyle', int, 2.0, "{:d}"),
+        ('major_grid_switch', bool, Switch.OFF, ""),
+        ('minor', float, 1., "{:3f}"),
+        ('minor_color', float, 1., "{:3f}"),
+        ('minor_size', float, 1., "{:8f}"),
+        ('minor_ticks', int, 1, "{:d}"),
+        ('minor_grid_switch', bool, Switch.OFF, ""),
+        ('minor_linewidth', float, 2.0, "{:3f}"),
+        ('minor_linestyle', int, 2.0, "{:d}"),
+        )
+
+    def __init__(self, **kwargs):
+        BaseOutput.__init__(self, **kwargs)
 
 
-class TickLabel:
+class Label(BaseOutput):
+    """Axis label"""
+    _marker = 'label'
+    _attrs = ()
+
+    def __init__(self, **kwargs):
+        BaseOutput.__init__(self, *kwargs)
+
+class TickLabel(BaseOutput):
     """Label of axis tick"""
+    _marker = 'ticklabel'
+    _attrs = (
+        ('ticklabel_switch', bool, Switch.AUTO, ""),
+        ('format', str, "general", "{:s}"),
+        ('formula', str, "", "\"{:s}\""),
+        ('append', str, "", "\"{:s}\""),
+        ('prepend', str, "", "\"{:s}\""),
+        ('angle', int, 0, "{:d}"),
+        ('font', int, 0, "{:d}"),
+        ('color', int, 1, "{:d}"),
+        ('skip', int, 0, "{:d}"),
+        ('stagger', int, 0, "{:d}"),
+        ('place', str, "normal", "{:s}"),
+        ('offset_switch', bool, Switch.AUTO, ""),
+        ('offset', list, [0.00, 0.01], "{:8f} , {:8f}"),
+        ('start_type_switch', bool, Switch.AUTO, ""),
+        ('start', float, 0.0, "{:8f}"),
+        ('stop_type_switch', bool, Switch.AUTO, ""),
+        ('stop', float, 0.0, "{:8f}"),
+        ('char_size', float, 1.5, "{:8f}"),
+        )
+    def __init__(self, **kwargs):
+        BaseOutput.__init__(self, **kwargs)
 
 
 class Dataset:
@@ -498,7 +607,8 @@ class Plot:
         """Create a double-y-axis plot"""
         raise NotImplementedError
 
-
 if __name__ == "__main__":
     print(Plot())
+    print(TickLabel().str())
+    print(Tick().str())
 

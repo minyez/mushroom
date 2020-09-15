@@ -31,4 +31,5 @@ test:
 	@echo "Run pytest"; pytest --cov=./
 
 commit:
-	git commit -F $(MESSAGE_FILE); if (( $? == 0 ));then rm -f $(MESSAGE_FILE); touch $(MESSAGE_FILE); fi
+	git commit -F $(MESSAGE_FILE)
+	rm -f $(MESSAGE_FILE); touch $(MESSAGE_FILE)
