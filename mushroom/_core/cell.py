@@ -29,6 +29,7 @@ from mushroom._core.unit import LengthUnit
 from mushroom._core.crystutils import (get_latt_consts_from_latt_vecs,
                                        periodic_duplicates_in_cell,
                                        select_dyn_flag_from_axis,
+                                       sym_nat_from_atms,
                                        axis_list)
 from mushroom._core.ioutils import get_str_indices
 from mushroom._core.logger import create_logger
@@ -304,13 +305,13 @@ class Cell(LengthUnit):
         if self._coord_sys == "C":
             self._posi = self._posi * scale
 
-    def add_atom(self, atom, coord, sdFlag=None):
+    def add_atom(self, atom, coord, select_dyn=None):
         '''Add an atom with coordinate and selective dynamic flags
 
         Args:
             atom (str): the chemical symbol of the atom to add
             coord (array-like): the coordinate of atom in ``Cell`` coordinate system
-            sdFlag (list of 3 bools): 
+            select_dyn (list of 3 bools): 
         '''
         try:
             assert isinstance(atom, str)
@@ -318,12 +319,12 @@ class Cell(LengthUnit):
             raise self._err(
                 "atom should be string, received {}".format(type(atom)))
         try:
-            newPos = np.vstack([self._posi, coord])
+            newpos = np.vstack([self._posi, coord])
         except ValueError:
             raise self._err("Invalid coordinate: {}".format(coord))
-        if sdFlag is not None:
-            self._set_select_dyn({self.natm: sdFlag})
-        self._posi = newPos
+        if select_dyn is not None:
+            self._set_select_dyn({self.natm: select_dyn})
+        self._posi = newpos
         self._atms.append(atom)
         self.move_atoms_to_first_lattice()
         self._sanitize_atoms()
@@ -642,6 +643,44 @@ class Cell(LengthUnit):
         '''
         return self.latt, self.posi, self.type_index
 
+    # export to software-specific output
+    def export_to_vasp(self, scale=1.0):
+        '''Export to VASP POSCAR format'''
+        # list containting strings to return
+        ret = []
+        # convert to ang, as vasp use ang only
+        uwas = self.unit
+        self.unit = "ang"
+
+        syms, nats = sym_nat_from_atms(self._atms)
+        ret.append(self.comment)
+        ret.append("{:8.6f}".format(scale))
+        for i in range(3):
+            ret.append("  %12.8f  %12.8f  %12.8f"
+                        % (self._latt[i, 0], self._latt[i, 1], self._latt[i, 2]))
+        if not syms[0].startswith("Unk"):
+            ret.append(' '.join(syms))
+        ret.append(' '.join([str(x) for x in nats]))
+
+        if self.use_select_dyn:
+            ret.append("Selective Dynamics")
+        ret.append({"D": "Direct", "C": "Cart"}[self._coord_sys])
+
+        for i in range(self.natm):
+            dyn = []
+            if self.use_select_dyn:
+                dyn = self.sd_flag(ia=i)
+            ainfo = []
+            if not syms[0].startswith("Unk"):
+                ainfo = ['#{}'.format(self._atms[i])]
+            aflag = [{True: "T", False: "F"}[d] for d in dyn] + ainfo
+            ret.append("%15.9f %15.9f %15.9f " % (
+                self._posi[i, 0], self._posi[i, 1], self._posi[i, 2]) + ' '.join(aflag))
+        # convert back to the original length unit
+        self.unit = uwas
+        return '\n'.join(ret)
+
+
     # * Factory methods
     @classmethod
     def read_from_json(cls, pjson):
@@ -682,7 +721,7 @@ class Cell(LengthUnit):
         if "factory" in js:
             fac = js["factory"]
             # pop out latt, atoms and pos for safety
-            for arg in ["latt", "atoms", "pos"]:
+            for arg in ["latt", "atms", "posi"]:
                 js.pop(arg, None)
             if fac in factoryDict:
                 # get positional argument
@@ -698,7 +737,7 @@ class Cell(LengthUnit):
             else:
                 raise cls._err("Factory method unavailable: {}".format(fac))
 
-        for _, arg in enumerate(["latt", "atoms", "pos"]):
+        for _, arg in enumerate(["latt", "atms", "posi"]):
             v = js.pop(arg, None)
             if v is None:
                 raise cls._err(
@@ -808,13 +847,13 @@ class Cell(LengthUnit):
             kwargs: keyword argument for ``Cell`` except ``coord_sys``
         '''
         _a = abs(a)
-        _latt = [[_a, 0.0, 0.0], [0.0, _a, 0.0], [0.0, 0.0, _a]]
-        _atoms = [atom]
-        _pos = [[0.0, 0.0, 0.0]]
+        latt = [[_a, 0.0, 0.0], [0.0, _a, 0.0], [0.0, 0.0, _a]]
+        atms = [atom,]
+        posi = [[0.0, 0.0, 0.0]]
         kwargs.pop("coord_sys", None)
         if "comment" not in kwargs:
             kwargs.update({"comment": "Simple cubic lattice {}".format(atom)})
-        return cls(_latt, _atoms, _pos, **kwargs)
+        return cls(latt, atms, posi, **kwargs)
 
     @classmethod
     def bravais_cI(cls, atom, a=1.0, primitive=False, **kwargs):

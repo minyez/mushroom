@@ -63,15 +63,18 @@ class Cif:
         Returns
             3 str, systematic name, mineral name and structure type
         """
-        sys = self._blk.GetItemValue("_chemical_name_systematic")
+        try:
+            sys = self._blk.GetItemValue("_chemical_name_systematic")
+        except KeyError:
+            sys = "NA"
         try:
             mine = self._blk.GetItemValue("_chemical_name_mineral")
         except KeyError:
-            mine = "N/A"
+            mine = "NA"
         try:
             struct = self._blk.GetItemValue("_chemical_name_structure_type")
         except (KeyError, ValueError):
-            struct = "N/A"
+            struct = "NA"
         return sys, mine, struct
 
     def get_lattice_vectors(self):
@@ -133,12 +136,13 @@ class Cif:
         """Get the reference string
 
         Returns:
-            str
+            str, empyt string if no reference is found in the cif file
         """
         if self.ref is None:
-            ref = "".join(
-                self._blk.GetItemValue("_publ_section_title").split("\n")
-            )
+            try:
+                ref = "".join(self._blk.GetItemValue("_publ_section_title").split("\n"))
+            except KeyError:
+                ref = ""
             self.ref = ref
         return self.ref
 

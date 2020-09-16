@@ -173,7 +173,7 @@ class cell_factory_method(ut.TestCase):
         Cell.pyrite()
         Cell.marcasite()
 
-    def test_read_from_json(self):
+    def test_read_tempfile_json(self):
         self.assertRaisesRegex(CellError, "JSON file not found: None",
                                Cell.read_from_json, None)
         self.assertRaisesRegex(CellError, "JSON file not found: /abcdefg.json",
@@ -189,17 +189,17 @@ class cell_factory_method(ut.TestCase):
         with open(tf.name, 'w') as h:
             json.dump(jd, h)
         self.assertRaisesRegex(CellError,
-                               "invalid JSON file for cell: {}. No {}".format(tf.name, "atoms"),
+                               "invalid JSON file for cell: {}. No {}".format(tf.name, "atms"),
                                Cell.read_from_json, tf.name)
 
         jd = {
             "latt": [[5.0, 0.0, 0.0], [0.0, 5.0, 0.0], [0.0, 0.0, 5.0]],
-            "atoms": ["C"],
+            "atms": ["C"],
         }
         with open(tf.name, 'w') as h:
             json.dump(jd, h)
         self.assertRaisesRegex(CellError,
-                               "invalid JSON file for cell: {}. No {}".format(tf.name, "pos"),
+                               "invalid JSON file for cell: {}. No {}".format(tf.name, "posi"),
                                Cell.read_from_json, tf.name)
 
         # JSON with factory key
@@ -230,6 +230,14 @@ class cell_factory_method(ut.TestCase):
         self.assertEqual(c.coord_sys, "D")
         self.assertEqual(c.natm, 2)
         self.assertListEqual(c.atms, ["C", "C"])
+
+    #def test_read_from_test_json(self):
+    #    """read test json data"""
+    #    datadir = os.path.join(get_dirpath(__file__), 'data')
+    #    for fn in os.listdir(datadir):
+    #        if fn.endswith('.json'):
+    #            jf = os.path.join(datadir, fn)
+    #            Cell.read_from_json(jf)
 
     def test_read_from_cif(self):
         datadir = os.path.join(get_dirpath(__file__), 'data')
@@ -290,32 +298,32 @@ class cell_sort(ut.TestCase):
     """Test the sorting functionality of Cell
     """
 
-    #def test_direct_switch_cscl(self):
-    #    _latt = [[1.0, 0.0, 0.0],
-    #             [0.0, 1.0, 0.0],
-    #             [0.0, 0.0, 1.0]]
-    #    _atoms = ["Cl", "Cs"]
-    #    _pos = [[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]
-    #    # Cs atom is fixed
-    #    _fix = [False, False, False]
+    def test_direct_switch_cscl(self):
+        _latt = [[1.0, 0.0, 0.0],
+                 [0.0, 1.0, 0.0],
+                 [0.0, 0.0, 1.0]]
+        _atms = ["Cl", "Cs"]
+        _posi = [[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]
+        # Cs atom is fixed
+        _fix = [False, False, False]
 
-    #    _cell = Cell(_latt, _atoms, _pos, select_dyn={1: _fix})
-    #    self.assertListEqual([0], _cell.get_sym_index("Cl"))
-    #    self.assertListEqual([0], _cell["Cl"])
-    #    self.assertListEqual([1], _cell.get_sym_index("Cs"))
-    #    self.assertListEqual([1], _cell["Cs"])
-    #    _cell._switch_two_atom_index(0, 1)
-    #    self.assertListEqual(_cell.atoms, ["Cs", "Cl"])
-    #    self.assertListEqual([0], _cell.get_sym_index("Cs"))
-    #    self.assertListEqual([1], _cell.get_sym_index("Cl"))
-    #    self.assertListEqual(_fix, _cell.sd_flag(0))
+        _cell = Cell(_latt, _atms, _posi, select_dyn={1: _fix})
+        self.assertListEqual([0], _cell.get_sym_index("Cl"))
+        self.assertListEqual([0], _cell["Cl"])
+        self.assertListEqual([1], _cell.get_sym_index("Cs"))
+        self.assertListEqual([1], _cell["Cs"])
+        _cell._switch_two_atom_index(0, 1)
+        self.assertListEqual(_cell.atms, ["Cs", "Cl"])
+        self.assertListEqual([0], _cell.get_sym_index("Cs"))
+        self.assertListEqual([1], _cell.get_sym_index("Cl"))
+        self.assertListEqual(_fix, _cell.sd_flag(0))
 
     #def test_sanitize_atoms_sic(self):
     #    _latt = [[1.0, 0.0, 0.0],
     #             [0.0, 1.0, 0.0],
     #             [0.0, 0.0, 1.0]]
-    #    _atoms = ["Si", "C", "Si", "Si", "C", "C", "Si", "C"]
-    #    _pos = [[0.0, 0.0, 0.0],  # Si
+    #    _atms = ["Si", "C", "Si", "Si", "C", "C", "Si", "C"]
+    #    _posi = [[0.0, 0.0, 0.0],  # Si
     #            [0.25, 0.25, 0.25],  # C
     #            [0.0, 0.5, 0.5],  # Si
     #            [0.5, 0.0, 0.5],  # Si
@@ -331,11 +339,11 @@ class cell_sort(ut.TestCase):
     #                    [0.25, 0.75, 0.75],  # C
     #                    [0.75, 0.25, 0.75],  # C
     #                    [0.75, 0.75, 0.25]]  # C
-    #    SiC = Cell(_latt, _atoms, _pos,
+    #    SiC = Cell(_latt, _atms, _posi,
     #               select_dyn={2: [False, False, False]})
     #    # _latt._sanitize_atoms()
-    #    self.assertListEqual(list(sorted(_atoms, reverse=True)),
-    #                         SiC.atoms)
+    #    self.assertListEqual(list(sorted(_atms, reverse=True)),
+    #                         SiC.atms)
     #    self.assertDictEqual({0: 'Si', 1: 'C'}, SiC.type_mapping)
     #    self.assertTrue(np.array_equal(SiC.pos,
     #                                   np.array(_posSanitied, dtype=SiC._dtype)))
@@ -393,7 +401,7 @@ class test_cell_manipulation(ut.TestCase):
                               "atom should be string, received <class 'int'>",
                               gp.add_atom, 1, [0.2, 0.3, 0.4])
        gp.fix_all()
-       gp.add_atom("H", [0.0, 0.0, 0.6], sdFlag=[False, False, True])
+       gp.add_atom("H", [0.0, 0.0, 0.6], select_dyn=[False, False, True])
        self.assertEqual(gp.natm, 3)
        self.assertListEqual(gp.atms, ['C', 'C', 'H'])
        self.assertDictEqual(gp.type_mapping, {0: 'C', 1: 'H'})
@@ -423,6 +431,14 @@ class test_cell_manipulation(ut.TestCase):
                                                 [0.5, 0.0, 0.5],
                                                 [0.5, 0.5, 0.5],
                                                 [0.5, 0.0, 0.0], ], dtype=brokenNaCl._dtype)))
+
+
+class cell_export(ut.TestCase):
+    """test various output format of Cell"""
+
+    def test_vasp_export(self):
+        """test VASP POSCAR export"""
+        pass
 
 
 if __name__ == "__main__":

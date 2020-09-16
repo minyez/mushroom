@@ -3,10 +3,10 @@
     "latt": [[2.522108400, 0.0, 0.0],
              [1.261054201,2.184209947,0.0],
              [1.261054201,0.728069982,2.059292887]],
-    "sdFlags": {
+    "select_dyn": {
         "0": [true, true, true],
         "1": [false, true, false]
     },
-    "coordSys" : "D",
-    "atoms": ["N", "B"]
+    "coord_sys" : "D",
+    "atms": ["N", "B"]
 }
