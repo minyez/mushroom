@@ -10,14 +10,14 @@ def get_logging_level(ll):
     return ll
 
 try:
-    from mushroom.__config__ import LOGLEVEL
-    LOGLEVEL = get_logging_level(LOGLEVEL)
+    from mushroom.__config__ import loglevel
+    LOGLEVEL = get_logging_level(loglevel)
 except ImportError:
     LOGLEVEL = logging.INFO
 
 try:
-    from mushroom.__config__ import STREAM_LEVEL
-    STREAM_LEVEL = get_logging_level(STREAM_LEVEL)
+    from mushroom.__config__ import stream_level
+    STREAM_LEVEL = get_logging_level(stream_level)
 except ImportError:
     STREAM_LEVEL = logging.WARNING
 
