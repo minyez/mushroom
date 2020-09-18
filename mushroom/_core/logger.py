@@ -38,9 +38,10 @@ def create_logger(name, level=None, f_handler=True, s_handler=False):
     """create a logger object for recording log
     
     Args:
-      name (str) : the name of logger. 
-      f_handler (bool) : if write to the file handler (file "mushroom.log").
-      s_handler (bool) : if write to the stream handler"""
+        name (str) : the name of logger. 
+        f_handler (bool) : if write to the file handler (file "mushroom.log").
+        s_handler (bool) : if write to the stream handler
+    """
     logger = logging.getLogger(name)
     if level is not None:
         logger.setLevel(get_logging_level(level))

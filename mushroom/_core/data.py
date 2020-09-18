@@ -2,7 +2,12 @@
 """helper function in dealing with data, digits and mathematics"""
 import re
 import numpy as np
+
 from mushroom._core.ioutils import trim_after
+from mushroom._core.logger import create_logger
+
+_logger = create_logger(__name__)
+del create_logger
 
 def conv_estimate_number(s, reserved=True):
     """Convert a string representing a number with error to a float number.
@@ -58,6 +63,7 @@ class Data:
                  **kwargs):
         data_type = _check_data_type(*xyz, error_both=error_both, **kwargs)
         self._error_cols = Data.DATATYPES.get(data_type, None)
+        # TODO use numpy to treat xyz and error data
         if data_type == "bar":
             self.x = xyz[0]
             self._data_cols = ['x',]
@@ -75,14 +81,22 @@ class Data:
         self.type = data_type
 
     def _get(self, data_cols, transpose=False):
-        """get all data value, default as x-array, y-array, (z-array)
+        """get all data value
+
+        default as 
+                (x1, y1, z1),
+                (x2, y2, z2),
+                ...
 
         Args:
             transpose (bool) : if True, the output will be
-                (x1, y1, z1), (x2, y2, z2) ..."""
-        d = (self.__getattribute__(arg) for arg in data_cols)
-        if transpose:
-            d = (v for v in zip(*d))
+                x1, x2, x3...
+                y1, y2, y3...
+                z1, z2, z3...
+        """
+        d = [self.__getattribute__(arg) for arg in data_cols]
+        if not transpose:
+            return list(zip(*d))
         return d
 
     def _export(self, data_cols, form=None, transpose=False, separator=None):
@@ -90,15 +104,16 @@ class Data:
 
         Default output will be one line for each data type, i.e.
 
-        'x1 x2 x3 ...'
-        'y1 y2 y3 ...'
-        'z1 z2 z3 ...'
-
-        Set `transpose` to True will get
-
         'x1 y1 z1'
         'x2 y2 z2'
         'x3 y3 z3'
+        ...
+
+        Set `transpose` to True will get
+
+        'x1 x2 x3 ...'
+        'y1 y2 y3 ...'
+        'z1 z2 z3 ...'
 
         Args:
             transpose (bool)
@@ -114,54 +129,82 @@ class Data:
                 msg = "format string does not conform data columns"
                 raise ValueError(msg, form, len(data_cols))
 
+        data_all = self._get(data_cols, transpose=transpose)
+
+        if form is None:
+            # if no form is specified, get the type from the first data point
+            if transpose:
+                # data_all = (xs, ys, zs)
+                data1 = [x[0] for x in data_all]
+            else:
+                # data_all = (1, 2, 3...)
+                data1 = data_all[0]
+            form = [{True: '{:d}'}.get(isinstance(x, int), '{:f}') for x in data1]
+
         if separator is None:
             separator = " "
-        for i, array in enumerate(self._get(data_cols, transpose=transpose)):
-            if form is None:
-                s = separator.join(array)
-            elif isinstance(form, str):
+        for i, array in enumerate(data_all):
+            if isinstance(form, str):
                 s = separator.join([form.format(x) for x in array])
             elif isinstance(form, (list, tuple)):
                 if transpose:
-                    s = separator.join([f.format(x) for f, x in zip(form, array)])
-                else:
+                    # array = (x1, x2, x3)
                     s = separator.join([form[i].format(x) for x in array])
+                else:
+                    # array = (x1, y1, z1)
+                    s = separator.join([f.format(x) for f, x in zip(form, array)])
             else:
                 raise ValueError("invalid format string {:s}".format(form))
             slist.append(s)
         return slist
 
     def get(self, transpose=False):
-        """get all data value, default as x-array, y-array, (z-array)
+        """get all data value
+
+        Default as
+            (x1, y1, z1),
+            (x2, y2, z2),
+            ...
 
         Args:
             transpose (bool) : if True, the output will be
-                (x1, y1, z1), (x2, y2, z2) ..."""
+                x-array,
+                y-array,
+                ...
+        """
         return self._get(self._data_cols, transpose=transpose)
 
     def get_error(self, transpose=False):
         """get all error value
        
-        Default as xel-array, xer-array, yel-array, yer-array, ...
+        Default as 
+            (xel1, xer1, yel1, yer1, ...),
+            (xel2, xer2, yel2, yer2, ...),
 
         Args:
             transpose (bool) : if True, the output will be
-                (xel1, xer1, yel1, yer1, ...),
-                (xel2, xer2, yel2, yer2, ...),
-                ..."""
+                xel1, xel2, xel3, ...
+                xer1, xer2, xer3, ...
+                yel1, yel2, yel3, ...
+                ...
+        """
         return self._get(self._error_cols, transpose=transpose)
 
     def get_all(self, transpose=False):
         """get all data and error value
 
-        Default as x, y, z, xel-array, xer-array, yel-array, yer-array, ...
+        Default as
+                (x1, y1, z1, xel1, xer1, yel1, yer1, ...),
+                (x2, y2, z2, xel2, xer2, yel2, yer2, ...),
 
         Args:
             transpose (bool) : if True, the output will be
-
-                (x1, y1, z1, xel1, xer1, yel1, yer1, ...),
-                (x2, y2, z2, xel2, xer2, yel2, yer2, ...),
-                ..."""
+                x1, x2, x3, ...
+                y1, y2, y3, ...
+                ...
+                xel1, xel2, xel3, ...
+                ...
+        """
         return self._get(self._data_cols + self._error_cols, transpose=transpose)
 
     def export(self, form=None, transpose=False, separator=None):

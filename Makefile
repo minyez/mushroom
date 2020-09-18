@@ -25,6 +25,7 @@ $(DIST_TARBALL): $(DIST_FILES)
 
 clean:
 	find . -name "*.log" -delete
+	find . -name ".coverage" -delete
 	rm -rf dist
 
 test:
@@ -33,3 +34,7 @@ test:
 commit:
 	git commit -F $(MESSAGE_FILE)
 	rm -f $(MESSAGE_FILE); touch $(MESSAGE_FILE)
+
+
+amend:
+	git commit --amend
