@@ -19,37 +19,13 @@ import time
 from io import TextIOWrapper
 from copy import deepcopy
 
-from numpy import shape
 from mushroom._core.data import Data
 from mushroom._core.logger import create_logger
 
-__NAME__ = "graceplot"
-_logger = create_logger(__NAME__)
+_logger = create_logger(__name__)
 del create_logger
 
 # pylint: disable=bad-whitespace
-_COLOR_MAP = {
-        0:  (255, 255, 255, "white"),
-        1:  (  0,   0,   0, "black"),
-        2:  (255,   0,   0, "red"),
-        3:  (  0, 255,   0, "green"),
-        4:  (  0,   0, 255, "blue"),
-        5:  (255, 255,   0, "yellow"),
-        6:  (188, 143, 143, "brown"),
-        7:  (220, 220, 220, "grey"),
-        8:  (148,   0, 211, "violet"),
-        9:  (  0, 255, 255, "cyan"),
-        10: (255,   0, 255, "magenta"),
-        11: (255, 165,   0, "orange"),
-        12: (114,  33, 188, "indigo"),
-        13: (103,   7,  72, "maroon"),
-        14: ( 64, 224, 208, "turquoise"),
-        15: (  0, 139,   0, "green4"),
-        }
-
-_PREDEF_COLOR_NAMES = {name: code for code, (_, _, _, name) in _COLOR_MAP.items()}
-_N_COLOR_MAP = len(_COLOR_MAP.keys())
-
 def encode_str(string):
     """encode a string to grace format"""
     raise NotImplementedError
@@ -65,82 +41,131 @@ def _valid_rgb(r, g, b, name):
         if v not in range(256):
             _logger.warning("%s (%s value of %s) is not a valid RGB", v, k, name)
 
-class ColorMap:
-    """Object to map the color
+class _MapOutput:
+    """class for write map output, e.g. font, colormap
+
+    the main attribute is a private dictionary, _map and an output format _format
+    for the mapped values
+
+    key : int/str/float, identifier of mapping
+    value : tuple/list, value mapped
+
+    """
+    _marker = None
+    _map = {None: (None,)}
+    _format = '{:s}'
+
+    def export(self):
+        slist = []
+        for k, v in self._map.items():
+            s = "map {:s} {:s} to ".format(self._marker, str(k)) + self._format.format(*v)
+            slist.append(s)
+        return slist
+
+
+class _ColorMap(_MapOutput):
+    """Class to map the color
     
     Private attribute:
-        _cm (dict) : color map
+        _map (dict) : color map
         _cn (dict) : color names
 
     TODO add system configure
     """
+    _marker = 'color'
+    _format = '({:d}, {:d}, {:d}), \"{:s}\"'
+    # a pre-defined color map list
+    _colors = [
+        (255, 255, 255, "white"),
+        (  0,   0,   0, "black"),
+        (255,   0,   0, "red"),
+        (  0, 255,   0, "green"),
+        (  0,   0, 255, "blue"),
+        (255, 255,   0, "yellow"),
+        (188, 143, 143, "brown"),
+        (220, 220, 220, "grey"),
+        (148,   0, 211, "violet"),
+        (  0, 255, 255, "cyan"),
+        (255,   0, 255, "magenta"),
+        (255, 165,   0, "orange"),
+        (114,  33, 188, "indigo"),
+        (103,   7,  72, "maroon"),
+        ( 64, 224, 208, "turquoise"),
+        (  0, 139,   0, "green4"),
+        ]
+
     # check validity of pre-defined colormap
-    # no duplicate
-    assert _N_COLOR_MAP == len(_PREDEF_COLOR_NAMES.keys())
-    # check if predefined rgb are valid
-    for i in range(_N_COLOR_MAP):
-        assert i in _COLOR_MAP.keys()
-        _valid_rgb(*_COLOR_MAP[i])
+    # check if predefined rgb are valid, and there is no duplicate names
+    _color_names = [i[3] for i in _colors]
+    for color in _colors:
+        _valid_rgb(*color)
+    assert len(_color_names) == len(set(_color_names))
 
     def __init__(self):
-        self._cm = _COLOR_MAP
-        self._cn = _PREDEF_COLOR_NAMES
-        self._n = _N_COLOR_MAP
+        self._map = {}
+        for i, color in enumerate(self._colors):
+            self._map[i] = color
+        self._cn = self._color_names
         # add user defined color_map
         try:
             from mushroom.__config__ import color_map
             for r, g, b, name in color_map:
                 self.add(r, g, b, name)
+            del color_map
         except (ImportError, TypeError, ValueError):
-            _logger.warning("load user color_map failed")
+            _logger.warning("user color_map not loaded")
 
     def __getitem__(self, i):
-        return self._cm[i][3]
+        return self._map[i][3]
 
     def __str__(self):
-        s = ""
-        for i in range(self._n):
-            r, g, b, n = self._cm[i]
-            s += f"@map color {i} to ({r}, {g}, {b}), \"{n}\"\n"
-        return s
+        return '\n'.join(self.export())
+
+    def export(self):
+        """export color maps
+
+        Returns
+            list
+        """
+        return _MapOutput.export(self)
 
     @property
     def n(self):
         """Number of available colors"""
-        return len(self._cm.keys())
+        return len(self._cn)
 
     def add(self, r, g, b, name=None):
-        """Add a new color with its RGB value"""
+        """Add a new color with its RGB value
+
+        Args:
+            r, g, b (int)
+        """
         if name is None:
             name = 'color' + str(self.n)
-        elif self._check_colorname_dup(name):
-            raise ValueError(f"color {name} has been defined with code {self._cn[name]}")
-        _valid_rgb(r, g, b, name=name)
-        if self._cm is _COLOR_MAP:
-            self._cm = deepcopy(_COLOR_MAP)
-            self._cn = deepcopy(_PREDEF_COLOR_NAMES)
-        n = self.n
-        self._cm[n] = (r, g, b, name)
-        self._cn[name] = n
-
-    def _check_colorname_dup(self, name):
-        """Check if the color name is already defined"""
-        return name in self._cn.keys()
+        elif name in self._cn:
+            msg = "color {:s} has been defined with code {:s}".format(name, self._cn.index(name))
+            raise ValueError(msg)
+        color = (r, g, b, name)
+        _valid_rgb(*color)
+        if self._colors is _ColorMap._colors:
+            self._colors = deepcopy(_ColorMap._colors)
+        self._colors.append(color)
+        self._map[self.n] = color
+        self._cn.append(name)
 
     def get_color_code(self, name):
         """get the map code of color `name`"""
-        if isinstance(name, str) and self._check_colorname_dup(name):
-            return self._cn[name]
-        raise ValueError("name should be a string")
+        try:
+            return self._cn.index(name)
+        except ValueError:
+            raise ValueError("colro name {:s} is not found".format(name))
 
     def get_color_name(self, code):
         """get the name of color `code`"""
-        if isinstance(code, int):
-            try:
-                return self._cm[code][3]
-            except KeyError:
-                raise IndexError(f"color code {code} is not defined")
-        raise ValueError("code should be an integer")
+        try:
+            return self._cm[code][3]
+        except IndexError:
+            raise ValueError("color code {:d} is not defined".format(code))
 
     def get_rgb(self, i):
         """get the rgb value of color with its code"""
@@ -149,7 +174,7 @@ class ColorMap:
 
     def has_color(self, name):
         """Check if the color name is already defined"""
-        return self._check_colorname_dup(name)
+        return name in self._cn
 
 
 class Color:
@@ -157,10 +182,22 @@ class Color:
     Args:
         color (str or int)
     """
-    _cm = ColorMap()
-
-    def __init__(self, color):
-        raise NotImplementedError
+    WHITE = 0
+    BLACK = 1
+    RED = 2
+    GREEN = 3
+    BLUE = 4
+    YELLOW = 5
+    BROWN = 6
+    GREY = 7
+    VIOLET = 8
+    CYAN = 9
+    MAGENTA = 10
+    ORANGE = 11
+    INDIGO = 12
+    MAROON = 13
+    TURQUOISE = 14
+    GREEN4 = 15
 
 
 class Pattern:
@@ -168,8 +205,17 @@ class Pattern:
     NONE = 0
     SOLID = 1
 
+    @classmethod
+    def get(cls, s):
+        """get the pattern code from string s"""
+        d = {
+            "left" : cls.LEFT,
+            "center": cls.CENTER,
+            "right": cls.RIGHT,
+            }
+        return d.get(str(s).lower(), 1)
 
-class Font:
+class _Font(_MapOutput):
     """Object to set up the font
 
     For now adding fonts is not supported"""
@@ -189,12 +235,15 @@ class Font:
         "Symbol",
         "ZapfDingbats",
         ]
+    _marker = 'font'
+    _format = "\"{:s}\", \"{:s}\""
+    _map = {}
+    for i, f in enumerate(_FONTS):
+        _map[i] = (f, f)
 
     def export(self):
-        slist = []
-        for i, f in enumerate(self._FONTS):
-            slist.append(f"map font {i} to \"{f}\", \"{f}\"")
-        return slist
+        """return a list of font map strings"""
+        return _MapOutput.export(self)
 
     def __str__(self):
         return "\n".join(self.export())
@@ -259,11 +308,18 @@ class Switch:
     ON = 1
     AUTO = -1
     OFF = 0
+
     @classmethod
     def get_str(cls, i):
         """get the correspond attribute string"""
-        d = {cls.ON: "on", cls.AUTO: "auto", cls.OFF: "off"}
+        d = {cls.ON: "on", cls.AUTO: "auto", cls.OFF: "off", True: "on", False: "off"}
         return d.get(i)
+
+    @classmethod
+    def get(cls, s):
+        """get the attribute code from string"""
+        d = { "on": cls.ON, "auto": cls.AUTO, "off": cls.OFF}
+        return d.get(s)
 
 
 class Position:
@@ -277,7 +333,7 @@ class Position:
         d = {cls.IN: "in", cls.BOTH: "both", cls.OUT: "out"}
         return d.get(i)
 
-class Affix:
+class _Affix:
     """object to dataset (s0,s1...), graph (g0,g1...), axis (x,y,altx,alty), etc.
 
     Args:
@@ -293,7 +349,7 @@ class Affix:
             self._marker = self._marker + str(affix)
     
 
-class BaseOutput:
+class _BaseOutput:
     """abstract class for printing element object
 
     _attrs and _marker must be redefined,
@@ -303,11 +359,11 @@ class BaseOutput:
     When type is bool, it will be treated invidually as a special
     attribute.
     """
-    _attrs = None
-    _marker = None
+    _attrs = []
+    _marker = ''
 
     def __init__(self, **kwargs):
-        assert isinstance(self._attrs, tuple)
+        assert isinstance(self._attrs, (list, tuple))
         for i in self._attrs:
             assert len(i) == 4
         assert isinstance(self._marker, str)
@@ -361,111 +417,102 @@ class BaseOutput:
     def __repr__(self):
         return self.__str__()
 
-    def str_at(self):
-        """print out the object as a string with an @ at the beginning"""
-        return "\n".join(self.export())
 
-    def str(self):
-        """print out the object as a string without beginning @
-        
-        The same as __str__"""
-        return self.__str__()
-
-class TitleLike(BaseOutput):
+class _TitleLike(_BaseOutput):
     """title and subtitle of graph"""
-    _attrs = (
+    _attrs = [
         ('font', int, 0, "{:d}"),
         ('size', float, 1.5, "{:8f}"),
-        ('color', int, 1, "{:d}"),
-        )
+        ('color', int, Color.BLACK, "{:d}"),
+        ]
 
-class Title(TitleLike):
+class _Title(_TitleLike):
     """title of graph"""
     _marker = 'title'
-    _attrs = ((_marker+'_comment', bool, "", "\"{:s}\""),) \
-             + TitleLike._attrs
+    _attrs = [(_marker+'_comment', bool, "", "\"{:s}\""),] \
+             + _TitleLike._attrs
 
-class SubTitle(TitleLike):
+class _SubTitle(_TitleLike):
     """title of graph"""
     _marker = 'subtitle'
-    _attrs = ((_marker+'_comment', bool, "", "\"{:s}\""),) \
-             + TitleLike._attrs
+    _attrs = [(_marker+'_comment', bool, "", "\"{:s}\""),] \
+             + _TitleLike._attrs
 
 def _set_loclike_attr(marker, form, *args):
     f = [form,] * len(args)
-    return ((marker + '_location', bool, args, ', '.join(f)),)
+    return [(marker + '_location', bool, args, ', '.join(f)),]
 
-class World(BaseOutput):
+class _World(_BaseOutput):
     """world of graph"""
     _marker = 'world'
     _attrs = _set_loclike_attr('world', '{:8f}', 0., 0.7, 9.0, 2.7)
 
-class StackWorld(BaseOutput):
+class _StackWorld(_BaseOutput):
     """stack world of graph"""
     _marker = 'stack_world'
     _attrs = _set_loclike_attr('stack_world', '{:8f}', 0., 0.7, 9.0, 2.7)
 
-class View(BaseOutput):
+class _View(_BaseOutput):
     """stack world of graph"""
     _marker = 'stack_world'
     _attrs = _set_loclike_attr('stack_world', '{:8f}', 0., 0.7, 9.0, 2.7)
 
-class Znorm(BaseOutput):
+class _Znorm(_BaseOutput):
     """stack world of graph"""
     _marker = 'znorm'
     _attrs = _set_loclike_attr('znorm', '{:d}', 1)
 
-class Line(BaseOutput):
+class Line(_BaseOutput):
     """Line object of dataset"""
     _marker = 'line'
     _attrs = (
         ('type', int, 1, "{:d}"),
         ('linestyle', int, LineStyle.SOLID, "{:d}"),
         ('linewidth', float, 4.0, "{:3f}"),
-        ('color', int, 1, "{:d}"),
+        ('color', int, Color.BLACK, "{:d}"),
         ('pattern', int, 1, "{:d}"),
         )
 
 
-class Legend(BaseOutput):
+class Legend(_BaseOutput):
     """object to control the appearance of graph legend"""
     _marker = 'legend'
-    _attrs = (
+    _attrs = [
         #@    legend 0.75, 0.451567486
         ('legend_switch', bool, Switch.ON, '{:d}'),
         ('legend_location', bool, (0.75, 0.50), '{:6f} , {:6f}'),
         ('loctype', str, 'view', '{:s}'),
         ('font', int, 0, '{:d}'),
-        ('color', int, 1, '{:d}'),
+        ('color', int, Color.BLACK, '{:d}'),
         ('length', int, 4, '{:d}'),
         ('vgap', int, 1, '{:d}'),
         ('hgap', int, 1, '{:d}'),
         ('invert', str, False, '{:s}'),
         ('char_size', float, 1.2, '{:8f}'),
-        )
+        ]
 
     def __init__(self, **kwargs):
         self.box = Box()
-        BaseOutput.__init__(self, **kwargs)
+        _BaseOutput.__init__(self, **kwargs)
 
     def export(self):
-        slist = BaseOutput.export(self) + \
+        slist = _BaseOutput.export(self) + \
                 [self._marker + " " + i for i in self.box.export()]
 
 
-class Box(BaseOutput):
+class Box(_BaseOutput):
     """Box of legend"""
     _marker = 'box'
-    _attrs = (
-        ('color', int, 1, '{:d}'),
+    _attrs = [
+        ('color', int, Color.BLACK, '{:d}'),
         ('pattern', int, Pattern.SOLID, '{:d}'),
         ('linewidth', float, 1.0, '{:3f}'),
         ('linestyle', int, LineStyle.SOLID, '{:d}'),
-        ('fill_color', int, 1, '{:d}'),
+        ('fill_color', int, Color.BLACK, '{:d}'),
         ('fill_pattern', int, Pattern.SOLID, '{:d}'),
-        )
+        ]
 
-class Frame(BaseOutput):
+class Frame(_BaseOutput):
     """frame"""
     CLOSED = 0
     HALFOPEN = 1
@@ -475,51 +522,51 @@ class Frame(BaseOutput):
     BREAKRIGHT = 5
 
     _marker = "frame"
-    _attrs = (
+    _attrs = [
         ('type', int, 0, "{:d}"),
         ('linestyle', int, LineStyle.SOLID, "{:d}"),
         ('linewidth', float, 1.0, "{:3f}"),
-        ('color', int, 1, "{:d}"),
+        ('color', int, Color.BLACK, "{:d}"),
         ('pattern', int, 1, "{:d}"),
-        ('background_color', int, 0, "{:d}"),
+        ('background_color', int, Color.WHITE, "{:d}"),
         ('background_pattern', int, 0, "{:d}"),
-        )
+        ]
 
 
-class BaseLine(BaseOutput):
+class BaseLine(_BaseOutput):
     """baseline of dataset"""
     _marker = 'baseline'
-    _attrs = (
+    _attrs = [
         ('type', int, 0, '{:d}'),
         ('baseline_switch', bool, Switch.OFF, '{:s}'),
-        )
+        ]
 
 
-class DropLine(BaseOutput):
+class DropLine(_BaseOutput):
     """baseline of dataset"""
     _marker = 'dropline'
-    _attrs = (
+    _attrs = [
         ('dropline_switch', bool, Switch.OFF, '{:s}'),
-        )
+        ]
 
 
-class Fill(BaseOutput):
+class Fill(_BaseOutput):
     """Fill of dataset"""
     NONE = 0
     SOLID = 1
     OPAQUE = 2
 
     _marker = 'fill'
-    _attrs = (
+    _attrs = [
         ('type', int, NONE, '{:d}'),
         ('rule', int, 0, '{:d}'),
         ('color', int, 1, '{:d}'),
         ('pattern', int, 1, '{:d}'),
-        )
+        ]
 
 
-class Default(BaseOutput):
-    """Default options at head"""
+class _Default(_BaseOutput):
+    """_Default options at head"""
     _marker = "default"
     _attrs = (
         ("linewidth", float, 1., "{:3f}"),
@@ -532,10 +579,10 @@ class Default(BaseOutput):
         ("sformat", str, "%.8g", "\"{:s}\""),
         )
     def __init__(self, **kwargs):
-        BaseOutput.__init__(self, **kwargs)
+        _BaseOutput.__init__(self, **kwargs)
 
 
-class Annotation(BaseOutput):
+class Annotation(_BaseOutput):
     """dataset annotation"""
     _marker = "avalue"
     _attrs = (
@@ -552,10 +599,10 @@ class Annotation(BaseOutput):
         ("offset", list, [0.0, 0.0], "{:8f} , {:8f}"),
         )
     def __init__(self, **kwargs):
-        BaseOutput.__init__(self, **kwargs)
+        _BaseOutput.__init__(self, **kwargs)
 
 
-class Symbol(BaseOutput):
+class Symbol(_BaseOutput):
     """Symbols of marker
 
     Args:
@@ -589,20 +636,20 @@ class Symbol(BaseOutput):
         )
 
 
-class Page(BaseOutput):
-    """Page"""
+class _Page(_BaseOutput):
+    """_Page"""
     _marker = "page"
     _attrs = (
         ("size", list, (792, 612), "{:d}, {:d}"),
         ("scroll", float, 0.05, "{:.0%}"),
         ("inout", float, 0.05, "{:.0%}"),
-        ("background_fill", bool, Switch.ON, "{:s}"),
+        ("background_fill_switch", bool, Switch.ON, "{:s}"),
         )
     def __init__(self, **kwargs):
-        BaseOutput.__init__(self, **kwargs)
+        _BaseOutput.__init__(self, **kwargs)
 
 
-class TimeStamp(BaseOutput):
+class _TimesStamp(_BaseOutput):
     """Timestamp"""
     _marker = "timestamp"
     _attrs = (
@@ -614,11 +661,11 @@ class TimeStamp(BaseOutput):
         ('def', str, time.strftime("%a %b %d %H:%M:%S %Y"), "\"{:s}\""),
         )
     def __init__(self, **kwargs):
-        BaseOutput.__init__(self, **kwargs)
+        _BaseOutput.__init__(self, **kwargs)
 
 
-class Tick(BaseOutput):
-    """Tick of axis
+class _Tick(_BaseOutput):
+    """_Tick of axis
 
     Args:
         major (float) : value between major ticks
@@ -648,10 +695,10 @@ class Tick(BaseOutput):
         )
 
     def __init__(self, **kwargs):
-        BaseOutput.__init__(self, **kwargs)
+        _BaseOutput.__init__(self, **kwargs)
 
-class Bar(BaseOutput):
-    """Axis bar"""
+class Bar(_BaseOutput):
+    """_Axis bar"""
     _markder = 'bar'
     _attrs = (
         ('bar_switch', bool, Switch.ON, '{:s}'),
@@ -660,8 +707,8 @@ class Bar(BaseOutput):
         ('linewidth', float, 4., '{:3f}'),
         )
 
-class Label(BaseOutput):
-    """Axis label"""
+class Label(_BaseOutput):
+    """_Axis label"""
     _marker = 'label'
     _attrs = (
         ('layout', str, 'para', '{:s}'),
@@ -676,14 +723,14 @@ class Label(BaseOutput):
         if label is None:
             self.label = ""
         self.label = str(self.label)
-        BaseOutput.__init__(self, *kwargs)
+        _BaseOutput.__init__(self, *kwargs)
 
     def export(self):
-        slist = self._markder + " \"{:s}\"".format(self.label)
-        slist += BaseOutput.export(self)
+        slist = self._marker + " \"{:s}\"".format(self.label)
+        slist += _BaseOutput.export(self)
         return slist
 
-class TickLabel(BaseOutput):
+class _TickLabel(_BaseOutput):
     """Label of axis tick"""
     _marker = 'ticklabel'
     _attrs = (
@@ -708,9 +755,9 @@ class TickLabel(BaseOutput):
         ('char_size', float, 1.5, "{:8f}"),
         )
     def __init__(self, **kwargs):
-        BaseOutput.__init__(self, **kwargs)
+        _BaseOutput.__init__(self, **kwargs)
 
-class Errorbar(BaseOutput):
+class Errorbar(_BaseOutput):
     """Errorbar of dataset"""
     _marker = 'errorbar'
     _attrs = (
@@ -728,8 +775,8 @@ class Errorbar(BaseOutput):
         )
 
 
-class Axis(BaseOutput, Affix):
-    """Axis
+class _Axis(_BaseOutput, _Affix):
+    """_Axis
 
     Args:
         axis (str) : in ['x', 'y', 'altx', 'alty']
@@ -743,15 +790,15 @@ class Axis(BaseOutput, Affix):
     def __init__(self, axis='x', **kwargs):
         assert axis in ['x', 'y', 'altx', 'alty']
         self.bar = Bar()
-        self.tick = Tick()
-        self.ticklabel = TickLabel()
-        BaseOutput.__init__(self, **kwargs)
-        Affix.__init__(self, affix=axis, pre=True)
+        self.tick = _Tick()
+        self.ticklabel = _TickLabel()
+        _BaseOutput.__init__(self, **kwargs)
+        _Affix.__init__(self, affix=axis, pre=True)
 
     def export(self):
         if self.axis_switch is Switch.OFF:
             return [self._marker + "  " + Switch.get_str(Switch.OFF),]
-        raise NotImplementedError
+        return _BaseOutput.export(self)
 
     def set_major_tick(self):
         raise NotImplementedError
@@ -762,11 +809,24 @@ class Axis(BaseOutput, Affix):
     def set_ticklabel(self):
         raise NotImplementedError
 
-# TODO axes object for graph
+class _Axes(_BaseOutput, _Affix):
+    """_Axes object for graph
 
-# Classes for users
+    Args:
+        axes ('x' or 'y')
+    """
+    _marker = 'axes'
+    _attrs = (
+        ('scale', str, 'Normal', "{:s}"),
+        ('invert_switch', bool, Switch.OFF, "{:s}")
+        )
+    def __init__(self, axes, **kwargs):
+        assert axes in ['x', 'y']
+        _BaseOutput.__init__(self, **kwargs)
+        _Affix.__init__(self, affix=axes, pre=True)
 
-class Dataset(BaseOutput, Affix):
+
+class Dataset(_BaseOutput, _Affix):
     """Object of grace dataset
 
     Args:
@@ -777,71 +837,99 @@ class Dataset(BaseOutput, Affix):
         ('hidden', str, False, '{:s}'),
         ('type', str, 'xy', '{:s}'),
         )
-    def __init__(self, index, legend=None, comment="", **kwargs):
-        self.legend = {None: ""}.get(legend, legend)
-        self.comment = {None: ""}.get(comment, comment)
+    def __init__(self, index, data_type='xy', label=None, comment=None, **kwargs):
+        self._legend = {None: ""}.get(label, label)
+        self._comment = {None: ""}.get(comment, comment)
         self._attrs += (
-            ('legend_comment', bool, self.legend, "\"{:s}\""),
-            ('comment_comment', bool, self.comment, "\"{:s}\""),
+            #('legend_comment', bool, self._legend, "\"{:s}\""),
+            #('comment_comment', bool, self._comment, "\"{:s}\""),
+            ('legend', str, self._legend, "\"{:s}\""),
+            ('comment', str, self._comment, "\"{:s}\""),
             )
-        self.symbol = Symbol()
-        self.line = Line()
-        self.baseline = BaseLine()
-        self.dropline = DropLine()
-        self.fill = Fill()
-        self.avalue = Annotation()
-        self.errorbar = Errorbar()
-        BaseOutput.__init__(self, **kwargs)
-        Affix.__init__(self, index, pre=False)
+        self._symbol = Symbol()
+        self._line = Line()
+        self._baseline = BaseLine()
+        self._dropline = DropLine()
+        self._fill = Fill()
+        self._avalue = Annotation()
+        self._errorbar = Errorbar()
+        # TODO check Data initialization
+        self.data = Data(data_type=data_type, label=self._legend, comment=self._comment, **kwargs)
+        _BaseOutput.__init__(self, **kwargs)
+        _Affix.__init__(self, index, pre=False)
+
+    @property
+    def label(self):
+        """string. label mark of the dataset"""
+        return self.legend
 
     def export(self):
         """Export the header part of dataset"""
-        slists = BaseOutput.export(self)
-        to_exports = [self.symbol,
-                      self.line,
-                      self.baseline,
-                      self.dropline,
-                      self.fill,
-                      self.avalue,
-                      self.errorbar,]
+        slists = _BaseOutput.export(self)
+        to_exports = [self._symbol,
+                      self._line,
+                      self._baseline,
+                      self._dropline,
+                      self._fill,
+                      self._avalue,
+                      self._errorbar,]
         for ex in to_exports:
             slists += [self._marker + " " + i for i in ex.export()]
         return slists
 
-    def export_data(self):
+    def export_data(self, igraph):
         """Export the data part"""
-        raise NotImplementedError
+        slist = ['@target G' + str(igraph) + self._marker.upper(), '@type ' + self.type,]
+        slist.extend(self.data.export_in_cols())
+        slist.append('&')
+        return slist
 
 
-class Graph(BaseOutput):
-    """Graph object
+class _Graph(_BaseOutput, _Affix):
+    """Graph object for internal use
 
     Args:
         index (int)"""
     _marker = 'g'
-    def __init__(self, **kwargs):
-        self.world = World()
-        self.stackworld = StackWorld()
-        self.view = View()
-        self.znorm = Znorm()
-        self.xaxis = Axis('x')
-        self.yaxis = Axis('y')
-        self.legend = Legend()
-        self.frame = Frame()
-        self.datasets = []
-        BaseOutput.__init__(self, **kwargs)
+    def __init__(self, index, **kwargs):
+        self._world = _World()
+        self._stackworld = _StackWorld()
+        self._view = _View()
+        self._znorm = _Znorm()
+        self_title = _Title()
+        self_subtitle = _SubTitle()
+        self._xaxes = _Axes('x')
+        self._yaxes = _Axes('y')
+        self._xaxis = _Axis('x')
+        self._yaxis = _Axis('y')
+        self._altxaxis = _Axis('altx', axis_switch=Switch.OFF)
+        self._altyaxis = _Axis('alty', axis_switch=Switch.OFF)
+        self._legend = Legend()
+        self._frame = Frame()
+        self._datasets = []
+        _BaseOutput.__init__(self, **kwargs)
+        _Affix.__init__(self, index, pre=False)
 
     def __getitem__(self, i):
-        return self.datasets[i]
+        return self._datasets[i]
 
-    def set_xaxis(self):
-        """adjust xaxis"""
+    @property
+    def ndatasets(self):
+        """Number of datasets in current graph"""
+        return len(self._datasets)
 
-    def add(self, x, y, datatype='xy', dataset=None):
+    def _set_axis(self, axis, **kwargs):
+        """set axis"""
+        d = {'x': self._xaxis, 'y': self._yaxis, 'altx': self._altxaxis, 'alty': self._altyaxis}
+        try:
+            ax = d.get(axis)
+        except KeyError:
+            raise ValueError("axis name %s is not supported. %s" % (axis, d.keys()))
+
+    def _add(self, *data, datatype='xy'):
         """Add dataset"""
-
-    def set_yaxis(self):
-        """adjust yaxis"""
+        ds = Dataset(index=self.ndatasets)
+        self._datasets.append(ds)
 
     def export(self):
         raise NotImplementedError
@@ -853,8 +941,35 @@ class Graph(BaseOutput):
         """export data part"""
 
 
+# Class for users
+
+class Graph(_Graph):
+    """Graph object for users to operate"""
+
+    def __init__(self, index=0, xmin=None, xmax=None, ymin=None, ymax=None,
+                 **kwargs):
+        _Graph.__init__(self, index=index, **kwargs)
+        self.set_xaxis(lower=xmin, upper=xmax)
+        self.set_yaxis(lower=ymin, upper=ymax)
+
+    def set_xaxis(self, lower=0, upper=1):
+        """set x axis"""
+        self._set_axis('x', lower=lower, upper=upper)
+
+    def set_yaxis(self, lower=0, upper=1):
+        """set x axis"""
+        self._set_axis('y', lower=lower, upper=upper)
+
+    def set_world(self):
+        """set the world border"""
+        raise NotImplementedError
+
+
 class Plot:
     """the general control object for the grace plot
+
+    Args:
+        qtgrace (bool) : if true, QtGrace comments will be added
 
     Public attributes:
 
@@ -863,76 +978,91 @@ class Plot:
     Private attributes:
         _head (str)
         _graphs (list)
-        _font (Font)
+        _font (_Font)
         _use_qtgrace (bool)
 
     Private methods:
     """
     
-    def __init__(self, qtgrace=False):
+    def __init__(self, rows=1, cols=1, qtgrace=False):
         self._comment_head = "# Grace project file\n#\n"
         self._head = "version 50122\nlink page off\n"
-        self._page = Page()
+        self._page = _Page()
         # TODO @background color 0
         # TODO r0, r1, link, etc
-        self._timestamp = TimeStamp()
-        self._default = Default()
-        self._graphs = [Graph(),]
-        self._font = Font()
+        self._font = _Font()
+        self._cm = _ColorMap()
+        self._timestamp = _TimesStamp()
+        self._default = _Default()
+        self._graphs = []
+        self._set_graph_alignment(rows, cols)
         self._use_qtgrace = qtgrace
+
+    def _set_graph_alignment(self, rows, cols):
+        """Set the graph alignment"""
+        n = rows * cols
+        for i in range(n):
+            self._graphs.append(Graph(index=i))
 
     def __str__(self):
         """TODO print the whole agr file"""
-        header = [self._page, self._font, self._default, self._timestamp]
+        header = [self._page, self._font, self._cm, self._default, self._timestamp]
         slist = []
         for h in header:
             slist += h.export()
         s = "\n".join(slist)
         # add @ to each header line
         #s = self._comment_head + "@" + "\n@".join(s.split("\n"))
-        # export datasets
+        # TODO export datasets
         return s
 
-    def get_graph(self, i):
+    def set_default(self, **kwargs):
+        """set default format"""
+        self._default = _Default(**kwargs)
+
+    def __getitem__(self, i):
+        return self._get_graph(i)
+
+    def get(self, i):
         """Get the Graph object of index i"""
-        self._check_valid_graph(i)
-        return self._graphs[i]
+        return self._get_graph(i)
 
-    def add_graph(self, graph=None):
-        """add a graph to the plot"""
-        if graph is None:
-            graph = Graph()
-        self._graphs.append(graph)
-
-    def _check_valid_graph(self, i):
+    def _get_graph(self, i):
+        """Get the Graph object of index i"""
         try:
-            g = self._graphs[i]
+            return self._graphs[i]
         except IndexError:
             raise IndexError(f"G.{i} does not exist")
 
     def add_dataset(self, dataset, graph=0):
         """Add a data set to graph `graph`"""
-        self._graphs[graph].add_dataset(dataset)
+        self._graphs[graph].add(dataset)
 
-    def set_xaxis(self, graph=0, **kwargs):
+    def set_xaxis(self, graph, **kwargs):
         """set up x-axis of graph"""
         self._graphs[graph].set_xaxis(**kwargs)
 
-    def set_yaxis(self, graph=0, **kwargs):
+    def set_yaxis(self, graph, **kwargs):
         """set up y-axis of graph"""
         self._graphs[graph].set_yaxis(**kwargs)
 
-    def set_xlimit(self, xmin=None, xmax=None, graph=0):
-        """set xlimit of a graph (default 0)"""
-        self._graphs[graph].set_xaxis(xmin=xmin, xmax=xmax)
-
-    def set_ylimit(self, ymin=None, ymax=None, graph=0):
-        """set ylimit of a graph (default 0)
+    def set_xlimit(self, graph, xmin=None, xmax=None):
+        """set xlimit of a graph
 
         Args:
+            graph (int)
+            xmin (float)
+            xmax (float)
+        """
+        self._graphs[graph].set_xaxis(xmin=xmin, xmax=xmax)
+
+    def set_ylimit(self, graph, ymin=None, ymax=None):
+        """set ylimit of a graph
+
+        Args:
+            graph (int)
             ymin (float)
             ymax (float)
-            graph (int)
         """
         self._graphs[graph].set_yaxis(ymin=ymin, ymax=ymax)
 
@@ -957,8 +1087,7 @@ class Plot:
         raise NotImplementedError
 
 if __name__ == "__main__":
-    print(Dataset(index=0))
-    #print(Plot())
-    #print(TickLabel().str())
-    #print(Tick().str())
+    print(Plot())
+    print(_TickLabel())
+    print(_Tick())
 
