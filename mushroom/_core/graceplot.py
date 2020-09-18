@@ -368,10 +368,14 @@ class _BaseOutput:
         for attr, typ, default, _ in self._attrs:
             _logger.debug("attr: %s type: %s", attr, typ)
             v = kwargs.get(attr, default)
-            if typ is not bool:
-                v = typ(v)
-            self.__setattr__(attr, v)
+            try:
+                self.__getattribute__(attr)
+            except AttributeError:
+                if typ is not bool:
+                    v = typ(v)
+                self.__setattr__(attr, v)
 
+    # pylint: disable=R0912
     def export(self):
         """export all object attributes as a list of string
 
@@ -432,6 +436,31 @@ class _BaseOutput:
 
     def __repr__(self):
         return self.__str__()
+
+class _Region(_BaseOutput, _Affix):
+    """Region of plot, i.e. the `r` part"""
+    _marker = 'r'
+    _attrs = (
+        ('r_switch', bool, Switch.OFF, '{:s}'),
+        ('type', str, "above", '{:s}'),
+        ('color', int, Color.BLACK, '{:d}'),
+        ('line', list, (0., 0., 0., 0.), '{:f}, {:f}, {:f}, {:f}'),
+        )
+
+    def __init__(self, index, **kwargs):
+        _BaseOutput.__init__(self, **kwargs)
+        _Affix.__init__(self, index, is_prefix=False)
+        self._link_ig = "0"
+
+    def set_link(self, ig):
+        """set the graph to which the region is linked to"""
+        self._link_ig = str(ig)
+
+    def export(self):
+        """export as a list of string"""
+        slist = ["link " + self._marker + self._affix + " to g" + self._link_ig]
+        slist += _BaseOutput.export(self)
+        return slist
 
 
 class _TitleLike(_BaseOutput):
@@ -551,7 +580,7 @@ class _Frame(_BaseOutput):
         ]
 
 
-class BaseLine(_BaseOutput):
+class _BaseLine(_BaseOutput):
     """baseline of dataset"""
     _marker = 'baseline'
     _attrs = [
@@ -560,7 +589,7 @@ class BaseLine(_BaseOutput):
         ]
 
 
-class DropLine(_BaseOutput):
+class _DropLine(_BaseOutput):
     """baseline of dataset"""
     _marker = 'dropline'
     _attrs = [
@@ -872,18 +901,22 @@ class _Dataset(_BaseOutput, _Affix):
     def __init__(self, index, *xyz, datatype=None, **kwargs):
         # pop out to avoid duplicate arguments
         legend = kwargs.pop("legend", "")
+        if legend is None:
+            legend = ""
         comment = kwargs.pop("comment", "")
+        if comment is None:
+            comment = ""
         self.data = Data(*xyz, datatype=datatype,
                          label=legend, comment=comment, **kwargs)
         _BaseOutput.__init__(self, type=self.data.datatype, **kwargs)
+        _Affix.__init__(self, affix=index, is_prefix=False)
         # insert back to avoid losing information during superclass init
         self.legend = legend
         self.comment = comment
-        _Affix.__init__(self, index, is_prefix=False)
         self._symbol = Symbol()
         self._line = Line()
-        self._baseline = BaseLine()
-        self._dropline = DropLine()
+        self._baseline = _BaseLine()
+        self._dropline = _DropLine()
         self._fill = Fill()
         self._avalue = Annotation()
         self._errorbar = Errorbar()
@@ -905,22 +938,25 @@ class _Dataset(_BaseOutput, _Affix):
                       self._avalue,
                       self._errorbar,]
         for ex in to_exports:
-            slists += [self._marker + " " + i for i in ex.export()]
+            slists += [self._marker + self._affix + " " + i for i in ex.export()]
         return slists
 
     def export_data(self, igraph):
         """Export the data part"""
-        slist = ['@target G' + str(igraph) + self._marker.upper(), '@type ' + self.type,]
+        slist = ['@target G' + str(igraph) + '.' + self._marker.upper() + self._affix,
+                 '@type ' + self.type,]
         slist.extend(self.data.export())
         slist.append('&')
         return slist
 
+
 class Dataset(_Dataset):
 
-    def __init__(self, index, *xyz, datatype=None, label=None, **kwargs):
+    def __init__(self, index, *xyz, datatype=None, label=None, comment=None, **kwargs):
         if label is None:
             label = ""
-        _Dataset.__init__(self, index, *xyz, datatype=datatype, legend=label, **kwargs)
+        _Dataset.__init__(self, index, *xyz, datatype=datatype, 
+                          legend=label, comment=comment, **kwargs)
 
 
 class _Graph(_BaseOutput, _Affix):
@@ -941,6 +977,7 @@ class _Graph(_BaseOutput, _Affix):
         ('fixedpoint_prec', list, (6, 6), '{:d}, {:d}'),
         )
     def __init__(self, index, **kwargs):
+        self._index = index
         self._world = _World()
         self._stackworld = _StackWorld()
         self._view = _View()
@@ -963,7 +1000,7 @@ class _Graph(_BaseOutput, _Affix):
         return self._datasets[i]
 
     def export(self):
-        """export the header of graph, including `with g` part"""
+        """export the header of graph, including `with g` part and data header"""
         slist = []
         slist += _BaseOutput.export(self)
         slist.append("with g" + self._affix)
@@ -972,11 +1009,19 @@ class _Graph(_BaseOutput, _Affix):
                   self._subtitle, self._xaxes, self._yaxes,
                   self._xaxis, self._yaxis,
                   self._altxaxis, self._altyaxis,
-                  self._legend, self._frame]
+                  self._legend, self._frame, *self._datasets]
         for x in header:
             _logger.debug("marker: %s", x._marker)
             slist += ["    " + s for s in x.export()]
         return slist
+
+    def export_data(self):
+        """export the dataset part"""
+        slist = []
+        for ds in self._datasets:
+            slist += ds.export_data(igraph=self._index)
+        return slist
+
 
     @property
     def ndata(self):
@@ -990,17 +1035,6 @@ class _Graph(_BaseOutput, _Affix):
             ax = d.get(axis)
         except KeyError:
             raise ValueError("axis name %s is not supported. %s" % (axis, d.keys()))
-
-    def _add(self, *data, datatype='xy'):
-        """Add dataset"""
-        ds = _Dataset(index=self.ndata)
-        self._datasets.append(ds)
-
-    def _print_header(self):
-        """export header part"""
-
-    def _print_data(self):
-        """export data part"""
 
 
 # Class for users
@@ -1026,6 +1060,11 @@ class Graph(_Graph):
         """set the world border"""
         raise NotImplementedError
 
+    def add(self, *xyz, datatype=None, label=None, comment=None, **errors):
+        """Add dataset"""
+        ds = Dataset(self.ndata, *xyz, datatype=datatype, label=label, comment=comment, **errors)
+        self._datasets.append(ds)
+
 
 class Plot:
     """the general control object for the grace plot
@@ -1047,16 +1086,17 @@ class Plot:
     """
     
     def __init__(self, rows=1, cols=1, qtgrace=False):
-        self._comment_head = "# Grace project file\n#"
+        self._comment_head = ["# Grace project file", "#"]
         # header that seldom needs to change
-        self._head = """version 50122
-link page off
-reference date 0
-date wrap off
-date wrap year 1950
-background color 0"""
+        self._head = ["version 50122",
+                      "link page off",
+                      "reference date 0",
+                      "date wrap off",
+                      "date wrap year 1950",
+                      "background color 0",
+                      ]
         self._page = _Page()
-        # TODO r0, r1, link, etc
+        self._regions = [_Region(i) for i in range(5)]
         self._font = _Font()
         self._cm = _ColorMap()
         self._timestamp = _TimesStamp()
@@ -1073,17 +1113,20 @@ background color 0"""
 
     def __str__(self):
         """TODO print the whole agr file"""
-        headers = [self._page, self._font, self._cm, self._default, self._timestamp]
-        slist = [self._comment_head, self._head]
+        slist = [*self._head,]
+        headers = [self._page, self._font, self._cm,
+                   self._default, self._timestamp, *self._regions]
         for h in headers:
             slist += h.export()
         for g in self._graphs:
             slist += g.export()
-        s = "\n".join(slist)
         # add @ to each header line
-        #s = self._comment_head + "@" + "\n@".join(s.split("\n"))
-        # TODO export datasets
-        return s
+        slist = self._comment_head + ["@" + v for v in slist]
+        # export dataset header
+        # export all data
+        for g in self._graphs:
+            slist += g.export_data()
+        return "\n".join(slist)
 
     def set_default(self, **kwargs):
         """set default format"""
@@ -1159,5 +1202,7 @@ background color 0"""
 
 
 if __name__ == "__main__":
-    print(Plot())
+    p = Plot()
+    p.add_dataset((0.0, 0.5), (0.5, 0.75))
+    print(p)
 

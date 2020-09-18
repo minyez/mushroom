@@ -136,6 +136,7 @@ class Data:
             transpose (bool)
             separator (str)
             form (formatting string or its list/tuple) : formatting string
+                default to use float
                 if a str is parsed, this format apply to all data columns
                 if Iterable, each form will be parsed respectively.
         """
@@ -156,7 +157,8 @@ class Data:
             else:
                 # data_all = (1, 2, 3...)
                 data1 = data_all[0]
-            form = [{True: '{:d}'}.get(isinstance(x, int), '{:f}') for x in data1]
+            #form = [{True: '{:d}'}.get(isinstance(x, int), '{:f}') for x in data1]
+            form = ['{:f}',] * len(data1)
 
         if separator is None:
             separator = " "
