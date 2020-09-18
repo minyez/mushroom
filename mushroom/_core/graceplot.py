@@ -338,15 +338,13 @@ class _Affix:
 
     Args:
         affix (str) : the content to add as the affix, 0,1,2 or x,y,altx,alty
-        pre (bool) : if True, the content will be added as prefix. Otherwise as suffix
+        is_prefix (bool) : if True, the content will be added as prefix. Otherwise as suffix
     """
     _marker = ""
 
-    def __init__(self, affix, pre=False):
-        if pre:
-            self._marker = str(affix) + self._marker
-        else:
-            self._marker = self._marker + str(affix)
+    def __init__(self, affix, is_prefix=False):
+        self._affix = str(affix)
+        self._is_prefix = is_prefix
     
 
 class _BaseOutput:
@@ -368,6 +366,7 @@ class _BaseOutput:
             assert len(i) == 4
         assert isinstance(self._marker, str)
         for attr, typ, default, _ in self._attrs:
+            _logger.debug("attr: %s type: %s", attr, typ)
             v = kwargs.get(attr, default)
             if typ is not bool:
                 v = typ(v)
@@ -378,8 +377,18 @@ class _BaseOutput:
 
         Each member is a line in agr file"""
         slist = []
+        prefix = deepcopy(self._marker)
+        try:
+            affix = self.__getattribute__('_affix')
+            is_p = self.__getattribute__('_is_prefix')
+            if is_p:
+                prefix = str(affix) + prefix
+            else:
+                prefix += str(affix)
+        except (TypeError, AttributeError):
+            pass
+
         for attr, typ, _, f in self._attrs:
-            s = ""
             attrv = self.__getattribute__(attr)
             _logger.debug("parsed export: %s , %s, %r", type(self).__name__, attr, attrv)
             if typ in [list, tuple, set]:
@@ -406,9 +415,16 @@ class _BaseOutput:
                 temps = temps.replace(self._marker, "").replace("_", " ")
             else:
                 temps = attr.replace("_", " ") + " " + f.format(attrv)
-            s = s + self._marker + " " + temps
+            s = prefix + " " + temps
             _logger.debug("exporting: %s", s)
             slist.append(s)
+
+        # cover extra lines with an _extra_export attribute
+        try:
+            slist += self.__getattribute__('_extra_export')
+        except (TypeError, AttributeError):
+            pass
+
         return slist
 
     def __str__(self):
@@ -454,8 +470,8 @@ class _StackWorld(_BaseOutput):
 
 class _View(_BaseOutput):
     """stack world of graph"""
-    _marker = 'stack_world'
-    _attrs = _set_loclike_attr('stack_world', '{:8f}', 0., 0.7, 9.0, 2.7)
+    _marker = 'view'
+    _attrs = _set_loclike_attr('view', '{:8f}', 0., 0.7, 9.0, 2.7)
 
 class _Znorm(_BaseOutput):
     """stack world of graph"""
@@ -474,7 +490,20 @@ class Line(_BaseOutput):
         )
 
 
-class Legend(_BaseOutput):
+class _Box(_BaseOutput):
+    """_Box of legend"""
+    _marker = 'box'
+    _attrs = [
+        ('color', int, Color.BLACK, '{:d}'),
+        ('pattern', int, Pattern.SOLID, '{:d}'),
+        ('linewidth', float, 1.0, '{:3f}'),
+        ('linestyle', int, LineStyle.SOLID, '{:d}'),
+        ('fill_color', int, Color.BLACK, '{:d}'),
+        ('fill_pattern', int, Pattern.SOLID, '{:d}'),
+        ]
+
+
+class _Legend(_BaseOutput):
     """object to control the appearance of graph legend"""
     _marker = 'legend'
     _attrs = [
@@ -492,27 +521,16 @@ class Legend(_BaseOutput):
         ]
 
     def __init__(self, **kwargs):
-        self.box = Box()
+        self.box = _Box()
         _BaseOutput.__init__(self, **kwargs)
 
     def export(self):
         slist = _BaseOutput.export(self) + \
                 [self._marker + " " + i for i in self.box.export()]
+        return slist
 
 
-class Box(_BaseOutput):
-    """Box of legend"""
-    _marker = 'box'
-    _attrs = [
-        ('color', int, Color.BLACK, '{:d}'),
-        ('pattern', int, Pattern.SOLID, '{:d}'),
-        ('linewidth', float, 1.0, '{:3f}'),
-        ('linestyle', int, LineStyle.SOLID, '{:d}'),
-        ('fill_color', int, Color.BLACK, '{:d}'),
-        ('fill_pattern', int, Pattern.SOLID, '{:d}'),
-        ]
-
-class Frame(_BaseOutput):
+class _Frame(_BaseOutput):
     """frame"""
     CLOSED = 0
     HALFOPEN = 1
@@ -675,9 +693,6 @@ class _Tick(_BaseOutput):
     _attrs = (
         ('tick_switch', bool, Switch.ON, "{:s}"),
         ('tick_position', bool, Position.IN, "{:s}"),
-        ('place_rounded', str, True, "{:s}"),
-        ('place_position', bool, Position.BOTH, "{:s}"),
-        ('spec_type', str, None, "{:s}"),
         ('default', int, 6, "{:d}"),
         ('major', float, 1., "{:3f}"),
         ('major_size', float, 0.5, "{:8f}"),
@@ -692,12 +707,18 @@ class _Tick(_BaseOutput):
         ('minor_grid_switch', bool, Switch.OFF, "{:s}"),
         ('minor_linewidth', float, 2.0, "{:3f}"),
         ('minor_linestyle', int, LineStyle.SOLID, "{:d}"),
+        ('place_rounded', str, True, "{:s}"),
+        ('place_position', bool, Position.BOTH, "{:s}"),
+        ('spec_type', str, None, "{:s}"),
         )
 
-    def __init__(self, **kwargs):
-        _BaseOutput.__init__(self, **kwargs)
+# TODO set custom ticks and its output
+    def set_custom_ticks(self):
+        """set custom ticks for axis"""
+        raise NotImplementedError
 
-class Bar(_BaseOutput):
+
+class _Bar(_BaseOutput):
     """_Axis bar"""
     _markder = 'bar'
     _attrs = (
@@ -707,7 +728,7 @@ class Bar(_BaseOutput):
         ('linewidth', float, 4., '{:3f}'),
         )
 
-class Label(_BaseOutput):
+class _Label(_BaseOutput):
     """_Axis label"""
     _marker = 'label'
     _attrs = (
@@ -726,7 +747,7 @@ class Label(_BaseOutput):
         _BaseOutput.__init__(self, *kwargs)
 
     def export(self):
-        slist = self._marker + " \"{:s}\"".format(self.label)
+        slist = [self._marker + " \"{:s}\"".format(self.label),]
         slist += _BaseOutput.export(self)
         return slist
 
@@ -776,7 +797,7 @@ class Errorbar(_BaseOutput):
 
 
 class _Axis(_BaseOutput, _Affix):
-    """_Axis
+    """Axis of graph
 
     Args:
         axis (str) : in ['x', 'y', 'altx', 'alty']
@@ -789,16 +810,21 @@ class _Axis(_BaseOutput, _Affix):
         )
     def __init__(self, axis='x', **kwargs):
         assert axis in ['x', 'y', 'altx', 'alty']
-        self.bar = Bar()
-        self.tick = _Tick()
-        self.ticklabel = _TickLabel()
+        self._bar = _Bar()
+        self._tick = _Tick()
+        self._ticklabel = _TickLabel()
+        self._label = _Label()
         _BaseOutput.__init__(self, **kwargs)
-        _Affix.__init__(self, affix=axis, pre=True)
+        _Affix.__init__(self, affix=axis, is_prefix=True)
 
     def export(self):
         if self.axis_switch is Switch.OFF:
-            return [self._marker + "  " + Switch.get_str(Switch.OFF),]
-        return _BaseOutput.export(self)
+            return [self._affix + self._marker + "  " + Switch.get_str(Switch.OFF),]
+        slist = _BaseOutput.export(self) 
+        header = [self._bar, self._tick, self._ticklabel, self._label]
+        for x in header:
+            slist += [self._affix + self._marker + " " + i for i in x.export()]
+        return slist
 
     def set_major_tick(self):
         raise NotImplementedError
@@ -823,29 +849,37 @@ class _Axes(_BaseOutput, _Affix):
     def __init__(self, axes, **kwargs):
         assert axes in ['x', 'y']
         _BaseOutput.__init__(self, **kwargs)
-        _Affix.__init__(self, affix=axes, pre=True)
+        _Affix.__init__(self, affix=axes, is_prefix=True)
 
 
-class Dataset(_BaseOutput, _Affix):
+class _Dataset(_BaseOutput, _Affix):
     """Object of grace dataset
 
     Args:
         index (int) : index of the dataset
+        *xyz : input data
+        datatype (str) :
+        label (str) :
+        comment (str) :
     """
     _marker = 's'
     _attrs = (
         ('hidden', str, False, '{:s}'),
         ('type', str, 'xy', '{:s}'),
+        ('legend', str, "", "\"{:s}\""),
+        ('comment', str, "", "\"{:s}\""),
         )
-    def __init__(self, index, data_type='xy', label=None, comment=None, **kwargs):
-        self._legend = {None: ""}.get(label, label)
-        self._comment = {None: ""}.get(comment, comment)
-        self._attrs += (
-            #('legend_comment', bool, self._legend, "\"{:s}\""),
-            #('comment_comment', bool, self._comment, "\"{:s}\""),
-            ('legend', str, self._legend, "\"{:s}\""),
-            ('comment', str, self._comment, "\"{:s}\""),
-            )
+    def __init__(self, index, *xyz, datatype=None, **kwargs):
+        # pop out to avoid duplicate arguments
+        legend = kwargs.pop("legend", "")
+        comment = kwargs.pop("comment", "")
+        self.data = Data(*xyz, datatype=datatype,
+                         label=legend, comment=comment, **kwargs)
+        _BaseOutput.__init__(self, type=self.data.datatype, **kwargs)
+        # insert back to avoid losing information during superclass init
+        self.legend = legend
+        self.comment = comment
+        _Affix.__init__(self, index, is_prefix=False)
         self._symbol = Symbol()
         self._line = Line()
         self._baseline = BaseLine()
@@ -853,10 +887,7 @@ class Dataset(_BaseOutput, _Affix):
         self._fill = Fill()
         self._avalue = Annotation()
         self._errorbar = Errorbar()
-        # TODO check Data initialization
-        self.data = Data(data_type=data_type, label=self._legend, comment=self._comment, **kwargs)
-        _BaseOutput.__init__(self, **kwargs)
-        _Affix.__init__(self, index, pre=False)
+        kwargs.pop('type', None)
 
     @property
     def label(self):
@@ -880,9 +911,16 @@ class Dataset(_BaseOutput, _Affix):
     def export_data(self, igraph):
         """Export the data part"""
         slist = ['@target G' + str(igraph) + self._marker.upper(), '@type ' + self.type,]
-        slist.extend(self.data.export_in_cols())
+        slist.extend(self.data.export())
         slist.append('&')
         return slist
+
+class Dataset(_Dataset):
+
+    def __init__(self, index, *xyz, datatype=None, label=None, **kwargs):
+        if label is None:
+            label = ""
+        _Dataset.__init__(self, index, *xyz, datatype=datatype, legend=label, **kwargs)
 
 
 class _Graph(_BaseOutput, _Affix):
@@ -891,30 +929,57 @@ class _Graph(_BaseOutput, _Affix):
     Args:
         index (int)"""
     _marker = 'g'
+    _attrs = (
+        ('hidden', str, False, '{:s}'),
+        ('type', str, 'XY', '{:s}'),
+        ('stacked', str, False, '{:s}'),
+        ('bar_hgap', float, 0.0, '{:8f}'),
+        ('fixedpoint_switch', bool, Switch.OFF, '{:s}'),
+        ('fixedpoint_type', int, 0, '{:d}'),
+        ('fixedpoint_xy', list, (0.0, 0.0), '{:8f}, {:8f}'),
+        ('fixedpoint_format', list, ('general', 'general'), '{:s}, {:s}'),
+        ('fixedpoint_prec', list, (6, 6), '{:d}, {:d}'),
+        )
     def __init__(self, index, **kwargs):
         self._world = _World()
         self._stackworld = _StackWorld()
         self._view = _View()
         self._znorm = _Znorm()
-        self_title = _Title()
-        self_subtitle = _SubTitle()
+        self._title = _Title()
+        self._subtitle = _SubTitle()
         self._xaxes = _Axes('x')
         self._yaxes = _Axes('y')
         self._xaxis = _Axis('x')
         self._yaxis = _Axis('y')
         self._altxaxis = _Axis('altx', axis_switch=Switch.OFF)
         self._altyaxis = _Axis('alty', axis_switch=Switch.OFF)
-        self._legend = Legend()
-        self._frame = Frame()
+        self._legend = _Legend()
+        self._frame = _Frame()
         self._datasets = []
         _BaseOutput.__init__(self, **kwargs)
-        _Affix.__init__(self, index, pre=False)
+        _Affix.__init__(self, index, is_prefix=False)
 
     def __getitem__(self, i):
         return self._datasets[i]
 
+    def export(self):
+        """export the header of graph, including `with g` part"""
+        slist = []
+        slist += _BaseOutput.export(self)
+        slist.append("with g" + self._affix)
+        header = [self._world, self._stackworld,
+                  self._znorm, self._view, self._title,
+                  self._subtitle, self._xaxes, self._yaxes,
+                  self._xaxis, self._yaxis,
+                  self._altxaxis, self._altyaxis,
+                  self._legend, self._frame]
+        for x in header:
+            _logger.debug("marker: %s", x._marker)
+            slist += ["    " + s for s in x.export()]
+        return slist
+
     @property
-    def ndatasets(self):
+    def ndata(self):
         """Number of datasets in current graph"""
         return len(self._datasets)
 
@@ -928,11 +993,8 @@ class _Graph(_BaseOutput, _Affix):
 
     def _add(self, *data, datatype='xy'):
         """Add dataset"""
-        ds = Dataset(index=self.ndatasets)
+        ds = _Dataset(index=self.ndata)
         self._datasets.append(ds)
-
-    def export(self):
-        raise NotImplementedError
 
     def _print_header(self):
         """export header part"""
@@ -985,10 +1047,15 @@ class Plot:
     """
     
     def __init__(self, rows=1, cols=1, qtgrace=False):
-        self._comment_head = "# Grace project file\n#\n"
-        self._head = "version 50122\nlink page off\n"
+        self._comment_head = "# Grace project file\n#"
+        # header that seldom needs to change
+        self._head = """version 50122
+link page off
+reference date 0
+date wrap off
+date wrap year 1950
+background color 0"""
         self._page = _Page()
-        # TODO @background color 0
         # TODO r0, r1, link, etc
         self._font = _Font()
         self._cm = _ColorMap()
@@ -1006,10 +1073,12 @@ class Plot:
 
     def __str__(self):
         """TODO print the whole agr file"""
-        header = [self._page, self._font, self._cm, self._default, self._timestamp]
-        slist = []
-        for h in header:
+        headers = [self._page, self._font, self._cm, self._default, self._timestamp]
+        slist = [self._comment_head, self._head]
+        for h in headers:
             slist += h.export()
+        for g in self._graphs:
+            slist += g.export()
         s = "\n".join(slist)
         # add @ to each header line
         #s = self._comment_head + "@" + "\n@".join(s.split("\n"))
@@ -1034,9 +1103,11 @@ class Plot:
         except IndexError:
             raise IndexError(f"G.{i} does not exist")
 
-    def add_dataset(self, dataset, graph=0):
+    def add_dataset(self, *xyz, graph=0, datatype=None, 
+                    label=None, comment=None, **errors):
         """Add a data set to graph `graph`"""
-        self._graphs[graph].add(dataset)
+        self._graphs[graph].add(*xyz, datatype=datatype, label=label,
+                                comment=comment, **errors)
 
     def set_xaxis(self, graph, **kwargs):
         """set up x-axis of graph"""
@@ -1086,8 +1157,7 @@ class Plot:
         """Create a double-y-axis plot"""
         raise NotImplementedError
 
+
 if __name__ == "__main__":
     print(Plot())
-    print(_TickLabel())
-    print(_Tick())
 

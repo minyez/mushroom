@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """helper function in dealing with data, digits and mathematics"""
 import re
-import numpy as np
+#import numpy as np
 
 from mushroom._core.ioutils import trim_after
 from mushroom._core.logger import create_logger
@@ -31,9 +31,19 @@ class Data:
 
     Args:
         x, y, z (array-like) : positional, data columns in order
-        error_both (bool) : if True, the left error will be used also for right error
+        datatype (str) : the data type. See datatypes
         label (str)
         comment (str) : extra comment for the data
+        error should be parsed by using keywords arguments, supported are
+            dx
+            dxl (l means lower)
+            dy
+            dyl
+            dz
+            dzl
+
+    Class attributes:
+        available_types : available data types
 
     Public attributes:
 
@@ -48,29 +58,36 @@ class Data:
     Private methods:
 
     Constants:
-        DATATYPES (dict) : available datatypes
+        _DATATYPES (dict) : available datatypes
             key is the acronym of the data type
             value a list, optional arguments for left-and-right errors
     """
-    DATATYPES = {
-        'bar': ['dxl', 'dxr'],
-        'xy': ['dxl', 'dxr', 'dyl', 'dyr'],
-        'xyz': ['dxl', 'dxr', 'dyl', 'dyr', 'dzl', 'dzr'],
+    _DATATYPES = {
+        'xy': (2, []),
+        'bar': (2, []),
+        'xyz': (3, []),
+        'xydx': (2, ['dx']),
+        'xydy': (2, ['dy']),
+        'bardy': (2, ['dy']),
+        'xydxdx': (2, ['dx', 'dxl']),
+        'xydydy': (2, ['dy', 'dyl']),
+        'bardydy': (2, ['dy', 'dyl']),
+        'xydxdy': (2, ['dx', 'dy']),
+        'xydxdxdydy': (2, ['dx', 'dxl', 'dy', 'dyl']),
         }
+    available_types = tuple(_DATATYPES.keys())
 
-    def __init__(self, *xyz, error_both=True,
-                 label=None, comment=None,
+    def __init__(self, *xyz, datatype=None, label=None, comment=None,
                  **kwargs):
-        data_type = _check_data_type(*xyz, error_both=error_both, **kwargs)
-        self._error_cols = Data.DATATYPES.get(data_type, None)
+        datatype, self._error_cols = Data._check_data_type(*xyz, datatype=datatype, **kwargs)
         # TODO use numpy to treat xyz and error data
-        if data_type == "bar":
+        if datatype == "bar":
             self.x = xyz[0]
             self._data_cols = ['x',]
-        if data_type == "xy":
+        if datatype == "xy":
             self.x, self.y = xyz
             self._data_cols = ['x', 'y']
-        if data_type == "xyz":
+        if datatype == "xyz":
             self.x, self.y, self.z = xyz
             self._data_cols = ['x', 'y', 'z']
         for opt in self._error_cols:
@@ -78,7 +95,7 @@ class Data:
                 self.__setattr__(opt, kwargs[opt])
         self.label = label
         self.comment = comment
-        self.type = data_type
+        self.datatype = datatype
 
     def _get(self, data_cols, transpose=False):
         """get all data value
@@ -158,8 +175,8 @@ class Data:
             slist.append(s)
         return slist
 
-    def get(self, transpose=False):
-        """get all data value
+    def get_data(self, transpose=False):
+        """get all data values
 
         Default as
             (x1, y1, z1),
@@ -190,7 +207,7 @@ class Data:
         """
         return self._get(self._error_cols, transpose=transpose)
 
-    def get_all(self, transpose=False):
+    def get(self, transpose=False):
         """get all data and error value
 
         Default as
@@ -207,7 +224,7 @@ class Data:
         """
         return self._get(self._data_cols + self._error_cols, transpose=transpose)
 
-    def export(self, form=None, transpose=False, separator=None):
+    def export_data(self, form=None, transpose=False, separator=None):
         """Export the data as a list of strings
         
         See get for the meaning of transpose
@@ -233,7 +250,7 @@ class Data:
         """
         return self._export(self._error_cols, form=form, transpose=transpose, separator=separator)
 
-    def export_all(self, form=None, transpose=False, separator=None):
+    def export(self, form=None, transpose=False, separator=None):
         """Export both data and error as a list of strings
         
         See get_all for the meaning of transpose
@@ -247,25 +264,43 @@ class Data:
         return self._export(self._data_cols + self._error_cols,
                             form=form, transpose=transpose, separator=separator)
 
-
-def _check_data_type(*xyz,
-                     error_both=True,
-                     dxl=None, dxr=None,
-                     dyl=None, dyr=None,
-                     dzl=None, dzr=None):
-    """confirm the data type of input. Valid types are declared in Data.DATATYPES
-
-    Args:
-        *xyz (array-like):
-        error_both (bool)
-    """
-    if not xyz:
-        raise ValueError("no parsed data")
-    t = {1: 'bar', 2: 'xy', 3: 'xyz'}[len(xyz)]
-    # some error is parsed
-    if any((dxl, dxr, dyl, dyr, dzl, dzr)):
-        raise NotImplementedError("currently error is not supported")
-    if error_both:
-        pass
-    return t
+    @classmethod
+    def _check_data_type(cls, *xyz, datatype=None, **kwargs):
+        """confirm the data type of input. Valid types are declared in Data.DATATYPES
+    
+        Args:
+            *xyz (array-like):
+            datatype (str) : data type of . None for automatic detect
+            kwargs for parsing error
+                d(x,y,z) (float) : error. when the according l exists, it becomes the upper error
+                d(x,y,z)l (float) : lower error
+        """
+        err_cols = []
+        nd = len(xyz)
+        if nd <= 1:
+            raise ValueError("no enough parsed data")
+        # automatic detect
+        if datatype is None:
+            t = {2: 'xy', 3: 'xyz'}[nd]
+            for dt, (n, ec) in cls._DATATYPES.items():
+                if n == nd and dt.startswith(t):
+                    find_all = all([required_e in kwargs for required_e in ec])
+                    if find_all:
+                        t = dt
+                        err_cols = ec
+                        return t, err_cols
+            raise ValueError("cannot determine the datatype")
+        # check consistency
+        if datatype.lower in cls.available_types:
+            t = datatype.lower
+            required_n, err_cols = cls._DATATYPES[t]
+            if required_n != nd:
+                raise ValueError("Inconsistent xyz data and specified datatype ", datatype)
+            find_all = all([required_e in kwargs for required_e in err_cols])
+            if not find_all:
+                raise ValueError("Inconsistent error and specified datatype ", datatype)
+        else:
+            raise ValueError("Unsupported datatype", datatype)
+        # some error is parsed
+        return t, err_cols
 
