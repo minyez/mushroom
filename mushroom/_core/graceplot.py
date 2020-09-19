@@ -4,7 +4,7 @@ r"""A high-level Python interface to the Grace plotting package
 
 Lastest adapted from `jscatter` graceplot
 see https://gitlab.com/biehl/jscatter/-/blob/master/src/jscatter/graceplot.py ,
-commit d482bf214b8ef43fa853491d57b3ccbee02e5728
+commit d482bf214b8ef43.1fa853491d57b3ccbee02e5728
 
 Originally, this code of GracePlot started out from Nathaniel Gray <n8gray@caltech.edu>,
 updated by Marcus H. Mendenhall, MHM ,John Kitchin, Marus Mendenhall, Ralf Biehl (jscatter)
@@ -327,10 +327,11 @@ class Position:
     IN = -1
     BOTH = 0
     OUT = 1
+    AUTO = 2
     @classmethod
     def get_str(cls, i):
         """get the correspond attribute string"""
-        d = {cls.IN: "in", cls.BOTH: "both", cls.OUT: "out"}
+        d = {cls.IN: "in", cls.BOTH: "both", cls.OUT: "out", cls.AUTO: "auto"}
         return d.get(i)
 
 class _Affix:
@@ -381,7 +382,7 @@ class _BaseOutput:
 
         Each member is a line in agr file"""
         slist = []
-        prefix = deepcopy(self._marker)
+        prefix = deepcopy(self._marker).replace("_", " ")
         try:
             affix = self.__getattribute__('_affix')
             is_p = self.__getattribute__('_is_prefix')
@@ -399,10 +400,9 @@ class _BaseOutput:
                 temps = attr.replace("_", " ") + " " + f.format(*attrv)
             # special property marked by the type as bool
             elif typ is bool:
-                temps = ""
                 # for Symbol
                 if attr == "type":
-                    temps = " "
+                    temps = f.format(attrv)
                 # for on off attribute 
                 if attr.endswith("_switch"):
                     temps = attr.replace("_switch", "") + " " + Switch.get_str(attrv)
@@ -442,6 +442,8 @@ class _Region(_BaseOutput, _Affix):
     _marker = 'r'
     _attrs = (
         ('r_switch', bool, Switch.OFF, '{:s}'),
+        ('linestyle', int, LineStyle.SOLID, '{:d}'),
+        ('linewidth', float, 1.0, '{:3.1f}'),
         ('type', str, "above", '{:s}'),
         ('color', int, Color.BLACK, '{:d}'),
         ('line', list, (0., 0., 0., 0.), '{:f}, {:f}, {:f}, {:f}'),
@@ -490,17 +492,17 @@ def _set_loclike_attr(marker, form, *args):
 class _World(_BaseOutput):
     """world of graph"""
     _marker = 'world'
-    _attrs = _set_loclike_attr('world', '{:8f}', 0., 0.7, 9.0, 2.7)
+    _attrs = _set_loclike_attr('world', '{:8f}', 0., 0., 1., 1.)
 
 class _StackWorld(_BaseOutput):
     """stack world of graph"""
     _marker = 'stack_world'
-    _attrs = _set_loclike_attr('stack_world', '{:8f}', 0., 0.7, 9.0, 2.7)
+    _attrs = _set_loclike_attr('stack_world', '{:8f}', 0., 1., 0., 1.)
 
 class _View(_BaseOutput):
     """stack world of graph"""
     _marker = 'view'
-    _attrs = _set_loclike_attr('view', '{:8f}', 0., 0.7, 9.0, 2.7)
+    _attrs = _set_loclike_attr('view', '{:8f}', 0.15, 0.15, 1.15, 0.85)
 
 class _Znorm(_BaseOutput):
     """stack world of graph"""
@@ -513,7 +515,7 @@ class Line(_BaseOutput):
     _attrs = (
         ('type', int, 1, "{:d}"),
         ('linestyle', int, LineStyle.SOLID, "{:d}"),
-        ('linewidth', float, 4.0, "{:3f}"),
+        ('linewidth', float, 4.0, "{:3.1f}"),
         ('color', int, Color.BLACK, "{:d}"),
         ('pattern', int, 1, "{:d}"),
         )
@@ -525,7 +527,7 @@ class _Box(_BaseOutput):
     _attrs = [
         ('color', int, Color.BLACK, '{:d}'),
         ('pattern', int, Pattern.SOLID, '{:d}'),
-        ('linewidth', float, 1.0, '{:3f}'),
+        ('linewidth', float, 1.0, '{:3.1f}'),
         ('linestyle', int, LineStyle.SOLID, '{:d}'),
         ('fill_color', int, Color.BLACK, '{:d}'),
         ('fill_pattern', int, Pattern.SOLID, '{:d}'),
@@ -572,7 +574,7 @@ class _Frame(_BaseOutput):
     _attrs = [
         ('type', int, 0, "{:d}"),
         ('linestyle', int, LineStyle.SOLID, "{:d}"),
-        ('linewidth', float, 1.0, "{:3f}"),
+        ('linewidth', float, 1.0, "{:3.1f}"),
         ('color', int, Color.BLACK, "{:d}"),
         ('pattern', int, 1, "{:d}"),
         ('background_color', int, Color.WHITE, "{:d}"),
@@ -616,7 +618,7 @@ class _Default(_BaseOutput):
     """_Default options at head"""
     _marker = "default"
     _attrs = (
-        ("linewidth", float, 1., "{:3f}"),
+        ("linewidth", float, 1., "{:3.1f}"),
         ("linestyle", int, LineStyle.SOLID, "{:d}"),
         ("color", int, 1, "{:d}"),
         ("pattern", int, 1, "{:d}"),
@@ -675,7 +677,7 @@ class Symbol(_BaseOutput):
         ("pattern", int, 1, "{:d}"),
         ("fill_color", int, 1, "{:d}"),
         ("fill_pattern", int, 1, "{:d}"),
-        ("linewidth", float, 1, "{:3f}"),
+        ("linewidth", float, 1, "{:3.1f}"),
         ("linestyle", int, LineStyle.SOLID, "{:d}"),
         ("char", int, 1, "{:d}"),
         ("char_font", int, 0, "{:d}"),
@@ -723,18 +725,18 @@ class _Tick(_BaseOutput):
         ('tick_switch', bool, Switch.ON, "{:s}"),
         ('tick_position', bool, Position.IN, "{:s}"),
         ('default', int, 6, "{:d}"),
-        ('major', float, 1., "{:3f}"),
+        ('major', float, 1., "{:3.1f}"),
         ('major_size', float, 0.5, "{:8f}"),
-        ('major_color', float, 1., "{:3f}"),
-        ('major_linewidth', float, 2.0, "{:3f}"),
+        ('major_color', float, 1., "{:3.1f}"),
+        ('major_linewidth', float, 2.0, "{:3.1f}"),
         ('major_linestyle', int, LineStyle.SOLID, "{:d}"),
         ('major_grid_switch', bool, Switch.OFF, "{:s}"),
-        ('minor', float, 1., "{:3f}"),
-        ('minor_color', float, 1., "{:3f}"),
+        ('minor', float, 1., "{:3.1f}"),
+        ('minor_color', float, 1., "{:3.1f}"),
         ('minor_size', float, 1., "{:8f}"),
         ('minor_ticks', int, 1, "{:d}"),
         ('minor_grid_switch', bool, Switch.OFF, "{:s}"),
-        ('minor_linewidth', float, 2.0, "{:3f}"),
+        ('minor_linewidth', float, 2.0, "{:3.1f}"),
         ('minor_linestyle', int, LineStyle.SOLID, "{:d}"),
         ('place_rounded', str, True, "{:s}"),
         ('place_position', bool, Position.BOTH, "{:s}"),
@@ -749,20 +751,21 @@ class _Tick(_BaseOutput):
 
 class _Bar(_BaseOutput):
     """_Axis bar"""
-    _markder = 'bar'
+    _marker = 'bar'
     _attrs = (
         ('bar_switch', bool, Switch.ON, '{:s}'),
-        ('color', int, 1, '{:d}'),
+        ('color', int, Color.BLACK, '{:d}'),
         ('linestyle', int, LineStyle.SOLID, '{:d}'),
-        ('linewidth', float, 4., '{:3f}'),
+        ('linewidth', float, 4., '{:3.1f}'),
         )
+
 
 class _Label(_BaseOutput):
     """_Axis label"""
     _marker = 'label'
     _attrs = (
         ('layout', str, 'para', '{:s}'),
-        ('place_position', bool, Switch.AUTO, '{:s}'),
+        ('place_position', bool, Position.AUTO, '{:s}'),
         ('char_size', float, 1.5, "{:8f}"),
         ('font', int, 0, "{:d}"),
         ('color', int, 0, "{:d}"),
@@ -784,7 +787,7 @@ class _TickLabel(_BaseOutput):
     """Label of axis tick"""
     _marker = 'ticklabel'
     _attrs = (
-        ('ticklabel_switch', bool, Switch.AUTO, "{:s}"),
+        ('ticklabel_switch', bool, Switch.ON, "{:s}"),
         ('format', str, "general", "{:s}"),
         ('formula', str, "", "\"{:s}\""),
         ('append', str, "", "\"{:s}\""),
@@ -816,9 +819,9 @@ class Errorbar(_BaseOutput):
         ('color', int, 1, '{:d}'),
         ('pattern', int, 1, '{:d}'),
         ('size', float, 1.0, '{:8f}'),
-        ('linewidth', float, 1.0, '{:3f}'),
+        ('linewidth', float, 1.0, '{:3.1f}'),
         ('linestyle', int, LineStyle.SOLID, '{:d}'),
-        ('riser_linewidth', float, 1.0, '{:3f}'),
+        ('riser_linewidth', float, 1.0, '{:3.1f}'),
         ('riser_linestyle', int, LineStyle.SOLID, '{:d}'),
         ('riser_clip_switch', bool, Switch.OFF, '{:s}'),
         ('riser_clip_length', float, 0.1, '{:8f}'),
@@ -835,7 +838,7 @@ class _Axis(_BaseOutput, _Affix):
     _attrs = (
         ('axis_switch', bool, Switch.ON, '{:s}'),
         ('type', list, ("zero", "false"), '{:s} {:s}'),
-        ('offset', list, (0.0, 0.0), '{:8f} {:8f}'),
+        ('offset', list, (0.0, 0.0), '{:8f} , {:8f}'),
         )
     def __init__(self, axis='x', **kwargs):
         assert axis in ['x', 'y', 'altx', 'alty']
@@ -850,7 +853,7 @@ class _Axis(_BaseOutput, _Affix):
         if self.axis_switch is Switch.OFF:
             return [self._affix + self._marker + "  " + Switch.get_str(Switch.OFF),]
         slist = _BaseOutput.export(self) 
-        header = [self._bar, self._tick, self._ticklabel, self._label]
+        header = [self._bar, self._label, self._tick, self._ticklabel]
         for x in header:
             slist += [self._affix + self._marker + " " + i for i in x.export()]
         return slist
@@ -863,6 +866,11 @@ class _Axis(_BaseOutput, _Affix):
 
     def set_ticklabel(self):
         raise NotImplementedError
+
+    def update(self, **kwargs):
+        """Update axis properties"""
+        # TODO update axis attributes
+
 
 class _Axes(_BaseOutput, _Affix):
     """_Axes object for graph
@@ -951,6 +959,7 @@ class _Dataset(_BaseOutput, _Affix):
 
 
 class Dataset(_Dataset):
+    """Dataset object for users"""
 
     def __init__(self, index, *xyz, datatype=None, label=None, comment=None, **kwargs):
         if label is None:
@@ -973,7 +982,7 @@ class _Graph(_BaseOutput, _Affix):
         ('fixedpoint_switch', bool, Switch.OFF, '{:s}'),
         ('fixedpoint_type', int, 0, '{:d}'),
         ('fixedpoint_xy', list, (0.0, 0.0), '{:8f}, {:8f}'),
-        ('fixedpoint_format', list, ('general', 'general'), '{:s}, {:s}'),
+        ('fixedpoint_format', list, ('general', 'general'), '{:s} {:s}'),
         ('fixedpoint_prec', list, (6, 6), '{:d}, {:d}'),
         )
     def __init__(self, index, **kwargs):
@@ -1035,6 +1044,7 @@ class _Graph(_BaseOutput, _Affix):
             ax = d.get(axis)
         except KeyError:
             raise ValueError("axis name %s is not supported. %s" % (axis, d.keys()))
+        ax.update(**kwargs)
 
 
 # Class for users
@@ -1146,10 +1156,10 @@ class Plot:
         except IndexError:
             raise IndexError(f"G.{i} does not exist")
 
-    def add_dataset(self, *xyz, graph=0, datatype=None, 
-                    label=None, comment=None, **errors):
-        """Add a data set to graph `graph`"""
-        self._graphs[graph].add(*xyz, datatype=datatype, label=label,
+    def add(self, *xyz, igraph=0, datatype=None, 
+            label=None, comment=None, **errors):
+        """Add a data set to graph `igraph`"""
+        self._graphs[igraph].add(*xyz, datatype=datatype, label=label,
                                 comment=comment, **errors)
 
     def set_xaxis(self, graph, **kwargs):
@@ -1203,6 +1213,6 @@ class Plot:
 
 if __name__ == "__main__":
     p = Plot()
-    p.add_dataset((0.0, 0.5), (0.5, 0.75))
+    p.add((0.0, 0.5), (0.5, 0.75))
     print(p)
 
