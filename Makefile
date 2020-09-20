@@ -6,7 +6,9 @@ SED = gsed
 
 include .objects
 
-.PHONY: dist clean
+.PHONY: default dist clean test commit
+
+default: test
 
 dist: $(DIST_TARBALL)
 

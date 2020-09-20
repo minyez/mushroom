@@ -446,7 +446,7 @@ class _Region(_BaseOutput, _Affix):
         ('linewidth', float, 1.0, '{:3.1f}'),
         ('type', str, "above", '{:s}'),
         ('color', int, Color.BLACK, '{:d}'),
-        ('line', list, (0., 0., 0., 0.), '{:f}, {:f}, {:f}, {:f}'),
+        ('line', list, [0., 0., 0., 0.], '{:f}, {:f}, {:f}, {:f}'),
         )
 
     def __init__(self, index, **kwargs):
@@ -487,22 +487,37 @@ class _SubTitle(_TitleLike):
 
 def _set_loclike_attr(marker, form, *args):
     f = [form,] * len(args)
-    return [(marker + '_location', bool, args, ', '.join(f)),]
+    return [(marker + '_location', bool, list(args), ', '.join(f)),]
+
+def _set_xy_extreme(loclike, corner, value):
+    """set xmin, ymin, xmax or ymax"""
+    assert len(loclike) == 4
+    try:
+        i = {'xmin':0, 'ymin':1, 'xmax':2, 'ymax':3}.get(corner)
+        loclike[i] = value
+    except KeyError:
+        raise ValueError("invalid corner name ", corner)
 
 class _World(_BaseOutput):
     """world of graph"""
     _marker = 'world'
     _attrs = _set_loclike_attr('world', '{:8f}', 0., 0., 1., 1.)
+    def set(self, corner, value):
+        _set_xy_extreme(self.world_location, corner, value)
 
 class _StackWorld(_BaseOutput):
     """stack world of graph"""
     _marker = 'stack_world'
     _attrs = _set_loclike_attr('stack_world', '{:8f}', 0., 1., 0., 1.)
+    def set(self, corner, value):
+        _set_xy_extreme(self.stack_world_location, corner, value)
 
 class _View(_BaseOutput):
     """stack world of graph"""
     _marker = 'view'
-    _attrs = _set_loclike_attr('view', '{:8f}', 0.15, 0.15, 1.15, 0.85)
+    _attrs = _set_loclike_attr('view', '{:8f}', 0.15, 0.10, 1.20, 0.90)
+    def set(self, corner, value):
+        _set_xy_extreme(self.view_location, corner, value)
 
 class _Znorm(_BaseOutput):
     """stack world of graph"""
@@ -515,7 +530,7 @@ class Line(_BaseOutput):
     _attrs = (
         ('type', int, 1, "{:d}"),
         ('linestyle', int, LineStyle.SOLID, "{:d}"),
-        ('linewidth', float, 4.0, "{:3.1f}"),
+        ('linewidth', float, 1.0, "{:3.1f}"),
         ('color', int, Color.BLACK, "{:d}"),
         ('pattern', int, 1, "{:d}"),
         )
@@ -540,7 +555,7 @@ class _Legend(_BaseOutput):
     _attrs = [
         #@    legend 0.75, 0.451567486
         ('legend_switch', bool, Switch.ON, '{:d}'),
-        ('legend_location', bool, (0.75, 0.50), '{:6f} , {:6f}'),
+        ('legend_location', bool, [0.75, 0.50], '{:6f} , {:6f}'),
         ('loctype', str, 'view', '{:s}'),
         ('font', int, 0, '{:d}'),
         ('color', int, Color.BLACK, '{:d}'),
@@ -689,7 +704,7 @@ class _Page(_BaseOutput):
     """_Page"""
     _marker = "page"
     _attrs = (
-        ("size", list, (792, 612), "{:d}, {:d}"),
+        ("size", list, [792, 612], "{:d}, {:d}"),
         ("scroll", float, 0.05, "{:.0%}"),
         ("inout", float, 0.05, "{:.0%}"),
         ("background_fill_switch", bool, Switch.ON, "{:s}"),
@@ -756,7 +771,7 @@ class _Bar(_BaseOutput):
         ('bar_switch', bool, Switch.ON, '{:s}'),
         ('color', int, Color.BLACK, '{:d}'),
         ('linestyle', int, LineStyle.SOLID, '{:d}'),
-        ('linewidth', float, 4., '{:3.1f}'),
+        ('linewidth', float, 2., '{:3.1f}'),
         )
 
 
@@ -837,8 +852,8 @@ class _Axis(_BaseOutput, _Affix):
     _marker = 'axis'
     _attrs = (
         ('axis_switch', bool, Switch.ON, '{:s}'),
-        ('type', list, ("zero", "false"), '{:s} {:s}'),
-        ('offset', list, (0.0, 0.0), '{:8f} , {:8f}'),
+        ('type', list, ["zero", "false"], '{:s} {:s}'),
+        ('offset', list, [0.0, 0.0], '{:8f} , {:8f}'),
         )
     def __init__(self, axis='x', **kwargs):
         assert axis in ['x', 'y', 'altx', 'alty']
@@ -981,9 +996,9 @@ class _Graph(_BaseOutput, _Affix):
         ('bar_hgap', float, 0.0, '{:8f}'),
         ('fixedpoint_switch', bool, Switch.OFF, '{:s}'),
         ('fixedpoint_type', int, 0, '{:d}'),
-        ('fixedpoint_xy', list, (0.0, 0.0), '{:8f}, {:8f}'),
-        ('fixedpoint_format', list, ('general', 'general'), '{:s} {:s}'),
-        ('fixedpoint_prec', list, (6, 6), '{:d}, {:d}'),
+        ('fixedpoint_xy', list, [0.0, 0.0], '{:8f}, {:8f}'),
+        ('fixedpoint_format', list, ['general', 'general'], '{:s} {:s}'),
+        ('fixedpoint_prec', list, [6, 6], '{:d}, {:d}'),
         )
     def __init__(self, index, **kwargs):
         self._index = index
@@ -1046,6 +1061,20 @@ class _Graph(_BaseOutput, _Affix):
             raise ValueError("axis name %s is not supported. %s" % (axis, d.keys()))
         ax.update(**kwargs)
 
+    def set_xlimit(self, xmin=None, xmax=None):
+        """set limits of x axis"""
+        if xmin:
+            self._world.set('xmin', xmin)
+        if xmax:
+            self._world.set('xmax', xmax)
+
+    def set_ylimit(self, ymin=None, ymax=None):
+        """set limits of y axis"""
+        if ymin:
+            self._world.set('ymin', ymin)
+        if ymax:
+            self._world.set('ymax', ymax)
+
 
 # Class for users
 
@@ -1055,20 +1084,16 @@ class Graph(_Graph):
     def __init__(self, index=0, xmin=None, xmax=None, ymin=None, ymax=None,
                  **kwargs):
         _Graph.__init__(self, index=index, **kwargs)
-        self.set_xaxis(lower=xmin, upper=xmax)
-        self.set_yaxis(lower=ymin, upper=ymax)
+        self.set_xaxis(xmin=xmin, xmax=xmax)
+        self.set_yaxis(ymin=ymin, ymax=ymax)
 
-    def set_xaxis(self, lower=0, upper=1):
+    def set_xaxis(self, **kwargs):
         """set x axis"""
-        self._set_axis('x', lower=lower, upper=upper)
+        self._set_axis('x', **kwargs)
 
-    def set_yaxis(self, lower=0, upper=1):
+    def set_yaxis(self, **kwargs):
         """set x axis"""
-        self._set_axis('y', lower=lower, upper=upper)
-
-    def set_world(self):
-        """set the world border"""
-        raise NotImplementedError
+        self._set_axis('y', **kwargs)
 
     def add(self, *xyz, datatype=None, label=None, comment=None, **errors):
         """Add dataset"""
@@ -1160,17 +1185,17 @@ class Plot:
             label=None, comment=None, **errors):
         """Add a data set to graph `igraph`"""
         self._graphs[igraph].add(*xyz, datatype=datatype, label=label,
-                                comment=comment, **errors)
+                                 comment=comment, **errors)
 
-    def set_xaxis(self, graph, **kwargs):
+    def set_xaxis(self, igraph=0, **kwargs):
         """set up x-axis of graph"""
-        self._graphs[graph].set_xaxis(**kwargs)
+        self._graphs[igraph].set_xaxis(**kwargs)
 
-    def set_yaxis(self, graph, **kwargs):
+    def set_yaxis(self, igraph=0, **kwargs):
         """set up y-axis of graph"""
-        self._graphs[graph].set_yaxis(**kwargs)
+        self._graphs[igraph].set_yaxis(**kwargs)
 
-    def set_xlimit(self, graph, xmin=None, xmax=None):
+    def set_xlimit(self, xmin=None, xmax=None, igraph=0):
         """set xlimit of a graph
 
         Args:
@@ -1178,9 +1203,9 @@ class Plot:
             xmin (float)
             xmax (float)
         """
-        self._graphs[graph].set_xaxis(xmin=xmin, xmax=xmax)
+        self._graphs[igraph].set_xlimit(xmin=xmin, xmax=xmax)
 
-    def set_ylimit(self, graph, ymin=None, ymax=None):
+    def set_ylimit(self, ymin=None, ymax=None, igraph=0):
         """set ylimit of a graph
 
         Args:
@@ -1188,20 +1213,22 @@ class Plot:
             ymin (float)
             ymax (float)
         """
-        self._graphs[graph].set_yaxis(ymin=ymin, ymax=ymax)
+        self._graphs[igraph].set_ylimit(ymin=ymin, ymax=ymax)
 
-    def export(self, file=sys.stdout):
+    def export(self, file=sys.stdout, mode='w'):
         """Export grace plot file to `fn`
 
         Args:
-            file (str or file handle)"""
+            file (str or file handle)
+            mode (str) : used only when `file` is set to a filename
+        """
         if isinstance(file, str):
-            fp = open(file, 'w')
-            print(self.__str__, file=fp)
+            fp = open(file, mode)
+            print(self.__str__(), file=fp)
             fp.close()
             return
         if isinstance(file, TextIOWrapper):
-            print(self.__str__, file=file)
+            print(self.__str__(), file=file)
             return
         raise ValueError
 
@@ -1210,9 +1237,4 @@ class Plot:
         """Create a double-y-axis plot"""
         raise NotImplementedError
 
-
-if __name__ == "__main__":
-    p = Plot()
-    p.add((0.0, 0.5), (0.5, 0.75))
-    print(p)
 
