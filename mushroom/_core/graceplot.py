@@ -358,15 +358,15 @@ class _BaseOutput:
     When type is bool, it will be treated invidually as a special
     attribute.
     """
-    _attrs = []
+    _attrs = {}
     _marker = ''
 
     def __init__(self, **kwargs):
-        assert isinstance(self._attrs, (list, tuple))
-        for i in self._attrs:
-            assert len(i) == 4
+        assert isinstance(self._attrs, dict)
+        for x in self._attrs.values():
+            assert len(x) == 3
         assert isinstance(self._marker, str)
-        for attr, typ, default, _ in self._attrs:
+        for attr, (typ, default, _) in self._attrs.items():
             _logger.debug("attr: %s type: %s", attr, typ)
             v = kwargs.get(attr, default)
             try:
@@ -375,6 +375,21 @@ class _BaseOutput:
                 if typ is not bool:
                     v = typ(v)
                 self.__setattr__(attr, v)
+
+    def _set(self, **kwargs):
+        """basic functionality to set attributes"""
+        if kwargs:
+            if len(kwargs) < len(self._attrs):
+                for k, v in kwargs.items():
+                    _logger.debug("setting %s to %s", k, str(v))
+                    if k in self._attrs and v is not None:
+                        self.__setattr__(k, v)
+            else:
+                for k in self._attrs:
+                    _logger.debug("setting %s", k)
+                    v = kwargs.get(k, None)
+                    if v is not None:
+                        self.__setattr__(k, v)
 
     # pylint: disable=R0912
     def export(self):
@@ -393,7 +408,7 @@ class _BaseOutput:
         except (TypeError, AttributeError):
             pass
 
-        for attr, typ, _, f in self._attrs:
+        for attr, (typ, _, f) in self._attrs.items():
             attrv = self.__getattribute__(attr)
             _logger.debug("parsed export: %s , %s, %r", type(self).__name__, attr, attrv)
             if typ in [list, tuple, set]:
@@ -440,14 +455,14 @@ class _BaseOutput:
 class _Region(_BaseOutput, _Affix):
     """Region of plot, i.e. the `r` part"""
     _marker = 'r'
-    _attrs = (
-        ('r_switch', bool, Switch.OFF, '{:s}'),
-        ('linestyle', int, LineStyle.SOLID, '{:d}'),
-        ('linewidth', float, 1.0, '{:3.1f}'),
-        ('type', str, "above", '{:s}'),
-        ('color', int, Color.BLACK, '{:d}'),
-        ('line', list, [0., 0., 0., 0.], '{:f}, {:f}, {:f}, {:f}'),
-        )
+    _attrs = {
+        'r_switch': (bool, Switch.OFF, '{:s}'),
+        'linestyle': (int, LineStyle.SOLID, '{:d}'),
+        'linewidth': (float, 1.0, '{:3.1f}'),
+        'type': (str, "above", '{:s}'),
+        'color': (int, Color.BLACK, '{:d}'),
+        'line': (list, [0., 0., 0., 0.], '{:f}, {:f}, {:f}, {:f}'),
+        }
 
     def __init__(self, index, **kwargs):
         _BaseOutput.__init__(self, **kwargs)
@@ -467,27 +482,27 @@ class _Region(_BaseOutput, _Affix):
 
 class _TitleLike(_BaseOutput):
     """title and subtitle of graph"""
-    _attrs = [
-        ('font', int, 0, "{:d}"),
-        ('size', float, 1.5, "{:8f}"),
-        ('color', int, Color.BLACK, "{:d}"),
-        ]
+    _attrs = {
+        'font': (int, 0, "{:d}"),
+        'size': (float, 1.5, "{:8f}"),
+        'color': (int, Color.BLACK, "{:d}"),
+        }
 
 class _Title(_TitleLike):
     """title of graph"""
     _marker = 'title'
-    _attrs = [(_marker+'_comment', bool, "", "\"{:s}\""),] \
-             + _TitleLike._attrs
+    _attrs = dict(**_TitleLike._attrs)
+    _attrs[_marker+'_comment'] = (bool, "", "\"{:s}\"")
 
 class _SubTitle(_TitleLike):
     """title of graph"""
     _marker = 'subtitle'
-    _attrs = [(_marker+'_comment', bool, "", "\"{:s}\""),] \
-             + _TitleLike._attrs
+    _attrs = dict(**_TitleLike._attrs)
+    _attrs[_marker+'_comment'] = (bool, "", "\"{:s}\"")
 
 def _set_loclike_attr(marker, form, *args):
     f = [form,] * len(args)
-    return [(marker + '_location', bool, list(args), ', '.join(f)),]
+    return {marker + '_location': (bool, list(args), ', '.join(f))}
 
 def _set_xy_extreme(loclike, corner, value):
     """set xmin, ymin, xmax or ymax"""
@@ -527,44 +542,43 @@ class _Znorm(_BaseOutput):
 class Line(_BaseOutput):
     """Line object of dataset"""
     _marker = 'line'
-    _attrs = (
-        ('type', int, 1, "{:d}"),
-        ('linestyle', int, LineStyle.SOLID, "{:d}"),
-        ('linewidth', float, 1.0, "{:3.1f}"),
-        ('color', int, Color.BLACK, "{:d}"),
-        ('pattern', int, 1, "{:d}"),
-        )
+    _attrs = {
+        'type': (int, 1, "{:d}"),
+        'linestyle': (int, LineStyle.SOLID, "{:d}"),
+        'linewidth': (float, 1.0, "{:3.1f}"),
+        'color': (int, Color.BLACK, "{:d}"),
+        'pattern': (int, 1, "{:d}"),
+        }
 
 
 class _Box(_BaseOutput):
     """_Box of legend"""
     _marker = 'box'
-    _attrs = [
-        ('color', int, Color.BLACK, '{:d}'),
-        ('pattern', int, Pattern.SOLID, '{:d}'),
-        ('linewidth', float, 1.0, '{:3.1f}'),
-        ('linestyle', int, LineStyle.SOLID, '{:d}'),
-        ('fill_color', int, Color.BLACK, '{:d}'),
-        ('fill_pattern', int, Pattern.SOLID, '{:d}'),
-        ]
+    _attrs = {
+        'color': (int, Color.BLACK, '{:d}'),
+        'pattern': (int, Pattern.SOLID, '{:d}'),
+        'linewidth': (float, 1.0, '{:3.1f}'),
+        'linestyle': (int, LineStyle.SOLID, '{:d}'),
+        'fill_color': (int, Color.BLACK, '{:d}'),
+        'fill_pattern': (int, Pattern.SOLID, '{:d}'),
+        }
 
 
 class _Legend(_BaseOutput):
     """object to control the appearance of graph legend"""
     _marker = 'legend'
-    _attrs = [
-        #@    legend 0.75, 0.451567486
-        ('legend_switch', bool, Switch.ON, '{:d}'),
-        ('legend_location', bool, [0.75, 0.50], '{:6f} , {:6f}'),
-        ('loctype', str, 'view', '{:s}'),
-        ('font', int, 0, '{:d}'),
-        ('color', int, Color.BLACK, '{:d}'),
-        ('length', int, 4, '{:d}'),
-        ('vgap', int, 1, '{:d}'),
-        ('hgap', int, 1, '{:d}'),
-        ('invert', str, False, '{:s}'),
-        ('char_size', float, 1.2, '{:8f}'),
-        ]
+    _attrs = {
+        'legend_switch': (bool, Switch.ON, '{:d}'),
+        'legend_location': (bool, [0.75, 0.50], '{:6f} , {:6f}'),
+        'loctype': (str, 'view', '{:s}'),
+        'font': (int, 0, '{:d}'),
+        'color': (int, Color.BLACK, '{:d}'),
+        'length': (int, 4, '{:d}'),
+        'vgap': (int, 1, '{:d}'),
+        'hgap': (int, 1, '{:d}'),
+        'invert': (str, False, '{:s}'),
+        'char_size': (float, 1.2, '{:8f}'),
+        }
 
     def __init__(self, **kwargs):
         self.box = _Box()
@@ -586,32 +600,32 @@ class _Frame(_BaseOutput):
     BREAKRIGHT = 5
 
     _marker = "frame"
-    _attrs = [
-        ('type', int, 0, "{:d}"),
-        ('linestyle', int, LineStyle.SOLID, "{:d}"),
-        ('linewidth', float, 1.0, "{:3.1f}"),
-        ('color', int, Color.BLACK, "{:d}"),
-        ('pattern', int, 1, "{:d}"),
-        ('background_color', int, Color.WHITE, "{:d}"),
-        ('background_pattern', int, 0, "{:d}"),
-        ]
+    _attrs = {
+        'type': (int, 0, "{:d}"),
+        'linestyle': (int, LineStyle.SOLID, "{:d}"),
+        'linewidth': (float, 1.0, "{:3.1f}"),
+        'color': (int, Color.BLACK, "{:d}"),
+        'pattern': (int, 1, "{:d}"),
+        'background_color': (int, Color.WHITE, "{:d}"),
+        'background_pattern': (int, 0, "{:d}"),
+        }
 
 
 class _BaseLine(_BaseOutput):
     """baseline of dataset"""
     _marker = 'baseline'
-    _attrs = [
-        ('type', int, 0, '{:d}'),
-        ('baseline_switch', bool, Switch.OFF, '{:s}'),
-        ]
+    _attrs = {
+        'type': (int, 0, '{:d}'),
+        'baseline_switch': (bool, Switch.OFF, '{:s}'),
+        }
 
 
 class _DropLine(_BaseOutput):
     """baseline of dataset"""
     _marker = 'dropline'
-    _attrs = [
-        ('dropline_switch', bool, Switch.OFF, '{:s}'),
-        ]
+    _attrs = {
+        'dropline_switch': (bool, Switch.OFF, '{:s}'),
+        }
 
 
 class Fill(_BaseOutput):
@@ -621,27 +635,27 @@ class Fill(_BaseOutput):
     OPAQUE = 2
 
     _marker = 'fill'
-    _attrs = [
-        ('type', int, NONE, '{:d}'),
-        ('rule', int, 0, '{:d}'),
-        ('color', int, 1, '{:d}'),
-        ('pattern', int, 1, '{:d}'),
-        ]
+    _attrs = {
+        'type': (int, NONE, '{:d}'),
+        'rule': (int, 0, '{:d}'),
+        'color': (int, 1, '{:d}'),
+        'pattern': (int, 1, '{:d}'),
+        }
 
 
 class _Default(_BaseOutput):
     """_Default options at head"""
     _marker = "default"
-    _attrs = (
-        ("linewidth", float, 1., "{:3.1f}"),
-        ("linestyle", int, LineStyle.SOLID, "{:d}"),
-        ("color", int, 1, "{:d}"),
-        ("pattern", int, 1, "{:d}"),
-        ("font", int, 0, "{:d}"),
-        ("char_size", float, 1., "{:8f}"),
-        ("symbol_size", float, 1., "{:8f}"),
-        ("sformat", str, "%.8g", "\"{:s}\""),
-        )
+    _attrs = {
+        "linewidth": (float, 1., "{:3.1f}"),
+        "linestyle": (int, LineStyle.SOLID, "{:d}"),
+        "color": (int, 1, "{:d}"),
+        "pattern": (int, 1, "{:d}"),
+        "font": (int, 0, "{:d}"),
+        "char_size": (float, 1., "{:8f}"),
+        "symbol_size": (float, 1., "{:8f}"),
+        "sformat": (str, "%.8g", "\"{:s}\""),
+        }
     def __init__(self, **kwargs):
         _BaseOutput.__init__(self, **kwargs)
 
@@ -649,19 +663,19 @@ class _Default(_BaseOutput):
 class Annotation(_BaseOutput):
     """dataset annotation"""
     _marker = "avalue"
-    _attrs = (
-        ("avalue_switch", bool, Switch.OFF, "{:s}"),
-        ("type", int, 2, "{:d}"),
-        ("char_size", float, 1., "{:8f}"),
-        ("font", int, 0, "{:d}"),
-        ("color", int, 1, "{:d}"),
-        ("rot", int, 0, "{:d}"),
-        ("format", str, "general", "{:s}"),
-        ("prec", int, 3, "{:d}"),
-        ("append", str, "\"\"", "{:s}"),
-        ("prepend", str, "\"\"", "{:s}"),
-        ("offset", list, [0.0, 0.0], "{:8f} , {:8f}"),
-        )
+    _attrs = {
+        "avalue_switch": (bool, Switch.OFF, "{:s}"),
+        "type": (int, 2, "{:d}"),
+        "char_size": (float, 1., "{:8f}"),
+        "font": (int, 0, "{:d}"),
+        "color": (int, 1, "{:d}"),
+        "rot": (int, 0, "{:d}"),
+        "format": (str, "general", "{:s}"),
+        "prec": (int, 3, "{:d}"),
+        "append": (str, "\"\"", "{:s}"),
+        "prepend": (str, "\"\"", "{:s}"),
+        "offset": (list, [0.0, 0.0], "{:8f} , {:8f}"),
+        }
     def __init__(self, **kwargs):
         _BaseOutput.__init__(self, **kwargs)
 
@@ -685,30 +699,30 @@ class Symbol(_BaseOutput):
     CHARACTER = 11
 
     _marker = "symbol"
-    _attrs = (
-        ("type", bool, CIRCLE, "{:d}"),
-        ("size", float, 1., "{:8f}"),
-        ("color", int, 1, "{:d}"),
-        ("pattern", int, 1, "{:d}"),
-        ("fill_color", int, 1, "{:d}"),
-        ("fill_pattern", int, 1, "{:d}"),
-        ("linewidth", float, 1, "{:3.1f}"),
-        ("linestyle", int, LineStyle.SOLID, "{:d}"),
-        ("char", int, 1, "{:d}"),
-        ("char_font", int, 0, "{:d}"),
-        ("skip", int, 0, "{:d}"),
-        )
+    _attrs = {
+        "type": (bool, CIRCLE, "{:d}"),
+        "size": (float, 1., "{:8f}"),
+        "color": (int, 1, "{:d}"),
+        "pattern": (int, 1, "{:d}"),
+        "fill_color": (int, 1, "{:d}"),
+        "fill_pattern": (int, 1, "{:d}"),
+        "linewidth": (float, 1, "{:3.1f}"),
+        "linestyle": (int, LineStyle.SOLID, "{:d}"),
+        "char": (int, 1, "{:d}"),
+        "char_font": (int, 0, "{:d}"),
+        "skip": (int, 0, "{:d}"),
+        }
 
 
 class _Page(_BaseOutput):
     """_Page"""
     _marker = "page"
-    _attrs = (
-        ("size", list, [792, 612], "{:d}, {:d}"),
-        ("scroll", float, 0.05, "{:.0%}"),
-        ("inout", float, 0.05, "{:.0%}"),
-        ("background_fill_switch", bool, Switch.ON, "{:s}"),
-        )
+    _attrs = {
+        "size": (list, [792, 612], "{:d}, {:d}"),
+        "scroll": (float, 0.05, "{:.0%}"),
+        "inout": (float, 0.05, "{:.0%}"),
+        "background_fill_switch": (bool, Switch.ON, "{:s}"),
+        }
     def __init__(self, **kwargs):
         _BaseOutput.__init__(self, **kwargs)
 
@@ -716,14 +730,14 @@ class _Page(_BaseOutput):
 class _TimesStamp(_BaseOutput):
     """Timestamp"""
     _marker = "timestamp"
-    _attrs = (
-        ('timestamp_switch', bool, Switch.OFF, "{:s}"),
-        ('color', int, 1, "{:d}"),
-        ('rot', int, 0, "{:d}"),
-        ('font', int, 0, "{:d}"),
-        ('char_size', float, 1.0, "{:8f}"),
-        ('def', str, time.strftime("%a %b %d %H:%M:%S %Y"), "\"{:s}\""),
-        )
+    _attrs = {
+        'timestamp_switch': (bool, Switch.OFF, "{:s}"),
+        'color': (int, 1, "{:d}"),
+        'rot': (int, 0, "{:d}"),
+        'font': (int, 0, "{:d}"),
+        'char_size': (float, 1.0, "{:8f}"),
+        'def': (str, time.strftime("%a %b %d %H:%M:%S %Y"), "\"{:s}\""),
+        }
     def __init__(self, **kwargs):
         _BaseOutput.__init__(self, **kwargs)
 
@@ -736,27 +750,27 @@ class _Tick(_BaseOutput):
         minor (float) : value between minor ticks
     """
     _marker = 'tick'
-    _attrs = (
-        ('tick_switch', bool, Switch.ON, "{:s}"),
-        ('tick_position', bool, Position.IN, "{:s}"),
-        ('default', int, 6, "{:d}"),
-        ('major', float, 1., "{:3.1f}"),
-        ('major_size', float, 0.5, "{:8f}"),
-        ('major_color', float, 1., "{:3.1f}"),
-        ('major_linewidth', float, 2.0, "{:3.1f}"),
-        ('major_linestyle', int, LineStyle.SOLID, "{:d}"),
-        ('major_grid_switch', bool, Switch.OFF, "{:s}"),
-        ('minor', float, 1., "{:3.1f}"),
-        ('minor_color', float, 1., "{:3.1f}"),
-        ('minor_size', float, 1., "{:8f}"),
-        ('minor_ticks', int, 1, "{:d}"),
-        ('minor_grid_switch', bool, Switch.OFF, "{:s}"),
-        ('minor_linewidth', float, 2.0, "{:3.1f}"),
-        ('minor_linestyle', int, LineStyle.SOLID, "{:d}"),
-        ('place_rounded', str, True, "{:s}"),
-        ('place_position', bool, Position.BOTH, "{:s}"),
-        ('spec_type', str, None, "{:s}"),
-        )
+    _attrs = {
+        'tick_switch': (bool, Switch.ON, "{:s}"),
+        'tick_position': (bool, Position.IN, "{:s}"),
+        'default': (int, 6, "{:d}"),
+        'major': (float, 1., "{:3.1f}"),
+        'major_size': (float, 0.5, "{:8f}"),
+        'major_color': (float, 1., "{:3.1f}"),
+        'major_linewidth': (float, 2.0, "{:3.1f}"),
+        'major_linestyle': (int, LineStyle.SOLID, "{:d}"),
+        'major_grid_switch': (bool, Switch.OFF, "{:s}"),
+        'minor': (float, 1., "{:3.1f}"),
+        'minor_color': (float, 1., "{:3.1f}"),
+        'minor_size': (float, 1., "{:8f}"),
+        'minor_ticks': (int, 1, "{:d}"),
+        'minor_grid_switch': (bool, Switch.OFF, "{:s}"),
+        'minor_linewidth': (float, 2.0, "{:3.1f}"),
+        'minor_linestyle': (int, LineStyle.SOLID, "{:d}"),
+        'place_rounded': (str, True, "{:s}"),
+        'place_position': (bool, Position.BOTH, "{:s}"),
+        'spec_type': (str, None, "{:s}"),
+        }
 
 # TODO set custom ticks and its output
     def set_custom_ticks(self):
@@ -767,25 +781,25 @@ class _Tick(_BaseOutput):
 class _Bar(_BaseOutput):
     """_Axis bar"""
     _marker = 'bar'
-    _attrs = (
-        ('bar_switch', bool, Switch.ON, '{:s}'),
-        ('color', int, Color.BLACK, '{:d}'),
-        ('linestyle', int, LineStyle.SOLID, '{:d}'),
-        ('linewidth', float, 2., '{:3.1f}'),
-        )
+    _attrs = {
+        'bar_switch': (bool, Switch.ON, '{:s}'),
+        'color': (int, Color.BLACK, '{:d}'),
+        'linestyle': (int, LineStyle.SOLID, '{:d}'),
+        'linewidth': (float, 2., '{:3.1f}'),
+        }
 
 
 class _Label(_BaseOutput):
     """_Axis label"""
     _marker = 'label'
-    _attrs = (
-        ('layout', str, 'para', '{:s}'),
-        ('place_position', bool, Position.AUTO, '{:s}'),
-        ('char_size', float, 1.5, "{:8f}"),
-        ('font', int, 0, "{:d}"),
-        ('color', int, 0, "{:d}"),
-        ('place', str, "normal", "{:s}"),
-        )
+    _attrs = {
+        'layout': (str, 'para', '{:s}'),
+        'place_position': (bool, Position.AUTO, '{:s}'),
+        'char_size': (float, 1.5, "{:8f}"),
+        'font': (int, 0, "{:d}"),
+        'color': (int, Color.BLACK, "{:d}"),
+        'place': (str, "normal", "{:s}"),
+        }
 
     def __init__(self, label=None, **kwargs):
         if label is None:
@@ -793,7 +807,18 @@ class _Label(_BaseOutput):
         self.label = str(self.label)
         _BaseOutput.__init__(self, *kwargs)
 
+    def set_label(self, s):
+        """set the label to s
+
+        Args:
+            s (str or string-convertable)
+        """
+        _logger.debug("setting label to %s", s)
+        self.label = str(s)
+        _logger.debug("label set: %s", self.label)
+
     def export(self):
+        _logger.debug("exporting label: %s", self.label)
         slist = [self._marker + " \"{:s}\"".format(self.label),]
         slist += _BaseOutput.export(self)
         return slist
@@ -801,46 +826,46 @@ class _Label(_BaseOutput):
 class _TickLabel(_BaseOutput):
     """Label of axis tick"""
     _marker = 'ticklabel'
-    _attrs = (
-        ('ticklabel_switch', bool, Switch.ON, "{:s}"),
-        ('format', str, "general", "{:s}"),
-        ('formula', str, "", "\"{:s}\""),
-        ('append', str, "", "\"{:s}\""),
-        ('prepend', str, "", "\"{:s}\""),
-        ("prec", int, 5, "{:d}"),
-        ('angle', int, 0, "{:d}"),
-        ('font', int, 0, "{:d}"),
-        ('color', int, 1, "{:d}"),
-        ('skip', int, 0, "{:d}"),
-        ('stagger', int, 0, "{:d}"),
-        ('place', str, "normal", "{:s}"),
-        ('offset_switch', bool, Switch.AUTO, "{:s}"),
-        ('offset', list, [0.00, 0.01], "{:8f} , {:8f}"),
-        ('start_type_switch', bool, Switch.AUTO, "{:s}"),
-        ('start', float, 0.0, "{:8f}"),
-        ('stop_type_switch', bool, Switch.AUTO, "{:s}"),
-        ('stop', float, 0.0, "{:8f}"),
-        ('char_size', float, 1.5, "{:8f}"),
-        )
+    _attrs = {
+        'ticklabel_switch': (bool, Switch.ON, "{:s}"),
+        'format': (str, "general", "{:s}"),
+        'formula': (str, "", "\"{:s}\""),
+        'append': (str, "", "\"{:s}\""),
+        'prepend': (str, "", "\"{:s}\""),
+        "prec": (int, 5, "{:d}"),
+        'angle': (int, 0, "{:d}"),
+        'font': (int, 0, "{:d}"),
+        'color': (int, Color.BLACK, "{:d}"),
+        'skip': (int, 0, "{:d}"),
+        'stagger': (int, 0, "{:d}"),
+        'place': (str, "normal", "{:s}"),
+        'offset_switch': (bool, Switch.AUTO, "{:s}"),
+        'offset': (list, [0.00, 0.01], "{:8f} , {:8f}"),
+        'start_type_switch': (bool, Switch.AUTO, "{:s}"),
+        'start': (float, 0.0, "{:8f}"),
+        'stop_type_switch': (bool, Switch.AUTO, "{:s}"),
+        'stop': (float, 0.0, "{:8f}"),
+        'char_size': (float, 1.5, "{:8f}"),
+        }
     def __init__(self, **kwargs):
         _BaseOutput.__init__(self, **kwargs)
 
 class Errorbar(_BaseOutput):
     """Errorbar of dataset"""
     _marker = 'errorbar'
-    _attrs = (
-        ('errorbar_switch', bool, Switch.ON, '{:s}'),
-        ('place_position', bool, Position.BOTH, '{:s}'),
-        ('color', int, 1, '{:d}'),
-        ('pattern', int, 1, '{:d}'),
-        ('size', float, 1.0, '{:8f}'),
-        ('linewidth', float, 1.0, '{:3.1f}'),
-        ('linestyle', int, LineStyle.SOLID, '{:d}'),
-        ('riser_linewidth', float, 1.0, '{:3.1f}'),
-        ('riser_linestyle', int, LineStyle.SOLID, '{:d}'),
-        ('riser_clip_switch', bool, Switch.OFF, '{:s}'),
-        ('riser_clip_length', float, 0.1, '{:8f}'),
-        )
+    _attrs = {
+        'errorbar_switch': (bool, Switch.ON, '{:s}'),
+        'place_position': (bool, Position.BOTH, '{:s}'),
+        'color': (int, Color.BLACK, '{:d}'),
+        'pattern': (int, 1, '{:d}'),
+        'size': (float, 1.0, '{:8f}'),
+        'linewidth': (float, 1.0, '{:3.1f}'),
+        'linestyle': (int, LineStyle.SOLID, '{:d}'),
+        'riser_linewidth': (float, 1.0, '{:3.1f}'),
+        'riser_linestyle': (int, LineStyle.SOLID, '{:d}'),
+        'riser_clip_switch': (bool, Switch.OFF, '{:s}'),
+        'riser_clip_length': (float, 0.1, '{:8f}'),
+        }
 
 
 class _Axis(_BaseOutput, _Affix):
@@ -850,11 +875,11 @@ class _Axis(_BaseOutput, _Affix):
         axis (str) : in ['x', 'y', 'altx', 'alty']
     """
     _marker = 'axis'
-    _attrs = (
-        ('axis_switch', bool, Switch.ON, '{:s}'),
-        ('type', list, ["zero", "false"], '{:s} {:s}'),
-        ('offset', list, [0.0, 0.0], '{:8f} , {:8f}'),
-        )
+    _attrs = {
+        'axis_switch': (bool, Switch.ON, '{:s}'),
+        'type': (list, ["zero", "false"], '{:s} {:s}'),
+        'offset': (list, [0.0, 0.0], '{:8f} , {:8f}'),
+        }
     def __init__(self, axis='x', **kwargs):
         assert axis in ['x', 'y', 'altx', 'alty']
         self._bar = _Bar()
@@ -873,18 +898,25 @@ class _Axis(_BaseOutput, _Affix):
             slist += [self._affix + self._marker + " " + i for i in x.export()]
         return slist
 
-    def set_major_tick(self):
-        raise NotImplementedError
+    def _set_tick(self, **kwargs):
+        self._tick._set(**kwargs)
 
-    def set_minor_tick(self):
-        raise NotImplementedError
+    def _set_ticklabel(self, **kwargs):
+        self._ticklabel._set(**kwargs)
 
-    def set_ticklabel(self):
-        raise NotImplementedError
+    def _set_label(self, s=None, **kwargs):
+        """set the label of axis"""
+        if s:
+            self._label.set_label(s)
+        self._label._set(*kwargs)
 
-    def update(self, **kwargs):
-        """Update axis properties"""
-        # TODO update axis attributes
+    def set_label(self, s=None, **kwargs):
+        """set the label of axis
+
+        TODO
+            change arguments to emulate matplotlib behavior
+        """
+        self._set_label(s=s, **kwargs)
 
 
 class _Axes(_BaseOutput, _Affix):
@@ -894,10 +926,10 @@ class _Axes(_BaseOutput, _Affix):
         axes ('x' or 'y')
     """
     _marker = 'axes'
-    _attrs = (
-        ('scale', str, 'Normal', "{:s}"),
-        ('invert_switch', bool, Switch.OFF, "{:s}")
-        )
+    _attrs = {
+        'scale': (str, 'Normal', "{:s}"),
+        'invert_switch': (bool, Switch.OFF, "{:s}")
+        }
     def __init__(self, axes, **kwargs):
         assert axes in ['x', 'y']
         _BaseOutput.__init__(self, **kwargs)
@@ -915,12 +947,12 @@ class _Dataset(_BaseOutput, _Affix):
         comment (str) :
     """
     _marker = 's'
-    _attrs = (
-        ('hidden', str, False, '{:s}'),
-        ('type', str, 'xy', '{:s}'),
-        ('legend', str, "", "\"{:s}\""),
-        ('comment', str, "", "\"{:s}\""),
-        )
+    _attrs = {
+        'hidden': (str, False, '{:s}'),
+        'type': (str, 'xy', '{:s}'),
+        'legend': (str, "", "\"{:s}\""),
+        'comment': (str, "", "\"{:s}\""),
+        }
     def __init__(self, index, *xyz, datatype=None, **kwargs):
         # pop out to avoid duplicate arguments
         legend = kwargs.pop("legend", "")
@@ -989,17 +1021,17 @@ class _Graph(_BaseOutput, _Affix):
     Args:
         index (int)"""
     _marker = 'g'
-    _attrs = (
-        ('hidden', str, False, '{:s}'),
-        ('type', str, 'XY', '{:s}'),
-        ('stacked', str, False, '{:s}'),
-        ('bar_hgap', float, 0.0, '{:8f}'),
-        ('fixedpoint_switch', bool, Switch.OFF, '{:s}'),
-        ('fixedpoint_type', int, 0, '{:d}'),
-        ('fixedpoint_xy', list, [0.0, 0.0], '{:8f}, {:8f}'),
-        ('fixedpoint_format', list, ['general', 'general'], '{:s} {:s}'),
-        ('fixedpoint_prec', list, [6, 6], '{:d}, {:d}'),
-        )
+    _attrs = {
+        'hidden': (str, False, '{:s}'),
+        'type': (str, 'XY', '{:s}'),
+        'stacked': (str, False, '{:s}'),
+        'bar_hgap': (float, 0.0, '{:8f}'),
+        'fixedpoint_switch': (bool, Switch.OFF, '{:s}'),
+        'fixedpoint_type': (int, 0, '{:d}'),
+        'fixedpoint_xy': (list, [0.0, 0.0], '{:8f}, {:8f}'),
+        'fixedpoint_format': (list, ['general', 'general'], '{:s} {:s}'),
+        'fixedpoint_prec': (list, [6, 6], '{:d}, {:d}'),
+        }
     def __init__(self, index, **kwargs):
         self._index = index
         self._world = _World()
@@ -1059,7 +1091,7 @@ class _Graph(_BaseOutput, _Affix):
             ax = d.get(axis)
         except KeyError:
             raise ValueError("axis name %s is not supported. %s" % (axis, d.keys()))
-        ax.update(**kwargs)
+        ax._set(**kwargs)
 
     def set_xlimit(self, xmin=None, xmax=None):
         """set limits of x axis"""
@@ -1075,18 +1107,6 @@ class _Graph(_BaseOutput, _Affix):
         if ymax:
             self._world.set('ymax', ymax)
 
-
-# Class for users
-
-class Graph(_Graph):
-    """Graph object for users to operate"""
-
-    def __init__(self, index=0, xmin=None, xmax=None, ymin=None, ymax=None,
-                 **kwargs):
-        _Graph.__init__(self, index=index, **kwargs)
-        self.set_xaxis(xmin=xmin, xmax=xmax)
-        self.set_yaxis(ymin=ymin, ymax=ymax)
-
     def set_xaxis(self, **kwargs):
         """set x axis"""
         self._set_axis('x', **kwargs)
@@ -1099,6 +1119,25 @@ class Graph(_Graph):
         """Add dataset"""
         ds = Dataset(self.ndata, *xyz, datatype=datatype, label=label, comment=comment, **errors)
         self._datasets.append(ds)
+
+    def set_xlabel(self, s, **kwargs):
+        """set x label of graph to s"""
+        self._xaxis.set_label(s, **kwargs)
+
+    def set_ylabel(self, s, **kwargs):
+        """set y label of graph to s"""
+        self._yaxis.set_label(s, **kwargs)
+
+# Class for users
+
+class Graph(_Graph):
+    """Graph object for users to operate"""
+
+    def __init__(self, index=0, xmin=None, xmax=None, ymin=None, ymax=None,
+                 **kwargs):
+        _Graph.__init__(self, index=index, **kwargs)
+        self.set_xaxis(xmin=xmin, xmax=xmax)
+        self.set_yaxis(ymin=ymin, ymax=ymax)
 
 
 class Plot:
@@ -1186,6 +1225,22 @@ class Plot:
         """Add a data set to graph `igraph`"""
         self._graphs[igraph].add(*xyz, datatype=datatype, label=label,
                                  comment=comment, **errors)
+
+    def set_xtick(self, igraph=0, **kwargs):
+        """setup ticks of x axis of graph `igraph`"""
+        self._graphs[igraph].set_xtick(**kwargs)
+
+    def set_ytick(self, igraph=0, **kwargs):
+        """setup ticks of y axis of graph `igraph`"""
+        self._graphs[igraph].set_ytick(**kwargs)
+
+    def set_xlabel(self, s, igraph=0, **kwargs):
+        """set string s as the label of x axis of graph `igraph`"""
+        self._graphs[igraph].set_xlabel(s, **kwargs)
+
+    def set_ylabel(self, s, igraph=0, **kwargs):
+        """set string s as the label of y axis of graph `igraph`"""
+        self._graphs[igraph].set_ylabel(s, **kwargs)
 
     def set_xaxis(self, igraph=0, **kwargs):
         """set up x-axis of graph"""
