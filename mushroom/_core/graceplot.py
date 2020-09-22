@@ -52,8 +52,13 @@ class _MapOutput:
 
     """
     _marker = None
-    _map = {None: (None,)}
+    _map = None
     _format = '{:s}'
+
+    def __init__(self, marker, mapdict, form):
+        self._marker = marker
+        self._map = deepcopy(mapdict)
+        self._format = form
 
     def export(self):
         slist = []
@@ -72,7 +77,6 @@ class _ColorMap(_MapOutput):
 
     TODO add system configure
     """
-    _marker = 'color'
     _format = '({:d}, {:d}, {:d}), \"{:s}\"'
     # a pre-defined color map list
     _colors = [
@@ -94,26 +98,33 @@ class _ColorMap(_MapOutput):
         (  0, 139,   0, "green4"),
         ]
 
+    # add user defined color_map
+    try:
+        from mushroom.__config__ import color_map
+        for c in color_map:
+            _valid_rgb(*c)
+            _colors.append(c)
+        del color_map
+    except (TypeError, ValueError):
+        _logger.warning("user color_map is not loaded correctly")
+    except ImportError:
+        pass
+
     # check validity of pre-defined colormap
     # check if predefined rgb are valid, and there is no duplicate names
     _color_names = [i[3] for i in _colors]
     for color in _colors:
         _valid_rgb(*color)
-    assert len(_color_names) == len(set(_color_names))
+    if len(_color_names) != len(set(_color_names)):
+        raise ValueError('found duplicate color names')
+
+    _map = {}
+    for i, color in enumerate(_colors):
+        _map[i] = color
 
     def __init__(self):
-        self._map = {}
-        for i, color in enumerate(self._colors):
-            self._map[i] = color
-        self._cn = self._color_names
-        # add user defined color_map
-        try:
-            from mushroom.__config__ import color_map
-            for r, g, b, name in color_map:
-                self.add(r, g, b, name)
-            del color_map
-        except (ImportError, TypeError, ValueError):
-            _logger.warning("user color_map not loaded")
+        _MapOutput.__init__(self, 'color', _ColorMap._map, _ColorMap._format)
+        self._cn = _ColorMap._color_names
 
     def __getitem__(self, i):
         return self._map[i][3]
@@ -134,6 +145,23 @@ class _ColorMap(_MapOutput):
         """Number of available colors"""
         return len(self._cn)
 
+    def get_color(self, color):
+        """return the color code
+
+        Args:
+            color (str, int)
+
+        Returns:
+            int
+        """
+        if isinstance(color, str):
+            return self._get_color_code(color)
+        if isinstance(color, int):
+            if color in self._map:
+                return color
+            raise ValueError("color {:d} is not defined in the color map".format(color))
+        raise TypeError("color input is not valid, use str or int", color)
+
     def add(self, r, g, b, name=None):
         """Add a new color with its RGB value
 
@@ -153,23 +181,20 @@ class _ColorMap(_MapOutput):
         self._map[self.n] = color
         self._cn.append(name)
 
-    def get_color_code(self, name):
-        """get the map code of color `name`"""
+    def _get_color_code(self, name):
+        """get the map code of color `name`
+
+        Args:
+            name (str) : name of color, case-insensitive
+        """
         try:
-            return self._cn.index(name)
+            return self._cn.index(name.lower())
         except ValueError:
             raise ValueError("colro name {:s} is not found".format(name))
 
-    def get_color_name(self, code):
-        """get the name of color `code`"""
-        try:
-            return self._cm[code][3]
-        except IndexError:
-            raise ValueError("color code {:d} is not defined".format(code))
-
     def get_rgb(self, i):
         """get the rgb value of color with its code"""
-        r, g, b, _ = self._cm[i]
+        r, g, b, _ = self._map[i]
         return r, g, b
 
     def has_color(self, name):
@@ -178,7 +203,7 @@ class _ColorMap(_MapOutput):
 
 
 class Color:
-    """color
+    """Predefined color constant
     Args:
         color (str or int)
     """
@@ -198,6 +223,8 @@ class Color:
     MAROON = 13
     TURQUOISE = 14
     GREEN4 = 15
+
+plot_colormap = _ColorMap()
 
 
 class Pattern:
@@ -240,6 +267,9 @@ class _Font(_MapOutput):
     _map = {}
     for i, f in enumerate(_FONTS):
         _map[i] = (f, f)
+
+    def __init__(self):
+        _MapOutput.__init__(self, _Font._marker, _Font._map, _Font._format)
 
     def export(self):
         """return a list of font map strings"""
@@ -377,7 +407,7 @@ class _BaseOutput:
                 self.__setattr__(attr, v)
 
     def _set(self, **kwargs):
-        """basic functionality to set attributes"""
+        """backend method to set attributes"""
         if kwargs:
             if len(kwargs) < len(self._attrs):
                 for k, v in kwargs.items():
@@ -386,10 +416,10 @@ class _BaseOutput:
                         self.__setattr__(k, v)
             else:
                 for k in self._attrs:
-                    _logger.debug("setting %s", k)
                     v = kwargs.get(k, None)
                     if v is not None:
                         self.__setattr__(k, v)
+                        _logger.debug("setting %s to %s", k, str(v))
 
     # pylint: disable=R0912
     def export(self):
@@ -504,37 +534,38 @@ def _set_loclike_attr(marker, form, *args):
     f = [form,] * len(args)
     return {marker + '_location': (bool, list(args), ', '.join(f))}
 
-def _set_xy_extreme(loclike, corner, value):
-    """set xmin, ymin, xmax or ymax"""
-    assert len(loclike) == 4
+def _get_corner(corner):
     try:
-        i = {'xmin':0, 'ymin':1, 'xmax':2, 'ymax':3}.get(corner)
-        loclike[i] = value
+        return {'xmin':0, 'ymin':1, 'xmax':2, 'ymax':3}.get(corner)
     except KeyError:
         raise ValueError("invalid corner name ", corner)
 
-class _World(_BaseOutput):
+class _WorldLike(_BaseOutput):
+    _marker = ''
+    _attrs = {None: (None,)}
+
+    def get_world(self):
+        return self.__getattribute__(self._marker + '_location')
+
+    def set_world(self, new):
+        self.__setattr__(self._marker + '_location', new)
+
+class _World(_WorldLike):
     """world of graph"""
     _marker = 'world'
-    _attrs = _set_loclike_attr('world', '{:8f}', 0., 0., 1., 1.)
-    def set(self, corner, value):
-        _set_xy_extreme(self.world_location, corner, value)
+    _attrs = {'world_location': (bool, [0., 0., 1., 1.], '{:8f}, {:8f}, {:8f}, {:8f}')}
 
-class _StackWorld(_BaseOutput):
+class _StackWorld(_WorldLike):
     """stack world of graph"""
     _marker = 'stack_world'
-    _attrs = _set_loclike_attr('stack_world', '{:8f}', 0., 1., 0., 1.)
-    def set(self, corner, value):
-        _set_xy_extreme(self.stack_world_location, corner, value)
+    _attrs = _set_loclike_attr(_marker, '{:8f}', 0., 1., 0., 1.)
 
-class _View(_BaseOutput):
+class _View(_WorldLike):
     """stack world of graph"""
     _marker = 'view'
-    _attrs = _set_loclike_attr('view', '{:8f}', 0.15, 0.10, 1.20, 0.90)
-    def set(self, corner, value):
-        _set_xy_extreme(self.view_location, corner, value)
+    _attrs = {'view_location': (bool, [0.15, 0.10, 1.20, 0.90], '{:8f}, {:8f}, {:8f}, {:8f}')}
 
-class _Znorm(_BaseOutput):
+class _Znorm(_WorldLike):
     """stack world of graph"""
     _marker = 'znorm'
     _attrs = _set_loclike_attr('znorm', '{:d}', 1)
@@ -1014,6 +1045,12 @@ class Dataset(_Dataset):
         _Dataset.__init__(self, index, *xyz, datatype=datatype, 
                           legend=label, comment=comment, **kwargs)
 
+    def set_label(self, s):
+        """set the label"""
+        if s:
+            self.label = s
+
+
 
 class _Graph(_BaseOutput, _Affix):
     """Graph object for internal use
@@ -1032,6 +1069,7 @@ class _Graph(_BaseOutput, _Affix):
         'fixedpoint_format': (list, ['general', 'general'], '{:s} {:s}'),
         'fixedpoint_prec': (list, [6, 6], '{:d}, {:d}'),
         }
+    
     def __init__(self, index, **kwargs):
         self._index = index
         self._world = _World()
@@ -1078,7 +1116,6 @@ class _Graph(_BaseOutput, _Affix):
             slist += ds.export_data(igraph=self._index)
         return slist
 
-
     @property
     def ndata(self):
         """Number of datasets in current graph"""
@@ -1095,17 +1132,29 @@ class _Graph(_BaseOutput, _Affix):
 
     def set_xlimit(self, xmin=None, xmax=None):
         """set limits of x axis"""
-        if xmin:
-            self._world.set('xmin', xmin)
-        if xmax:
-            self._world.set('xmax', xmax)
+        self.set_limits(xmin=xmin, xmax=xmax)
 
     def set_ylimit(self, ymin=None, ymax=None):
         """set limits of y axis"""
-        if ymin:
-            self._world.set('ymin', ymin)
-        if ymax:
-            self._world.set('ymax', ymax)
+        self.set_limits(ymin=ymin, ymax=ymax)
+
+    def set_limits(self, xmin=None, ymin=None, xmax=None, ymax=None):
+        """set the limits (world) of graph"""
+        pre = self._world.get_world()
+        for i, v in enumerate([xmin, ymin, xmax, ymax]):
+            if v:
+                pre[i] = v
+        self._world.set_world(pre)
+
+    def set_view(self, xmin=None, ymin=None, xmax=None, ymax=None):
+        """set the view (apperance in the plot) of graph"""
+        pre = self._view.get_world()
+        _logger.debug("view before %8f %8f %8f %8f", *pre)
+        for i, v in enumerate([xmin, ymin, xmax, ymax]):
+            if v is not None:
+                pre[i] = v
+        self._view.set_world(pre)
+        _logger.debug("view after %8f %8f %8f %8f", *self._view.get_world())
 
     def set_xaxis(self, **kwargs):
         """set x axis"""
@@ -1128,6 +1177,18 @@ class _Graph(_BaseOutput, _Affix):
         """set y label of graph to s"""
         self._yaxis.set_label(s, **kwargs)
 
+    def set_title(self, title=None, **kwargs):
+        """set the title string or its attributes"""
+        if title:
+            self._title.__setattr__('title_comment', title)
+        self._title._set(**kwargs)
+
+    def set_subtitle(self, subtitle=None, **kwargs):
+        """set the subtitle string or its attributes"""
+        if subtitle:
+            self._subtitle.__setattr__('subtitle_comment', subtitle)
+        self._subtitle._set(**kwargs)
+
 # Class for users
 
 class Graph(_Graph):
@@ -1138,6 +1199,36 @@ class Graph(_Graph):
         _Graph.__init__(self, index=index, **kwargs)
         self.set_xaxis(xmin=xmin, xmax=xmax)
         self.set_yaxis(ymin=ymin, ymax=ymax)
+
+
+# pylint: disable=too-many-locals
+def _set_graph_alignment(rows, cols, hgap=0.02, vgap=0.02, **kwargs):
+    """Set the graph alignment"""
+    # global min and max
+    gxmin, gymin, gxmax, gymax = _View._attrs['view_location'][1]
+    width = (gxmax - gxmin - hgap * (cols-1)) / cols
+    heigh = (gymax - gymin - vgap * (rows-1)) / rows
+    _logger.debug("average graph width and height : %f %f", width, heigh)
+    graphs = [] 
+    # from left to right, upper to lower
+    for row in range(rows):
+        for col in range(cols):
+            i = row * cols + col
+            g = Graph(index=i)
+            g.set_view(gxmin + (hgap+width) * col,
+                       gymax - (vgap+heigh) * row - heigh,
+                       gxmin + (hgap+width) * col + width,
+                       gymax - (vgap+heigh) * row
+                       )
+            _logger.debug("graph view %8f %8f %8f %8f", *g._view.view_location)
+            graphs.append(g)
+            _logger.debug("graph view %8f %8f %8f %8f", *graphs[-1]._view.view_location)
+    for i, g in enumerate(graphs):
+        _logger.debug("initializting graphs %d done, view %8f %8f %8f %8f",
+                      i, *g._view.view_location)
+    if kwargs:
+        raise NotImplementedError
+    return graphs
 
 
 class Plot:
@@ -1159,7 +1250,8 @@ class Plot:
     Private methods:
     """
     
-    def __init__(self, rows=1, cols=1, qtgrace=False):
+    def __init__(self, rows=1, cols=1, hgap=0.02, vgap=0.02,
+                 qtgrace=False, **kwargs):
         self._comment_head = ["# Grace project file", "#"]
         # header that seldom needs to change
         self._head = ["version 50122",
@@ -1172,18 +1264,16 @@ class Plot:
         self._page = _Page()
         self._regions = [_Region(i) for i in range(5)]
         self._font = _Font()
-        self._cm = _ColorMap()
+        self._cm = plot_colormap
         self._timestamp = _TimesStamp()
         self._default = _Default()
-        self._graphs = []
-        self._set_graph_alignment(rows, cols)
+        # drawing objects
+        self._objects = []
+        # set the graphs by alignment
+        self._graphs = _set_graph_alignment(rows=rows, cols=cols, hgap=hgap, vgap=vgap,
+                                            **kwargs)
         self._use_qtgrace = qtgrace
 
-    def _set_graph_alignment(self, rows, cols):
-        """Set the graph alignment"""
-        n = rows * cols
-        for i in range(n):
-            self._graphs.append(Graph(index=i))
 
     def __str__(self):
         """TODO print the whole agr file"""
@@ -1226,6 +1316,14 @@ class Plot:
         self._graphs[igraph].add(*xyz, datatype=datatype, label=label,
                                  comment=comment, **errors)
 
+    def set_title(self, title=None, igraph=0, **kwargs):
+        """set the title of graph `igraph`"""
+        self._graphs[igraph].set_title(title=title, **kwargs)
+
+    def set_subtitle(self, subtitle=None, igraph=0, **kwargs):
+        """set the subtitle of graph `igraph`"""
+        self._graphs[igraph].set_subtitle(subtitle=subtitle, **kwargs)
+
     def set_xtick(self, igraph=0, **kwargs):
         """setup ticks of x axis of graph `igraph`"""
         self._graphs[igraph].set_xtick(**kwargs)
@@ -1241,6 +1339,14 @@ class Plot:
     def set_ylabel(self, s, igraph=0, **kwargs):
         """set string s as the label of y axis of graph `igraph`"""
         self._graphs[igraph].set_ylabel(s, **kwargs)
+
+    def xlabel(self, s, igraph=0):
+        """set xlabel. emulate pylab.xlabel"""
+        self.set_xlabel(s, igraph=igraph)
+
+    def ylabel(self, s, igraph=0):
+        """set ylabel. emulate pylab.ylabel"""
+        self.set_ylabel(s, igraph=igraph)
 
     def set_xaxis(self, igraph=0, **kwargs):
         """set up x-axis of graph"""

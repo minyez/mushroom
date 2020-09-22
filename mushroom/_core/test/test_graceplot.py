@@ -2,7 +2,7 @@
 """Test graceplot"""
 import unittest as ut
 
-from mushroom._core.graceplot import _ColorMap, _Font
+from mushroom._core.graceplot import _ColorMap, _Font, Graph
 
 class test_ColorMap(ut.TestCase):
     """test colormap utilites"""
@@ -64,6 +64,16 @@ map font 12 to "Symbol", "Symbol"
 map font 13 to "ZapfDingbats", \"ZapfDingbats\"
 """
         self.assertEqual(str(self.f) + "\n", s)
+
+
+class test_graph(ut.TestCase):
+    """test graph operations"""
+
+    def test_change_view(self):
+        """test if view changing is working"""
+        g = Graph(index=1)
+        g.set_view(0.0, 0.0, 1.0, 0.5)
+        self.assertListEqual(g._view.view_location, [0.0, 0.0, 1.0, 0.5])
 
 if __name__ == "__main__":
     ut.main()
