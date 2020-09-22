@@ -404,6 +404,8 @@ class _BaseOutput:
             except AttributeError:
                 if typ is not bool:
                     v = typ(v)
+                elif attr.endswith('_location'):
+                    v = list(v)
                 self.__setattr__(attr, v)
 
     def _set(self, **kwargs):
@@ -530,9 +532,9 @@ class _SubTitle(_TitleLike):
     _attrs = dict(**_TitleLike._attrs)
     _attrs[_marker+'_comment'] = (bool, "", "\"{:s}\"")
 
-def _set_loclike_attr(marker, form, *args):
+def _set_loclike_attr(marker, form, *args, sep=', '):
     f = [form,] * len(args)
-    return {marker + '_location': (bool, list(args), ', '.join(f))}
+    return {marker + '_location': (bool, list(args), sep.join(f))}
 
 def _get_corner(corner):
     try:
@@ -541,6 +543,10 @@ def _get_corner(corner):
         raise ValueError("invalid corner name ", corner)
 
 class _WorldLike(_BaseOutput):
+    """super class for object with only one attribute whose
+    value is floats separated by comma
+
+    """
     _marker = ''
     _attrs = {None: (None,)}
 
@@ -553,7 +559,7 @@ class _WorldLike(_BaseOutput):
 class _World(_WorldLike):
     """world of graph"""
     _marker = 'world'
-    _attrs = {'world_location': (bool, [0., 0., 1., 1.], '{:8f}, {:8f}, {:8f}, {:8f}')}
+    _attrs = _set_loclike_attr(_marker, '{:8f}', 0., 0., 1., 1.)
 
 class _StackWorld(_WorldLike):
     """stack world of graph"""
@@ -563,7 +569,13 @@ class _StackWorld(_WorldLike):
 class _View(_WorldLike):
     """stack world of graph"""
     _marker = 'view'
-    _attrs = {'view_location': (bool, [0.15, 0.10, 1.20, 0.90], '{:8f}, {:8f}, {:8f}, {:8f}')}
+    _attrs = _set_loclike_attr(_marker, '{:8f}', 0.15, 0.10, 1.20, 0.85)
+
+    def __init__(self, **kwargs):
+        _WorldLike.__init__(self, **kwargs)
+        self.set_view = self.set_world
+        self.get_view = self.get_world
+
 
 class _Znorm(_WorldLike):
     """stack world of graph"""
@@ -1142,7 +1154,7 @@ class _Graph(_BaseOutput, _Affix):
         """set the limits (world) of graph"""
         pre = self._world.get_world()
         for i, v in enumerate([xmin, ymin, xmax, ymax]):
-            if v:
+            if v is not None:
                 pre[i] = v
         self._world.set_world(pre)
 
@@ -1214,7 +1226,7 @@ def _set_graph_alignment(rows, cols, hgap=0.02, vgap=0.02, **kwargs):
     for row in range(rows):
         for col in range(cols):
             i = row * cols + col
-            g = Graph(index=i)
+            g = _Graph(index=i)
             g.set_view(gxmin + (hgap+width) * col,
                        gymax - (vgap+heigh) * row - heigh,
                        gxmin + (hgap+width) * col + width,
@@ -1274,9 +1286,8 @@ class Plot:
                                             **kwargs)
         self._use_qtgrace = qtgrace
 
-
     def __str__(self):
-        """TODO print the whole agr file"""
+        """print the whole agr file"""
         slist = [*self._head,]
         headers = [self._page, self._font, self._cm,
                    self._default, self._timestamp, *self._regions]
@@ -1315,6 +1326,10 @@ class Plot:
         """Add a data set to graph `igraph`"""
         self._graphs[igraph].add(*xyz, datatype=datatype, label=label,
                                  comment=comment, **errors)
+
+    def add_object(self, objtype, **kwargs):
+        """add object to the plot"""
+        raise NotImplementedError
 
     def set_title(self, title=None, igraph=0, **kwargs):
         """set the title of graph `igraph`"""
