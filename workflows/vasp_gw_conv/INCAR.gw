@@ -1,0 +1,19 @@
+# Minimal electronic part
+ ISTART = 1
+ ENCUT = _encut_
+ ENCUTGW = _encutgw_
+ PREC = Accurate
+ LREAL = .False.
+ EDIFF = 1E-8
+ ISPIN = 1
+ ISMEAR = 0 ; SIGMA = 0.05
+ LMAXMIX = 6
+# G0W0
+ ALGO = GW0 ;
+ NELM = 1
+ NBANDS = _nbands_
+ LOPTICS = .TRUE.
+ NEDOS = 3000
+ NOMEGA = 192
+ LWAVE = F
+ KPAR = 2

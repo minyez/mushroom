@@ -1,0 +1,10 @@
+# Minimal electronic part
+ ISTART = 0
+ ENCUT = _encut_
+ PREC = Accurate
+ LREAL = .False.
+ EDIFF = 1E-8
+ ISPIN = 1
+ ISMEAR = 0 ; SIGMA = 0.05
+ NPAR = 4
+ LMAXMIX = 6

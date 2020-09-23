@@ -1,0 +1,16 @@
+# Minimal electronic part
+ ENCUT = _encut_
+ PREC = Accurate
+ LREAL = .False.
+ EDIFF = 1E-8
+ ISPIN = 1
+ ISMEAR = 0 ; SIGMA = 0.05
+ NPAR = 4
+
+# Exact Diag.
+ ALGO   = Exact
+ NBANDS = _nbands_
+ LOPTICS = .TRUE.
+ NEDOS = 3000
+ ICHARG = 11
+ LMAXMIX = 6
