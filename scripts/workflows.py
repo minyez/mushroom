@@ -36,12 +36,26 @@ def get_avail_workflows(prog=None):
     return awfs
 
 def init_workflow_symlink(wf):
-    """create symlinks to common libraries in all workflow directories"""
-    prog = wf.split("_")[0] + ".sh"
-    p = Path(PATH_WORKFLOWS / wf / prog)
-    _logger.debug(p)
-    if not p.is_symlink():
-        p.symlink_to(PATH_WORKFLOWS / prog)
+    """create symlinks to common libraries in all workflow directories
+
+    If file `.depends` is found in the directory, it will read each line as
+    file name of the library script to source in `lib`
+    """
+    p = Path(PATH_WORKFLOWS / wf / ".depends")
+    if p.is_file():
+        _logger.debug(p)
+        with p.open() as f:
+            for x in f.readlines():
+                dep = x.strip()
+                pnew = PATH_WORKFLOWS / wf / dep
+                if not pnew.is_symlink():
+                    pnew.symlink_to(PATH_WORKFLOWS / 'libs' / dep)
+    else:
+        prog = wf.split("_")[0] + ".sh"
+        p = Path(PATH_WORKFLOWS / wf / prog)
+        _logger.debug(p)
+        if not p.is_symlink():
+            p.symlink_to(PATH_WORKFLOWS / 'libs' / prog)
 
 def complete_workflow_name(wf):
     """complete the workflow name"""
@@ -55,8 +69,8 @@ def complete_workflow_name(wf):
             return x
     raise ValueError("no workflow is found for ", wf)
 
-def workflows():
-    """main stream"""
+def _parser():
+    """the argument parser"""
     p = ArgumentParser(description=__doc__)
     g = p.add_mutually_exclusive_group()
     g.add_argument("-f", dest="wf", type=str, default=None,
@@ -65,11 +79,17 @@ def workflows():
                    help="search available workflows for program")
     g.add_argument("-p", dest='print', action="store_true",
                    help="print available workflows")
-    g.add_argument("--dst", type=str, default=".",
+    g.add_argument("--init-links", dest='init_links', action="store_true",
+                   help="initialize all links of dependency scripts")
+    p.add_argument("--dst", type=str, default=".",
                    help="destination to copy the workflow files")
     p.add_argument("-D", dest='debug', action="store_true",
                    help="debug mode")
-    args = p.parse_args()
+    return p.parse_args()
+
+def workflows():
+    """main stream"""
+    args = _parser()
 
     if args.debug:
         _logger.setLevel("DEBUG")
@@ -77,6 +97,11 @@ def workflows():
         for wf in get_avail_workflows(prog=args.search):
             print(wf)
         return
+    if args.init_links:
+        for wf in get_avail_workflows():
+            init_workflow_symlink(wf)
+        return
+
     if args.wf:
         wf = complete_workflow_name(args.wf)
         init_workflow_symlink(wf)
