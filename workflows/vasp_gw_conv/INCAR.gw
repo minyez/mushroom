@@ -1,16 +1,18 @@
-# Minimal electronic part
+# common electronic part
  ISTART = 1
+ ICHARG = 11
  ENCUT = _encut_
- ENCUTGW = _encutgw_
  PREC = Accurate
  LREAL = .False.
  EDIFF = 1E-8
  ISPIN = 1
  ISMEAR = 0 ; SIGMA = 0.05
  LMAXMIX = 6
-# G0W0
+
+# G0W0 setup
  ALGO = GW0 ;
  NELM = 1
+ ENCUTGW = _encutgw_
  NBANDS = _nbands_
  LOPTICS = .TRUE.
  NEDOS = 3000

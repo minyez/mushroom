@@ -643,9 +643,27 @@ class Cell(LengthUnit):
         '''
         return self.latt, self.posi, self.type_index
 
+    def export(self, output_format='vasp', filename=None, scale=1.0):
+        '''Export to file in the format `output_format`'''
+        o = output_format.lower()
+        exporter = {
+            'vasp': self.export_as_vasp
+            }
+        e = exporter.get(o, None)
+        if e is None:
+            raise ValueError("Unsupported export:", output_format)
+        default_suffix = {
+            'vasp': 'POSCAR'
+            }
+        suffix = default_suffix.get(o, 'txt')
+        if filename is None:
+            filename = 'cell.' + suffix
+        with open(filename, 'w') as h:
+            print(e(scale=scale), file=h)
+
     # export to software-specific output
-    def export_to_vasp(self, scale=1.0):
-        '''Export to VASP POSCAR format'''
+    def export_as_vasp(self, scale=1.0):
+        '''Export as VASP POSCAR format'''
         # list containting strings to return
         ret = []
         # convert to ang, as vasp use ang only
@@ -657,7 +675,7 @@ class Cell(LengthUnit):
         ret.append("{:8.6f}".format(scale))
         for i in range(3):
             ret.append("  %12.8f  %12.8f  %12.8f"
-                        % (self._latt[i, 0], self._latt[i, 1], self._latt[i, 2]))
+                       % (self._latt[i, 0], self._latt[i, 1], self._latt[i, 2]))
         if not syms[0].startswith("Unk"):
             ret.append(' '.join(syms))
         ret.append(' '.join([str(x) for x in nats]))
@@ -1018,26 +1036,30 @@ class Cell(LengthUnit):
         return cls.zincblende(atom, atom, a=a, primitive=primitive, **kwargs)
 
     @classmethod
-    def wurtzite(cls, atom1="Zn", atom2="O", a=1.0, **kwargs):
+    def wurtzite(cls, atom1="Zn", atom2="O", a=3.250, c=None, u=None, **kwargs):
         '''Generate a wurtzite lattice (space group 186)
 
         Args:
             atom1 (str): symbol of atom at vertices of lattice
             atom2 (str): symbol of atom at edges of lattice
-            a (float): the lattice constant of the cell.
+            a, c (float): the lattice constant of the cell.
+            u (float): internal coordinate, > 0.25
             kwargs: keyword argument for ``Cell`` except ``coord_sys``
         '''
-        _a = abs(a)
-        _halfa = _a/2.0
-        _c = _a * np.sqrt(8.0/3)
-        latt = [[_a, 0.0, 0.0],
-                [-_halfa, np.sqrt(3)*_halfa, 0.0],
-                [0.0, 0.0, _c]]
+        a = abs(a)
+        halfa = a/2.0
+        if c is None:
+            c = a * np.sqrt(8.0/3)
+        if u is None:
+            u = 1.0/6
+        latt = [[a, 0.0, 0.0],
+                [-halfa, np.sqrt(3)*halfa, 0.0],
+                [0.0, 0.0, c]]
         atms = [atom1, ]*2 + [atom2, ]*2
         posi = [[0.0, 0.0, 0.0],
                 [2.0/3, 1.0/3, 0.5],
-                [0.0, 0.0, 2.0/3],
-                [2.0/3, 1.0/3, 1.0/6]]
+                [0.0, 0.0, 1.0-u],
+                [2.0/3, 1.0/3, 0.5-u]]
         kwargs.pop("coord_sys", None)
         if "comment" not in kwargs:
             kwargs.update({"comment": "Wurtzite {}{}".format(atom1, atom2)})

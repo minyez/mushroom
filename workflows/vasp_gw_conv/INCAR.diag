@@ -1,16 +1,17 @@
-# Minimal electronic part
+# common electronic part
+ ICHARG = 11
+ ISPIN = 1
  ENCUT = _encut_
  PREC = Accurate
  LREAL = .False.
  EDIFF = 1E-8
- ISPIN = 1
  ISMEAR = 0 ; SIGMA = 0.05
  NPAR = 4
+ LMAXMIX = 6
+ GGA = PE
 
-# Exact Diag.
+# Exact Diagnolization
  ALGO   = Exact
  NBANDS = _nbands_
  LOPTICS = .TRUE.
  NEDOS = 3000
- ICHARG = 11
- LMAXMIX = 6

@@ -1,4 +1,5 @@
-# Minimal electronic part
+# Typical DFT setup
+# electronic part
  ISTART = 0
  ENCUT = _encut_
  PREC = Accurate
@@ -8,3 +9,4 @@
  ISMEAR = 0 ; SIGMA = 0.05
  NPAR = 4
  LMAXMIX = 6
+ GGA = PE

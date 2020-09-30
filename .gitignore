@@ -25,5 +25,8 @@ dist/
 .cache/
 .coverage
 
+# workflows
+workflows/vasp_*/vasp.sh
+
 mcm.info
 commit.info
