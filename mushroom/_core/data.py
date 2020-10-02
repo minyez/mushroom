@@ -58,11 +58,12 @@ class Data:
     Private methods:
 
     Constants:
-        _DATATYPES (dict) : available datatypes
+        DATATYPES (dict) : available datatypes
             key is the acronym of the data type
             value a list, optional arguments for left-and-right errors
     """
-    _DATATYPES = {
+    ERROR_ARGS = ['dx', 'dxl', 'dy', 'dyl']
+    DATATYPES = {
         'xy': (2, []),
         'bar': (2, []),
         'xyz': (3, []),
@@ -75,11 +76,11 @@ class Data:
         'xydxdy': (2, ['dx', 'dy']),
         'xydxdxdydy': (2, ['dx', 'dxl', 'dy', 'dyl']),
         }
-    available_types = tuple(_DATATYPES.keys())
+    available_types = tuple(DATATYPES.keys())
 
     def __init__(self, *xyz, datatype=None, label=None, comment=None,
-                 **kwargs):
-        datatype, self._error_cols = Data._check_data_type(*xyz, datatype=datatype, **kwargs)
+                 **errors):
+        datatype, self._error_cols = Data._check_data_type(*xyz, datatype=datatype, **errors)
         # TODO use numpy to treat xyz and error data
         if datatype == "bar":
             self.x = xyz[0]
@@ -91,8 +92,8 @@ class Data:
             self.x, self.y, self.z = xyz
             self._data_cols = ['x', 'y', 'z']
         for opt in self._error_cols:
-            if opt in kwargs:
-                self.__setattr__(opt, kwargs[opt])
+            if opt in errors:
+                self.__setattr__(opt, errors[opt])
         self.label = label
         self.comment = comment
         self.datatype = datatype
@@ -267,13 +268,13 @@ class Data:
                             form=form, transpose=transpose, separator=separator)
 
     @classmethod
-    def _check_data_type(cls, *xyz, datatype=None, **kwargs):
+    def _check_data_type(cls, *xyz, datatype=None, **errors):
         """confirm the data type of input. Valid types are declared in Data.DATATYPES
     
         Args:
             *xyz (array-like):
             datatype (str) : data type of . None for automatic detect
-            kwargs for parsing error
+            errors for parsing error
                 d(x,y,z) (float) : error. when the according l exists, it becomes the upper error
                 d(x,y,z)l (float) : lower error
         """
@@ -284,9 +285,9 @@ class Data:
         # automatic detect
         if datatype is None:
             t = {2: 'xy', 3: 'xyz'}[nd]
-            for dt, (n, ec) in cls._DATATYPES.items():
+            for dt, (n, ec) in cls.DATATYPES.items():
                 if n == nd and dt.startswith(t):
-                    find_all = all([required_e in kwargs for required_e in ec])
+                    find_all = all([errors.get(required_e, None) for required_e in ec])
                     if find_all:
                         t = dt
                         err_cols = ec
@@ -295,10 +296,10 @@ class Data:
         # check consistency
         if datatype.lower in cls.available_types:
             t = datatype.lower
-            required_n, err_cols = cls._DATATYPES[t]
+            required_n, err_cols = cls.DATATYPES[t]
             if required_n != nd:
                 raise ValueError("Inconsistent xyz data and specified datatype ", datatype)
-            find_all = all([required_e in kwargs for required_e in err_cols])
+            find_all = all([required_e in errors for required_e in err_cols])
             if not find_all:
                 raise ValueError("Inconsistent error and specified datatype ", datatype)
         else:

@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # common functions to be used in vasp workflows
 
-backup_results () {
-  files=(OUTCAR EIGENVAL vasprun.xml)
+function backup_results () {
+  # back up OUTCAR EIGENVAL DOSCAR and vasprun.xml
+  files=(OUTCAR EIGENVAL DOSCAR vasprun.xml)
   for f in "${files[@]}"; do
     if [ -f "$f" ]; then
       cp "$f" "$f.$1"
@@ -10,7 +11,7 @@ backup_results () {
   done
 }
 
-get_wall () {
+function wall_time () {
   # get wall time from OUTCAR
   # $1: outcar file (OUTCAR)
   if (( $# == 0 )); then
@@ -21,7 +22,7 @@ get_wall () {
   awk '/Elapsed time/ {print $4}' "$fn"
 }
 
-get_nelect () {
+function get_nelect () {
   # get the number of electrons (float)
   # $1: outcar file (OUTCAR)
   if (( $# == 0 )); then
@@ -32,7 +33,7 @@ get_nelect () {
   awk '/NELECT/ {print $3}' "$fn"
 }
 
-get_vb () {
+function get_vb () {
   # get the number of valence bands
   # $1: outcar file (OUTCAR)
   if (( $# == 0 )); then
@@ -43,7 +44,7 @@ get_vb () {
   awk '/NELECT/ {printf("%d", $3/2.0)}' "$fn"
 }
 
-get_nbands () {
+function get_nbands () {
   # get the total number of bands
   # $1: outcar file (OUTCAR)
   if (( $# == 0 )); then
@@ -53,11 +54,13 @@ get_nbands () {
   fi
   awk '/NBANDS/ {print $15}' "$fn"
 }
-get_eigen_ik () {
+
+function get_eigen_ik () {
   # get the vb and cb eigen values at ik
   # $1: index of k (1)
   # $2: eigen value file (EIGENVAL)
   # $3: outcar file (OUTCAR)
+  # returns: vb energy and cb energy at ik
   if (( $# == 3 )); then
     ik=$1
     fneig=$2
@@ -84,7 +87,7 @@ get_eigen_ik () {
   echo "$vb $cb"
 }
 
-get_qpc_vb_cb () {
+function get_qpc_vb_cb () {
   # get the QP correction of VBM and CBM
   # $1: OUTCAR file
   # $2: index of kpoints
@@ -116,7 +119,7 @@ get_qpc_vb_cb () {
   echo "$qpc_vb $qpc_cb $uqpc_vb $uqpc_cb"
 }
 
-run_gw_3steps (){
+function run_gw_3steps () {
   # run the three step GW calculations
   # $1: vasp command, e.g. mpirun -np 4 vasp
   # $2: starting step. 2 to skip SCF, 3 to skip Diag
@@ -149,5 +152,16 @@ run_gw_3steps (){
   cp INCAR.gw INCAR
   $vaspcmd > out.gw 2>&1
   backup_results gw
+}
 
+function get_encut () {
+  if (( $# == 0 )); then
+    fn="INCAR"
+  else
+    fn=$1
+  fi
+  s=$(awk '/ENCUT[ ]*=/' "$fn")
+  s=${s#*"="[ ]*}
+  s=${s%%[ ]*";"*}
+  echo "$s"
 }

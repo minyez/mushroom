@@ -2,11 +2,11 @@
 """Test graceplot"""
 import unittest as ut
 
-from mushroom._core.graceplot import _ColorMap, _Font, Graph, _View
+from mushroom._core.graceplot import (_ColorMap, _Font,
+                                      Graph, _View)
 
 class test_ColorMap(ut.TestCase):
     """test colormap utilites"""
-
 
     def test_output(self):
         """test if the grace output of default colormap is as expected"""
@@ -32,7 +32,7 @@ map color 15 to (0, 139, 0), "green4"
         self.assertEqual(str(c) + '\n', s)
 
     def test_add_color(self):
-        """test colormap print out"""
+        """add new color to color map"""
         c = _ColorMap()
         n = c.n
         c.add(10, 10, 10, None)
@@ -89,6 +89,13 @@ class test_Graph(ut.TestCase):
         g = Graph(index=1)
         g.set_view(0.0, 0.0, 1.0, 0.5)
         self.assertListEqual(g._view.view_location, [0.0, 0.0, 1.0, 0.5])
+
+class test_Axis(ut.TestCase):
+    """test Axix functionality"""
+
+class test_IntConstMap(ut.TestCase):
+    """test subclasses of IntConstMap"""
+
 
 if __name__ == "__main__":
     ut.main()

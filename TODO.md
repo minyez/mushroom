@@ -1,4 +1,4 @@
-# 施工进度
+# 施工进度与挖坑
 
 ## 整体安排
 
@@ -12,9 +12,54 @@
 
 ### 测试文件
 
-每个子 package 的测试文件放置在该 package 下的 `test` 文件夹内. 使用 pytest 和 unittest 框架.
+对于 Python 库, 每个子 package 的测试文件放置在该 package 下的 `test` 文件夹内. 使用 pytest 和 unittest 框架.
+对于 workflow 中的 Bash 脚本, 暂不考虑做测试. 今后视情况用 bats 进行测试.
 
-## Python 库
+## Python 库 mushroom
 
-原则是尽可能减少子 package 的数量. 主要的考虑因素不是模块的长度, 而是模块的集成度和自洽度.
+原则是尽可能减少子 package 的数量. 主要的考虑因素不是模块的长度, 而是模块的功能一致, 集成度和自洽.
+
+### VASP
+
+### ABINIT
+
+### WIEN2k
+
+### GPAW
+
+### 爬虫
+
+#### SpringerMaterials
+
+- [ ] `Cif` 类在读取 SpringerMaterials 上下载的 cif 文件时报错.
+
+#### MaterialsProject
+
+Require `pymatgen`
+
+## 工作流 workflows
+
+### VASP
+
+#### hybrid functional
+
+- [ ] 截断和 kmesh 收敛测试
+- [ ] SCF 和 DOS
+- [ ] 能带
+
+#### GW
+
+- [ ] 正常三步计算
+- [ ] 波函数截断 `ENCUT`, 介电矩阵截断 `ENCUTGW`, 能带数 `NBANDS` 收敛
+- [ ] `NOMEGA` 收敛测试
+
+#### 结构优化
+
+- [ ] 表面能随 slab 层数和固定层数的收敛
+
+### ABINIT
+
+### WIEN2k
+
+### GPAW
 

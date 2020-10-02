@@ -1,52 +1,26 @@
 #!/usr/bin/env bash
 
-# ===== variables =====
-# vasp executable
-vaspexe="/gpfs/share/home/1501210186/program/vasp.5.4.4/bin/vasp_std"
-# number of tasks
-defaultnp=4
-# ENCUTS to test
-encuts=(
-  800
-  1000
-  1270
-)
-encutgwratios=(
-  0.5
-)
-# NBANDS / total nbands
-nbandsratios=(
-  0.6
-  0.7
-  0.8
-  0.9
-  1.0
-)
-modules=()
+# load pre-requisites from platform
 # =====================
-# pre-requisites from platform
-module load "${modules[@]}"
-# =====================
-np=${SLURM_NTASKS:=$defaultnp}
-vaspcmd="mpirun -np $np $vaspexe"
-
-# ===== functions =====
+source ./variables.sh
 source ./common.sh
 source ./vasp.sh
 
-gw_calc() {
-  # 1: step to start. 1 or 2 to skip scf and diag
-  # TODO change main stream to make it compatible with 1/2
+np=${SLURM_NTASKS:=$defaultnp}
+vaspcmd="mpirun -np $np $vaspexe"
+module load "${modules[@]}"
+# ===== functions =====
+function gw_calc () {
   run_gw_3steps "$vaspcmd"
   gap=$(get_eigen_ik 1 "EIGENVAL" "OUTCAR" | awk '{print($2-$1)}')
-  etime=$(get_wall "OUTCAR")
+  etime=$(wall_time "OUTCAR")
   echo "$gap $etime"
   rm -f ./*.tmp ./WAVE*
 }
 # =====================
 
-# ===== main =====
-main () {
+# ===== run_vasp_gw_conv =====
+function run_vasp_gw_conv () {
   if [ ! -f results.txt ]; then
     echo "ENCUT  ENCUTGW  NBANDS    Eg   time" > results.txt
   fi
@@ -79,5 +53,5 @@ main () {
   done
 }
 
-main
+run_vasp_gw_conv "$@"
 

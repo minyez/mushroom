@@ -6,13 +6,18 @@ Script to run GW convergence tests on ENCUT, ENCUTGW and NBANDS simulaneously in
 
 ## Files
 
-- `run_vasp_gw_conv.sh` : flow control file
-- `vasp.sh` : VASP infrastructure functions
+Things you may need to adapt
+- `variables.sh` : variables to set by user
 - `INCAR.scf`
 - `KPOINTS.scf`
 - `INCAR.diag`
 - `INCAR.gw`
 - `KPOINTS.gw`
+
+Thins usually not necessary to change
+- `run_vasp_gw_conv.sh` : flow control file
+- `common.sh` : infrastructure functions for common use
+- `vasp.sh` : VASP infrastructure functions
 
 ## TODO
 
@@ -27,3 +32,4 @@ See
 - [[ShishkinM06]]
 - [[KlimesJ14]]
 - [[GruneisA14]]
+
