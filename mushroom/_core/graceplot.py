@@ -146,7 +146,7 @@ class _ColorMap(_MapOutput):
         """Number of available colors"""
         return len(self._cn)
 
-    def get_color(self, color):
+    def get(self, color):
         """return the color code
 
         Args:
@@ -205,41 +205,36 @@ class _ColorMap(_MapOutput):
 plot_colormap = _ColorMap()
 
 
-class _IntConstMap:
-    """base class for geting the integer constant from string
+def _get_int_const(name, pair, marker):
+    """get the integer constant in the pair for an integer constant mapping `name`
 
-    pair should be overwritten for each subclass"""
-    pair = {}
+    Args:
+        name (str) : name for the integer constant mapping
+        pair (dict)
+        marker (str or int): the marker of the constant.
+            If str, it should be registered in pair.
+            If int, it will be directly returned
+    Raises:
+        TypeError for other type
+        ValueError for unknown constant
 
-    @classmethod
-    def get(cls, marker):
-        """get the integer constant from s
+    Returns:
+        int
+    """
 
-        Args:
-            marker (str or int): the marker of the constant.
-                If str, it should be registered in pair.
-                If int, it will be directly returned
-        Raises:
-            TypeError for other type
-            ValueError for unknown constant
-
-        Returns:
-            int
-        """
-        if marker is None:
-            return None
-        if isinstance(marker, str):
-            try:
-                return cls.pair.get(marker.lower())
-            except KeyError:
-                return ValueError("unknown marker \"{:s}\" for {:s}".format(marker.lower(),
-                                                                            cls.__name__))
-        if isinstance(marker, int):
-            return marker
-        raise TypeError("should be str or int")
+    if marker is None:
+        return None
+    if isinstance(marker, str):
+        try:
+            return pair.get(marker.lower())
+        except KeyError:
+            return ValueError("unknown marker \"{:s}\" for {:s}".format(marker.lower(), name))
+    if isinstance(marker, int):
+        return marker
+    raise TypeError("should be str or int")
 
 
-class Color(_IntConstMap):
+class Color:
     """Predefined color constant"""
     WHITE = 0
     BLACK = 1
@@ -279,11 +274,11 @@ class Color(_IntConstMap):
     def get(cls, marker):
         if marker is None:
             return None
-        marker = plot_colormap.get_color(marker)
-        return _IntConstMap(cls, marker)
+        marker = plot_colormap.get(marker)
+        return _get_int_const(cls.__name__, cls.pair, marker)
 
 
-class Pattern(_IntConstMap):
+class Pattern:
     """Pattern"""
     NONE = 0
     SOLID = 1
@@ -291,6 +286,9 @@ class Pattern(_IntConstMap):
         "none" : NONE,
         "solid": SOLID,
         }
+    @classmethod
+    def get(cls, marker):
+        return _get_int_const(cls.__name__, cls.pair, marker)
 
 
 class Font(_MapOutput):
@@ -330,7 +328,7 @@ class Font(_MapOutput):
         return "\n".join(self.export())
 
 
-class LineStyle(_IntConstMap):
+class LineStyle:
     """line style
     
     Args:
@@ -351,8 +349,13 @@ class LineStyle(_IntConstMap):
         "dotdashed": DOTDASHED, ".-": DOTDASHED,
         }
 
+    @classmethod
+    def get(cls, marker):
+        return _get_int_const(cls.__name__, cls.pair, marker)
 
-class Justf(_IntConstMap):
+
+
+class Justf:
     """Justification of text"""
     LEFT = 0
     CENTER = 1
@@ -363,14 +366,25 @@ class Justf(_IntConstMap):
         "center": CENTER,
         "right": RIGHT,
         }
+    @classmethod
+    def get(cls, marker):
+        return _get_int_const(cls.__name__, cls.pair, marker)
 
 
-class Switch(_IntConstMap):
+
+class Switch:
     """Class for switch control"""
     ON = 1
     AUTO = -1
     OFF = 0
-    pair = { "on": ON, "auto": AUTO, "off": OFF}
+    pair = {"on": ON, "auto": AUTO, "off": OFF}
+
+    @classmethod
+    def get(cls, marker):
+        if isinstance(marker, bool):
+            return {True: cls.ON, False: cls.OFF}[marker]
+        return _get_int_const(cls.__name__, cls.pair, marker)
+
 
     @classmethod
     def get_str(cls, i):
@@ -379,7 +393,7 @@ class Switch(_IntConstMap):
         return d.get(i)
 
 
-class Position(_IntConstMap):
+class Position:
     """Class for position contorl"""
     IN = -1
     BOTH = 0
@@ -391,6 +405,10 @@ class Position(_IntConstMap):
         "out": OUT,
         "auto": AUTO,
         }
+    @classmethod
+    def get(cls, marker):
+        return _get_int_const(cls.__name__, cls.pair, marker)
+
     @classmethod
     def get_str(cls, i):
         """get the correspond attribute string"""
@@ -552,14 +570,14 @@ class Region(_Region):
     """user interface of region"""
     def __init__(self, index, switch=None, ls=None, lw=None, rt=None,
                  color=None, line=None, **kwargs):
-        _Region.__init__(self, index, r_switch=switch, linestyle=ls, linewidth=lw,
-                         type=rt, color=color, line=line)
+        _Region.__init__(self, index, r_switch=Switch.get(switch), linestyle=LineStyle.get(ls),
+                         linewidth=lw, type=rt, color=Color.get(color), line=line)
         _raise_unknown_attr(self, *kwargs)
 
     def set(self, switch=None, ls=None, lw=None, rt=None,
             color=None, line=None, **kwargs):
-        self._set(r_switch=switch, linestyle=ls, linewidth=lw,
-                  type=rt, color=color, line=line)
+        self._set(r_switch=Switch.get(switch), linestyle=LineStyle.get(ls), linewidth=lw,
+                  type=rt, color=Color.get(color), line=line)
         _raise_unknown_attr(self, *kwargs)
 
 
@@ -580,11 +598,11 @@ class _Title(_TitleLike):
 class Title(_Title):
     """user interface of title"""
     def __init__(self, title=None, font=None, size=None, color=None, **kwargs):
-        _Title.__init__(self, title_comment=title, size=size, color=color, font=font)
+        _Title.__init__(self, title_comment=title, size=size, color=Color.get(color), font=font)
         _raise_unknown_attr(self, *kwargs)
     
     def set(self, title=None, font=None, size=None, color=None, **kwargs):
-        self._set(title_comment=title, size=size, color=color, font=font)
+        self._set(title_comment=title, size=size, color=Color.get(color), font=font)
         _raise_unknown_attr(self, *kwargs)
     
 
@@ -597,11 +615,12 @@ class _SubTitle(_TitleLike):
 class SubTitle(_SubTitle):
     """user interface of title"""
     def __init__(self, subtitle=None, font=None, size=None, color=None, **kwargs):
-        _SubTitle.__init__(self, subtitle_comment=subtitle, size=size, color=color, font=font)
+        _SubTitle.__init__(self, subtitle_comment=subtitle, size=size,
+                           color=Color.get(color), font=font)
         _raise_unknown_attr(self, *kwargs)
 
     def set(self, subtitle=None, font=None, size=None, color=None, **kwargs):
-        self._set(subtitle_comment=subtitle, size=size, color=color, font=font)
+        self._set(subtitle_comment=subtitle, size=size, color=Color.get(color), font=font)
         _raise_unknown_attr(self, *kwargs)
 
 def _set_loclike_attr(marker, form, *args, sep=', '):
@@ -704,14 +723,16 @@ class Box(_Box):
     """User interface of box of legend"""
     def __init__(self, color=None, pattern=None, lw=None, ls=None,
                  fc=None, fp=None, **kwargs):
-        _Box.__init__(self, color=color, pattern=pattern, linewidth=lw,
-                      linestyle=ls, fill_color=fc, fill_pattern=fp)
+        _Box.__init__(self, color=Color.get(color), pattern=Pattern.get(pattern), linewidth=lw,
+                      linestyle=LineStyle.get(ls), fill_color=Color.get(fc),
+                      fill_pattern=Pattern.get(fp))
         _raise_unknown_attr(self, *kwargs)
 
     def set(self, color=None, pattern=None, lw=None, ls=None,
             fc=None, fp=None, **kwargs):
-        self._set(color=color, pattern=pattern, linewidth=lw,
-                  linestyle=ls, fill_color=fc, fill_pattern=fp)
+        self._set(color=Color.get(color), pattern=Pattern.get(pattern), linewidth=lw,
+                  linestyle=LineStyle.get(ls), fill_color=Color.get(fc),
+                  fill_pattern=Pattern.get(fp))
         _raise_unknown_attr(self, *kwargs)
 
 
@@ -731,40 +752,37 @@ class _Legend(_BaseOutput):
         'char_size': (float, 1.2, '{:8f}'),
         }
 
-    def __init__(self, **kwargs):
-        self.box = Box()
-        _BaseOutput.__init__(self, **kwargs)
+
+# pylint: disable=too-many-locals
+class Legend(_Legend):
+    """User interface of legend object"""
+    def __init__(self, switch=None, loc=None, loctype=None, font=None,
+                 color=None, length=None, vgap=None, hgap=None, invert=None,
+                 charsize=None,
+                 bc=None, bp=None, blw=None, bls=None, bfc=None, bfp=None, **kwargs):
+        _Legend.__init__(self, legend_switch=Switch.get(switch), legend_location=loc,
+                         loctype=loctype, font=font, color=Color.get(color),
+                         length=length, vgap=vgap, hgap=hgap, invert=invert, char_size=charsize)
+        self.box = Box(color=bc, pattern=bp, lw=blw, ls=bls, fc=bfc, fp=bfp)
+        _raise_unknown_attr(self, *kwargs)
 
     def export(self):
-        slist = _BaseOutput.export(self) + \
-                [self._marker + " " + i for i in self.box.export()]
-        return slist
+        return _Legend.export(self) + [self._marker + " " + i for i in self.box.export()]
+
+    def set(self, switch=None, loc=None, loctype=None, font=None,
+            color=None, length=None, vgap=None, hgap=None, invert=None,
+            charsize=None, **kwargs):
+        self._set(legend_switch=Switch.get(switch), legend_location=loc, loctype=loctype,
+                  font=font, color=Color.get(color), length=length, vgap=vgap, hgap=hgap,
+                  invert=invert, char_size=charsize)
+        _raise_unknown_attr(self, *kwargs)
 
     def set_box(self, **kwargs):
         """set the attribute of legend box"""
         self.box.set(**kwargs)
 
 
-class Legend(_Legend):
-    """User interface of legend object"""
-    # TODO Box arguments
-    def __init__(self, switch=None, loc=None, loctype=None, font=None,
-                 color=None, length=None, vgap=None, hgap=None, invert=None,
-                 charsize=None, **kwargs):
-        _Legend.__init__(self, legend_switch=switch, legend_location=loc, loctype=loctype,
-                         font=font, color=color, length=length, vgap=vgap, hgap=hgap,
-                         invert=invert, char_size=charsize)
-        _raise_unknown_attr(self, *kwargs)
-
-    def set(self, switch=None, loc=None, loctype=None, font=None,
-            color=None, length=None, vgap=None, hgap=None, invert=None,
-            charsize=None, **kwargs):
-        self._set(legend_switch=switch, legend_location=loc, loctype=loctype,
-                  font=font, color=color, length=length, vgap=vgap, hgap=hgap,
-                  invert=invert, char_size=charsize)
-        _raise_unknown_attr(self, *kwargs)
-
-class _Frame(_BaseOutput, _IntConstMap):
+class _Frame(_BaseOutput):
     """frame"""
     CLOSED = 0
     HALFOPEN = 1
@@ -792,19 +810,27 @@ class _Frame(_BaseOutput, _IntConstMap):
         'background_pattern': (int, 0, "{:d}"),
         }
 
+    @classmethod
+    def get(cls, marker):
+        return _get_int_const(cls.__name__, cls.pair, marker)
+
 
 class Frame(_Frame):
     """User interface of frame"""
     def __init__(self, ft=None, ls=None, lw=None, color=None, pattern=None,
                  bgc=None, bgp=None, **kwargs):
-        _Frame.__init__(self, type=ft, linestyle=ls, linewidth=lw, color=color,
-                        pattern=pattern, background_pattern=bgp, background_color=bgc)
+        _Frame.__init__(self, type=_Frame.get(ft), linestyle=LineStyle.get(ls), linewidth=lw,
+                        color=Color.get(color), pattern=Pattern.get(pattern), 
+                        background_pattern=Pattern.get(bgp),
+                        background_color=Color.get(bgc))
         _raise_unknown_attr(self, *kwargs)
 
     def set(self, ft=None, ls=None, lw=None, color=None, pattern=None,
             bgc=None, bgp=None, **kwargs):
-        self._set(type=ft, linestyle=ls, linewidth=lw, color=color,
-                  pattern=pattern, background_pattern=bgp, background_color=bgc)
+        self._set(type=_Frame.get(ft), linestyle=LineStyle.get(ls), linewidth=lw,
+                  color=Color.get(color), pattern=Pattern.get(pattern), 
+                  background_pattern=Pattern.get(bgp),
+                  background_color=Color.get(bgc))
         _raise_unknown_attr(self, *kwargs)
 
 
@@ -815,29 +841,37 @@ class _BaseLine(_BaseOutput):
         'type': (int, 0, '{:d}'),
         'baseline_switch': (bool, Switch.OFF, '{:s}'),
         }
+
 class BaseLine(_BaseLine):
     """User interface of baseline"""
     def __init__(self, lt=None, switch=None, **kwargs):
-        _BaseLine.__init__(self, type=lt, baseline_switch=switch)
+        _BaseLine.__init__(self, type=lt, baseline_switch=Switch.get(switch))
         _raise_unknown_attr(self, *kwargs)
     
     def set(self, lt=None, switch=None, **kwargs):
-        self._set(type=lt, baseline_switch=switch)
+        self._set(type=lt, baseline_switch=Switch.get(switch))
         _raise_unknown_attr(self, *kwargs)
 
 
-class DropLine(_BaseOutput):
+class _DropLine(_BaseOutput):
     """baseline of dataset"""
     _marker = 'dropline'
     _attrs = {
         'dropline_switch': (bool, Switch.OFF, '{:s}'),
         }
+
+class DropLine(_DropLine):
+    """user interface of dataset baseline"""
+    def __init__(self, switch=None, **kwargs):
+        _DropLine.__init__(self, dropline_switch=Switch.get(switch))
+        _raise_unknown_attr(self, *kwargs)
+
     def set(self, switch=None, **kwargs):
-        self._set(dropline_switch=switch)
+        self._set(dropline_switch=Switch.get(switch))
         _raise_unknown_attr(self, *kwargs)
 
 
-class _Fill(_BaseOutput, _IntConstMap):
+class _Fill(_BaseOutput):
     """Fill of dataset"""
     NONE = 0
     SOLID = 1
@@ -856,14 +890,21 @@ class _Fill(_BaseOutput, _IntConstMap):
         'pattern': (int, Pattern.SOLID, '{:d}'),
         }
 
+    @classmethod
+    def get(cls, marker):
+        return _get_int_const(cls.__name__, cls.pair, marker)
+
+
 class Fill(_Fill):
     """User interface of fill"""
     def __init__(self, ft=None, rule=None, color=None, pattern=None, **kwargs):
-        _Fill.__init__(self, type=ft, rule=rule, color=color, pattern=pattern)
+        _Fill.__init__(self, type=_Fill.get(ft), rule=rule, color=Color.get(color),
+                       pattern=Pattern.get(pattern))
         _raise_unknown_attr(self, *kwargs)
     
     def set(self, ft=None, rule=None, color=None, pattern=None, **kwargs):
-        self._set(type=ft, rule=rule, color=color, pattern=pattern)
+        self._set(type=_Fill.get(ft), rule=rule, color=Color.get(color),
+                  pattern=Pattern.get(pattern))
         _raise_unknown_attr(self, *kwargs)
 
 class _Default(_BaseOutput):
@@ -884,14 +925,16 @@ class Default(_Default):
     """User interface of default setup"""
     def __init__(self, lw=None, ls=None, color=None, pattern=None, font=None,
                  charsize=None, symbolsize=None, sformat=None, **kwargs):
-        _Default.__init__(self, linewidth=lw, linestyle=ls, pattern=pattern, color=color,
+        _Default.__init__(self, linewidth=lw, linestyle=LineStyle.get(ls),
+                          pattern=Pattern(pattern), color=Color.get(color),
                           font=font, char_size=charsize, symbol_size=symbolsize,
                           sformat=sformat)
         _raise_unknown_attr(self, *kwargs)
 
     def set(self, lw=None, ls=None, color=None, pattern=None, font=None,
             charsize=None, symbolsize=None, sformat=None, **kwargs):
-        self._set(linewidth=lw, linestyle=ls, pattern=pattern, color=color,
+        self._set(linewidth=lw, linestyle=LineStyle.get(ls),
+                  pattern=Pattern(pattern), color=Color.get(color),
                   font=font, char_size=charsize, symbol_size=symbolsize,
                   sformat=sformat)
         _raise_unknown_attr(self, *kwargs)
@@ -919,20 +962,20 @@ class Annotation(_Annotation):
     """user interface of data annotation"""
     def __init__(self, switch=None, at=None, rot=None, color=None, prec=None, font=None,
                  charsize=None, offset=None, append=None, prepend=None, af=None, **kwargs):
-        _Annotation.__init__(self, avalue_switch=switch, type=at, char_size=charsize, font=font,
-                             color=color, rot=rot, format=af, prec=prec, append=append,
-                             prepend=prepend, offset=offset)
+        _Annotation.__init__(self, avalue_switch=Switch.get(switch), type=at, char_size=charsize,
+                             font=font, color=Color.get(color), rot=rot, format=af, prec=prec,
+                             append=append, prepend=prepend, offset=offset)
         _raise_unknown_attr(self, *kwargs)
 
     def set(self, switch=None, at=None, rot=None, color=None, prec=None, font=None,
             charsize=None, offset=None, append=None, prepend=None, af=None, **kwargs):
-        self._set(avalue_switch=switch, type=at, char_size=charsize, font=font,
-                  color=color, rot=rot, format=af, prec=prec, append=append, prepend=prepend,
-                  offset=offset)
+        self._set(avalue_switch=Switch.get(switch), type=at, char_size=charsize,
+                  font=font, color=Color.get(color), rot=rot, format=af, prec=prec,
+                  append=append, prepend=prepend, offset=offset)
         _raise_unknown_attr(self, *kwargs)
 
 
-class _Symbol(_BaseOutput, _IntConstMap):
+class _Symbol(_BaseOutput):
     """Symbols of marker
 
     Args:
@@ -987,22 +1030,28 @@ class _Symbol(_BaseOutput, _IntConstMap):
         "skip": (int, 0, "{:d}"),
         }
 
+    @classmethod
+    def get(cls, marker):
+        return _get_int_const(cls.__name__, cls.pair, marker)
+
 
 class Symbol(_Symbol):
     """user interface of symbol"""
     def __init__(self, st=None, size=None, color=None, pattern=None,
                  fc=None, fp=None, lw=None, ls=None, char=None, charfont=None, skip=None,
                  **kwargs):
-        _Symbol.__init__(self, type=st, size=size, color=color, pattern=pattern,
-                         fill_color=fc, fill_pattern=fp, linewidth=lw, linestyle=ls,
+        _Symbol.__init__(self, type=st, size=size, color=Color.get(color),
+                         pattern=Pattern.get(pattern), fill_color=Color.get(fc),
+                         fill_pattern=Pattern.get(fp), linewidth=lw, linestyle=LineStyle.get(ls),
                          char=char, char_font=charfont, skip=skip)
         _raise_unknown_attr(self, *kwargs)
 
     def set(self, st=None, size=None, color=None, pattern=None,
             fc=None, fp=None, lw=None, ls=None, char=None, charfont=None, skip=None,
             **kwargs):
-        self._set(type=st, size=size, color=color, pattern=pattern,
-                  fill_color=fc, fill_pattern=fp, linewidth=lw, linestyle=ls,
+        self._set(type=st, size=size, color=Color.get(color),
+                  pattern=Pattern.get(pattern), fill_color=Color.get(fc),
+                  fill_pattern=Pattern.get(fp), linewidth=lw, linestyle=LineStyle.get(ls),
                   char=char, char_font=charfont, skip=skip)
         _raise_unknown_attr(self, *kwargs)
 
@@ -1020,13 +1069,13 @@ class _Page(_BaseOutput):
 class Page(_Page):
     """user interface of page"""
     def __init__(self, size=None, scroll=None, inout=None, bgfill=None, **kwargs):
-        _Page.__init__(self, size=size, scroll=scroll,
-                       inout=inout, background_fill_switch=bgfill)
+        _Page.__init__(self, size=size, scroll=scroll, inout=inout,
+                       background_fill_switch=Switch.get(bgfill))
         _raise_unknown_attr(self, *kwargs)
 
     def set(self, size=None, scroll=None, inout=None, bgfill=None, **kwargs):
-        self._set(size=size, scroll=scroll,
-                  inout=inout, background_fill_switch=bgfill)
+        self._set(size=size, scroll=scroll, inout=inout,
+                  background_fill_switch=Switch.get(bgfill))
         _raise_unknown_attr(self, *kwargs)
 
 
@@ -1045,13 +1094,13 @@ class _TimesStamp(_BaseOutput):
 class TimesStamp(_TimesStamp):
     """User interface of timestamp"""
     def __init__(self, switch=None, color=None, rot=None, font=None, charsize=None, **kwargs):
-        _TimesStamp.__init__(self, timestamp_switch=switch, color=color,
+        _TimesStamp.__init__(self, timestamp_switch=Switch.get(switch), color=Color.get(color),
                              rot=rot, font=font, char_size=charsize)
         _raise_unknown_attr(self, *kwargs)
 
     def set(self, switch=None, color=None, rot=None, font=None, charsize=None, **kwargs):
-        self._set(timestamp_switch=switch, color=color, rot=rot, font=font,
-                  char_size=charsize)
+        self._set(timestamp_switch=Switch.get(switch), color=Color.get(color),
+                  rot=rot, font=font, char_size=charsize)
         _raise_unknown_attr(self, *kwargs)
 
 class _Tick(_BaseOutput):
@@ -1105,29 +1154,31 @@ class Tick(_Tick):
                  minor=None, mic=None, mis=None, mit=None,
                  milw=None, mils=None, mig=None, **kwargs):
         # TODO consistency check
-        _Tick.__init__(self, major=major, major_color=mjc, major_size=mjs,
-                       major_grid_switch=mjg, major_linewidth=mjlw, major_linestyle=mjls,
-                       minor=minor, minor_color=mic, minor_size=mis, minor_ticks=mit,
-                       minor_grid_switch=mig, minor_linewidth=milw, minor_linestyle=mils)
+        _Tick.__init__(self, major=major, major_color=Color.get(mjc), major_size=mjs,
+                       major_grid_switch=Switch.get(mjg), major_linewidth=mjlw,
+                       major_linestyle=LineStyle.get(mjls),
+                       minor=minor, minor_color=Color.get(mic), minor_size=mis, minor_ticks=mit,
+                       minor_grid_switch=Switch.get(mig), minor_linewidth=milw,
+                       minor_linestyle=LineStyle.get(mils))
         _raise_unknown_attr(self, *kwargs)
 
     def set_major(self, major=None, color=None, size=None,
                   lw=None, ls=None, grid=None, **kwargs):
-        self._set(major=major, major_color=color, major_size=size,
-                  major_grid_switch=grid,
-                  major_linewidth=lw, major_linestyle=ls)
+        self._set(major=major, major_color=Color.get(color), major_size=size,
+                  major_grid_switch=Switch.get(grid),
+                  major_linewidth=lw, major_linestyle=LineStyle.get(ls))
         _raise_unknown_attr(self, *kwargs)
 
     def set_minor(self, minor=None, color=None,
                   size=None, ticks=None, grid=None,
                   lw=None, ls=None, **kwargs):
-        self._set(minor=minor, minor_color=color, minor_size=size,
-                  minor_ticks=ticks, minor_grid_switch=grid,
-                  minor_linewidth=lw, minor_linestyle=ls)
+        self._set(minor=minor, minor_color=Color.get(color), minor_size=size,
+                  minor_ticks=ticks, minor_grid_switch=Switch.get(grid),
+                  minor_linewidth=lw, minor_linestyle=LineStyle.get(ls))
         _raise_unknown_attr(self, *kwargs)
 
     def set_place(self, rounded=None, place=None, **kwargs):
-        self._set(place_rounded=rounded, place_position=place)
+        self._set(place_rounded=rounded, place_position=Position.get(place))
         _raise_unknown_attr(self, *kwargs)
 
     def set_spec(self, locs, labels=None, use_minor=None):
@@ -1173,7 +1224,8 @@ class Bar(_Bar):
         _raise_unknown_attr(self, *kwargs)
 
     def set(self, switch=None, color=None, ls=None, lw=None, **kwargs):
-        self._set(bar_switch=switch, color=color, linestyle=ls, linewidth=lw)
+        self._set(bar_switch=Switch.get(switch),
+                  color=Color.get(color), linestyle=LineStyle.get(ls), linewidth=lw)
         _raise_unknown_attr(self, *kwargs)
 
 
@@ -1197,10 +1249,8 @@ class Label(_Label):
         if label is None:
             self.label = ""
         self.label = str(self.label)
-        if color:
-            color = Color.get(color)
-        _Label.__init__(self, layout=layout, place_position=position, char_size=charsize,
-                        font=font, color=color, place=place)
+        _Label.__init__(self, layout=layout, place_position=Position.get(position),
+                        char_size=charsize, font=font, color=Color.get(color), place=place)
         _raise_unknown_attr(self, *kwargs)
 
     def set(self, s=None, layout=None, position=None, charsize=None, font=None,
@@ -1212,7 +1262,8 @@ class Label(_Label):
         """
         if s:
             self.label = str(s)
-        self._set(layout=layout, color=color, place_position=position, char_size=charsize,
+        self._set(layout=layout, color=Color.get(color),
+                  place_position=Position.get(position), char_size=charsize,
                   font=font, place=place)
         _raise_unknown_attr(self, *kwargs)
 
@@ -1261,12 +1312,14 @@ class TickLabel(_TickLabel):
                  place=None, offset=None, offset_switch=None, charsize=None,
                  start=None, stop=None, start_switch=None, stop_switch=None,
                  **kwargs):
-        _TickLabel.__init__(self, ticklabel_switch=switch, format=tlf, formula=formula,
+        _TickLabel.__init__(self, ticklabel_switch=Switch.get(switch),
+                            format=tlf, formula=formula,
                             append=append, prepend=prepend, prec=prec, angle=angle, font=font,
-                            color=color, skip=skip, stagger=stagger, place=place,
-                            offset_switch=offset_switch, offset=offset,
-                            start=start, start_type_switch=start_switch,
-                            stop=stop, stop_type_switch=stop_switch, char_size=charsize)
+                            color=Color.get(color), skip=skip, stagger=stagger, place=place,
+                            offset_switch=Switch.get(offset_switch), offset=offset,
+                            char_size=charsize, start=start,
+                            start_type_switch=Switch.get(start_switch),
+                            stop=stop, stop_type_switch=Switch.get(stop_switch))
         _raise_unknown_attr(self, *kwargs)
 
     def set(self, switch=None, tlf=None, formula=None, append=None, prepend=None, prec=None,
@@ -1274,11 +1327,11 @@ class TickLabel(_TickLabel):
             place=None, offset=None, offset_switch=None, charsize=None,
             start=None, stop=None, start_switch=None, stop_switch=None,
             **kwargs):
-        self._set(ticklabel_switch=switch, format=tlf, formula=formula, append=append,
-                  prepend=prepend, prec=prec, angle=angle, font=font, color=color, skip=skip,
-                  stagger=stagger, place=place, offset_switch=offset_switch, offset=offset,
-                  start=start, start_type_switch=start_switch,
-                  stop=stop, stop_type_switch=stop_switch, char_size=charsize)
+        self._set(ticklabel_switch=Switch.get(switch), format=tlf, formula=formula, append=append,
+                  prepend=prepend, prec=prec, angle=angle, font=font, color=Color.get(color),
+                  skip=skip, stagger=stagger, place=place, offset_switch=Switch.get(offset_switch),
+                  offset=offset, start=start, start_type_switch=Switch.get(start_switch),
+                  stop=stop, stop_type_switch=Switch.get(stop_switch), char_size=charsize)
         _raise_unknown_attr(self, *kwargs)
 
 
@@ -1303,18 +1356,22 @@ class Errorbar(_Errorbar):
     """User interface of dataset errorbar appearance"""
     def __init__(self, switch=None, position=None, color=None, pattern=None, size=None,
                  lw=None, ls=None, rlw=None, rls=None, rc=None, rcl=None, **kwargs):
-        _Errorbar.__init__(self, errorbar_switch=switch, place_position=position, color=color,
-                           pattern=pattern, size=size, linewidth=lw, linestyle=ls,
-                           riser_linewidth=rlw, riser_linestyle=rls,
-                           riser_clip_switch=rc, riser_clip_length=rcl)
+        _Errorbar.__init__(self, errorbar_switch=Switch.get(switch),
+                           place_position=Position.get(position), color=Color.get(color),
+                           pattern=Pattern.get(pattern), size=size, linewidth=lw,
+                           linestyle=LineStyle.get(ls), riser_linewidth=rlw,
+                           riser_linestyle=LineStyle.get(rls), riser_clip_switch=Switch.get(rc),
+                           riser_clip_length=rcl)
         _raise_unknown_attr(self, *kwargs)
 
     def set(self, switch=None, position=None, color=None, pattern=None, size=None,
             lw=None, ls=None, rlw=None, rls=None, rc=None, rcl=None, **kwargs):
-        self._set(errorbar_switch=switch, place_position=position, color=color,
-                  pattern=pattern, size=size, linewidth=lw, linestyle=ls,
-                  riser_linewidth=rlw, riser_linestyle=rls,
-                  riser_clip_switch=rc, riser_clip_length=rcl)
+        self._set(errorbar_switch=Switch.get(switch),
+                  place_position=Position.get(position), color=Color.get(color),
+                  pattern=Pattern.get(pattern), size=size, linewidth=lw,
+                  linestyle=LineStyle.get(ls), riser_linewidth=rlw,
+                  riser_linestyle=LineStyle.get(rls), riser_clip_switch=Switch.get(rc),
+                  riser_clip_length=rcl)
         _raise_unknown_attr(self, *kwargs)
 
 
@@ -1358,7 +1415,7 @@ class Axis(_Axis):
                  tlplace=None, tloffset=None, tlo_switch=None, tlsize=None,
                  start=None, stop=None, start_switch=None, stop_switch=None,
                  **kwargs):
-        _Axis.__init__(self, axis=axis, axis_switch=switch, type=at, offset=offset)
+        _Axis.__init__(self, axis=axis, axis_switch=Switch.get(switch), type=at, offset=offset)
         self._bar = Bar(switch=bar, color=bc, ls=bls, lw=blw)
         self._tick = Tick(major=major, mjc=mjc, mjs=mjs, mjlw=mjlw, mjls=mjls, mjg=mjg,
                           minor=minor, mic=mic, mis=mis, mit=mit, milw=milw, mils=mils, mig=mig)
@@ -1372,7 +1429,7 @@ class Axis(_Axis):
         _raise_unknown_attr(self, *kwargs)
 
     def set(self, switch=None, at=None, offset=None, **kwargs):
-        self._set(axis_switch=switch, type=at, offset=offset)
+        self._set(axis_switch=Switch.get(switch), type=at, offset=offset)
         _raise_unknown_attr(self, *kwargs)
 
     def export(self):
@@ -1422,11 +1479,11 @@ class _Axes(_BaseOutput, _Affix):
 class Axes(_Axes):
     """User interface of axes"""
     def __init__(self, axes, scale=None, invert=None, **kwargs):
-        _Axes.__init__(self, axes, scale=scale, invert_switch=invert)
+        _Axes.__init__(self, axes, scale=scale, invert_switch=Switch.get(invert))
         _raise_unknown_attr(self, *kwargs)
 
     def set(self, scale=None, invert=None, **kwargs):
-        self._set(scale=scale, invert_switch=invert)
+        self._set(scale=scale, invert_switch=Switch.get(invert))
         _raise_unknown_attr(self, *kwargs)
 
 # TODO implement internal object _Dataset
@@ -1471,7 +1528,7 @@ class Dataset(_Dataset):
         keyword arguments (arraylike): error data
     """
     def __init__(self, index, *xyz, label=None, color=None, datatype=None, comment=None,
-                 st=None, ssize=None, sc=None, sp=None, sfc=None, sfp=None,
+                 symbol=None, ssize=None, sc=None, sp=None, sfc=None, sfp=None,
                  slw=None, sls=None, char=None, charfont=None, skip=None,
                  lt=None, lw=None, lc=None, ls=None, lp=None,
                  baseline=None, blt=None, dropline=None, ft=None, rule=None, fc=None, fp=None,
@@ -1492,7 +1549,7 @@ class Dataset(_Dataset):
             sc = color
         if sfc is None:
             sfc = color
-        self._symbol = Symbol(st=st, color=sc, size=ssize, pattern=sp, fc=sfc, fp=sfp, lw=slw,
+        self._symbol = Symbol(st=symbol, color=sc, size=ssize, pattern=sp, fc=sfc, fp=sfp, lw=slw,
                               ls=sls, char=char, charfont=charfont, skip=skip)
         if lc is None:
             lc = color
@@ -1601,7 +1658,7 @@ class Graph(_Graph):
                  **kwargs):
         # TODO user arguments
         _Graph.__init__(self, index, hidden=hidden, type=gt, stacked=stacked, bar_hgap=barhgap,
-                        fixedpoint_switch=fp, fixedpoint_type=fpt, fixedpoint_xy=fpxy,
+                        fixedpoint_switch=Switch.get(fp), fixedpoint_type=fpt, fixedpoint_xy=fpxy,
                         fixedpoint_format=fpform, fixedpoint_prec=fpprec)
         #_raise_unknown_attr(self, *kwargs)
         self._world = World()
@@ -1626,7 +1683,7 @@ class Graph(_Graph):
     def set(self, hidden=None, gt=None, stacked=None, barhgap=None,
             fp=None, fpt=None, fpxy=None, fpform=None, fpprec=None, **kwargs):
         self._set(hidden=hidden, type=gt, stacked=stacked, bar_hgap=barhgap,
-                  fixedpoint_switch=fp, fixedpoint_type=fpt, fixedpoint_xy=fpxy,
+                  fixedpoint_switch=Switch.get(fp), fixedpoint_type=fpt, fixedpoint_xy=fpxy,
                   fixedpoint_format=fpform, fixedpoint_prec=fpprec)
         _raise_unknown_attr(self, *kwargs)
 
