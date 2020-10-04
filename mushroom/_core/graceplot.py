@@ -1486,7 +1486,6 @@ class Axes(_Axes):
         self._set(scale=scale, invert_switch=Switch.get(invert))
         _raise_unknown_attr(self, *kwargs)
 
-# TODO implement internal object _Dataset
 class _Dataset(_BaseOutput, _Affix):
     """Object of grace dataset
 
@@ -1803,6 +1802,147 @@ class Graph(_Graph):
             self._subtitle.__setattr__('subtitle_comment', subtitle)
         self._subtitle._set(**kwargs)
 
+class Arrow:
+    """type of line arrow"""
+    NONE = 0
+    START = 1
+    END = 2
+    LINE = 0
+    FILLED = 1
+    OPAQUE = 2
+    pair = {
+        "none": NONE,
+        "start": START,
+        "end": END,
+        "line": LINE,
+        "filled": FILLED,
+        "opaque": OPAQUE,
+        }
+    @classmethod
+    def get(cls, marker):
+        return _get_int_const(cls.__name__, cls.pair, marker)
+    
+
+class _DrawString(_BaseOutput):
+    """class for string drawing"""
+    _marker = 'string'
+    _attrs = {
+        "string_switch": (bool, Switch.ON, '{:s}'),
+        # graph number when using for world coordinate
+        "string_comment": (bool, 0, '{:s}'),
+        "loctype": (str, "view", '{:s}'),
+        "color": (int, Color.BLACK, '{:d}'),
+        "rot": (int, 0, '{:d}'),
+        "font": (int, 0, '{:d}'),
+        "just": (int, Justf.LEFT, '{:d}'),
+        "char_size": (float, 1.0, '{:.8f}'),
+        "def": (str, "", '\"{:s}\"'),
+        }
+    # add string_location
+    _attrs.update(_set_loclike_attr(_marker, '{:10f}', 0.0, 0.0))
+
+
+class DrawString(_DrawString):
+    """user interface of string drawing
+
+    Args:
+        s (str) : content of string
+        xy (2-member list) : location of string
+    """
+    def __init__(self, s, xy, ig=None, color=None, just=None, charsize=None,
+                 rot=None, font=None, **kwargs):
+        loctype = "view"
+        if ig:
+            loctype = "world"
+            ig = "g" + str(ig)
+        _DrawString.__init__(self, loctype=loctype, color=Color.get(color), string_comment=ig,
+                             just=Justf.get(just), rot=rot, char_size=charsize, font=font,
+                             string_location=xy)
+        self.__setattr__("def", s)
+        _raise_unknown_attr(self, *kwargs)
+
+    def export(self):
+        return ["with " + self._marker,] + ["    {:s}".format(s) for s in _DrawString.export(self)]
+
+
+class _DrawLine(_BaseOutput):
+    """class for line drawing"""
+    _marker = 'line'
+    _attrs = {
+        "line_switch": (bool, Switch.ON, '{:s}'),
+        # graph number when using for world coordinate
+        "line_comment": (bool, 0, '{:s}'),
+        "loctype": (str, "view", '{:s}'),
+        "color": (int, Color.BLACK, '{:d}'),
+        "linestyle": (int, LineStyle.SOLID, '{:d}'),
+        "linewidth": (float, 1.5, '{:8f}'),
+        "arrow": (int, Arrow.NONE, '{:d}'),
+        "arrow_type": (int, Arrow.LINE, '{:d}'),
+        "arrow_length": (float, 1.0, '{:8f}'),
+        "arrow_layout": (list, [1.0, 1.0], '{:8f}, {:8}'),
+        }
+    # add string_location
+    _attrs.update(_set_loclike_attr(_marker, '{:10f}', 0.0, 0.0, 0.0, 0.0))
+
+
+class DrawLine(_DrawLine):
+    """user interface of drawing line object"""
+    def __init__(self, start, end, ig=None, color=None, lw=None, ls=None,
+                 arrow=None, at=None, length=None, layout=None, **kwargs):
+        loctype = "view"
+        if ig:
+            loctype = "world"
+            ig = "g" + str(ig)
+        _DrawLine.__init__(self, loctype=loctype, color=Color.get(color), line_comment=ig,
+                           linestyle=LineStyle.get(ls), linewidth=lw,
+                           arrow=Arrow.get(arrow), arrow_type=Arrow.get(at),
+                           arrow_length=length, arrow_layout=layout, line_location=(*start, *end))
+        _raise_unknown_attr(self, *kwargs)
+
+    def export(self):
+        return ["with " + self._marker,] + ["    {:s}".format(s) for s in _DrawLine.export(self)] \
+               + [self._marker + " def"]
+
+
+class _DrawEllipse(_BaseOutput):
+    """class for line drawing"""
+    _marker = 'ellipse'
+    _attrs = {
+        _marker + "_switch": (bool, Switch.ON, '{:s}'),
+        # graph number when using for world coordinate
+        _marker + "_comment": (bool, 0, '{:s}'),
+        "loctype": (str, "view", '{:s}'),
+        "color": (int, Color.BLACK, '{:d}'),
+        "linestyle": (int, LineStyle.SOLID, '{:d}'),
+        "linewidth": (float, 1.5, '{:8f}'),
+        "fill_color": (int, Color.BLACK, '{:d}'),
+        "fill_pattern": (int, Pattern.SOLID, '{:d}'),
+        }
+    # add string_location
+    _attrs.update(_set_loclike_attr(_marker, '{:10f}', 0.0, 0.0, 0.0, 0.0))
+
+
+class DrawEllipse(_DrawEllipse):
+    """user interface of drawing line object"""
+    def __init__(self, xy, width, heigh=None, ig=None, color=None, lw=None, ls=None,
+                 fc=None, fp=None, **kwargs):
+        loctype = "view"
+        if ig:
+            loctype = "world"
+            ig = "g" + str(ig)
+        if heigh is None:
+            heigh = width
+        _DrawEllipse.__init__(self, loctype=loctype, color=Color.get(color), ellipse_comment=ig,
+                              linestyle=LineStyle.get(ls), linewidth=lw,
+                              ellipse_location=(*xy, width, heigh), fill_color=Color.get(fc),
+                              fill_pattern=Pattern.get(fp))
+        _raise_unknown_attr(self, *kwargs)
+
+    def export(self):
+        return ["with " + self._marker,] \
+               + ["    {:s}".format(s) for s in _DrawEllipse.export(self)] \
+               + [self._marker + " def"]
+
 
 # pylint: disable=too-many-locals
 def _set_graph_alignment(rows, cols, hgap=0.02, vgap=0.02, **kwargs):
@@ -1897,6 +2037,8 @@ class Plot:
             slist += h.export()
         for g in self._graphs:
             slist += g.export()
+        for o in self._objects:
+            slist += o.export()
         # add @ to each header line
         slist = self._comment_head + ["@" + v for v in slist]
         # export all data
