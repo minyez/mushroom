@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """helper function in dealing with data, digits and mathematics"""
 import re
-#import numpy as np
+import numpy as np
 
 from mushroom._core.ioutils import trim_after
 from mushroom._core.logger import create_logger
@@ -81,22 +81,54 @@ class Data:
     def __init__(self, *xyz, datatype=None, label=None, comment=None,
                  **errors):
         datatype, self._error_cols = Data._check_data_type(*xyz, datatype=datatype, **errors)
-        # TODO use numpy to treat xyz and error data
-        if datatype == "bar":
-            self.x = xyz[0]
-            self._data_cols = ['x',]
-        if datatype == "xy":
-            self.x, self.y = xyz
-            self._data_cols = ['x', 'y']
         if datatype == "xyz":
             self.x, self.y, self.z = xyz
+            self.x = np.array(self.x)
+            self.y = np.array(self.y)
+            self.z = np.array(self.z)
             self._data_cols = ['x', 'y', 'z']
+        elif datatype.startswith("bar") or datatype.startswith("xy"):
+            self.x, self.y = xyz
+            self.x = np.array(self.x)
+            self.y = np.array(self.y)
+            self._data_cols = ['x', 'y']
         for opt in self._error_cols:
-            if opt in errors:
-                self.__setattr__(opt, errors[opt])
+            self.__setattr__(opt, errors[opt])
         self.label = label
         self.comment = comment
         self.datatype = datatype
+
+    def xmin(self):
+        """get the min value of abscissa 
+        """
+        return self.x.min()
+
+    def xmax(self):
+        """get the max value of abscissa 
+        """
+        return self.x.max()
+
+    def max(self):
+        """get the max value among data point
+
+        If the datatype is xyz, the maximal z value will be returned
+        Otherwise the maximal y.
+        """
+        try:
+            return self.__getattribute__('z').max()
+        except AttributeError:
+            return self.__getattribute__('y').max()
+
+    def min(self):
+        """get the min value among data point
+
+        If the datatype is xyz, the minimal z value will be returned
+        Otherwise the minimal y.
+        """
+        try:
+            return self.__getattribute__('z').min()
+        except AttributeError:
+            return self.__getattribute__('y').min()
 
     def _get(self, data_cols, transpose=False):
         """get all data value
@@ -112,9 +144,9 @@ class Data:
                 y1, y2, y3...
                 z1, z2, z3...
         """
-        d = [self.__getattribute__(arg) for arg in data_cols]
-        if not transpose:
-            return list(zip(*d))
+        d = np.column_stack([self.__getattribute__(arg) for arg in data_cols])
+        if transpose:
+            d = d.transpose()
         return d
 
     def _export(self, data_cols, form=None, transpose=False, separator=None):
@@ -151,14 +183,13 @@ class Data:
         data_all = self._get(data_cols, transpose=transpose)
 
         if form is None:
-            # if no form is specified, get the type from the first data point
             if transpose:
                 # data_all = (xs, ys, zs)
                 data1 = [x[0] for x in data_all]
             else:
                 # data_all = (1, 2, 3...)
                 data1 = data_all[0]
-            #form = [{True: '{:d}'}.get(isinstance(x, int), '{:f}') for x in data1]
+            # if no form is specified, use the float
             form = ['{:f}',] * len(data1)
 
         if separator is None:
@@ -277,6 +308,9 @@ class Data:
             errors for parsing error
                 d(x,y,z) (float) : error. when the according l exists, it becomes the upper error
                 d(x,y,z)l (float) : lower error
+
+        Returns:
+            str, list
         """
         err_cols = []
         nd = len(xyz)

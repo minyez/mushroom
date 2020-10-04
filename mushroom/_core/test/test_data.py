@@ -21,9 +21,10 @@ class test_Data(ut.TestCase):
         """test data extraction"""
         x = np.array((1.0, 2.0, 3.0))
         y = np.array((3.0, 4.0, 5.0))
+        xy = np.array([x, y])
         data = Data(x, y)
-        self.assertListEqual([x, y], data.get(True))
-        self.assertTrue(np.all(np.transpose([x, y]) == np.array(data.get())))
+        self.assertTrue(np.all(xy == data.get(True)))
+        self.assertTrue(np.all(np.transpose(xy) == np.array(data.get())))
 
     def test_export(self):
         """test data export"""
@@ -50,7 +51,8 @@ class test_Data(ut.TestCase):
         self.assertListEqual(s_normal_51f, data.export(form="{:5.1f}"))
         self.assertListEqual(s_transp_51f, data.export(form="{:5.1f}", transpose=True))
         self.assertListEqual(s_normal_51f_42f, data.export(form=["{:5.1f}", "{:4.2f}"]))
-        self.assertListEqual(s_transp_51f_42f, data.export(form=["{:5.1f}", "{:4.2f}"], transpose=True))
+        self.assertListEqual(s_transp_51f_42f,
+                             data.export(form=["{:5.1f}", "{:4.2f}"], transpose=True))
         
 
 
