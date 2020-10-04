@@ -2,7 +2,7 @@
 """Test graceplot"""
 import unittest as ut
 
-from mushroom._core.graceplot import (_ColorMap, _Font,
+from mushroom._core.graceplot import (_ColorMap, Font,
                                       Graph, View)
 
 class test_ColorMap(ut.TestCase):
@@ -44,7 +44,7 @@ map color 15 to (0, 139, 0), "green4"
 class test_Font(ut.TestCase):
     """test font utilites"""
 
-    f = _Font()
+    f = Font()
 
     def test_output_without_at(self):
         """test if the grace output of default colormap is as expected"""

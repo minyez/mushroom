@@ -16,6 +16,7 @@ Therefore, platform-related functions are discarded. (minyez)
 import sys
 import time
 from io import TextIOWrapper
+from collections.abc import Iterable
 from copy import deepcopy
 from numpy import shape
 
@@ -211,11 +212,11 @@ class _IntConstMap:
     pair = {}
 
     @classmethod
-    def get(cls, s):
+    def get(cls, marker):
         """get the integer constant from s
 
         Args:
-            s (str or int): the marker of the constant.
+            marker (str or int): the marker of the constant.
                 If str, it should be registered in pair.
                 If int, it will be directly returned
         Raises:
@@ -225,20 +226,21 @@ class _IntConstMap:
         Returns:
             int
         """
-        if isinstance(s, str):
+        if marker is None:
+            return None
+        if isinstance(marker, str):
             try:
-                return cls.pair.get(s.lower())
+                return cls.pair.get(marker.lower())
             except KeyError:
-                return ValueError("unknown marker \"{:s}\" for {:s}".format(s.lower(),
+                return ValueError("unknown marker \"{:s}\" for {:s}".format(marker.lower(),
                                                                             cls.__name__))
-        if isinstance(s, int):
-            return s
+        if isinstance(marker, int):
+            return marker
         raise TypeError("should be str or int")
 
 
 class Color(_IntConstMap):
-    """Predefined color constant
-    """
+    """Predefined color constant"""
     WHITE = 0
     BLACK = 1
     RED = 2
@@ -273,6 +275,12 @@ class Color(_IntConstMap):
         "turquoise": TURQUOISE,
         "green4": GREEN4,
         }
+    @classmethod
+    def get(cls, marker):
+        if marker is None:
+            return None
+        marker = plot_colormap.get_color(marker)
+        return _IntConstMap(cls, marker)
 
 
 class Pattern(_IntConstMap):
@@ -285,7 +293,7 @@ class Pattern(_IntConstMap):
         }
 
 
-class _Font(_MapOutput):
+class Font(_MapOutput):
     """Object to set up the font
 
     For now adding fonts is not supported"""
@@ -312,7 +320,7 @@ class _Font(_MapOutput):
         _map[i] = (f, f)
 
     def __init__(self):
-        _MapOutput.__init__(self, _Font._marker, _Font._map, _Font._format)
+        _MapOutput.__init__(self, Font._marker, Font._map, Font._format)
 
     def export(self):
         """return a list of font map strings"""
@@ -540,6 +548,20 @@ class _Region(_BaseOutput, _Affix):
         slist += _BaseOutput.export(self)
         return slist
 
+class Region(_Region):
+    """user interface of region"""
+    def __init__(self, index, switch=None, ls=None, lw=None, rt=None,
+                 color=None, line=None, **kwargs):
+        _Region.__init__(self, index, r_switch=switch, linestyle=ls, linewidth=lw,
+                         type=rt, color=color, line=line)
+        _raise_unknown_attr(self, *kwargs)
+
+    def set(self, switch=None, ls=None, lw=None, rt=None,
+            color=None, line=None, **kwargs):
+        self._set(r_switch=switch, linestyle=ls, linewidth=lw,
+                  type=rt, color=color, line=line)
+        _raise_unknown_attr(self, *kwargs)
+
 
 class _TitleLike(_BaseOutput):
     """title and subtitle of graph"""
@@ -555,11 +577,32 @@ class _Title(_TitleLike):
     _attrs = dict(**_TitleLike._attrs)
     _attrs[_marker+'_comment'] = (bool, "", "\"{:s}\"")
 
+class Title(_Title):
+    """user interface of title"""
+    def __init__(self, title=None, font=None, size=None, color=None, **kwargs):
+        _Title.__init__(self, title_comment=title, size=size, color=color, font=font)
+        _raise_unknown_attr(self, *kwargs)
+    
+    def set(self, title=None, font=None, size=None, color=None, **kwargs):
+        self._set(title_comment=title, size=size, color=color, font=font)
+        _raise_unknown_attr(self, *kwargs)
+    
+
 class _SubTitle(_TitleLike):
     """title of graph"""
     _marker = 'subtitle'
     _attrs = dict(**_TitleLike._attrs)
     _attrs[_marker+'_comment'] = (bool, "", "\"{:s}\"")
+
+class SubTitle(_SubTitle):
+    """user interface of title"""
+    def __init__(self, subtitle=None, font=None, size=None, color=None, **kwargs):
+        _SubTitle.__init__(self, subtitle_comment=subtitle, size=size, color=color, font=font)
+        _raise_unknown_attr(self, *kwargs)
+
+    def set(self, subtitle=None, font=None, size=None, color=None, **kwargs):
+        self._set(subtitle_comment=subtitle, size=size, color=color, font=font)
+        _raise_unknown_attr(self, *kwargs)
 
 def _set_loclike_attr(marker, form, *args, sep=', '):
     f = [form,] * len(args)
@@ -577,21 +620,22 @@ class _WorldLike(_BaseOutput):
 
     """
     _marker = ''
-    _attrs = {None: (None,)}
 
-    def get_world(self):
+    def get(self):
         return self.__getattribute__(self._marker + '_location')
 
-    def set_world(self, loc):
-        self.set_loc(loc)
-    
-    def set_loc(self, loc):
+    def set(self, loc):
         self.__setattr__(self._marker + '_location', loc)
 
 class World(_WorldLike):
     """world of graph"""
     _marker = 'world'
     _attrs = _set_loclike_attr(_marker, '{:8f}', 0., 0., 1., 1.)
+
+    def __init__(self, **kwargs):
+        _WorldLike.__init__(self, **kwargs)
+        self.set_world = self.set
+        self.get_world = self.get
 
 class StackWorld(_WorldLike):
     """stack world of graph"""
@@ -605,8 +649,8 @@ class View(_WorldLike):
 
     def __init__(self, **kwargs):
         _WorldLike.__init__(self, **kwargs)
-        self.set_view = self.set_world
-        self.get_view = self.get_world
+        self.set_view = self.set
+        self.get_view = self.get
 
 
 class Znorm(_WorldLike):
@@ -632,14 +676,14 @@ class _Line(_BaseOutput):
     
 class Line(_Line):
     """User interface of line object"""
-    def __init__(self, lt=None, color=None, pattern=None, lw=None, ls=None, **kwargs):
-        _Line.__init__(self, type=lt, color=color, pattern=pattern, linewidth=lw,
-                       linestyle=ls)
+    def __init__(self, lt=None, color=None, pattern=None, width=None, style=None, **kwargs):
+        _Line.__init__(self, type=lt, color=Color.get(color), pattern=Pattern.get(pattern),
+                       linewidth=width, linestyle=LineStyle.get(style))
         _raise_unknown_attr(self, *kwargs)
 
-    def set(self, lt=None, color=None, pattern=None, lw=None, ls=None, **kwargs):
-        self._set(type=lt, color=color, pattern=pattern, linewidth=lw,
-                  linestyle=ls)
+    def set(self, lt=None, color=None, pattern=None, width=None, style=None, **kwargs):
+        self._set(type=lt, color=Color.get(color), pattern=Pattern.get(pattern),
+                  linewidth=width, linestyle=LineStyle.get(style))
         _raise_unknown_attr(self, *kwargs)
 
 
@@ -1010,7 +1054,6 @@ class TimesStamp(_TimesStamp):
                   char_size=charsize)
         _raise_unknown_attr(self, *kwargs)
 
-
 class _Tick(_BaseOutput):
     """Tick of axis
     """
@@ -1036,6 +1079,25 @@ class _Tick(_BaseOutput):
         'place_position': (bool, Position.BOTH, "{:s}"),
         'spec_type': (str, None, "{:s}"),
         }
+
+    def __init__(self, **kwargs):
+        _BaseOutput.__init__(self, **kwargs)
+        self.spec_ticks = None
+        self.spec_labels = None
+        self.spec_major = None
+
+    def export(self):
+        slist = _BaseOutput.export(self)
+        if self.__getattribute__("spec_type") in ["ticks", "both"]:
+            slist.append("{:s} spec {:d}".format(self._marker, len(self.spec_ticks)))
+            for i, (loc, m) in enumerate(zip(self.spec_ticks, self.spec_major)):
+                slist.append("{:s} {:s} {:d}, {:.3f}".format(self._marker, m, i, loc))
+        if self.__getattribute__("spec_type") == "both":
+            for i, (label, m) in enumerate(zip(self.spec_labels, self.spec_major)):
+                if m == "major":
+                    slist.append("ticklabel {:d} \"{:s}\"".format(i, label))
+        return slist
+
 
 class Tick(_Tick):
     """User interface of tick"""
@@ -1068,10 +1130,29 @@ class Tick(_Tick):
         self._set(place_rounded=rounded, place_position=place)
         _raise_unknown_attr(self, *kwargs)
 
-    # TODO set custom ticks and its output
-    def set_custom_ticks(self):
-        """set custom ticks for axis"""
-        raise NotImplementedError
+    def set_spec(self, locs, labels=None, use_minor=None):
+        """set custom ticks on axis.
+
+        Note that locs should have same length as labels
+
+        Args:
+            locs (Iterable) : locations of custom ticks on the axis
+            labels (Iterable) : labels of custom ticks
+            use_minor (Iterable) : index of labels to use minor tick
+        """
+        if not isinstance(locs, Iterable):
+            raise TypeError("locs should be Iterable, but got ", type(locs))
+        self.__setattr__("spec_type", "ticks")
+        self.spec_ticks = locs
+        if labels:
+            if len(labels) != len(locs):
+                raise ValueError("labels should have the same length as locs")
+            self.__setattr__("spec_type", "both")
+            self.spec_labels = labels
+        self.spec_major = ["major" for _ in self.spec_labels]
+        if use_minor:
+            for i in use_minor:
+                self.spec_major[i] = "minor"
 
 
 class _Bar(_BaseOutput):
@@ -1083,6 +1164,7 @@ class _Bar(_BaseOutput):
         'linestyle': (int, LineStyle.SOLID, '{:d}'),
         'linewidth': (float, 2., '{:3.1f}'),
         }
+
 
 class Bar(_Bar):
     """User interface of axis bar"""
@@ -1111,9 +1193,12 @@ class Label(_Label):
     """user interface of axis label"""
     def __init__(self, label=None, layout=None, position=None, charsize=None,
                  font=None, color=None, place=None, **kwargs):
+        self.label = label
         if label is None:
             self.label = ""
         self.label = str(self.label)
+        if color:
+            color = Color.get(color)
         _Label.__init__(self, layout=layout, place_position=position, char_size=charsize,
                         font=font, color=color, place=place)
         _raise_unknown_attr(self, *kwargs)
@@ -1165,13 +1250,18 @@ class _TickLabel(_BaseOutput):
 
 # pylint: disable=too-many-locals
 class TickLabel(_TickLabel):
-    """user interface of label of axis tick"""
-    def __init__(self, switch=None, tf=None, formula=None, append=None, prepend=None, prec=None,
+    """user interface of label of axis tick
+
+    Args:
+        switch (bool)
+        tlf (str) : ticklabel format
+    """
+    def __init__(self, switch=None, tlf=None, formula=None, append=None, prepend=None, prec=None,
                  angle=None, font=None, color=None, skip=None, stagger=None,
                  place=None, offset=None, offset_switch=None, charsize=None,
                  start=None, stop=None, start_switch=None, stop_switch=None,
                  **kwargs):
-        _TickLabel.__init__(self, ticklabel_switch=switch, format=tf, formula=formula,
+        _TickLabel.__init__(self, ticklabel_switch=switch, format=tlf, formula=formula,
                             append=append, prepend=prepend, prec=prec, angle=angle, font=font,
                             color=color, skip=skip, stagger=stagger, place=place,
                             offset_switch=offset_switch, offset=offset,
@@ -1179,12 +1269,12 @@ class TickLabel(_TickLabel):
                             stop=stop, stop_type_switch=stop_switch, char_size=charsize)
         _raise_unknown_attr(self, *kwargs)
 
-    def set(self, switch=None, tf=None, formula=None, append=None, prepend=None, prec=None,
+    def set(self, switch=None, tlf=None, formula=None, append=None, prepend=None, prec=None,
             angle=None, font=None, color=None, skip=None, stagger=None,
             place=None, offset=None, offset_switch=None, charsize=None,
             start=None, stop=None, start_switch=None, stop_switch=None,
             **kwargs):
-        self._set(ticklabel_switch=switch, format=tf, formula=formula, append=append,
+        self._set(ticklabel_switch=switch, format=tlf, formula=formula, append=append,
                   prepend=prepend, prec=prec, angle=angle, font=font, color=color, skip=skip,
                   stagger=stagger, place=place, offset_switch=offset_switch, offset=offset,
                   start=start, start_type_switch=start_switch,
@@ -1230,9 +1320,6 @@ class Errorbar(_Errorbar):
 
 class _Axis(_BaseOutput, _Affix):
     """Axis of graph
-
-    Args:
-        axis (str) : in ['x', 'y', 'altx', 'alty']
     """
     _marker = 'axis'
     _attrs = {
@@ -1246,18 +1333,42 @@ class _Axis(_BaseOutput, _Affix):
         _Affix.__init__(self, affix=axis, is_prefix=True)
 
 class Axis(_Axis):
-    """user interface of graph axis apperance"""
+    """user interface of graph axis apperance
+
+    Args:
+        axis (str) : in ['x', 'y', 'altx', 'alty']
+        switch (bool): 
+        at (str) : axis type
+        offset (2-member list):
+        bar (bool)
+        bc (str/int) : bar color
+        bls (str/int) : bar line style
+        blw (number)
+        mjls (str/int) : major tick line style
+    """
     def __init__(self, axis='x', switch=None, at=None, offset=None,
                  bar=None, bc=None, bls=None, blw=None,
                  major=None, mjc=None, mjs=None, mjlw=None, mjls=None, mjg=None,
                  minor=None, mic=None, mis=None, mit=None,
-                 milw=None, mils=None, mig=None, **kwargs):
+                 milw=None, mils=None, mig=None,
+                 label=None, layout=None, position=None, lsize=None,
+                 lfont=None, lc=None, lplace=None,
+                 ticklabel=None, tlf=None, formula=None, append=None, prepend=None,
+                 angle=None, tlfont=None, tlc=None, skip=None, stagger=None,
+                 tlplace=None, tloffset=None, tlo_switch=None, tlsize=None,
+                 start=None, stop=None, start_switch=None, stop_switch=None,
+                 **kwargs):
         _Axis.__init__(self, axis=axis, axis_switch=switch, type=at, offset=offset)
         self._bar = Bar(switch=bar, color=bc, ls=bls, lw=blw)
         self._tick = Tick(major=major, mjc=mjc, mjs=mjs, mjlw=mjlw, mjls=mjls, mjg=mjg,
                           minor=minor, mic=mic, mis=mis, mit=mit, milw=milw, mils=mils, mig=mig)
-        self._ticklabel = _TickLabel()
-        self._label = _Label()
+        self._label = Label(label=label, layout=layout, position=position, charsize=lsize,
+                            font=lfont, color=lc, place=lplace)
+        self._ticklabel = TickLabel(switch=ticklabel, tlf=tlf, formula=formula, append=append,
+                                    prepend=prepend, angle=angle, font=tlfont, color=tlc,
+                                    skip=skip, stagger=stagger, offset=tloffset, charsize=tlsize,
+                                    offset_switch=tlo_switch, start=start, stop=stop, place=tlplace,
+                                    start_switch=start_switch, stop_switch=stop_switch)
         _raise_unknown_attr(self, *kwargs)
 
     def set(self, switch=None, at=None, offset=None, **kwargs):
@@ -1319,7 +1430,7 @@ class Axes(_Axes):
         _raise_unknown_attr(self, *kwargs)
 
 # TODO implement internal object _Dataset
-class Dataset(_BaseOutput, _Affix):
+class _Dataset(_BaseOutput, _Affix):
     """Object of grace dataset
 
     Args:
@@ -1336,43 +1447,76 @@ class Dataset(_BaseOutput, _Affix):
         'legend': (str, "", "\"{:s}\""),
         'comment': (str, "", "\"{:s}\""),
         }
-    def __init__(self, index, *xyz, datatype=None,
-                 **kwargs):
+    def __init__(self, index, **kwargs):
+        _BaseOutput.__init__(self, **kwargs)
+        _Affix.__init__(self, affix=index, is_prefix=False)
+
+
+class Dataset(_Dataset):
+    """User interface of dataset object
+    
+    Args:
+        index
+        xyz (arraylike)
+        datatype (str)
+        label (str)
+        comment (str)
+        color (str) : global color control
+        size (number) : symbol size
+        lt (str) : line type
+        lw (number) : linewidth
+        ls (str/int) : line style
+        lp (str/int) : line pattern
+        lc (str/int) : line color
+        keyword arguments (arraylike): error data
+    """
+    def __init__(self, index, *xyz, label=None, color=None, datatype=None, comment=None,
+                 st=None, ssize=None, sc=None, sp=None, sfc=None, sfp=None,
+                 slw=None, sls=None, char=None, charfont=None, skip=None,
+                 lt=None, lw=None, lc=None, ls=None, lp=None,
+                 baseline=None, blt=None, dropline=None, ft=None, rule=None, fc=None, fp=None,
+                 anno=None, at=None, asize=None, ac=None, rot=None, font=None, af=None, prec=None,
+                 prepend=None, append=None, offset=None,
+                 errorbar=None, ebpos=None, ebc=None, ebp=None, ebsize=None, eblw=None,
+                 ebls=None, ebrlw=None, ebrls=None, ebrc=None, ebrcl=None,
+                 **errs):
         # pop comment and legend out to avoid duplicate arguments
-        legend = kwargs.pop("legend", None)
-        if legend is None:
-            legend = ""
-        comment = kwargs.pop("comment", None)
+        if label is None:
+            label = ""
         if comment is None:
             comment = ""
-        # pop error data
-        errs = {}
-        for e in Data.ERROR_ARGS:
-            try:
-                errs[e] = kwargs.pop(e)
-            except KeyError:
-                pass
         self.data = Data(*xyz, datatype=datatype,
-                         label=legend, comment=comment, **errs)
-        _BaseOutput.__init__(self, type=self.data.datatype, **kwargs)
-        _Affix.__init__(self, affix=index, is_prefix=False)
-        # insert back to avoid losing information during superclass init
-        self.legend = legend
-        self.comment = comment
-        self._symbol = Symbol()
-        self._line = Line()
-        self._baseline = BaseLine()
-        self._dropline = DropLine()
-        self._fill = Fill()
-        self._avalue = Annotation()
-        self._errorbar = Errorbar()
-        kwargs.pop('type', None)
+                         label=label, comment=comment, **errs)
+        _Dataset.__init__(self, index, type=self.data.datatype, comment=comment, legend=label)
+        if sc is None:
+            sc = color
+        if sfc is None:
+            sfc = color
+        self._symbol = Symbol(st=st, color=sc, size=ssize, pattern=sp, fc=sfc, fp=sfp, lw=slw,
+                              ls=sls, char=char, charfont=charfont, skip=skip)
+        if lc is None:
+            lc = color
+        self._line = Line(lt=lt, color=lc, width=lw, style=ls, pattern=lp)
+        self._baseline = BaseLine(lt=blt, switch=baseline)
+        self._dropline = DropLine(switch=dropline)
+        if fc is None:
+            fc = color
+        self._fill = Fill(ft=ft, rule=rule, color=fc, pattern=fp)
+        if ac is None:
+            ac = color
+        self._avalue = Annotation(switch=anno, at=at, rot=rot, charsize=asize, color=ac, font=font,
+                                  af=af, append=append, prepend=prepend, prec=prec, offset=offset)
+        if ebc is None:
+            ebc = color
+        self._errorbar = Errorbar(switch=errorbar, position=ebpos, color=ebc, pattern=ebp,
+                                  size=ebsize, lw=eblw, ls=ebls, rlw=ebrlw, rls=ebrls, rc=ebrc,
+                                  rcl=ebrcl)
 
     def set_symbol(self, **kwargs):
         self._symbol.set(**kwargs)
 
     def set_line(self, **kwargs):
-        """set attributes of line"""
+        """set attributes of data line"""
         self._line.set(**kwargs)
 
     def set_baseline(self, **kwargs):
@@ -1453,6 +1597,7 @@ class Graph(_Graph):
     def __init__(self, index, xmin=None, ymin=None, xmax=None, ymax=None,
                  hidden=None, gt=None, stacked=None, barhgap=None,
                  fp=None, fpt=None, fpxy=None, fpform=None, fpprec=None,
+                 title=None, subtitle=None,
                  **kwargs):
         # TODO user arguments
         _Graph.__init__(self, index, hidden=hidden, type=gt, stacked=stacked, bar_hgap=barhgap,
@@ -1464,8 +1609,8 @@ class Graph(_Graph):
         self._stackworld = StackWorld()
         self._view = View()
         self._znorm = Znorm()
-        self._title = _Title()
-        self._subtitle = _SubTitle()
+        self._title = Title(title=title)
+        self._subtitle = SubTitle(subtitle=subtitle)
         self._xaxes = _Axes('x')
         self._yaxes = _Axes('y')
         #self._altxaxes = _Axes('altx', switch=Switch.OFF)
@@ -1544,13 +1689,13 @@ class Graph(_Graph):
 
     def set_view(self, xmin=None, ymin=None, xmax=None, ymax=None):
         """set the view (apperance in the plot) of graph on the plot"""
-        pre = self._view.get_world()
+        pre = self._view.get_view()
         _logger.debug("view before %8f %8f %8f %8f", *pre)
         for i, v in enumerate([xmin, ymin, xmax, ymax]):
             if v is not None:
                 pre[i] = v
         self._view.set_view(pre)
-        _logger.debug("view after %8f %8f %8f %8f", *self._view.get_world())
+        _logger.debug("view after %8f %8f %8f %8f", *self._view.get_view())
 
     def set_xaxis(self, **kwargs):
         """set x axis"""
@@ -1568,21 +1713,17 @@ class Graph(_Graph):
         """set x axis"""
         self._set_axis('alty', **kwargs)
 
-    def plot(self, *xyz, datatype=None, label=None, comment=None,
-             **kwargs):
+    def plot(self, *xyz, **kwargs):
         """plot a dataset"""
         # check if a band structure like `y` data is parsed
         if len(xyz) == 2 and len(shape(xyz[1])) == 2:
             n = self.ndata
-            ds = [Dataset(n, xyz[0], xyz[1][0], datatype=datatype,
-                          label=label, comment=comment, **kwargs),]
+            ds = [Dataset(n, xyz[0], xyz[1][0], **kwargs),]
             for i, y in enumerate(xyz[1][1:]):
-                ds.append(Dataset(n+i+1, xyz[0], y, datatype=datatype,
-                                  **kwargs))
+                ds.append(Dataset(n+i+1, xyz[0], y, **kwargs))
             self._datasets.extend(ds)
         else: 
-            ds = Dataset(self.ndata, *xyz, datatype=datatype,
-                         label=label, comment=comment, **kwargs)
+            ds = Dataset(self.ndata, *xyz, **kwargs)
             self._datasets.append(ds)
 
     def set_xlabel(self, s, **kwargs):
@@ -1644,6 +1785,11 @@ class Plot:
     """the general control object for the grace plot
 
     Args:
+        rows, cols (int)
+        hgap, vgap (float)
+        lw (number)
+        ls (str/int)
+        color (str/int)
         qtgrace (bool) : if true, QtGrace comments will be added 
     Public attributes:
 
@@ -1652,13 +1798,14 @@ class Plot:
     Private attributes:
         _head (str)
         _graphs (list)
-        _font (_Font)
+        _font (Font)
         _use_qtgrace (bool)
 
     Private methods:
     """
-    
     def __init__(self, rows=1, cols=1, hgap=0.02, vgap=0.02,
+                 lw=None, ls=None, color=None, pattern=None, font=None,
+                 charsize=None, symbolsize=None, sformat=None,
                  qtgrace=False, **kwargs):
         self._comment_head = ["# Grace project file", "#"]
         # header that seldom needs to change
@@ -1671,10 +1818,12 @@ class Plot:
                       ]
         self._page = Page()
         self._regions = [_Region(i) for i in range(5)]
-        self._font = _Font()
+        self._font = Font()
         self._cm = plot_colormap
-        self._timestamp = _TimesStamp()
-        self._default = Default()
+        self._timestamp = TimesStamp()
+        self._default = Default(lw=lw, ls=ls, color=color, pattern=pattern,
+                                font=font, charsize=charsize, symbolsize=symbolsize,
+                                sformat=sformat)
         # drawing objects
         self._objects = []
         # set the graphs by alignment
@@ -1716,20 +1865,15 @@ class Plot:
         except IndexError:
             raise IndexError(f"G.{i} does not exist")
 
-    def plot(self, *xyz, igraph=0, datatype=None, 
-             label=None, comment=None, **errors):
+    def plot(self, *xyz, igraph=0, **kwargs):
         """plot a data set to graph `igraph`
 
         Args:
             positional *xyz (arraylike)
             igraph (int)
-            datatype (str)
-            label (str)
-            comment (str)
-            keyword arguments : error values
+            keyword arguments will parsed to Graph object
         """
-        self._graphs[igraph].plot(*xyz, datatype=datatype, label=label,
-                                  comment=comment, **errors)
+        self._graphs[igraph].plot(*xyz, **kwargs)
 
     def add_object(self, objtype, **kwargs):
         """add object to the plot"""
