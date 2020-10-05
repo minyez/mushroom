@@ -19,7 +19,8 @@ raise_isdir "$workdir"
 mkdir "$workdir"
 # process INCAR tags from variables
 sed "s/_encut_/$encut/g" INCAR.pbe > "$workdir/INCAR.pbe"
-sed "s/_encut_/$encut/g;s/_nkred_/$nkred/g;s/_hfscreen_/$hfscreen/g" INCAR.coarse > "$workdir/INCAR.coarse"
+sed "s/_encut_/$encut/g;s/_hfscreen_/$hfscreen/g" INCAR.coarse > "$workdir/INCAR.coarse"
+sed -i "s/_nkredx_/$nkredx/g;s/_nkredy_/$nkredy/g;s/_nkredz_/$nkredz/g" "$workdir/INCAR.coarse"
 sed "s/_encut_/$encut/g;s/_hfscreen_/$hfscreen/g" INCAR.hf > "$workdir/INCAR.hf"
 cp KPOINTS.scf "$workdir/"
 

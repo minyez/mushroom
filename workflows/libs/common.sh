@@ -16,6 +16,25 @@ function raise_isdir () {
   fi
 }
 
+function raise_different () {
+  # raise if two files are different
+  # $1 $2: paths of files
+  file1=$1
+  file2=$2
+  if [ ! -f "$file1" ]; then
+    echo "$file1 is not a file"
+    exit 1
+  fi
+  if [ ! -f "$file2" ]; then
+    echo "$file2 is not a file"
+    exit 1
+  fi
+  s=$(diff "$file1" "$file2")
+  if [[ -n "$s" ]]; then
+    exit 1
+  fi
+}
+
 function raise_missing_prereq (){
   # raise when any of pre-requisite files is missing
   # $@: names of pre-requisite files

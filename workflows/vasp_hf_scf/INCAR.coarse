@@ -13,9 +13,11 @@ ALGO = ALL
 
 GGA = PE
 LHFCALC = .TRUE.
-PRECFOCK = Fast
-NKRED = _nkred_
 TIME = 0.4
+PRECFOCK = Fast
+NKREDX = _nkredx_
+NKREDY = _nkredy_
+NKREDZ = _nkredz_
 HFSCREEN = _hfscreen_
 
 

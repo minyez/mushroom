@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
 # common functions to be used in vasp workflows
-
+function raise_chgcar_change () {
+  # raise when two CHGCAR files are different, used for sanity check of band calculation
+  # $1 $2 : paths of CHGCAR files
+  chg1=$1
+  chg2=$2
+  if [[ -n $(diff "$chg1" "$chg2") ]]; then
+    echo "Unexpected CHGCAR change during band calculation."; exit 1
+  fi
+}
 function backup_results () {
   # back up OUTCAR EIGENVAL DOSCAR and vasprun.xml
   files=(OUTCAR EIGENVAL DOSCAR vasprun.xml)
@@ -136,6 +144,28 @@ function run_hf_3steps () {
   backup_results hf
 }
 
+function run_hf_3steps_fixchg () {
+  vaspcmd=$1
+  scfchg=$2
+  # step 1: PBE SCF for preconvergence
+  cp KPOINTS.scf KPOINTS
+  cp INCAR.pbe INCAR
+  $vaspcmd > out.pbe 2>&1
+  backup_results pbe
+  # step 2: coarse hf calculation with fixed charge
+  cp "$scfchg" CHGCAR
+  cp INCAR.coarse INCAR
+  $vaspcmd > out.coarse 2>&1
+  # raise if charge has changed
+  raise_chgcar_change "$scfchg" "CHGCAR"
+  backup_results coarse
+  # step 3: accurate hf calculation
+  cp INCAR.hf INCAR
+  $vaspcmd > out.hf 2>&1
+  # raise if charge has changed
+  raise_chgcar_change "$scfchg" "CHGCAR"
+  backup_results hf
+}
 function run_gw_3steps () {
   # run the three step GW calculations
   # $1: vasp command, e.g. mpirun -np 4 vasp

@@ -8,7 +8,9 @@ defaultnp=4
 # planewave cutoff to use
 encut=500
 # qmesh reduction
-nkred=1
+nkredx=1
+nkredy=1
+nkredz=1
 # screening. 0 for PBE0, 0.2 for HSE06 and 0.3 for HSE03
 hfscreen=0
 # modules to load
