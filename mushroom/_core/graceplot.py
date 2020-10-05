@@ -1738,10 +1738,10 @@ class Graph(_Graph):
 
     def tight_graph(self, xscale=1.1, yscale=1.1):
         """make the graph looks tight by adopting x/y min/max as axis extremes"""
-        self.set_lim(xmin=self.xmin-absolute(self.xmin)*(xscale-1.0),
-                     xmax=self.xmax+absolute(self.xmax)*(xscale-1.0),
-                     ymin=self.max-absolute(self.max)*(yscale-1.0),
-                     ymax=self.max+absolute(self.max)*(yscale-1.0))
+        self.set_lim(xmin=self.xmin()-absolute(self.xmin())*(xscale-1.0),
+                     xmax=self.xmax()+absolute(self.xmax())*(xscale-1.0),
+                     ymin=self.min()-absolute(self.min())*(yscale-1.0),
+                     ymax=self.max()+absolute(self.max())*(yscale-1.0))
         
     def export(self):
         """export the header of graph, including `with g` part and data header"""
@@ -1842,6 +1842,10 @@ class Graph(_Graph):
         else: 
             ds = Dataset(self.ndata, *xyz, **kwargs)
             self._datasets.append(ds)
+
+    def set_legend(self, **kwargs):
+        """set up the legend box. For arguments, see Legend"""
+        self._legend.set(**kwargs)
 
     def set_xlabel(self, s, **kwargs):
         """set x label of graph to s"""
@@ -2250,10 +2254,10 @@ class Plot:
         """tight the layout of graph arrangments"""
         raise NotImplementedError
 
-    def tight_graph(self):
+    def tight_graph(self, xscale=1.1, yscale=1.1):
         """make graph axis tight"""
         for g in self._graphs:
-            g.tight_graph()
+            g.tight_graph(xscale=xscale, yscale=yscale)
 
     def savefig(self, figname, dpi=300):
         """save as figure file to `figname`

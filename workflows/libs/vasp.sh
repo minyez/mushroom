@@ -119,6 +119,23 @@ function get_qpc_vb_cb () {
   echo "$qpc_vb $qpc_cb $uqpc_vb $uqpc_cb"
 }
 
+function run_hf_3steps () {
+  vaspcmd=$1
+  # step 1: PBE preconverge
+  cp KPOINTS.scf KPOINTS
+  cp INCAR.pbe INCAR
+  $vaspcmd > out.pbe 2>&1
+  backup_results pbe
+  # step 2: coarse hf calculation
+  cp INCAR.coarse INCAR
+  $vaspcmd > out.coarse 2>&1
+  backup_results coarse
+  # step 3: accurate hf calculation
+  cp INCAR.hf INCAR
+  $vaspcmd > out.hf 2>&1
+  backup_results hf
+}
+
 function run_gw_3steps () {
   # run the three step GW calculations
   # $1: vasp command, e.g. mpirun -np 4 vasp

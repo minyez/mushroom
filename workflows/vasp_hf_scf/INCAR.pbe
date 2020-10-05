@@ -1,0 +1,9 @@
+FeS2 PBE
+
+LREAL = .FALSE.
+EDIFF = 1e-06
+ENCUT = _encut_
+ISMEAR = -5
+PREC = Accurate
+ISPIN = 1
+LMAXMIX = 6

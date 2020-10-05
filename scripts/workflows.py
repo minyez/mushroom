@@ -19,20 +19,33 @@ def add_sbatch_header(wf, platform):
     raise NotImplementedError
 
 def copy_wf_to_dst(wf, dst="."):
-    """copy the workflow files to directory dst"""
+    """copy the workflow files to directory dst
+
+    Args:
+        wf (str) : name of workflow
+        dst (str) : copying destination. Default to pwd
+    """
     p = PATH_WORKFLOWS / wf
     dst = Path(dst)
     _logger.info("Copying %s files to %s", p, dst)
     for x in p.glob("*"):
-        copyfile(x, dst / x.name)
-        _logger.info(">> %s", x.name)
+        if not x.name.startswith("."):
+            copyfile(x, dst / x.name)
+            _logger.info(">> %s", x.name)
 
 def get_avail_workflows(prog=None):
-    """get all available workflows in the directory"""
+    """get all available workflows in the directory
+
+    Args:
+        prog (str) : name of program.
+            If set, only the workflows for this program will be shown.
+    """
     if prog:
-        awfs = [x.name for x in PATH_WORKFLOWS.glob(prog.lower() + "_*")]
+        awfs = [x.name for x in PATH_WORKFLOWS.glob(prog.lower() + "_*")
+                if x.is_dir() and x.name != "libs"]
     else:
-        awfs = [x.name for x in PATH_WORKFLOWS.iterdir() if x.is_dir()]
+        awfs = [x.name for x in PATH_WORKFLOWS.iterdir()
+                if x.is_dir() and x.name != "libs"]
     return awfs
 
 def init_workflow_symlink(wf):
@@ -40,6 +53,9 @@ def init_workflow_symlink(wf):
 
     If file `.depends` is found in the directory, it will read each line as
     file name of the library script to source in `lib`
+
+    Args:
+        wf (str) : name of workflow
     """
     p = Path(PATH_WORKFLOWS / wf / ".depends")
     if p.is_file():
@@ -58,7 +74,11 @@ def init_workflow_symlink(wf):
             p.symlink_to(PATH_WORKFLOWS / 'libs' / prog)
 
 def complete_workflow_name(wf):
-    """complete the workflow name"""
+    """complete the workflow name
+
+    Args:
+        wf (str) : name of workflow
+    """
     choices = get_avail_workflows()
     if wf in choices:
         _logger.info("Found workflow: %s", wf)
@@ -79,6 +99,8 @@ def _parser():
                    help="search available workflows for program")
     g.add_argument("-p", dest='print', action="store_true",
                    help="print available workflows")
+    g.add_argument("--hpc", dest='platform', type=str, default=None,
+                   help="name of HPC platform")
     g.add_argument("--init-links", dest='init_links', action="store_true",
                    help="initialize all links of dependency scripts")
     p.add_argument("--dst", type=str, default=".",

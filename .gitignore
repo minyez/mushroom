@@ -28,7 +28,7 @@ dist/
 # workflows
 workflows/vasp_*/vasp.sh
 workflows/*/common.sh
-!workflows/libs/*
+!workflows/libs/*.sh
 
 mcm.info
 commit.info
