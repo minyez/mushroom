@@ -1,0 +1,10 @@
+PBE preconvergence
+
+LREAL = .FALSE.
+EDIFF = 1e-06
+ENCUT = _encut_
+ISMEAR = 0
+SIGMA = 0.05
+PREC = _prec_
+ISPIN = 1
+LMAXMIX = 6

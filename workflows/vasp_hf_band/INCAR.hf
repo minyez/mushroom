@@ -1,0 +1,21 @@
+Accurate hybrid functional
+
+ISTART = 1
+ICHARG = 11
+LREAL = .FALSE.
+EDIFF = 1e-06
+ENCUT = _encut_
+
+ISMEAR = 0
+SIGMA = 0.05
+PREC = Accurate
+ISPIN = 1
+LMAXMIX = 6
+ALGO = ALL
+
+GGA = PE
+LHFCALC = .TRUE.
+PRECFOCK = Normal
+TIME = 0.4
+HFSCREEN = _hfscreen_
+

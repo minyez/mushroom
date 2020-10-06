@@ -5,18 +5,32 @@ function raise_chgcar_change () {
   # $1 $2 : paths of CHGCAR files
   chg1=$1
   chg2=$2
-  if [[ -n $(diff "$chg1" "$chg2") ]]; then
+  if [[ -n $(diff -q "$chg1" "$chg2") ]]; then
     echo "Unexpected CHGCAR change during band calculation."; exit 1
   fi
 }
+
 function backup_results () {
-  # back up OUTCAR EIGENVAL DOSCAR and vasprun.xml
-  files=(OUTCAR EIGENVAL DOSCAR vasprun.xml)
+  # back up result files
+  files=(OUTCAR EIGENVAL DOSCAR PROCAR vasprun.xml OSZICAR
+         ELFCAR LOCPOT)
   for f in "${files[@]}"; do
     if [ -f "$f" ]; then
       cp "$f" "$f.$1"
     fi
   done
+}
+
+function clean () {
+  # clean all result and temporary files. back up those you need before you do
+  rm -f IBZKPT XDATCAR CONTCAR PROCAR OUTCAR OSZICAR vasprun.xml \
+    REPORT ELFCAR LOCPOT PCDAT DOCAR EIGENVAL CHG W*.tmp
+}
+
+function cleanall () {
+  # clean all result, temporary and restart files (WAVECAR, WAVEDER, CHGCAR)
+  clean
+  rm -f CHGCAR WAVECAR WAVEDER WAVECAR.chi
 }
 
 function wall_time () {
@@ -30,7 +44,7 @@ function wall_time () {
   awk '/Elapsed time/ {print $4}' "$fn"
 }
 
-function get_nelect () {
+function outcar_nelect () {
   # get the number of electrons (float)
   # $1: outcar file (OUTCAR)
   if (( $# == 0 )); then
@@ -41,7 +55,7 @@ function get_nelect () {
   awk '/NELECT/ {print $3}' "$fn"
 }
 
-function get_vb () {
+function outcar_vb () {
   # get the number of valence bands
   # $1: outcar file (OUTCAR)
   if (( $# == 0 )); then
@@ -52,7 +66,7 @@ function get_vb () {
   awk '/NELECT/ {printf("%d", $3/2.0)}' "$fn"
 }
 
-function get_nbands () {
+function outcar_nbands () {
   # get the total number of bands
   # $1: outcar file (OUTCAR)
   if (( $# == 0 )); then
@@ -63,7 +77,7 @@ function get_nbands () {
   awk '/NBANDS/ {print $15}' "$fn"
 }
 
-function get_eigen_ik () {
+function eig_outcar_eigen_ik () {
   # get the vb and cb eigen values at ik
   # $1: index of k (1)
   # $2: eigen value file (EIGENVAL)
@@ -95,7 +109,7 @@ function get_eigen_ik () {
   echo "$vb $cb"
 }
 
-function get_qpc_vb_cb () {
+function outcar_qpc_vb_cb () {
   # get the QP correction of VBM and CBM
   # $1: OUTCAR file
   # $2: index of kpoints
@@ -166,6 +180,7 @@ function run_hf_3steps_fixchg () {
   raise_chgcar_change "$scfchg" "CHGCAR"
   backup_results hf
 }
+
 function run_gw_3steps () {
   # run the three step GW calculations
   # $1: vasp command, e.g. mpirun -np 4 vasp
@@ -201,7 +216,7 @@ function run_gw_3steps () {
   backup_results gw
 }
 
-function get_encut () {
+function incar_encut () {
   if (( $# == 0 )); then
     fn="INCAR"
   else
@@ -211,4 +226,39 @@ function get_encut () {
   s=${s#*"="[ ]*}
   s=${s%%[ ]*";"*}
   echo "$s"
+}
+
+function xml_kpts () {
+  # print kpoint list from vasprun.xml
+  # $1 : path of vasprun.xml file
+  vaspxml=$1
+  if [ ! -f "$vaspxml" ]; then
+    exit 1
+  fi
+  lnkpt=$(grep -n -m 1 "<varray name=\"kpointlist\" >" "$vaspxml" | tail -1 | awk '{print $1}')
+  lnkpt="${lnkpt/:/}"
+  lnwei=$(grep -n -m 1 "<varray name=\"weights\" >" "$vaspxml" | tail -1 | awk '{print $1}')
+  lnwei="${lnwei/:/}"
+  kpts=$(awk "FNR < $(( lnwei-1 ))&& FNR > $lnkpt {printf(\"%.8f   %.8f   %.8f\n\", \$2, \$3, \$4)}" "$vaspxml")
+  echo "$kpts"
+}
+
+function xml_kpts_weigh () {
+  # print kpoints list and integer weights from vasprun.xml
+  # $1 : path of vasprun.xml file
+  # $2 (optional) : index of Gamma point to get the number of kpoints in BZ
+  # TODO automatic the process of getting the number of kpoints in BZ
+  vaspxml=$1
+  gamma=1
+  if (( $# == 2 )); then
+    gamma=$2
+  fi
+  kpts=$(xml_kpts "$vaspxml")
+  nkpt=$(echo "$kpts" | wc -l)
+  lnwei=$(grep -n -m 1 "<varray name=\"weights\" >" "$vaspxml" | tail -1 | awk '{print $1}')
+  lnwei="${lnwei/:/}"
+  nkall=$(awk "FNR == $(( lnwei+gamma )) {print int(1.0 / \$2 + 0.1)}" "$vaspxml")
+  weigh=$(awk "FNR <= $(( lnwei+nkpt ))&& FNR > $lnwei {print int($nkall * \$2 + 0.1)}" "$vaspxml")
+  echo "$kpts" > .kpts.tmp; echo "$weigh" > .weigh.tmp; paste .kpts.tmp .weigh.tmp
+  rm -f .kpts.tmp .weigh.tmp
 }

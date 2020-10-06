@@ -1,0 +1,19 @@
+Coarse hybrid functional
+
+ICHARG = 11
+ISTART = 1
+LREAL = .FALSE.
+EDIFF = 1e-06
+ENCUT = _encut_
+ISMEAR = 0
+SIGMA = 0.05
+PREC = _prec_
+ISPIN = 1
+LMAXMIX = 6
+ALGO = ALL
+
+GGA = PE
+LHFCALC = .TRUE.
+PRECFOCK = Fast
+TIME = 0.4
+HFSCREEN = _hfscreen_

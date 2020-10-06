@@ -4,6 +4,7 @@ __pycache__
 *.swp
 *.o
 *.log
+*.tmp
 .cache
 .DS_Store
 

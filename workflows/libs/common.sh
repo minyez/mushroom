@@ -6,6 +6,20 @@ function comment_datetime () {
   echo "# $(date +"%Y-%m-%d %a %H:%M:%S")"
 }
 
+function raise_noexec () {
+  # check if the parsed path/command exists and is executable
+  # $1: command or path
+  executable=$1
+  e=$(which "$executable")
+  if (( $? == 0 )); then
+    return 0
+  fi
+  if [[ -x "$executable" ]]; then
+    return 0
+  fi
+  echo "Valid executable $executable not found"; exit 1
+}
+
 function raise_isdir () {
   # check if directory exists and raise if it does
   # $1: name of directory
@@ -29,7 +43,7 @@ function raise_different () {
     echo "$file2 is not a file"
     exit 1
   fi
-  s=$(diff "$file1" "$file2")
+  s=$(diff -q "$file1" "$file2")
   if [[ -n "$s" ]]; then
     exit 1
   fi
