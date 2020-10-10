@@ -29,15 +29,15 @@ class test_dos_initialize(ut.TestCase):
     def test_raise_for_inconsistent_egrid_dos(self):
         """exceptions"""
         for b in badDos:
-            self.assertRaisesRegex(DosError, r"Inconsistent shape: *",
+            self.assertRaisesRegex(DosError, r"Inconsistent shape, *",
                                    DensityOfStates, goodEgrid, b, 0.0)
-        self.assertRaisesRegex(DosError, r"Inconsistent shape: *",
+        self.assertRaisesRegex(DosError, r"Inconsistent shape, *",
                                DensityOfStates, badEgrid, goodDos, 0.0)
 
     def test_properties(self):
         """basic properties"""
         dos = DensityOfStates(goodEgrid, goodDos, efermi=1.0, unit="ev")
-        self.assertFalse(dos.has_pdos)
+        self.assertFalse(dos.has_pdos())
         self.assertEqual(dos.nedos, nedos)
         self.assertEqual(dos.nspins, nspins)
         self.assertEqual('ev', dos.unit)
@@ -45,12 +45,12 @@ class test_dos_initialize(ut.TestCase):
         self.assertTrue(np.allclose(goodDos, dos.tdos))
         dos.unit = "ry"
         self.assertAlmostEqual(dos.efermi, EV2RY)
-        # None for atoms, projs and pDos when no projection was parsed
-        #self.assertEqual(None, dos.atms)
-        #self.assertEqual(0, dos.natms)
-        #self.assertEqual(None, dos.prjs)
-        #self.assertEqual(0, dos.nprjs)
-        #self.assertEqual(None, dos.pdos)
+        # None for atms, prjs and pdos when no projection was parsed
+        self.assertEqual(None, dos.atms)
+        self.assertEqual(0, dos.natms)
+        self.assertEqual(None, dos.prjs)
+        self.assertEqual(0, dos.nprjs)
+        self.assertFalse(None, dos.has_pdos())
 
     #def test_sum_proj(self):
     #    dos = Dos(goodEgrid, goodDos, efermi=0.0, unit="ev")

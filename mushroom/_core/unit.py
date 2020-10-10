@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
-"""Object to manipulate units of physical quantities"""
+"""Objects to manipulate units of physical quantities"""
 from mushroom._core.constants import ANG2AU, EV2HA, EV2RY, RY2HA
 
 
 class UnitError(Exception):
-    pass
+    """exception for unit manipulation"""
 
 
 class EnergyUnit:

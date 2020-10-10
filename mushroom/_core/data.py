@@ -130,7 +130,7 @@ class Data:
         except AttributeError:
             return self.__getattribute__('y').min()
 
-    def _get(self, data_cols, transpose=False):
+    def _get(self, data_cols, scale=1.0, transpose=False):
         """get all data value
 
         default as 
@@ -147,27 +147,27 @@ class Data:
         d = np.column_stack([self.__getattribute__(arg) for arg in data_cols])
         if transpose:
             d = d.transpose()
-        return d
+        return d * scale
 
-    def _export(self, data_cols, form=None, transpose=False, separator=None):
+    def _export(self, data_cols, form=None, transpose=False, sep=None):
         """export data/error to a list, each member as a line of string for data
 
         Default output will be one line for each data type, i.e.
 
-        'x1 y1 z1'
-        'x2 y2 z2'
-        'x3 y3 z3'
-        ...
+            'x1[sep]y1[sep]z1'
+            'x2[sep]y2[sep]z2'
+            'x3[sep]y3[sep]z3'
+            ...
 
         Set `transpose` to True will get
 
-        'x1 x2 x3 ...'
-        'y1 y2 y3 ...'
-        'z1 z2 z3 ...'
+            'x1[sep]x2[sep]x3 ...'
+            'y1[sep]y2[sep]y3 ...'
+            'z1[sep]z2[sep]z3 ...'
 
         Args:
             transpose (bool)
-            separator (str)
+            sep (str)
             form (formatting string or its list/tuple) : formatting string
                 default to use float
                 if a str is parsed, this format apply to all data columns
@@ -181,33 +181,7 @@ class Data:
                 raise ValueError(msg, form, len(data_cols))
 
         data_all = self._get(data_cols, transpose=transpose)
-
-        if form is None:
-            if transpose:
-                # data_all = (xs, ys, zs)
-                data1 = [x[0] for x in data_all]
-            else:
-                # data_all = (1, 2, 3...)
-                data1 = data_all[0]
-            # if no form is specified, use the float
-            form = ['{:f}',] * len(data1)
-
-        if separator is None:
-            separator = " "
-        for i, array in enumerate(data_all):
-            if isinstance(form, str):
-                s = separator.join([form.format(x) for x in array])
-            elif isinstance(form, (list, tuple)):
-                if transpose:
-                    # array = (x1, x2, x3)
-                    s = separator.join([form[i].format(x) for x in array])
-                else:
-                    # array = (x1, y1, z1)
-                    s = separator.join([f.format(x) for f, x in zip(form, array)])
-            else:
-                raise ValueError("invalid format string {:s}".format(form))
-            slist.append(s)
-        return slist
+        return print_2d_data(data_all, transpose=transpose, form=form, sep=sep)
 
     def get_data(self, transpose=False):
         """get all data values
@@ -258,45 +232,45 @@ class Data:
         """
         return self._get(self._data_cols + self._error_cols, transpose=transpose)
 
-    def export_data(self, form=None, transpose=False, separator=None):
+    def export_data(self, form=None, transpose=False, sep=None):
         """Export the data as a list of strings
         
         See get for the meaning of transpose
 
         Args:
-            separator (str)
+            sep (str)
             form (formatting string or its list/tuple) : formatting string
                 if a str is parsed, this format apply to all data columns
                 if Iterable, each form will be parsed respectively.
         """
-        return self._export(self._data_cols, form=form, transpose=transpose, separator=separator)
+        return self._export(self._data_cols, form=form, transpose=transpose, sep=sep)
 
-    def export_error(self, form=None, transpose=False, separator=None):
+    def export_error(self, form=None, transpose=False, sep=None):
         """Export the error as a list of strings
 
         See get_error for the meaning of transpose
 
         Args:
-            separator (str)
+            sep(str)
             form (formatting string or its list/tuple) : formatting string
                 if a str is parsed, this format apply to all data columns
                 if Iterable, each form will be parsed respectively.
         """
-        return self._export(self._error_cols, form=form, transpose=transpose, separator=separator)
+        return self._export(self._error_cols, form=form, transpose=transpose, sep=sep)
 
-    def export(self, form=None, transpose=False, separator=None):
+    def export(self, form=None, transpose=False, sep=None):
         """Export both data and error as a list of strings
         
         See get_all for the meaning of transpose
 
         Args:
-            separator (str)
+            sep (str)
             form (formatting string or its list/tuple) : formatting string
                 if a str is parsed, this format apply to all data columns
                 if Iterable, each form will be parsed respectively.
         """
         return self._export(self._data_cols + self._error_cols,
-                            form=form, transpose=transpose, separator=separator)
+                            form=form, transpose=transpose, sep=sep)
 
     @classmethod
     def _check_data_type(cls, *xyz, datatype=None, **errors):
@@ -340,4 +314,41 @@ class Data:
             raise ValueError("Unsupported datatype", datatype)
         # some error is parsed
         return t, err_cols
+
+def print_2d_data(data, form=None, transpose=False, sep=None):
+    """print the 2-dimension data into list of strings
+
+    Args:
+        data (2d array)
+        form (str or tuple/list): format string of each type of data.
+        transpose (bool) : control the application of format `form` when it is iterable.
+            Set False for column-wise, i.e. data[:][i] in same format form[i],
+            True for row-wise, i.e. data[i][:] in same format form[i]
+        sep (str)
+
+    """
+    slist = []
+    if form is None:
+        if transpose:
+            l = len([x[0] for x in data])
+        else:
+            l = len(data[0])
+        form = ['{:f}',] * l
+
+    if sep is None:
+        sep = " "
+    for i, array in enumerate(data):
+        if isinstance(form, str):
+            s = sep.join([form.format(x) for x in array])
+        elif isinstance(form, (list, tuple)):
+            if transpose:
+                # array = (x1, x2, x3)
+                s = sep.join([form[i].format(x) for x in array])
+            else:
+                # array = (x1, y1, z1)
+                s = sep.join([f.format(x) for f, x in zip(form, array)])
+        else:
+            raise ValueError("invalid format string {:s}".format(form))
+        slist.append(s)
+    return slist
 

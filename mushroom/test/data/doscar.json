@@ -1,0 +1,8 @@
+{
+  "DOSCAR_1": {
+    "nspins": 2,
+    "nedos": 1000,
+    "natms": 42,
+    "nprjs": 9
+  }
+}
