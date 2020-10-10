@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 # coding = utf-8
-
 import json
 import os
 import re
@@ -8,10 +7,10 @@ import unittest as ut
 
 import numpy as np
 
-from mushroom._core.bandstructure import BandStructure as BS
-from mushroom._core.bandstructure import BandStructureError as BSE
-from mushroom._core.bandstructure import (_check_eigen_occ_weight_consistency,
-                                          random_band_structure)
+from mushroom._core.bs import BandStructure as BS
+from mushroom._core.bs import BandStructureError as BSE
+from mushroom._core.bs import (_check_eigen_occ_weight_consistency,
+                               random_band_structure)
 from mushroom._core.constants import EV2HA, EV2RY
 from mushroom._core.ioutils import get_matched_files
 
