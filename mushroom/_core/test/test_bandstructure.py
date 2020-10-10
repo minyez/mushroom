@@ -43,9 +43,9 @@ class test_check_consistency(ut.TestCase):
         self.assertTupleEqual(_check_eigen_occ_weight_consistency(goodEigen, goodOcc, goodWeight),
                               (nspins, nkpts, nbands))
         self.assertTupleEqual(_check_eigen_occ_weight_consistency(badEigen, badOcc, goodWeight),
-                              ())
+                              (None, None, None))
         self.assertTupleEqual(_check_eigen_occ_weight_consistency(goodEigen, goodOcc, badWeight),
-                              ())
+                              (None, None, None))
 
 
 class test_BS_no_projection(ut.TestCase):
@@ -65,26 +65,26 @@ class test_BS_no_projection(ut.TestCase):
         self.assertEqual(bs.nspins, nspins)
         self.assertEqual(bs.nkpts, nkpts)
         self.assertEqual(bs.nbands, nbands)
-        self.assertTupleEqual((nspins, nkpts), np.shape(bs.ivbmPerChannel))
-        self.assertTupleEqual((nspins, 2), np.shape(bs.ivbmPerSpin))
+        self.assertTupleEqual((nspins, nkpts), np.shape(bs.ivbm_sp_kp))
+        self.assertTupleEqual((nspins, 2), np.shape(bs.ivbm_sp))
         self.assertTupleEqual((3,), np.shape(bs.ivbm))
-        self.assertTupleEqual((nspins, nkpts), np.shape(bs.icbmPerChannel))
-        self.assertTupleEqual((nspins, 2), np.shape(bs.icbmPerSpin))
+        self.assertTupleEqual((nspins, nkpts), np.shape(bs.icbm_sp_kp))
+        self.assertTupleEqual((nspins, 2), np.shape(bs.icbm_sp))
         self.assertTupleEqual((3,), np.shape(bs.icbm))
-        self.assertTupleEqual((nspins, nkpts), np.shape(bs.vbmPerChannel))
-        self.assertTupleEqual((nspins,), np.shape(bs.vbmPerSpin))
+        self.assertTupleEqual((nspins, nkpts), np.shape(bs.vbm_sp_kp))
+        self.assertTupleEqual((nspins,), np.shape(bs.vbm_sp))
         self.assertTupleEqual((), np.shape(bs.vbm))
-        self.assertTupleEqual((nspins, nkpts), np.shape(bs.cbmPerChannel))
-        self.assertTupleEqual((nspins,), np.shape(bs.cbmPerSpin))
+        self.assertTupleEqual((nspins, nkpts), np.shape(bs.cbm_sp_kp))
+        self.assertTupleEqual((nspins,), np.shape(bs.cbm_sp))
         self.assertTupleEqual((), np.shape(bs.cbm))
-        self.assertTupleEqual((nspins, nkpts), np.shape(bs.directGap))
-        self.assertTupleEqual((nspins,), np.shape(bs.fundGap))
-        self.assertTupleEqual((nspins, 2), np.shape(bs.fundTrans))
-        self.assertTupleEqual((nspins,), np.shape(bs.kAvgGap))
+        self.assertTupleEqual((nspins, nkpts), np.shape(bs.direct_gap))
+        self.assertTupleEqual((nspins,), np.shape(bs.fund_gap))
+        self.assertTupleEqual((nspins, 2), np.shape(bs.fund_trans))
+        self.assertTupleEqual((nspins,), np.shape(bs.kavg_gap))
         # empty properties when initialized without projections
         self.assertTrue(bs.atms is None)
         self.assertTrue(bs.projs is None)
-        self.assertTrue(bs.pWave is None)
+        self.assertTrue(bs.pwave is None)
         self.assertFalse(bs.has_proj)
         # unit conversion
         self.assertTrue(np.array_equal(bs.eigen, goodEigen))
@@ -113,13 +113,12 @@ class test_BS_projection(ut.TestCase):
                            'data')
 
     def test_reading_in_good_projection(self):
-        countGood = 0
+        good = 0
         for path in get_matched_files(self.datadir, r'Bandstructure_proj_[\d]+\.json'):
             with open(path, 'r') as f:
                 j = json.load(f)
             shape = j.pop("shape")
-            # self.assertTupleEqual(np.shape(j["pWave"]), tuple(j["shape"]))
-            self.assertTupleEqual(np.shape(j["pWave"]), tuple(shape))
+            self.assertTupleEqual(np.shape(j["pwave"]), tuple(shape))
             # as occ is randomized, there are cases that warnings infinity CBM
             # it is totally okay.
             eigen = np.random.random(shape[:3])
@@ -131,8 +130,8 @@ class test_BS_projection(ut.TestCase):
             self.assertTrue(bs.has_proj)
             bs.effective_gap()
             #bs.get_dos()
-            countGood += 1
-        print("Processed {} good band structure projections".format(countGood))
+            good += 1
+        print("Processed {} good band structure projections".format(good))
 
 
 class test_BS_randomize(ut.TestCase):
@@ -151,8 +150,8 @@ class test_BS_randomize(ut.TestCase):
             self.assertEqual(bs.nspins, ns)
             self.assertEqual(bs.nkpts, nk)
             self.assertEqual(bs.nbands, nb)
-            self.assertFalse(bs.isMetal)
-            self.assertTrue(np.all(bs.fundGap > 0))
+            self.assertFalse(bs.is_metal)
+            self.assertTrue(np.all(bs.fund_gap > 0))
 
     def test_metal(self):
         """check random-generated metal-like band"""
@@ -162,7 +161,7 @@ class test_BS_randomize(ut.TestCase):
         nb = ri(10, 41)
         for _i in range(self.n):
             bs = random_band_structure(ns, nk, nb, is_metal=True)
-            self.assertTrue(bs.isMetal)
+            self.assertTrue(bs.is_metal)
 
 
 if __name__ == '__main__':

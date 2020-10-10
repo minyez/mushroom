@@ -6,7 +6,6 @@ from numbers import Real
 
 import numpy as np
 
-#from mykit.core.kmesh import check_kvecs_form_kpath
 from mushroom._core.logger import create_logger
 from mushroom._core.unit import EnergyUnit
 from mushroom._core.ioutils import get_str_indices_by_iden
@@ -18,21 +17,23 @@ DIM_EIGEN_OCC = 3
 """int. Required dimension of eigenvalues and occupation numbers
 """
 
-KEYS_BAND_PROJ = ("atoms", "projs", "pWave")
+KEYS_BAND_PROJ = ("atoms", "projs", "pwave")
 """tuple. Required keys for wave projection input
 """
 
 BAND_STR_PATTERN = re.compile(r"[vc]bm([-+][\d]+)?")
 
 # DIM_PWAVE = 5
-# '''pWave (array): shape (nspins, nkpt, nbands, natoms, nprojs)'''
+# '''pwave (array): shape (nspins, nkpt, nbands, natoms, nprojs)'''
 
 THRES_EMP = 1.0E-3
 THRES_OCC = 1.0 - THRES_EMP
 
+_logger = create_logger(__name__)
+del create_logger
 
 class BandStructureError(Exception):
-    pass
+    """exception for band structure"""
 
 
 class BandStructure(EnergyUnit):
@@ -59,41 +60,41 @@ class BandStructure(EnergyUnit):
         efermi (float): the Fermi level. 
             If not parsed, the valence band maximum will be used.
         projected (dict) : wave projection information. 
-            It should have three keys, "atoms", "projs" and "pWave"
+            It should have three keys, "atoms", "projs" and "pwave"
 
     Attributes:
     """
     _dtype = "float64"
-    _logger = create_logger(__name__)
 
-    def __init__(self, eigen, occ, weight, unit='ev', kvec=None, efermi=None, projected=None):
-        try:
-            self._nspins, self._nkpts, self._nbands = \
-                _check_eigen_occ_weight_consistency(eigen, occ, weight)
-        except ValueError:
+    def __init__(self, eigen, occ, weight=None, unit='ev', efermi=None, projected=None):
+        self._nspins, self._nkpts, self._nbands = \
+            _check_eigen_occ_weight_consistency(eigen, occ, weight)
+        if self._nspins is None:
             info = "Bad eigen, occ and weight shapes: {}, {}, {}".format(
                 *map(np.shape, (eigen, occ, weight)))
             raise BandStructureError(info)
         try:
             self._eigen = np.array(eigen, dtype=self._dtype)
             self._occ = np.array(occ, dtype=self._dtype)
+            if weight is None:
+                weight = np.zeros(self._nkpts)
             self._weight = np.array(weight, dtype=self._dtype)
-        except TypeError as _err:
-            raise BandStructureError(_err)
+        except TypeError:
+            raise BandStructureError
 
         EnergyUnit.__init__(self, eunit=unit)
         self._emulti = {1: 2, 2: 1}[self._nspins]
         # channel: ispin, ikpt
-        self._nelectPerChannel = np.sum(self._occ, axis=2) * self._emulti
-        # In manual mode, one may parse the kpoints with all zero weight for band calculation
-        # Reassign with unit weight
+        self._nelect_sp_kp = np.sum(self._occ, axis=2) * self._emulti
+        # One may parse the kpoints with all zero weight for band calculation
+        # In this case, reassign with unit weight
         if np.isclose(np.sum(self._weight), 0.0):
             self._weight[:] = 1.0
-        self._nelectPerSpin = np.dot(
-            self._nelectPerChannel, self._weight) / np.sum(self._weight)
-        self._nelect = np.sum(self._nelectPerSpin)
+        self._nelect_sp = np.dot(
+            self._nelect_sp_kp, self._weight) / np.sum(self._weight)
+        self._nelect = np.sum(self._nelect_sp)
 
-        self._hasInftyCbm = False
+        self._has_infty_cbm = False
         self._compute_vbm_cbm()
         if efermi is not None:
             assert isinstance(efermi, Real)
@@ -103,8 +104,6 @@ class BandStructure(EnergyUnit):
 
         self._has_proj = False
         self._parse_proj(projected)
-        self._kvecParsed = False
-        #self._parse_kvec(kvec)
 
     def get_band_indices(self, *bands):
         '''Filter the band indices in ``bands``. 
@@ -119,9 +118,7 @@ class BandStructure(EnergyUnit):
         Returns:
             list
         '''
-        if len(bands) == 0:
-            b = list(range(self._nbands))
-        else:
+        if bands:
             b = []
             for ib in bands:
                 if isinstance(ib, int):
@@ -131,10 +128,12 @@ class BandStructure(EnergyUnit):
                     i = self._convert_band_str(ib)
                     if i is not None:
                         b.append(i)
+        else:
+            b = list(range(self._nbands))
         return b
 
-    def _convert_band_str(self, bandStr):
-        '''convert a string of band identifier, like "vbm", "cbm-2", "vbm+3"
+    def _convert_band_str(self, s):
+        """convert a string of band identifier, like "vbm", "cbm-2", "vbm+3"
         to the correpsonding band index.
 
         Args:
@@ -142,14 +141,14 @@ class BandStructure(EnergyUnit):
 
         Returns:
             int
-        '''
-        assert isinstance(bandStr, str)
-        if re.match(BAND_STR_PATTERN, bandStr):
-            ref = {"v": self.ivbm[-1], "c": self.icbm[-1]}[bandStr[0]]
-            if len(bandStr) == 3:
+        """
+        assert isinstance(s, str)
+        if BAND_STR_PATTERN.match(s):
+            ref = {"v": self.ivbm[-1], "c": self.icbm[-1]}[s[0]]
+            if len(s) == 3:
                 return ref
-            n = int(re.split(r"[-+]", bandStr)[-1])
-            if bandStr[3] == '-':
+            n = int(re.split(r"[-+]", s)[-1])
+            if s[3] == '-':
                 ib = ref - n
             else:
                 ib = ref + n
@@ -160,14 +159,15 @@ class BandStructure(EnergyUnit):
 
     @property
     def unit(self):
+        """unit of band energies"""
         return self._eunit
 
     @unit.setter
     def unit(self, newu):
         coef = self._get_eunit_conversion(newu)
         toConv = [self._eigen, self._bandWidth,
-                  self._vbmPerSpin, self._vbmPerChannel,
-                  self._cbmPerSpin, self._cbmPerChannel,
+                  self._vbm_sp, self._vbm_sp_kp,
+                  self._cbm_sp, self._cbm_sp_kp,
                   ]
         if coef != 1:
             self._efermi *= coef
@@ -222,12 +222,12 @@ class BandStructure(EnergyUnit):
         """
         if not projected is None:
             try:
-                self._atms, self._projs, pWave = \
+                self._atms, self._projs, pwave = \
                     self._check_project_consistency(projected)
-                self._pwave = np.array(pWave, dtype=self._dtype)
+                self._pwave = np.array(pwave, dtype=self._dtype)
                 self._has_proj = True
             except ValueError:
-                self._logger.warning("Bad projection input. Skip.")
+                _logger.warning("Bad projection input. Skip.")
 
     @property
     def has_proj(self):
@@ -238,7 +238,9 @@ class BandStructure(EnergyUnit):
     def atms(self):
         '''list of strings, types of each atom. 
 
-        None if no projection information was parsed
+        Returns:
+            list of str, atomic symbols
+            None if no projection information was parsed
         '''
         if self._has_proj:
             return self._atms
@@ -246,6 +248,7 @@ class BandStructure(EnergyUnit):
 
     @property
     def natoms(self):
+        """number of atoms"""
         try:
             return len(self.atms)
         except TypeError:
@@ -263,13 +266,14 @@ class BandStructure(EnergyUnit):
 
     @property
     def nprojs(self):
+        """number of projectors"""
         try:
             return len(self.projs)
         except TypeError:
             return 0
 
     @property
-    def pWave(self):
+    def pwave(self):
         '''Array, partial waves for each projector on each atom.
 
         shape (nspins, nkpts, nbands, natoms, nprojs)
@@ -279,83 +283,6 @@ class BandStructure(EnergyUnit):
         if self.has_proj:
             return self._pwave
         return None
-
-    #def _parse_kvec(self, kvec):
-    #    """Parse the kpoints vectors
-    #    """
-    #    self._isKpath = None
-    #    self._kLineSegs = [(0, self.nkpts - 1), ]
-    #    if not kvec is None:
-    #        try:
-    #            assert np.shape(kvec) == (self._nkpts, 3)
-    #            self._kvec = np.array(kvec, dtype=self._dtype)
-    #            # clean up very small values
-    #            ind = self._kvec < 1.0E-10  # where values are low
-    #            self._kvec[ind] = 0.0
-    #            self._kvecParsed = True
-    #            self._isKpath = False
-    #            kSegments = check_kvecs_form_kpath(self._kvec)
-    #            if kSegments != []:
-    #                self._isKpath = True
-    #                self._kLineSegs = kSegments
-    #        except (AssertionError, ValueError):
-    #            self._logger.warning("Bad kpoint vectors input. Skip")
-
-    @property
-    def hasKvec(self):
-        '''Bool'''
-        return self._kvecParsed
-
-    @property
-    def isKpath(self):
-        '''Bool. If the parsed kpoint vectors form a path in reciprocal space.
-
-        None if kvec was not parsed.
-        '''
-        return self._isKpath
-
-    @property
-    def kvec(self):
-        '''Array. kpoints vectors.
-
-        None if kvec was not parsed.
-        '''
-        if self.hasKvec:
-            return self._kvec
-        return None
-
-    @property
-    def kLineSegs(self):
-        '''List. Each member a list, containing the indices of starting and end
-        kpoint vector
-        '''
-        return self._kLineSegs
-
-    @property
-    def x(self):
-        '''List. x coordinates, corresponding to the whole k-path'''
-        return self._generate_kpath_x()
-
-    def _generate_kpath_x(self):
-        '''Generate the x coordinates for plotting a kpath
-
-        x for the ending point of one line segment is the same to
-        that for the starting point of next line segment.
-
-        Returns
-            list, each member a list of floats
-        '''
-        xs = []
-        if not (self._isKpath and self.hasKvec):
-            xs.append(list(range(self._nkpts)))
-        else:
-            _accuL = 0.0
-            for sti, edi in self._kLineSegs:
-                l = np.linalg.norm(self._kvec[sti, :] - self._kvec[edi, :])
-                x = [_accuL + ik * l/(edi-sti) for ik in range(edi-sti+1)]
-                xs.append(x)
-                _accuL += l
-        return xs
 
     def _compute_vbm_cbm(self):
         '''compute the band edges on each spin-kpt channel
@@ -369,102 +296,102 @@ class BandStructure(EnergyUnit):
         '''
         is_occ = self._occ > THRES_OCC
 
-        self._ivbmPerChannel = np.sum(is_occ, axis=2) - 1
+        self._ivbm_sp_kp = np.sum(is_occ, axis=2) - 1
         # when any two indices of ivbm differ, the system is metal
-        if np.max(self._ivbmPerChannel) == np.min(self._ivbmPerChannel):
-            self._isMetal = False
+        if np.max(self._ivbm_sp_kp) == np.min(self._ivbm_sp_kp):
+            self._is_metal = False
         else:
-            self._isMetal = True
-        self._icbmPerChannel = self._ivbmPerChannel + 1
+            self._is_metal = True
+        self._icbm_sp_kp = self._ivbm_sp_kp + 1
         # avoid IndexError when ivbm is the last band by imposing icbm = ivbm in this case
-        ivbIsLast = self._ivbmPerChannel == self.nbands - 1
+        ivbIsLast = self._ivbm_sp_kp == self.nbands - 1
         if np.any(ivbIsLast):
-            self._logger.warning("nbands %s is too small to get CB", self.nbands)
-            self._icbmPerChannel[ivbIsLast] = self.nbands - 1
+            _logger.warning("nbands %s is too small to get CB", self.nbands)
+            self._icbm_sp_kp[ivbIsLast] = self.nbands - 1
 
-        self._vbmPerChannel = np.zeros(
+        self._vbm_sp_kp = np.zeros(
             (self.nspins, self.nkpts), dtype=self._dtype)
-        self._cbmPerChannel = np.zeros(
+        self._cbm_sp_kp = np.zeros(
             (self.nspins, self.nkpts), dtype=self._dtype)
         # ? maybe optimize
         for i in range(self.nspins):
             for j in range(self.nkpts):
-                vb = self._ivbmPerChannel[i, j]
-                self._vbmPerChannel[i, j] = self.eigen[i, j, vb]
+                vb = self._ivbm_sp_kp[i, j]
+                self._vbm_sp_kp[i, j] = self.eigen[i, j, vb]
                 if vb == self.nbands - 1:
-                    self._hasInftyCbm = True
+                    self._has_infty_cbm = True
                     info = "VBM index for spin-kpt channel (%d,%d) equals nbands. %s"
-                    self._logger.warning(
+                    _logger.warning(
                         info, i+1, j+1, "CBM for this channel set to infinity")
-                    self._cbmPerChannel[i, j] = np.infty
+                    self._cbm_sp_kp[i, j] = np.infty
                 else:
-                    self._cbmPerChannel[i, j] = self.eigen[i, j, vb+1]
+                    self._cbm_sp_kp[i, j] = self.eigen[i, j, vb+1]
         self._bandWidth = np.zeros(
             (self.nspins, self.nbands, 2), dtype=self._dtype)
         self._bandWidth[:, :, 0] = np.min(self._eigen, axis=1)
         self._bandWidth[:, :, 1] = np.max(self._eigen, axis=1)
         # VB indices
-        self._ivbmPerSpin = np.array(((0, 0),)*self.nspins)
-        self._vbmPerSpin = np.max(self._vbmPerChannel, axis=1)
-        self._ivbmPerSpin[:, 0] = np.argmax(self._vbmPerChannel, axis=1)
+        self._ivbm_sp = np.array(((0, 0),)*self.nspins)
+        self._vbm_sp = np.max(self._vbm_sp_kp, axis=1)
+        self._ivbm_sp[:, 0] = np.argmax(self._vbm_sp_kp, axis=1)
         for i in range(self.nspins):
-            ik = int(self._ivbmPerSpin[i, 0])
-            self._ivbmPerSpin[i, 1] = self._ivbmPerChannel[i, ik]
+            ik = int(self._ivbm_sp[i, 0])
+            self._ivbm_sp[i, 1] = self._ivbm_sp_kp[i, ik]
         self._ivbm = np.array((0, 0, 0))
-        self._ivbm[0] = int(np.argmax(self._vbmPerSpin))
-        self._ivbm[1:3] = self._ivbmPerSpin[self._ivbm[0], :]
-        self._vbm = self._vbmPerSpin[self._ivbm[0]]
+        self._ivbm[0] = int(np.argmax(self._vbm_sp))
+        self._ivbm[1:3] = self._ivbm_sp[self._ivbm[0], :]
+        self._vbm = self._vbm_sp[self._ivbm[0]]
         # CB indices
-        self._icbmPerSpin = np.array(((0, 0),)*self.nspins)
-        self._cbmPerSpin = np.min(self._cbmPerChannel, axis=1)
-        self._icbmPerSpin[:, 0] = np.argmin(self._cbmPerChannel, axis=1)
+        self._icbm_sp = np.array(((0, 0),)*self.nspins)
+        self._cbm_sp = np.min(self._cbm_sp_kp, axis=1)
+        self._icbm_sp[:, 0] = np.argmin(self._cbm_sp_kp, axis=1)
         for i in range(self.nspins):
-            ik = int(self._icbmPerSpin[i, 0])
-            self._icbmPerSpin[i, 1] = self._icbmPerChannel[i, ik]
+            ik = int(self._icbm_sp[i, 0])
+            self._icbm_sp[i, 1] = self._icbm_sp_kp[i, ik]
         self._icbm = np.array((0, 0, 0))
-        self._icbm[0] = int(np.argmin(self._cbmPerSpin))
-        self._icbm[1:3] = self._icbmPerSpin[self._icbm[0], :]
-        self._cbm = self._cbmPerSpin[self._icbm[0]]
+        self._icbm[0] = int(np.argmin(self._cbm_sp))
+        self._icbm[1:3] = self._icbm_sp[self._icbm[0], :]
+        self._cbm = self._cbm_sp[self._icbm[0]]
 
     @property
-    def isMetal(self):
+    def is_metal(self):
         '''bool.
 
         True if the bandstructure belongs to a metal, False otherwise
         '''
-        return self._isMetal
+        return self._is_metal
 
     @property
-    def ivbmPerChannel(self):
+    def ivbm_sp_kp(self):
         '''indices of valence band maximum at each spin-kpt channel
 
         int, shape (nspins, nkpts)
         '''
-        return self._ivbmPerChannel
+        return self._ivbm_sp_kp
 
     @property
-    def icbmPerChannel(self):
+    def icbm_sp_kp(self):
         '''indices of conduction band minimum at each spin-kpt channel
 
         int, shape (nspins, nkpts)
         '''
-        return self._icbmPerChannel
+        return self._icbm_sp_kp
 
     @property
-    def ivbmPerSpin(self):
+    def ivbm_sp(self):
         '''indices of valence band maximum per spin
 
         int, shape (nspins, 2), ikpt, iband
         '''
-        return self._ivbmPerSpin
+        return self._ivbm_sp
 
     @property
-    def icbmPerSpin(self):
+    def icbm_sp(self):
         '''indices of conduction band minimum per spin
 
         int, shape (nspins, 2), ikpt, iband
         '''
-        return self._icbmPerSpin
+        return self._icbm_sp
 
     @property
     def ivbm(self):
@@ -483,43 +410,43 @@ class BandStructure(EnergyUnit):
         return self._icbm
 
     @property
-    def vbmPerChannel(self):
+    def vbm_sp_kp(self):
         '''valiues of valence band maximum at each spin-kpt channel
 
         float, shape (nspins, nkpts)
         '''
-        return self._vbmPerChannel
+        return self._vbm_sp_kp
 
     @property
-    def cbmPerChannel(self):
+    def cbm_sp_kp(self):
         '''values of conduction band minimum at each spin-kpt channel
 
         float, shape (nspins, nkpts)
         '''
-        return self._cbmPerChannel
+        return self._cbm_sp_kp
 
     @property
-    def vbmPerSpin(self):
+    def vbm_sp(self):
         '''valiues of valence band maximum per spin
 
         float, shape (nspins,)
         '''
-        return self._vbmPerSpin
+        return self._vbm_sp
 
     @property
-    def cbmPerSpin(self):
-        '''values of conduction band minimum per spin
+    def cbm_sp(self):
+        """values of conduction band minimum per spin
 
         float, shape (nspins,)
-        '''
-        return self._cbmPerSpin
+        """
+        return self._cbm_sp
 
     @property
     def vbm(self):
-        '''value of valence band maximum
+        """value of valence band maximum
 
         float
-        '''
+        """
         return self._vbm
 
     @property
@@ -539,40 +466,40 @@ class BandStructure(EnergyUnit):
         return self._bandWidth
 
     @property
-    def directGap(self):
+    def direct_gap(self):
         '''Direct gap between VBM and CBM of each spin-kpt channel
 
         float, shape (nspins, nkpts)
         '''
-        return self._cbmPerChannel - self._vbmPerChannel
+        return self._cbm_sp_kp - self._vbm_sp_kp
 
     @property
-    def fundGap(self):
+    def fund_gap(self):
         '''Fundamental gap for each spin channel.
 
         float, shape (nspins,)
         If it is metal, it is equivalent to the negative value of bandwidth
         of the unfilled band.
         '''
-        return self._cbmPerSpin - self._vbmPerSpin
+        return self._cbm_sp - self._vbm_sp
 
     @property
-    def fundTrans(self):
+    def fund_trans(self):
         '''Transition responsible for the fundamental gap
 
         int, shape (nspins, 2)
         '''
-        vb = np.argmax(self._vbmPerChannel, axis=1)
-        cb = np.argmin(self._vbmPerChannel, axis=1)
+        vb = np.argmax(self._vbm_sp_kp, axis=1)
+        cb = np.argmin(self._vbm_sp_kp, axis=1)
         return tuple(zip(vb, cb))
 
     @property
-    def kAvgGap(self):
+    def kavg_gap(self):
         '''direct band gap averaged over kpoints
 
         float, shape (nspins,)
         '''
-        return np.dot(self.directGap, self._weight) / np.sum(self._weight)
+        return np.dot(self.direct_gap, self._weight) / np.sum(self._weight)
 
     def _check_project_consistency(self, projected):
         try:
@@ -587,26 +514,26 @@ class BandStructure(EnergyUnit):
         # print(projected)
         atoms = projected["atoms"]
         projs = projected["projs"]
-        pWave = projected["pWave"]
+        pwave = projected["pwave"]
         try:
             natoms = len(atoms)
             nprojs = len(projs)
-            self._logger.info("Shapes: %r %r", np.shape(pWave),
-                           (self._nspins, self._nkpts,
-                            self._nbands, natoms, nprojs),
-                           )
-            assert np.shape(pWave) == \
+            _logger.info("Shapes: %r %r", np.shape(pwave),
+                              (self._nspins, self._nkpts,
+                               self._nbands, natoms, nprojs),
+                             )
+            assert np.shape(pwave) == \
                 (self._nspins, self._nkpts, self._nbands, natoms, nprojs)
         except (AssertionError, TypeError):
             return (None, None, None)
-        return atoms, projs, pWave
+        return atoms, projs, pwave
 
     # * Projection related functions
-    def effective_gap(self, ivb=None, atomVbm=None, projVbm=None,
-                      icb=None, atomCbm=None, projCbm=None):
+    def effective_gap(self, ivb=None, atom_vbm=None, proj_vbm=None,
+                      icb=None, atom_cbm=None, proj_cbm=None):
         '''Compute the effective band gap between ``ivb`` and ``icb``, 
-        the responsible transition of which associates projector `projVbm` on `atomVbm` in VB
-        and `projCbm` on atom `atomCbm` in CB.
+        the responsible transition of which associates projector `proj_vbm` on `atom_vbm` in VB
+        and `proj_cbm` on atom `atom_cbm` in CB.
 
         If no projection information was parsed, the inverse of the k-averaged gap inverse
         will be returned.
@@ -614,32 +541,32 @@ class BandStructure(EnergyUnit):
         Args:
             ivb (int): index of the lower band. Use VBM if not specified or is invalid index.
             icb (int): index of the upper band. Use CBM if not specified or is invalid index.
-            atomVbm (int, str, Iterable): atom where the VB projector is located
-            atomCbm (int, str, Iterable): atom where the CB projector is located
-            projVbm (int, str, Iterable): index of VB projector
-            projCbm (int, str, Iterable): index of CB projector
+            atom_vbm (int, str, Iterable): atom where the VB projector is located
+            atom_cbm (int, str, Iterable): atom where the CB projector is located
+            proj_vbm (int, str, Iterable): index of VB projector
+            proj_cbm (int, str, Iterable): index of CB projector
 
         Note:
             Spin-polarization is not considered in retriving projection coefficients.
         '''
-        vbCoeffs = self.sum_atom_proj_comp(atomVbm, projVbm, fail_one=True)
-        cbCoeffs = self.sum_atom_proj_comp(atomCbm, projCbm, fail_one=True)
+        vb_coefs = self.sum_atom_proj_comp(atom_vbm, proj_vbm, fail_one=True)
+        cb_coefs = self.sum_atom_proj_comp(atom_cbm, proj_cbm, fail_one=True)
         if ivb is None or not ivb in range(self.nbands):
-            vbCoeff = vbCoeffs[:, :, np.max(self.ivbm)]
+            vb_coef = vb_coefs[:, :, np.max(self.ivbm)]
         else:
-            vbCoeff = vbCoeffs[:, :, ivb]
+            vb_coef = vb_coefs[:, :, ivb]
         if icb is None or not icb in range(self.nbands):
-            cbCoeff = cbCoeffs[:, :, np.min(self.icbm)]
+            cb_coef = cb_coefs[:, :, np.min(self.icbm)]
         else:
-            cbCoeff = cbCoeffs[:, :, icb]
+            cb_coef = cb_coefs[:, :, icb]
         # ! abs is added in case ivb and icb are put in the opposite
-        inv = np.sum(np.abs(np.reciprocal(self.directGap) * vbCoeff * cbCoeff))
+        inv = np.sum(np.abs(np.reciprocal(self.direct_gap) * vb_coef * cb_coef))
         if np.allclose(inv, 0.0):
             return np.infty
         return 1.0/inv
 
     def sum_atom_proj_comp(self, atom=None, proj=None, fail_one=True):
-        '''Sum the partial wave for projectors `proj` on atoms `atom`
+        """Sum the partial wave for projectors `proj` on atoms `atom`
 
         Args:
             atom (int, str, Iterable)
@@ -649,7 +576,7 @@ class BandStructure(EnergyUnit):
 
         Returns:
             (nspins, nkpts, nbands)
-        '''
+        """
         if not self.has_proj:
             func = {True: np.ones, False: np.zeros}
             try:
@@ -657,17 +584,17 @@ class BandStructure(EnergyUnit):
             except KeyError:
                 raise TypeError("fail_one should be bool type.")
         if atom is None:
-            atInd = list(range(self.natoms))
+            at_ids = list(range(self.natoms))
         else:
-            atInd = self._get_atom_indices(atom)
+            at_ids = self._get_atom_indices(atom)
         if proj is None:
-            prInd = list(range(self.nprojs))
+            pr_ids = list(range(self.nprojs))
         else:
-            prInd = self._get_proj_indices(proj)
+            pr_ids = self._get_proj_indices(proj)
         coeff = np.zeros((self.nspins, self.nkpts, self.nbands))
-        for a in atInd:
-            for p in prInd:
-                coeff += self.pWave[:, :, :, a, p]
+        for a in at_ids:
+            for p in pr_ids:
+                coeff += self.pwave[:, :, :, a, p]
         return coeff
 
     def _get_atom_indices(self, atom):
@@ -742,24 +669,25 @@ class BandStructure(EnergyUnit):
     #    return Dos(egrid, totalDos, self._efermi, unit=self.unit, projected=projected)
 
 
-def _check_eigen_occ_weight_consistency(eigen, occ, weight):
-    '''Check if eigenvalues, occupation number and kweights data have the correct shape
+def _check_eigen_occ_weight_consistency(eigen, occ, weight=None):
+    """Check if eigenvalues, occupation number and kweights data have the correct shape
 
     Returns:
         tuple, the shape of eigen/occ when the shapes of input are consistent,
             empty tuple otherwise.
-    '''
-    shapeEigen = np.shape(eigen)
-    shapeOcc = np.shape(occ)
-    shapeKw = np.shape(weight)
-    consist = len(shapeEigen) == DIM_EIGEN_OCC and \
-        len(shapeOcc) == DIM_EIGEN_OCC and \
-        shapeEigen == shapeOcc and \
-        len(shapeKw) == 1 and \
-        len(weight) == shapeEigen[1]
-    if consist:
-        return shapeEigen
-    return ()
+    """
+    shapee = np.shape(eigen)
+    shapeo = np.shape(occ)
+    consist = [len(shapee) == DIM_EIGEN_OCC,
+               shapee == shapeo,]
+    # if weight is manually parsed
+    if weight is not None:
+        shapew = np.shape(weight)
+        consist.extend([len(shapew) == 1,
+                        shapew[0] == shapee[1]])
+    if all(consist):
+        return shapee
+    return (None,) * DIM_EIGEN_OCC
 
 
 def random_band_structure(nspins=1, nkpts=1, nbands=2, natoms=1, nprojs=1,
@@ -780,28 +708,19 @@ def random_band_structure(nspins=1, nkpts=1, nbands=2, natoms=1, nprojs=1,
         is_metal (bool): if set True, a band structure of metal is generated, 
         otherwise that of semiconductor
     """
-    ns = nspins
-    nk = nkpts
-    nb = nbands
-    na = natoms
-    npr = nprojs
-    atomTypes = ["C", "Si", "Na", "Cl", "P"]
-    projNames = ["s", "px", "py", "pz", "dyz", "dzx", "dxy", "dx2-y2", "dz2"]
-    for i in [ns, nk, nb]:
-        assert isinstance(i, int)
-    if nspins not in [1, 2]:
-        ns = 1
-    if nk < 1:
-        nk = 1
+    atom_types = ["C", "Si", "Na", "Cl", "P"]
+    proj_names = ["s", "px", "py", "pz", "dyz", "dzx", "dxy", "dx2-y2", "dz2"]
+    if nkpts < 1:
+        nkpts = 1
     # at least one empty band
     if nbands < 2:
-        nb = 2
-    if na < 1:
-        na = 6
-    if npr < 1:
-        npr = 1
+        nbands = 2
+    if natoms < 1:
+        natoms = 6
+    if nprojs < 1:
+        nprojs = 1
 
-    shape = (ns, nk, nb)
+    shape = (nspins, nkpts, nbands)
     eigen = np.random.random_sample(shape)
     # set vb to the band in the middle
     ivb = int(nbands/2) - 1
@@ -810,7 +729,7 @@ def random_band_structure(nspins=1, nkpts=1, nbands=2, natoms=1, nprojs=1,
 
     occ = np.zeros(shape)
     occ[:, :, :ivb+1] = 1.0
-    weight = np.random.randint(1, 11, size=nk)
+    weight = np.random.randint(1, 11, size=nkpts)
     efermi = None
     if is_metal:
         efermi = np.average(eigen[:, :, ivb])
@@ -819,15 +738,19 @@ def random_band_structure(nspins=1, nkpts=1, nbands=2, natoms=1, nprojs=1,
         occ[:, :, ivb] /= np.max(occ[:, :, ivb])
     projected = None
     if has_proj:
-        atoms = list(np.random.choice(atomTypes, na))
-        projs = projNames[:npr]
-        pWave = np.random.random_sample((*shape, na, npr))
+        atoms = list(np.random.choice(atom_types, natoms))
+        projs = proj_names[:nprojs]
+        pwave = np.random.random_sample((*shape, natoms, nprojs))
         # normalize
-        for ispin in range(ns):
-            for ik in range(nk):
-                for ib in range(nb):
-                    pWave[ispin, ik, ib, :,
-                          :] /= np.sum(pWave[ispin, ik, ib, :, :])
-        projected = dict(
-            (("atoms", atoms), ("projs", projs), ("pWave", pWave)))
-    return BandStructure(eigen, occ, weight, efermi=efermi, projected=projected)
+        for ispin in range(nspins):
+            for ik in range(nkpts):
+                for ib in range(nbands):
+                    pwave[ispin, ik, ib, :,
+                          :] /= np.sum(pwave[ispin, ik, ib, :, :])
+                    projected = {
+                        "atoms": atoms,
+                        "projs": projs,
+                        "pwave": pwave,
+                        }
+    return BandStructure(eigen, occ, weight=weight, efermi=efermi, projected=projected)
+
