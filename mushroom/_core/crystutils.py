@@ -124,7 +124,7 @@ def periodic_duplicates_in_cell(direct_coord):
 
 
 def atms_from_sym_nat(sym, nat):
-    '''Generate ``atom`` list for ``Cell`` initilization from list of atomic symbols 
+    """Generate ``atom`` list for ``Cell`` initilization from list of atomic symbols 
     and number of atoms
 
     Args :
@@ -137,12 +137,14 @@ def atms_from_sym_nat(sym, nat):
     Examples:
     >>> atms_from_sym_nat(["C", "Al", "F"], [2, 3, 1])
     ["C", "C", "Al", "Al", "Al", "F"]
-    '''
-    assert len(sym) == len(nat)
-    _list = []
-    for _s, _n in zip(sym, nat):
-        _list.extend([_s, ] * _n)
-    return _list
+    """
+    if len(sym) != len(nat):
+        raise ValueError("Inconsistent symbols and numbers: {}, {}".format(sym, nat))
+    atms = []
+    for s, n in zip(sym, nat):
+        for _ in range(n):
+            atms.append(s)
+    return atms
 
 
 def sym_nat_from_atms(atms):

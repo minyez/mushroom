@@ -2,6 +2,7 @@
 """this module defines some common used utilities"""
 import os
 import re
+from io import TextIOWrapper
 from collections import OrderedDict
 from collections.abc import Iterable
 from sys import stdout
@@ -73,7 +74,7 @@ def get_matched_files(dirPath=".", regex=None):
     _absDir = os.path.abspath(dirPath)
     if os.path.isdir(_absDir):
         for i in os.listdir(_absDir):
-            if regex != None:
+            if regex is not None:
                 if not re.match(regex, i):
                     continue
             _fpath = os.path.join(_absDir, i)
@@ -96,12 +97,16 @@ def trim_after(string, regex, include_pattern=False):
         in the return string
     """
     _search = re.search(regex, string)
-    if _search != None:
+    if _search is not None:
         if include_pattern:
             return string[: _search.end()]
-        else:
-            return string[: _search.start()]
+        return string[: _search.start()]
     return string
+
+
+def trim_comment(string):
+    """remove comments, starting with # or !"""
+    return trim_after(string, r'[\#\!]')
 
 
 def trim_before(string, regex, include_pattern=False):
@@ -116,11 +121,10 @@ def trim_before(string, regex, include_pattern=False):
         in the return string
     """
     _search = re.search(regex, string)
-    if _search != None:
+    if _search is not None:
         if include_pattern:
             return string[_search.start() :]
-        else:
-            return string[_search.end() :]
+        return string[_search.end() :]
     return string
 
 
@@ -237,8 +241,8 @@ def conv_string(string, conv2, *indices, sep=None, strips=None):
         string (str): the string from which to convert value
         conv2: the type to which the substring will be converted
             support ``str``, ``int``, ``float``, ``bool``
-        indices (int): if specified, the substring with indices in the splitted string lists will be converted.
-            otherwise, all substring will be converted.
+        indices (int): if specified, the substring with indices in the splitted
+            string lists will be converted. otherwise, all substring will be converted.
         sep (regex): the separators used to split the string.
         strips (str): extra strings to strip for each substring before conversion
 
@@ -277,11 +281,10 @@ def conv_string(string, conv2, *indices, sep=None, strips=None):
 
     if len(indices) == 0:
         return list(map(convfunc, str_list))
-    elif len(indices) == 1:
+    if len(indices) == 1:
         return convfunc(str_list[indices[0]])
-    else:
-        conv_strs = [str_list[i] for i in indices]
-        return list(map(convfunc, conv_strs))
+    conv_strs = [str_list[i] for i in indices]
+    return list(map(convfunc, conv_strs))
 
 
 def get_first_last_line(filePath, encoding=stdout.encoding):
@@ -359,6 +362,20 @@ def get_str_indices_by_iden(container, iden=None):
         return list(OrderedDict.fromkeys(ret).keys())
     return ret
 
+def print_file_or_iowrapper(s, f, mode='w'):
+    """print string s to file handler f
+    Args:
+        s (str) :
+        f (str or TextIOWrapper) :
+        mode (s) : only used when s is str
+    """
+    if isinstance(f, str):
+        h = open(f, mode)
+    if isinstance(f, TextIOWrapper):
+        h = f
+    print(s, file=h)
+    if isinstance(f, str):
+        h.close()
 
 # ====================== PERFORM CALCULATION ======================
 # def common_run_calc_cmd(calc_cmd, fout=None, ferr=None):

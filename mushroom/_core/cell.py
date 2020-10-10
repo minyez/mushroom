@@ -17,7 +17,9 @@ The ``cell`` class and its subclasses accept the following kwargs when being ins
 When other keyword are parsed, they will be filtered out and no exception will be raised
 """
 import json
+import string
 import os
+from sys import stdout
 from collections import OrderedDict
 from numbers import Real
 
@@ -29,9 +31,10 @@ from mushroom._core.unit import LengthUnit
 from mushroom._core.crystutils import (get_latt_consts_from_latt_vecs,
                                        periodic_duplicates_in_cell,
                                        select_dyn_flag_from_axis,
+                                       atms_from_sym_nat,
                                        sym_nat_from_atms,
                                        axis_list)
-from mushroom._core.ioutils import get_str_indices
+from mushroom._core.ioutils import get_str_indices, trim_comment, print_file_or_iowrapper
 from mushroom._core.logger import create_logger
 
 
@@ -39,6 +42,8 @@ class CellError(Exception):
     """Exception in cell module
     """
 
+_logger = create_logger(__name__)
+del create_logger
 
 class Cell(LengthUnit):
     """Cell structure class
@@ -60,7 +65,6 @@ class Cell(LengthUnit):
 
     _err = CellError
     _dtype = 'float64'
-    _logger = create_logger(__name__)
 
     def __init__(self, latt, atms, posi, unit='ang', **kwargs):
 
@@ -214,7 +218,7 @@ class Cell(LengthUnit):
 
     # * Sorting method
     def _bubble_sort_atoms(self, key, indices, reverse=False):
-        '''sort atoms with bubble sort under various scenarios
+        """sort atoms with bubble sort under various scenarios
 
         The smaller value will appear earlier, if ``reverse`` is left
         as False.
@@ -225,45 +229,44 @@ class Cell(LengthUnit):
             key (natom-member list): the key value to be sorted
             indices (iterable): the indices of the atoms to be sorted
             reverse (bool): if set True, larger value appears earlier
-        '''
+        """
         _depth = 1
-        self._logger.debug("Bubble sort with key: %s, indices %r", key, indices)
-        __ind = list(indices)
-        __key = [key[_i] for _i in __ind]
-        _n = len(__ind)
-        __sorted = True
-        for _i in range(_n - 1):
-            _li = _i
-            _ri = _i+1
-            self._logger.debug("Check sort index: %d", _i)
-            __dict = {True: __key[_li] > __key[_ri],
-                      False: __key[_li] < __key[_ri]}
+        _logger.debug("Bubble sort with key: %s, indices %r", key, indices)
+        ind = list(indices)
+        k = [key[i] for i in ind]
+        n = len(ind)
+        _sorted = True
+        for i in range(n - 1):
+            li = i
+            ri = i+1
+            _logger.debug("Check sort index: %d", i)
+            __dict = {True: k[li] > k[ri],
+                      False: k[li] < k[ri]}
             if not __dict[reverse]:
-                __sorted = False
+                _sorted = False
                 break
-        if not __sorted:
-            for _i in range(1, _n):
-                _j = _i
-                # self.print_log("Sorting size {}".format(_i+1), level=3, depth=_depth+1)
-                while _j > 0:
-                    _li = _j-1
-                    _ri = _j
-                    __dict = {True: __key[_ri] > __key[_li],
-                              False: __key[_ri] < __key[_li]}
+        if not _sorted:
+            for i in range(1, n):
+                j = i
+                while j > 0:
+                    li = j-1
+                    ri = j
+                    __dict = {True: k[ri] > k[li],
+                              False: k[ri] < k[li]}
                     if __dict[reverse]:
-                        self._switch_two_atom_index(__ind[_li], __ind[_ri])
-                        __key[_li], __key[_ri] = __key[_ri], __key[_li]
-                        _j -= 1
+                        self._switch_two_atom_index(ind[li], ind[ri])
+                        k[li], k[ri] = k[ri], k[li]
+                        j -= 1
                     else:
                         break
                 # self.print_log("Sorting size {} done".format(_i+1), level=3, depth=_depth+1)
         # self.print_log("Bubble sort done", level=3, depth=_depth)
 
     def _sanitize_atoms(self):
-        '''Sanitize the atoms arrangement after initialization.
+        """Sanitize the atoms arrangement after initialization.
 
         It mainly deals with arbitrary input of ``atoms`` when initialized.
-        '''
+        """
         self._bubble_sort_atoms(self.type_index, range(self.natm))
 
     def sort_posi(self, axis=3, reverse=False):
@@ -305,19 +308,16 @@ class Cell(LengthUnit):
         if self._coord_sys == "C":
             self._posi = self._posi * scale
 
-    def add_atom(self, atom, coord, select_dyn=None):
-        '''Add an atom with coordinate and selective dynamic flags
+    def add_atom(self, atom, coord, select_dyn=None, sanitize=True):
+        """Add an atom with coordinate and selective dynamic flags
 
         Args:
             atom (str): the chemical symbol of the atom to add
             coord (array-like): the coordinate of atom in ``Cell`` coordinate system
             select_dyn (list of 3 bools): 
-        '''
-        try:
-            assert isinstance(atom, str)
-        except:
-            raise self._err(
-                "atom should be string, received {}".format(type(atom)))
+        """
+        if not isinstance(atom, str):
+            raise CellError("atom should be string, received {}".format(type(atom)))
         try:
             newpos = np.vstack([self._posi, coord])
         except ValueError:
@@ -327,7 +327,8 @@ class Cell(LengthUnit):
         self._posi = newpos
         self._atms.append(atom)
         self.move_atoms_to_first_lattice()
-        self._sanitize_atoms()
+        if sanitize:
+            self._sanitize_atoms()
 
     # TODO move atom
     def __move(self, ia):
@@ -449,17 +450,17 @@ class Cell(LengthUnit):
         return self._coord_sys
 
     @coord_sys.setter
-    def coord_sys(self, s):
-        _s = s.upper()
-        if _s != self._coord_sys:
+    def coord_sys(self, sys):
+        sys = sys.upper()
+        if sys != self._coord_sys:
             _convDict = {"C": self._latt, "D": np.linalg.inv(self._latt)}
-            _conv = _convDict.get(_s)
+            _conv = _convDict.get(sys)
             if _conv is not None:
                 self._posi = np.matmul(self._posi, _conv)
-                self._coord_sys = _s
+                self._coord_sys = sys
             else:
                 info = "Only support \"D\" direct or fractional and \"C\" Cartisian coordinate."
-                raise self._err(info)
+                raise CellError(info)
 
     @property
     def atom_types(self):
@@ -589,13 +590,13 @@ class Cell(LengthUnit):
             self._set_select_dyn(_new)
 
     def relax_from_top(self, n, axis=3):
-        '''Set all atoms fixed, and relax the n atoms from top along axis
-        '''
+        """Set all atoms fixed, and relax the n atoms from top along axis
+        """
         raise NotImplementedError
 
     def fix_from_center(self, n, axis=3):
-        '''Set all atoms relaxed, and fix the n atoms from the middle along axis
-        '''
+        """Set all atoms relaxed, and fix the n atoms from the middle along axis
+        """
         raise NotImplementedError
 
     def _set_select_dyn(self, flags):
@@ -643,7 +644,7 @@ class Cell(LengthUnit):
         '''
         return self.latt, self.posi, self.type_index
 
-    def export(self, output_format='vasp', filename=None, scale=1.0):
+    def export(self, output_format, filename=stdout, scale=1.0):
         '''Export to file in the format `output_format`'''
         o = output_format.lower()
         exporter = {
@@ -652,14 +653,7 @@ class Cell(LengthUnit):
         e = exporter.get(o, None)
         if e is None:
             raise ValueError("Unsupported export:", output_format)
-        default_suffix = {
-            'vasp': 'POSCAR'
-            }
-        suffix = default_suffix.get(o, 'txt')
-        if filename is None:
-            filename = 'cell.' + suffix
-        with open(filename, 'w') as h:
-            print(e(scale=scale), file=h)
+        print_file_or_iowrapper(e(scale=scale), filename)
 
     # export to software-specific output
     def export_as_vasp(self, scale=1.0):
@@ -795,6 +789,84 @@ class Cell(LengthUnit):
                 "the input is not an object of Cell or its subclasses")
         kw = cell.get_kwargs()
         return cls(*cell.get_cell(), **kw)
+
+    # pylint: disable=R0914,R0915
+    @classmethod
+    def read_from_vasp(cls, pvasp="./POSCAR"):
+        """Create Cell instance by reading from vasp POSCAR file
+
+        Args:
+            pvasp (str) : path to vasp POSCAR file, default to POSCAR at cwd
+        """
+        def _raise_errline(cond, i=None, s="input"):
+            if cond:
+                if i:
+                    raise CellError("bad {:s}, atom L{} in file {:s}".format(s, i+1, pvasp))
+                raise CellError("bad {:s} in file {:s}".format(s, pvasp))
+
+        fixed = {}
+        flags = {'T': True, 'F': False}
+        with open(pvasp, 'r') as fp:
+            symbols = None
+            # line 1: comment on system
+            comment = fp.readline().strip()
+            # line 2: scale
+            scale = float(fp.readline().strip())
+            # line 3-5: lattice vector
+            latt = [fp.readline().split() for _ in range(3)]
+            latt = np.array(latt, dtype='float64') * scale
+            # Next 2 or 1 line(s), depend on whether element symbols are typed or not
+            _line = fp.readline().strip()
+            if _line[0] in string.ascii_letters:
+                symbols = _line.split()
+                _line = fp.readline().strip()
+            _raise_errline(_line[0] not in string.digits[1:], s="atomic format")
+            nats = [int(x) for x in _line.split()]
+            if symbols is None:
+                _logger.warning("No atom information in POSCAR: %s", pvasp)
+                symbols = ["Unk{}".format(i) for i, _ in enumerate(nats)]
+            atms = atms_from_sym_nat(symbols, nats)
+
+            # Next 2 or 1 line(s), depend on whether 'selective dynamics line' is typed
+            _line = fp.readline().strip()
+            if _line[0].upper() == "S":
+                _line = fp.readline().strip()
+            coord = _line[0].upper()
+            _raise_errline(coord not in ["C", "K", "D"], s="coord system")
+            coord = {"C": "C", "K": "C", "D": "D"}[coord]
+
+            # Next natms lines: read atomic position and selective dynamics flag
+            posi = []
+            scale = {"C": scale}.get(coord, 1.0E0)
+            _atms_posline = []
+            for i in range(sum(nats)):
+                # read positions
+                try:
+                    _words = trim_comment(fp.readline()).split()
+                    posi.append(_words[:3])
+                except (ValueError, IndexError):
+                    _raise_errline(True, i, "coordinates")
+                ncols = len(_words)
+                if ncols == 3:
+                    continue
+                # read possible selective dynamic flags, and atom type
+                # add possible atomic info for ATAT-like POSCAR
+                if ncols in [4, 7]:
+                    _atms_posline.append(_words[-1])
+                elif ncols == 6:
+                    flag = [flags.get(_words[i]) for i in range(3, 6)]
+                    _raise_errline(None in flag, i, "flag")
+                    if flag != [True, True, True]:
+                        fixed[i] = flag
+                else:
+                    _raise_errline(True, i, "poscar line")
+            posi = np.array(posi, dtype='float64') * scale
+            if _atms_posline:
+                atms = _atms_posline
+            return cls(latt, atms, posi, unit="ang", coord_sys=coord,
+                       all_relax=True, select_dyn=fixed, comment=comment)
+
+
 
     @classmethod
     def _bravais_o(cls, kind, atom, a, b, c, **kwargs):
