@@ -1162,6 +1162,17 @@ class Tick(_Tick):
                        minor_grid_switch=Switch.get(mig), minor_linewidth=milw,
                        minor_linestyle=LineStyle.get(mils))
 
+    def set(self, major=None, mjc=None, mjs=None, mjlw=None, mjls=None, mjg=None,
+            minor=None, mic=None, mis=None, mit=None, milw=None, mils=None,
+            mig=None, **kwargs):
+        _raise_unknown_attr(self, *kwargs)
+        self._set(major=major, major_color=Color.get(mjc), major_size=mjs,
+                  major_grid_switch=Switch.get(mjg), major_linewidth=mjlw,
+                  major_linestyle=LineStyle.get(mjls),
+                  minor=minor, minor_color=Color.get(mic), minor_size=mis, minor_ticks=mit,
+                  minor_grid_switch=Switch.get(mig), minor_linewidth=milw,
+                  minor_linestyle=LineStyle.get(mils))
+
     def set_major(self, major=None, color=None, size=None,
                   lw=None, ls=None, grid=None, **kwargs):
         _raise_unknown_attr(self, *kwargs)
@@ -1442,9 +1453,11 @@ class Axis(_Axis):
         return slist
 
     def set_major(self, **kwargs):
+        """set major ticks"""
         self._tick.set_major(**kwargs)
 
     def set_minor(self, **kwargs):
+        """set minor ticks"""
         self._tick.set_minor(**kwargs)
 
     def set_bar(self, **kwargs):
@@ -1514,12 +1527,15 @@ class Dataset(_Dataset):
     Args:
         index
         xyz (arraylike)
-        datatype (str)
         label (str)
-        comment (str)
+        datatype (str)
         color (str) : global color control
-        size (number) : symbol size
-        lt (str) : line type
+        comment (str)
+        symbol (str) : symbol type
+        ssize (number) : symbol size
+        sc (str) : symbol color
+        sp (str) : symbol pattern
+        line (str) : line type
         lw (number) : linewidth
         ls (str/int) : line style
         lp (str/int) : line pattern
@@ -1529,7 +1545,7 @@ class Dataset(_Dataset):
     def __init__(self, index, *xyz, label=None, color=None, datatype=None, comment=None,
                  symbol=None, ssize=None, sc=None, sp=None, sfc=None, sfp=None,
                  slw=None, sls=None, char=None, charfont=None, skip=None,
-                 lt=None, lw=None, lc=None, ls=None, lp=None,
+                 line=None, lw=None, lc=None, ls=None, lp=None,
                  baseline=None, blt=None, dropline=None, ft=None, rule=None, fc=None, fp=None,
                  anno=None, at=None, asize=None, ac=None, rot=None, font=None, af=None, prec=None,
                  prepend=None, append=None, offset=None,
@@ -1552,7 +1568,7 @@ class Dataset(_Dataset):
                               ls=sls, char=char, charfont=charfont, skip=skip)
         if lc is None:
             lc = color
-        self._line = Line(lt=lt, color=lc, width=lw, style=ls, pattern=lp)
+        self._line = Line(lt=line, color=lc, width=lw, style=ls, pattern=lp)
         self._baseline = BaseLine(lt=blt, switch=baseline)
         self._dropline = DropLine(switch=dropline)
         if fc is None:
@@ -1666,6 +1682,12 @@ class Graph(_Graph):
 
     Args:
         index (int)
+        xmin, ymin, xmax, ymax
+        gt : graph type
+        title : title string
+        subtitle : subtitle string
+        tc : title color
+        stc : subtitle color
     """
     def __init__(self, index, xmin=None, ymin=None, xmax=None, ymax=None,
                  hidden=None, gt=None, stacked=None, barhgap=None,
@@ -1686,6 +1708,8 @@ class Graph(_Graph):
         self._znorm = Znorm()
         self._title = Title(title=title, fontsize=tsize, color=tc)
         self._subtitle = SubTitle(subtitle=subtitle, fontsize=stsize, color=stc)
+        self._if_xtick_set = False
+        self._if_ytick_set = False
         self._xaxes = _Axes('x')
         self._yaxes = _Axes('y')
         #self._altxaxes = _Axes('altx', switch=Switch.OFF)
@@ -1736,12 +1760,18 @@ class Graph(_Graph):
             v = max(ds.max() for ds in self._datasets)
         return v
 
-    def tight_graph(self, xscale=1.1, yscale=1.1):
+    def tight_graph(self, nxticks=5, nyticks=5, xscale=1.1, yscale=1.1):
         """make the graph looks tight by adopting x/y min/max as axis extremes"""
         self.set_lim(xmin=self.xmin()-absolute(self.xmin())*(xscale-1.0),
                      xmax=self.xmax()+absolute(self.xmax())*(xscale-1.0),
                      ymin=self.min()-absolute(self.min())*(yscale-1.0),
                      ymax=self.max()+absolute(self.max())*(yscale-1.0))
+        xmin, ymin, xmax, ymax = self.get_lim()
+        # TODO optimize major tick determination
+        if not self._if_xtick_set:
+            self._xaxis.set_major(major=(xmax-xmin)/nxticks)
+        if not self._if_ytick_set:
+            self._yaxis.set_major(major=(ymax-ymin)/nyticks)
         
     def export(self):
         """export the header of graph, including `with g` part and data header"""
@@ -1796,6 +1826,14 @@ class Graph(_Graph):
             if v is not None:
                 pre[i] = v
         self._world.set_world(pre)
+
+    def get_lim(self):
+        """get the limits (world) of graph
+
+        Returns
+            tuple. xmin, ymin, xmax, ymax
+        """
+        return self._world.get_world()
 
     def set_view(self, xmin=None, ymin=None, xmax=None, ymax=None):
         """set the view (apperance in the plot) of graph on the plot"""
