@@ -175,22 +175,22 @@ class cell_factory_method(ut.TestCase):
 
     def test_read_tempfile_json(self):
         self.assertRaisesRegex(CellError, "JSON file not found: None",
-                               Cell.read_from_json, None)
+                               Cell.read_json, None)
         self.assertRaisesRegex(CellError, "JSON file not found: /abcdefg.json",
-                               Cell.read_from_json, "/abcdefg.json")
+                               Cell.read_json, "/abcdefg.json")
         # raise for invalid json
         tf = tempfile.NamedTemporaryFile()
         with open(tf.name, 'w') as h:
             json.dump({}, h)
         self.assertRaisesRegex(CellError, "invalid JSON file for cell: {}".format(tf.name),
-                               Cell.read_from_json, tf.name)
+                               Cell.read_json, tf.name)
 
         jd= {"latt": [[5.0, 0.0, 0.0], [0.0, 5.0, 0.0], [0.0, 0.0, 5.0]]}
         with open(tf.name, 'w') as h:
             json.dump(jd, h)
         self.assertRaisesRegex(CellError,
                                "invalid JSON file for cell: {}. No {}".format(tf.name, "atms"),
-                               Cell.read_from_json, tf.name)
+                               Cell.read_json, tf.name)
 
         jd = {
             "latt": [[5.0, 0.0, 0.0], [0.0, 5.0, 0.0], [0.0, 0.0, 5.0]],
@@ -200,7 +200,7 @@ class cell_factory_method(ut.TestCase):
             json.dump(jd, h)
         self.assertRaisesRegex(CellError,
                                "invalid JSON file for cell: {}. No {}".format(tf.name, "posi"),
-                               Cell.read_from_json, tf.name)
+                               Cell.read_json, tf.name)
 
         # JSON with factory key
         jd = {
@@ -211,12 +211,12 @@ class cell_factory_method(ut.TestCase):
         with open(tf.name, 'w') as h:
             json.dump(jd, h)
         self.assertRaisesRegex(CellError, "Required key not found in JSON: atom2",
-                               Cell.read_from_json, tf.name)
+                               Cell.read_json, tf.name)
         # add atom2 and dump again
         jd["atom2"] = "O"
         with open(tf.name, 'w') as h:
             json.dump(jd, h)
-        c = Cell.read_from_json(tf.name)
+        c = Cell.read_json(tf.name)
         self.assertEqual(c.unit, 'au')
         self.assertEqual(c.comment, "Zincblende ZnO")
         self.assertAlmostEqual(512, c.vol)
@@ -225,26 +225,26 @@ class cell_factory_method(ut.TestCase):
         # test one file in testdata, Cell_1.json is tested here
         _path = os.path.join(os.path.dirname(__file__),
                              'data', 'Cell_1.json')
-        c = Cell.read_from_json(_path)
+        c = Cell.read_json(_path)
         self.assertEqual(c.unit, "ang")
         self.assertEqual(c.coord_sys, "D")
         self.assertEqual(c.natm, 2)
         self.assertListEqual(c.atms, ["C", "C"])
 
-    #def test_read_from_test_json(self):
+    #def test_read_test_json(self):
     #    """read test json data"""
     #    datadir = os.path.join(get_dirpath(__file__), 'data')
     #    for fn in os.listdir(datadir):
     #        if fn.endswith('.json'):
     #            jf = os.path.join(datadir, fn)
-    #            Cell.read_from_json(jf)
+    #            Cell.read_json(jf)
 
-    def test_read_from_cif(self):
+    def test_read_cif(self):
         datadir = os.path.join(get_dirpath(__file__), 'data')
         for fn in os.listdir(datadir):
             if fn.endswith('.cif'):
                 cif = os.path.join(datadir, fn)
-                Cell.read_from_cif(cif)
+                Cell.read_cif(cif)
 
 
 class cell_select_dynamics(ut.TestCase):

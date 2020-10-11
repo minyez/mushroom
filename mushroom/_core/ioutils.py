@@ -25,8 +25,8 @@ def get_dirpath(filePath):
     return os.path.dirname(_path)
 
 
-def get_file_ext(filePath):
-    """Return the extension name of filePath
+def get_file_ext(path):
+    """Return the extension name of file at path
 
     If filePath is a existing directory, None will be returned
     If the path have no characters after "." or have no ".", 
@@ -35,20 +35,20 @@ def get_file_ext(filePath):
     Args:
         filePath (str): the path of the file
     """
-    if os.path.isdir(filePath):
+    if os.path.isdir(path):
         return None
-    base = os.path.basename(os.path.abspath(filePath))
+    base = os.path.basename(os.path.abspath(path))
     return os.path.splitext(base)[1][1:]
 
 
-def get_filename_wo_ext(filePath):
+def get_filename_wo_ext(path):
     """Get the filename without extension
 
     Args:
-        filePath (str): the path of file
+        path (str): the path of file
     """
-    fnExt = os.path.basename(os.path.abspath(filePath))
-    return os.path.splitext(fnExt)[0]
+    fn = os.path.basename(os.path.abspath(path))
+    return os.path.splitext(fn)[0]
 
 
 def get_cwd_name():
@@ -362,17 +362,20 @@ def get_str_indices_by_iden(container, iden=None):
         return list(OrderedDict.fromkeys(ret).keys())
     return ret
 
-def print_file_or_iowrapper(s, f, mode='w'):
+def print_file_or_iowrapper(s, f=None, mode='w'):
     """print string s to file handler f
     Args:
         s (str) :
-        f (str or TextIOWrapper) :
+        f (str or TextIOWrapper) : the filename or file object where
+            the string is exported. If not set, stdout will be used.
         mode (s) : only used when s is str
     """
     if isinstance(f, str):
         h = open(f, mode)
     if isinstance(f, TextIOWrapper):
         h = f
+    if f is None:
+        h = stdout
     print(s, file=h)
     if isinstance(f, str):
         h.close()

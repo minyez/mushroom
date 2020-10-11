@@ -27,7 +27,7 @@
 
 ### GPAW
 
-### 爬虫
+### 爬虫相关
 
 #### SpringerMaterials
 
@@ -45,12 +45,12 @@ Require `pymatgen`
 
 - [ ] 截断和 kmesh 收敛测试
 - [ ] SCF 和 DOS
-- [ ] 能带
+- [x] 能带
 
 #### GW
 
 - [ ] 正常三步计算
-- [ ] 波函数截断 `ENCUT`, 介电矩阵截断 `ENCUTGW`, 能带数 `NBANDS` 收敛
+- [x] 波函数截断 `ENCUT`, 介电矩阵截断 `ENCUTGW`, 能带数 `NBANDS` 收敛
 - [ ] `NOMEGA` 收敛测试
 
 #### 结构优化
@@ -62,4 +62,6 @@ Require `pymatgen`
 ### WIEN2k
 
 ### GPAW
+
+## ? 数据库 db
 

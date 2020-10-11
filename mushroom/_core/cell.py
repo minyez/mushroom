@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=bad-whitespace,too-many-lines
-"""Module that defines classes for crystal cell manipulation and symmtetry operation
+"""Module that defines classes for crystal cell manipulation
 
 The ``cell`` class and its subclasses accept the following kwargs when being instantialized:
 
@@ -11,7 +11,7 @@ The ``cell`` class and its subclasses accept the following kwargs when being ins
     - select_dyn (dict) : a dictionary with key-value pair as ``int: [bool, bool, bool]``, 
       which controls the selective dynamic option for atom with the particular index 
       (starting from 0). Default is an empty ``dict``
-    - comment (str): message about the cell
+    - comment (str): message about the cell, e.g. theory level, experimental conditions
     - reference (str): the reference where the lattice structure is derived.
 
 When other keyword are parsed, they will be filtered out and no exception will be raised
@@ -19,7 +19,6 @@ When other keyword are parsed, they will be filtered out and no exception will b
 import json
 import string
 import os
-from sys import stdout
 from collections import OrderedDict
 from numbers import Real
 
@@ -34,7 +33,10 @@ from mushroom._core.crystutils import (get_latt_consts_from_latt_vecs,
                                        atms_from_sym_nat,
                                        sym_nat_from_atms,
                                        axis_list)
-from mushroom._core.ioutils import get_str_indices, trim_comment, print_file_or_iowrapper
+from mushroom._core.ioutils import (get_str_indices,
+                                    trim_comment,
+                                    get_file_ext,
+                                    print_file_or_iowrapper)
 from mushroom._core.logger import create_logger
 
 
@@ -42,7 +44,7 @@ class CellError(Exception):
     """Exception in cell module
     """
 
-_logger = create_logger(__name__)
+_logger = create_logger("cell")
 del create_logger
 
 class Cell(LengthUnit):
@@ -65,6 +67,8 @@ class Cell(LengthUnit):
 
     _err = CellError
     _dtype = 'float64'
+    avail_exporter = ['vasp',]
+    avail_reader = ['vasp', 'cif', 'json']
 
     def __init__(self, latt, atms, posi, unit='ang', **kwargs):
 
@@ -644,20 +648,25 @@ class Cell(LengthUnit):
         '''
         return self.latt, self.posi, self.type_index
 
-    def export(self, output_format, filename=stdout, scale=1.0):
-        '''Export to file in the format `output_format`'''
+    def export(self, output_format, filename=None, scale=1.0):
+        """Export cell to file in the format `output_format`
+        Args:
+            output_format (str)
+            filename (str or file handler) : Set None to stdout
+        """
         o = output_format.lower()
         exporter = {
-            'vasp': self.export_as_vasp
+            'vasp': self.export_vasp,
+            'json': self.export_json
             }
         e = exporter.get(o, None)
         if e is None:
             raise ValueError("Unsupported export:", output_format)
-        print_file_or_iowrapper(e(scale=scale), filename)
+        print_file_or_iowrapper(e(scale=scale), f=filename)
 
     # export to software-specific output
-    def export_as_vasp(self, scale=1.0):
-        '''Export as VASP POSCAR format'''
+    def export_vasp(self, scale=1.0):
+        '''Export in VASP POSCAR format'''
         # list containting strings to return
         ret = []
         # convert to ang, as vasp use ang only
@@ -692,10 +701,37 @@ class Cell(LengthUnit):
         self.unit = uwas
         return '\n'.join(ret)
 
+    def export_json(self, scale=1.0):
+        '''Export in JSON format'''
+        raise NotImplementedError
 
     # * Factory methods
     @classmethod
-    def read_from_json(cls, pjson):
+    def read(cls, path, form=None):
+        """read file at path and return a Cell instance
+
+        Args:
+            path (str)
+            form (str) : should be in avail_reader"""
+        reader = {
+            'vasp': cls.read_vasp,
+            'cif': cls.read_cif,
+            'json': cls.read_json,
+            }
+        path = str(path)
+        _logger.info("Reading %s", path)
+        try:
+            if form is None:
+                form = get_file_ext(path)
+                if path.endswith('POSCAR'):
+                    form = 'vasp'
+                _logger.info("Detected format %s", form)
+            return reader.get(form)(path)
+        except KeyError:
+            raise CellError("Unsupported reader format: {}".format(form))
+
+    @classmethod
+    def read_json(cls, pjson):
         '''Initialize a ``Cell`` instance from a JSON file
 
         If "factory" key does not exist, it will search for the postional arguments,
@@ -705,15 +741,14 @@ class Cell(LengthUnit):
             pjson (str): the path of JSON file
         '''
         if pjson is None or not os.path.isfile(pjson):
-            raise cls._err("JSON file not found: {}".format(pjson))
+            raise CellError("JSON file not found: {}".format(pjson))
         with open(pjson, 'r') as h:
             try:
                 js = json.load(h)
             except json.JSONDecodeError:
-                raise cls._err(
-                    "invalid JSON file for cell: {}".format(pjson))
+                raise CellError("invalid JSON file for cell: {}".format(pjson))
         pargs = []
-        factoryDict = {
+        factories = {
             "bravais_oP": (cls.bravais_oP, ("atom", "a", "b", "c")),
             "bravais_oI": (cls.bravais_oI, ("atom", "a", "b", "c")),
             "bravais_oF": (cls.bravais_oF, ("atom", "a", "b", "c")),
@@ -735,32 +770,29 @@ class Cell(LengthUnit):
             # pop out latt, atoms and pos for safety
             for arg in ["latt", "atms", "posi"]:
                 js.pop(arg, None)
-            if fac in factoryDict:
-                # get positional argument
-                # print(fac)
+            if fac in factories:
+                # get required positional argument
                 try:
-                    m, reqPa = factoryDict[fac]
-                    for x in reqPa:
+                    m, req_pa = factories[fac]
+                    for x in req_pa:
                         pargs.append(js.pop(x))
                     return m(*pargs, **js)
                 except KeyError:
-                    raise cls._err(
+                    raise CellError(
                         "Required key not found in JSON: {}".format(x))
-            else:
-                raise cls._err("Factory method unavailable: {}".format(fac))
+            raise CellError("Factory method unavailable: {}".format(fac))
 
-        for _, arg in enumerate(["latt", "atms", "posi"]):
+        for arg in ["latt", "atms", "posi"]:
             v = js.pop(arg, None)
             if v is None:
-                raise cls._err(
-                    "invalid JSON file for cell: {}. No {}".format(pjson, arg))
+                raise CellError("invalid JSON file for cell: {}. No {}".format(pjson, arg))
             pargs.append(v)
         return cls(*pargs, **js)
 
     @classmethod
-    def read_from_cif(cls, pcif):
-        '''Read from Cif file and return a instance by use of PyCIFRW
-        '''
+    def read_cif(cls, pcif):
+        """Read from Cif file and return a instance by use of PyCIFRW
+        """
         cif = Cif(pcif)
         kw = {"coord_sys": "D", "reference": cif.get_reference_str(), }
         # use chemical name as comment
@@ -769,30 +801,9 @@ class Cell(LengthUnit):
         atms, posi = cif.get_all_atoms()
         return cls(latt, atms, posi, **kw)
 
-    @classmethod
-    def create_from_cell(cls, cell):
-        '''Create an ``Cell`` object from another ``Cell`` instance ``cell``.
-
-        This is for use of transformation between cells described 
-        by different file formats.
-
-        Args:
-            cell : object of ``Cell`` or its subclasses
-
-        Returns:
-            a ``Cell`` object
-        '''
-        try:
-            assert isinstance(cell, Cell)
-        except AssertionError:
-            raise cls._err(
-                "the input is not an object of Cell or its subclasses")
-        kw = cell.get_kwargs()
-        return cls(*cell.get_cell(), **kw)
-
     # pylint: disable=R0914,R0915
     @classmethod
-    def read_from_vasp(cls, pvasp="./POSCAR"):
+    def read_vasp(cls, pvasp="./POSCAR"):
         """Create Cell instance by reading from vasp POSCAR file
 
         Args:
