@@ -18,9 +18,11 @@ $(DIST_TARBALL): $(DIST_FILES)
 	cp -r $^ dist/$(PROJ)-$(VERSION)/
 	$(SED) "/CircleCI/d;/codecov/,+1 d" README.md > dist/$(PROJ)-$(VERSION)/README.md
 	cd dist; tar --exclude=".DS_Store" \
-		--exclude="*.pyc" \
+		--exclude="*.pyc" --exclude="__pycache__" \
+		--exclude="*.log" \
 		--exclude=".git*" \
-		--exclude="__pycache__" \
+		--exclude="vasp_*/vasp.sh" \
+		--exclude="*_*/common.sh" \
 		--exclude=".pytest_cache" \
 		-zcvf $(PROJ)-$(VERSION).tar.gz $(PROJ)-$(VERSION)
 	rm -rf dist/$(PROJ)-$(VERSION)

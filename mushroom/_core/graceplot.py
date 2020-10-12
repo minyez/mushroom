@@ -2,16 +2,10 @@
 # pylint: disable=too-few-public-methods,missing-function-docstring
 r"""A high-level Python interface to the Grace plotting package
 
-Lastest adapted from `jscatter` graceplot
-see https://gitlab.com/biehl/jscatter/-/blob/master/src/jscatter/graceplot.py ,
-commit d482bf214b8ef43.1fa853491d57b3ccbee02e5728
-
-Originally, this code of GracePlot started out from Nathaniel Gray <n8gray@caltech.edu>,
-updated by Marcus H. Mendenhall, MHM ,John Kitchin, Marus Mendenhall, Ralf Biehl (jscatter)
-
-The main purpose of this implementation is to write grace plot file elegantly,
-without any concern about whether xmgrace is installed or not.
-Therefore, platform-related functions are discarded. (minyez)
+The main purpose of this implementation is to write grace plot file
+with similar methods to matplotlib, and without any concern about
+whether xmgrace is installed or not.
+Therefore, platform-related functions are generally discarded. (minyez)
 """
 import sys
 import time
@@ -21,8 +15,8 @@ from copy import deepcopy
 from numpy import shape, absolute
 
 from mushroom._core.data import Data
-from mushroom._core.logger import create_logger
 
+from mushroom._core.logger import create_logger
 _logger = create_logger(__name__)
 del create_logger
 
@@ -354,7 +348,6 @@ class LineStyle:
         return _get_int_const(cls.__name__, cls.pair, marker)
 
 
-
 class Justf:
     """Justification of text"""
     LEFT = 0
@@ -369,7 +362,6 @@ class Justf:
     @classmethod
     def get(cls, marker):
         return _get_int_const(cls.__name__, cls.pair, marker)
-
 
 
 class Switch:
@@ -389,7 +381,8 @@ class Switch:
     @classmethod
     def get_str(cls, i):
         """get the corresponding attribute string"""
-        d = {cls.ON: "on", cls.AUTO: "auto", cls.OFF: "off", True: "on", False: "off"}
+        d = {cls.ON: "on", cls.AUTO: "auto", cls.OFF: "off",
+             True: "on", False: "off", None: "off"}
         return d.get(i)
 
 
@@ -605,7 +598,6 @@ class Title(_Title):
     def set(self, title=None, font=None, fontsize=None, color=None, **kwargs):
         self._set(title_comment=title, size=fontsize, color=Color.get(color), font=font)
         _raise_unknown_attr(self, *kwargs)
-    
 
 class _SubTitle(_TitleLike):
     """title of graph"""
@@ -663,7 +655,7 @@ class StackWorld(_WorldLike):
     _attrs = _set_loclike_attr(_marker, '{:8f}', 0., 1., 0., 1.)
 
 class View(_WorldLike):
-    """stack world of graph"""
+    """View of graph on the image canvas """
     _marker = 'view'
     _attrs = _set_loclike_attr(_marker, '{:8f}', 0.15, 0.10, 1.20, 0.85)
 
@@ -671,7 +663,6 @@ class View(_WorldLike):
         _WorldLike.__init__(self, **kwargs)
         self.set_view = self.set
         self.get_view = self.get
-
 
 class Znorm(_WorldLike):
     """stack world of graph"""
@@ -753,7 +744,6 @@ class _Legend(_BaseOutput):
         'char_size': (float, 1.2, '{:8f}'),
         }
 
-
 # pylint: disable=too-many-locals
 class Legend(_Legend):
     """User interface of legend object"""
@@ -814,7 +804,6 @@ class _Frame(_BaseOutput):
     @classmethod
     def get(cls, marker):
         return _get_int_const(cls.__name__, cls.pair, marker)
-
 
 class Frame(_Frame):
     """User interface of frame"""
@@ -895,7 +884,6 @@ class _Fill(_BaseOutput):
     def get(cls, marker):
         return _get_int_const(cls.__name__, cls.pair, marker)
 
-
 class Fill(_Fill):
     """User interface of fill"""
     def __init__(self, ft=None, rule=None, color=None, pattern=None, **kwargs):
@@ -907,6 +895,7 @@ class Fill(_Fill):
         _raise_unknown_attr(self, *kwargs)
         self._set(type=_Fill.get(ft), rule=rule, color=Color.get(color),
                   pattern=Pattern.get(pattern))
+
 
 class _Default(_BaseOutput):
     """_Default options at head"""
@@ -957,7 +946,6 @@ class _Annotation(_BaseOutput):
         "prepend": (str, "\"\"", "{:s}"),
         "offset": (list, [0.0, 0.0], "{:8f} , {:8f}"),
         }
-
 
 class Annotation(_Annotation):
     """user interface of data annotation"""
@@ -1020,9 +1008,9 @@ class _Symbol(_BaseOutput):
     _attrs = {
         "type": (bool, CIRCLE, "{:d}"),
         "size": (float, 1., "{:8f}"),
-        "color": (int, 1, "{:d}"),
+        "color": (int, Color.BLACK, "{:d}"),
         "pattern": (int, 1, "{:d}"),
-        "fill_color": (int, 1, "{:d}"),
+        "fill_color": (int, Color.BLACK, "{:d}"),
         "fill_pattern": (int, 1, "{:d}"),
         "linewidth": (float, 1, "{:3.1f}"),
         "linestyle": (int, LineStyle.SOLID, "{:d}"),
@@ -1034,7 +1022,6 @@ class _Symbol(_BaseOutput):
     @classmethod
     def get(cls, marker):
         return _get_int_const(cls.__name__, cls.pair, marker)
-
 
 class Symbol(_Symbol):
     """user interface of symbol"""
@@ -1104,6 +1091,7 @@ class TimesStamp(_TimesStamp):
         self._set(timestamp_switch=Switch.get(switch), color=Color.get(color),
                   rot=rot, font=font, char_size=charsize)
 
+
 class _Tick(_BaseOutput):
     """Tick of axis
     """
@@ -1147,7 +1135,6 @@ class _Tick(_BaseOutput):
                 if m == "major":
                     slist.append("ticklabel {:d} \"{:s}\"".format(i, label))
         return slist
-
 
 class Tick(_Tick):
     """User interface of tick"""
@@ -1227,7 +1214,6 @@ class _Bar(_BaseOutput):
         'linewidth': (float, 2., '{:3.1f}'),
         }
 
-
 class Bar(_Bar):
     """User interface of axis bar"""
     def __init__(self, switch=None, color=None, ls=None, lw=None, **kwargs):
@@ -1284,6 +1270,7 @@ class Label(_Label):
         slist += _BaseOutput.export(self)
         return slist
 
+
 class _TickLabel(_BaseOutput):
     """Label of axis tick"""
     _marker = 'ticklabel'
@@ -1308,7 +1295,6 @@ class _TickLabel(_BaseOutput):
         'stop': (float, 0.0, "{:8f}"),
         'char_size': (float, 1.5, "{:8f}"),
         }
-
 
 # pylint: disable=too-many-locals
 class TickLabel(_TickLabel):
@@ -1395,10 +1381,10 @@ class _Axis(_BaseOutput, _Affix):
         'type': (list, ["zero", "false"], '{:s} {:s}'),
         'offset': (list, [0.0, 0.0], '{:8f} , {:8f}'),
         }
-    def __init__(self, axis='x', **kwargs):
+    def __init__(self, axis, **kwargs):
         assert axis in ['x', 'y', 'altx', 'alty']
         _BaseOutput.__init__(self, **kwargs)
-        _Affix.__init__(self, affix=axis, is_prefix=True)
+        _Affix.__init__(self, axis, is_prefix=True)
 
 class Axis(_Axis):
     """user interface of graph axis apperance
@@ -1414,7 +1400,14 @@ class Axis(_Axis):
         blw (number)
         mjls (str/int) : major tick line style
     """
-    def __init__(self, axis='x', switch=None, at=None, offset=None,
+
+    ## pylint: disable=W0613
+    #def __new__(cls, axis, **kwargs):
+    #    inst = _Axis.__new__(cls)
+    #    cls.created[axis].append(inst)
+    #    return inst
+
+    def __init__(self, axis, switch=None, at=None, offset=None,
                  bar=None, bc=None, bls=None, blw=None,
                  major=None, mjc=None, mjs=None, mjlw=None, mjls=None, mjg=None,
                  minor=None, mic=None, mis=None, mit=None,
@@ -1427,7 +1420,7 @@ class Axis(_Axis):
                  start=None, stop=None, start_switch=None, stop_switch=None,
                  **kwargs):
         _raise_unknown_attr(self, *kwargs)
-        _Axis.__init__(self, axis=axis, axis_switch=Switch.get(switch), type=at, offset=offset)
+        _Axis.__init__(self, axis, axis_switch=Switch.get(switch), type=at, offset=offset)
         self._bar = Bar(switch=bar, color=bc, ls=bls, lw=blw)
         self._tick = Tick(major=major, mjc=mjc, mjs=mjs, mjlw=mjlw, mjls=mjls, mjg=mjg,
                           minor=minor, mic=mic, mis=mis, mit=mit, milw=milw, mils=mils, mig=mig)
@@ -1452,6 +1445,13 @@ class Axis(_Axis):
             slist += [self._affix + self._marker + " " + i for i in x.export()]
         return slist
 
+    def bind(self, *axis):
+        """Bind Axis objects
+
+        Args:
+            axis (Axis) : 
+        """
+
     def set_major(self, **kwargs):
         """set major ticks"""
         self._tick.set_major(**kwargs)
@@ -1473,6 +1473,7 @@ class Axis(_Axis):
         """set the label of axis"""
         self._label.set(s, **kwargs)
 
+
 class _Axes(_BaseOutput, _Affix):
     """_Axes object for graph
 
@@ -1487,7 +1488,7 @@ class _Axes(_BaseOutput, _Affix):
     def __init__(self, axes, **kwargs):
         assert axes in ['x', 'y']
         _BaseOutput.__init__(self, **kwargs)
-        _Affix.__init__(self, affix=axes, is_prefix=True)
+        _Affix.__init__(self, axes, is_prefix=True)
 
 class Axes(_Axes):
     """User interface of axes"""
@@ -1498,6 +1499,7 @@ class Axes(_Axes):
     def set(self, scale=None, invert=None, **kwargs):
         _raise_unknown_attr(self, *kwargs)
         self._set(scale=scale, invert_switch=Switch.get(invert))
+
 
 class _Dataset(_BaseOutput, _Affix):
     """Object of grace dataset
@@ -1518,8 +1520,7 @@ class _Dataset(_BaseOutput, _Affix):
         }
     def __init__(self, index, **kwargs):
         _BaseOutput.__init__(self, **kwargs)
-        _Affix.__init__(self, affix=index, is_prefix=False)
-
+        _Affix.__init__(self, index, is_prefix=False)
 
 class Dataset(_Dataset):
     """User interface of dataset object
@@ -1802,7 +1803,7 @@ class Graph(_Graph):
         """Number of datasets in current graph"""
         return len(self._datasets)
 
-    def _set_axis(self, axis, **kwargs):
+    def set_axis(self, axis, **kwargs):
         """set axis"""
         d = {'x': self._xaxis, 'y': self._yaxis, 'altx': self._altxaxis, 'alty': self._altyaxis}
         try:
@@ -1810,6 +1811,19 @@ class Graph(_Graph):
         except KeyError:
             raise ValueError("axis name %s is not supported. %s" % (axis, d.keys()))
         ax.set(**kwargs)
+
+    def get_axis(self, axis):
+        """set axis
+        
+        Args:
+            axis (str) : x, y, altx, alty
+        """
+        d = {'x': self._xaxis, 'y': self._yaxis, 'altx': self._altxaxis, 'alty': self._altyaxis}
+        try:
+            ax = d.get(axis)
+        except KeyError:
+            raise ValueError("axis name %s is not supported. %s" % (axis, d.keys()))
+        return ax
 
     def set_xlim(self, xmin=None, xmax=None):
         """set limits of x axis"""
@@ -1847,19 +1861,19 @@ class Graph(_Graph):
 
     def set_xaxis(self, **kwargs):
         """set x axis"""
-        self._set_axis(axis='x', **kwargs)
+        self.set_axis(axis='x', **kwargs)
 
     def set_yaxis(self, **kwargs):
         """set x axis"""
-        self._set_axis(axis='y', **kwargs)
+        self.set_axis(axis='y', **kwargs)
 
     def set_altxaxis(self, **kwargs):
         """set x axis"""
-        self._set_axis(axis='altx', **kwargs)
+        self.set_axis(axis='altx', **kwargs)
 
     def set_altyaxis(self, **kwargs):
         """set x axis"""
-        self._set_axis(axis='alty', **kwargs)
+        self.set_axis(axis='alty', **kwargs)
 
     def plot(self, *xyz, **kwargs):
         """plot a dataset
@@ -1882,8 +1896,52 @@ class Graph(_Graph):
             self._datasets.append(ds)
 
     def set_legend(self, **kwargs):
-        """set up the legend box. For arguments, see Legend"""
+        """set up the legend. For arguments, see Legend
+
+        Particularly, a string can be parsed to loc, e.g. 'upper left',
+        'lower right'. Available token:
+            lower, middle, upper;
+            left, center, right;
+        """
+        x = None
+        y = None
+        try:
+            loc_token = kwargs["loc"]
+            int(loc_token)
+        except ValueError:
+            try:
+                loctype = kwargs.get("loctype")
+                assert loctype == "world"
+                xmin, ymin, xmax, ymax = self._world.get_world()
+            except (KeyError, AssertionError):
+                xmin, ymin, xmax, ymax = self._view.get_view()
+
+            if loc_token.endswith("left"):
+                x = 0.8 * xmin + 0.2 * xmax
+            elif loc_token.endswith("right"):
+                x = 0.3 * xmin + 0.7 * xmax
+            elif loc_token.endswith("center"):
+                x = 0.6 * xmin + 0.4 * xmax
+
+            if loc_token.startswith("lower") or loc_token.startswith("bottom"):
+                y = 0.9 * ymin + 0.1 * ymax
+            elif loc_token.startswith("upper") or loc_token.startswith("top"):
+                y = 0.1 * ymin + 0.9 * ymax
+            elif loc_token.startswith("middle"):
+                y = 0.5 * ymin + 0.5 * ymax
+
+            loc = (x, y)
+            if x is None or y is None:
+                raise ValueError("invalid location token for legend: {}".format(kwargs["loc"]))
+            kwargs["loc"] = loc
+        except KeyError:
+            pass
+
         self._legend.set(**kwargs)
+
+    def set_legend_box(self, **kwargs):
+        """set up the legend box"""
+        self._legend.set_box(**kwargs)
 
     def set_xlabel(self, s, **kwargs):
         """set x label of graph to s"""
@@ -1952,7 +2010,6 @@ class _DrawString(_BaseOutput):
     # add string_location
     _attrs.update(_set_loclike_attr(_marker, '{:10f}', 0.0, 0.0))
 
-
 class DrawString(_DrawString):
     """user interface of string drawing
 
@@ -1996,15 +2053,20 @@ class _DrawLine(_BaseOutput):
     # add string_location
     _attrs.update(_set_loclike_attr(_marker, '{:10f}', 0.0, 0.0, 0.0, 0.0))
 
-
 class DrawLine(_DrawLine):
-    """user interface of drawing line object"""
+    """user interface of drawing line object
+
+    Args:
+        start, end (2-member Iterable)
+    """
     def __init__(self, start, end, ig=None, color=None, lw=None, ls=None,
                  arrow=None, at=None, length=None, layout=None, **kwargs):
         loctype = "view"
         if ig:
             loctype = "world"
             ig = "g" + str(ig)
+        if len(start) != 2 or len(end) != 2:
+            raise TypeError("Endpoint of line should have both x and y")
         _DrawLine.__init__(self, loctype=loctype, color=Color.get(color), line_comment=ig,
                            linestyle=LineStyle.get(ls), linewidth=lw,
                            arrow=Arrow.get(arrow), arrow_type=Arrow.get(at),
@@ -2033,9 +2095,14 @@ class _DrawEllipse(_BaseOutput):
     # add string_location
     _attrs.update(_set_loclike_attr(_marker, '{:10f}', 0.0, 0.0, 0.0, 0.0))
 
-
 class DrawEllipse(_DrawEllipse):
-    """user interface of drawing line object"""
+    """user interface of drawing line object
+    
+    Args:
+        xy (2-member Iterable) : location of center
+        width (float) : width of ellipse
+        heigh (float) : height of ellipse. Use width if not set
+    """
     def __init__(self, xy, width, heigh=None, ig=None, color=None, lw=None, ls=None,
                  fc=None, fp=None, **kwargs):
         loctype = "view"
@@ -2057,55 +2124,105 @@ class DrawEllipse(_DrawEllipse):
                + ["    {:s}".format(s) for s in _DrawEllipse.export(self)] \
                + [self._marker + " def"]
 
+# ===== functions related to graph alignment =====
+def __ga_regular(rows, cols, hgap, vgap, width_ratios=None, heigh_ratios=None):
+    """regular graph alignment.
+
+    By regular means graphs in the same column have the same width,
+    and those in the same row have the same height.
+
+    Args:
+        rows, cols (int)
+        hgap, vgap (float or Iterable)
+        width_ratios, heigh_ratios (string): ratios of width/height, separated by colon.
+
+    Returns:
+        3 list, each has rows*cols members
+    """
+    if not isinstance(hgap, Iterable):
+        hgap = [hgap,] * (cols-1)
+    if not isinstance(vgap, Iterable):
+        vgap = [vgap,] * (rows-1)
+    if len(hgap) != cols-1 or len(vgap) != rows-1:
+        raise ValueError("inconsistent number of rows/cols with vgap/hgap")
+
+    # default global min and max
+    gxmin, gymin, gxmax, gymax = View._attrs['view_location'][1]
+    widths_all = gxmax - gxmin - sum(hgap)
+    heighs_all = gymax - gymin - sum(vgap)
+    if width_ratios:
+        ws_cols = list(map(float, width_ratios.split(":")))
+        ws_cols = [w * widths_all / sum(ws_cols) for w in ws_cols]
+    else:
+        ws_cols = [widths_all / cols,] * cols
+    if heigh_ratios:
+        hs_rows = list(map(float, heigh_ratios.split(":")))
+        hs_rows = [h * heighs_all / sum(hs_rows) for h in hs_rows]
+    else:
+        hs_rows = [heighs_all / rows,] * rows
+    if len(hs_rows) != rows or len(ws_cols) != cols:
+        raise ValueError("inconsistent number of rows/cols with heighs/width_ratios")
+    left_tops = []
+    ws = []
+    hs = []
+    for row in range(rows):
+        for col in range(cols):
+            left = gxmin + sum(hgap[:col]) + sum(ws_cols[:col])
+            top = gymax - sum(vgap[:row]) - sum(hs_rows[:row])
+            left_tops.append((left, top))
+            ws.append(ws_cols[col])
+            hs.append(hs_rows[row])
+    return left_tops, ws, hs
 
 # pylint: disable=too-many-locals
-def _set_graph_alignment(rows, cols, hgap=0.02, vgap=0.02, **kwargs):
+def _set_graph_alignment(rows, cols, hgap=0.02, vgap=0.02, width_ratios=None, heigh_ratios=None,
+                         **kwargs):
     """Set the graph alignment
+
+    Args:
+        rows, cols (int)
+        hgap, vgap (float or Iterable)
 
     TODO:
         intricate handling of graph view with kwargs
     """
-    # global min and max
-    gxmin, gymin, gxmax, gymax = View._attrs['view_location'][1]
-    width = (gxmax - gxmin - hgap * (cols-1)) / cols
-    heigh = (gymax - gymin - vgap * (rows-1)) / rows
-    #_logger.debug("average graph width and height : %f %f", width, heigh)
-    graphs = [] 
-    # from left to right, upper to lower
-    for row in range(rows):
-        for col in range(cols):
-            i = row * cols + col
-            g = Graph(index=i)
-            g.set_view(gxmin + (hgap+width) * col,
-                       gymax - (vgap+heigh) * row - heigh,
-                       gxmin + (hgap+width) * col + width,
-                       gymax - (vgap+heigh) * row
-                       )
-            #_logger.debug("graph view %8f %8f %8f %8f", *g._view.view_location)
-            graphs.append(g)
-            #_logger.debug("graph view %8f %8f %8f %8f", *graphs[-1]._view.view_location)
-    #for i, g in enumerate(graphs):
-    #    _logger.debug("initializting graphs %d done, view %8f %8f %8f %8f",
-    #                  i, *g._view.view_location)
-    if kwargs:
-        raise NotImplementedError
+    # graphs from left to right, upper to lower
+    if rows * cols == 0:
+        raise ValueError("no graph is set!")
+
+    graphs = []
+    if not kwargs:
+        left_up_corners, widths, heighs = __ga_regular(rows, cols, hgap, vgap,
+                                                       width_ratios=width_ratios,
+                                                       heigh_ratios=heigh_ratios)
+    else:
+        raise NotImplementedError("keywords for graph alignment not supported:", *kwargs)
+
+    for i, ((left, top), w, h) in enumerate(zip(left_up_corners, widths, heighs)):
+        g = Graph(index=i)
+        g.set_view(xmin=left, xmax=left+w, ymin=top-h, ymax=top)
+        graphs.append(g)
+    for i, g in enumerate(graphs):
+        _logger.debug("initializting graphs %d done, view %8f %8f %8f %8f",
+                      i, *g._view.view_location)
     return graphs
 
-
+# ===== main object =====
 class Plot:
     """the general control object for the grace plot
 
     Args:
-        rows, cols (int)
-        hgap, vgap (float)
-        lw (number)
-        ls (str/int)
-        color (str/int)
+        rows, cols (int) : graph alignment
+        hgap, vgap (float or Iterable) : horizontal and vertical gap between graphs
+        lw (number) : default linewidth
+        ls (str/int) : default line style
+        color (str/int) : default color
         qtgrace (bool) : if true, QtGrace comments will be added 
     """
     def __init__(self, rows=1, cols=1, hgap=0.02, vgap=0.02,
                  lw=None, ls=None, color=None, pattern=None, font=None,
                  charsize=None, symbolsize=None, sformat=None,
+                 width_ratios=None, heigh_ratios=None,
                  qtgrace=False, **kwargs):
         self._comment_head = ["# Grace project file", "#"]
         # header that seldom needs to change
@@ -2128,6 +2245,7 @@ class Plot:
         self._objects = []
         # set the graphs by alignment
         self._graphs = _set_graph_alignment(rows=rows, cols=cols, hgap=hgap, vgap=vgap,
+                                            width_ratios=width_ratios, heigh_ratios=heigh_ratios,
                                             **kwargs)
         self._use_qtgrace = qtgrace
 
@@ -2171,8 +2289,8 @@ class Plot:
         """plot a data set to graph `igraph`
 
         Args:
-            positional *xyz (arraylike)
-            igraph (int)
+            positional *xyz (arraylike): x, y data. Error should be parsed to keyword arguments
+            igraph (int) : index of graph to plot
             keyword arguments will parsed to Graph object
         """
         self._graphs[igraph].plot(*xyz, **kwargs)
@@ -2206,17 +2324,15 @@ class Plot:
                         ls=ls, fc=fc, fp=fp, **kwargs)
         self._objects.append(o)
 
-    def axhline(self, y, xmin=None, xmax=None):
+    def axhline(self, y, xmin=None, xmax=None, **kwargs):
         """add a horizontal line"""
 
-    def axvline(self, x, ymin=None, ymax=None):
+    def axvline(self, x, ymin=None, ymax=None, **kwargs):
         """add a vertical line"""
 
-    def axline(self, start, end, ig=None, color=None, lw=None, ls=None,
-               arrow=None, at=None, length=None, layout=None, **kwargs):
+    def axline(self, start, end, **kwargs):
         """add a custom line"""
-        o = DrawLine(start, end, ig=ig, color=color, lw=lw, ls=ls,
-                     arrow=arrow, at=at, length=length, layout=layout, **kwargs)
+        o = DrawLine(start, end, **kwargs)
         self._objects.append(o)
 
     def title(self, title=None, igraph=0, **kwargs):
@@ -2227,49 +2343,57 @@ class Plot:
         """set the subtitle of graph `igraph`"""
         self._graphs[igraph].set_subtitle(subtitle=subtitle, **kwargs)
 
-    def xticks(self, igraph=0, **kwargs):
-        """setup ticks of x axis of graph `igraph`"""
-        self._graphs[igraph].xticks(**kwargs)
+    def xticks(self, **kwargs):
+        """setup ticks of x axis of all graphs"""
+        for g in self._graphs:
+            g.xticks(**kwargs)
 
-    def yticks(self, igraph=0, **kwargs):
-        """setup ticks of y axis of graph `igraph`"""
-        self._graphs[igraph].yticks(**kwargs)
+    def yticks(self, **kwargs):
+        """setup ticks of y axis of all graphs"""
+        for g in self._graphs:
+            g.yticks(**kwargs)
 
-    def xlabel(self, s, igraph=0, **kwargs):
-        """set xlabel. emulate pylab.xlabel"""
-        self._graphs[igraph].set_xlabel(s, **kwargs)
+    def xlabel(self, s, **kwargs):
+        """set xlabel of all graphs. emulate pylab.xlabel"""
+        for g in self._graphs:
+            g.set_xlabel(s, **kwargs)
 
-    def ylabel(self, s, igraph=0, **kwargs):
-        """set ylabel. emulate pylab.ylabel"""
-        self._graphs[igraph].set_ylabel(s, **kwargs)
+    def ylabel(self, s, **kwargs):
+        """set ylabel of all graphs. emulate pylab.ylabel"""
+        for g in self._graphs:
+            g.set_ylabel(s, **kwargs)
 
-    def set_xaxis(self, igraph=0, **kwargs):
-        """set up x-axis of graph"""
-        self._graphs[igraph].set_xaxis(**kwargs)
+    def set_xaxis(self, **kwargs):
+        """set up x-axis of all graph"""
+        for g in self._graphs:
+            g.set_xaxis(**kwargs)
 
-    def set_yaxis(self, igraph=0, **kwargs):
-        """set up y-axis of graph"""
-        self._graphs[igraph].set_yaxis(**kwargs)
+    def set_yaxis(self, **kwargs):
+        """set up y-axis of all graphs"""
+        for g in self._graphs:
+            g.set_yaxis(**kwargs)
 
-    def set_xlim(self, xmin=None, xmax=None, igraph=0):
-        """set xlimit of a graph
+    def set_xlim(self, xmin=None, xmax=None):
+        """set xlimit of all graphs
 
         Args:
             graph (int)
             xmin (float)
             xmax (float)
         """
-        self._graphs[igraph].set_xlim(xmin=xmin, xmax=xmax)
+        for g in self._graphs:
+            g.set_xlim(xmin=xmin, xmax=xmax)
 
-    def set_ylim(self, ymin=None, ymax=None, igraph=0):
-        """set ylimit of a graph
+    def set_ylim(self, ymin=None, ymax=None):
+        """set ylimit of all graphs
 
         Args:
             graph (int)
             ymin (float)
             ymax (float)
         """
-        self._graphs[igraph].set_ylim(ymin=ymin, ymax=ymax)
+        for g in self._graphs:
+            g.set_ylim(ymin=ymin, ymax=ymax)
 
     def export(self, file=sys.stdout, mode='w'):
         """Export grace plot file to `fn`
@@ -2292,13 +2416,47 @@ class Plot:
         """tight the layout of graph arrangments"""
         raise NotImplementedError
 
-    def tight_graph(self, xscale=1.1, yscale=1.1):
+    def tight_graph(self, nxticks=5, nyticks=5, xscale=1.1, yscale=1.1):
         """make graph axis tight"""
         for g in self._graphs:
-            g.tight_graph(xscale=xscale, yscale=yscale)
+            g.tight_graph(nxticks=nxticks, nyticks=nyticks,
+                          xscale=xscale, yscale=yscale)
 
     def savefig(self, figname, dpi=300):
         """save as figure file to `figname`
         """
         raise NotImplementedError
 
+    # Templates
+    # TODO write more and concrete templates
+    @classmethod
+    def bandstructure(cls):
+        """template for a typical band structure plot"""
+        p = Plot(1, 1)
+        return p
+
+    @classmethod
+    def dos(cls):
+        """template for a typical dos plot"""
+        p = Plot(1, 1)
+        return p
+
+    @classmethod
+    def band_dos(cls, ratio="2:1"):
+        """template of a plot with band graph on the left and dos on the right
+
+        Args:
+            ratio (str) : the ratio between widths of band and dos graphs
+        """
+        p = Plot(1, 2, hgap=0.0, width_ratios=ratio)
+        # turn off band structure legend
+        p[0].set_legend(switch=False)
+        # turn off y axis label (energy) in dos
+        p[1].set_yticklabel(switch=False)
+        return p
+
+    @classmethod
+    def double_yaxis(cls):
+        """template for a double-yaxis plot"""
+        p = Plot(1, 2)
+        return p

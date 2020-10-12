@@ -1,10 +1,13 @@
 DIST_FILES = mushroom \
 			examples \
 			doc \
+			db \
 			workflows \
 			scripts \
 			requirements.txt \
 			LICENSE \
 			TODO.md \
-			CHANGELOG \
-			README.md
+			rcsample.py \
+			CHANGELOG.md \
+			README.md \
+			Makefile

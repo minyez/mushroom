@@ -67,8 +67,7 @@ class Cell(LengthUnit):
 
     _err = CellError
     _dtype = 'float64'
-    avail_exporter = ['vasp',]
-    avail_reader = ['vasp', 'cif', 'json']
+    avail_exporters = ['vasp',]
 
     def __init__(self, latt, atms, posi, unit='ang', **kwargs):
 
@@ -89,6 +88,9 @@ class Cell(LengthUnit):
         self._parse_cellkw(**kwargs)
         self._check_input_consistency()
         self._sanitize_atoms()
+        self.exporters = {
+            'vasp': self.export_vasp,
+            }
 
     def __len__(self):
         return len(self._atms)
@@ -655,11 +657,7 @@ class Cell(LengthUnit):
             filename (str or file handler) : Set None to stdout
         """
         o = output_format.lower()
-        exporter = {
-            'vasp': self.export_vasp,
-            'json': self.export_json
-            }
-        e = exporter.get(o, None)
+        e = self.exporters.get(o, None)
         if e is None:
             raise ValueError("Unsupported export:", output_format)
         print_file_or_iowrapper(e(scale=scale), f=filename)
@@ -713,20 +711,20 @@ class Cell(LengthUnit):
         Args:
             path (str)
             form (str) : should be in avail_reader"""
-        reader = {
+        path = str(path)
+        _logger.info("Reading %s", path)
+        readers = {
             'vasp': cls.read_vasp,
             'cif': cls.read_cif,
             'json': cls.read_json,
             }
-        path = str(path)
-        _logger.info("Reading %s", path)
         try:
             if form is None:
                 form = get_file_ext(path)
                 if path.endswith('POSCAR'):
                     form = 'vasp'
                 _logger.info("Detected format %s", form)
-            return reader.get(form)(path)
+            return readers.get(form)(path)
         except KeyError:
             raise CellError("Unsupported reader format: {}".format(form))
 

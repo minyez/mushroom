@@ -11,10 +11,36 @@ This is just a contrived name for yet another analysis tool for scientific compu
 and hopefully will do in the days to come.
 Any suggestions concerning code style, feature, etc, are totally welcome.
 
-## Dependency
+## Dependencies
 
 - Python >= 3.4
 - NumPy
 - Spglib
 - PyCIFRW
+
+Run `pip install -r requirements.txt` to install dependcies.
+If you use `conda`, try
+
+```bash
+conda install -c conda-forge --file requirements.txt
+```
+
+Note that in this case you may need to set your virtual environment first.
+
+## Installation
+
+Assume that mushroom is cloned to `path/to/mushroom`.
+To use mushroom python package
+
+```bash
+export PYTHONPATH="path/to/mushroom:$PYTHONPATH"
+```
+
+To use shell scripts, add `scripts` directory to environment variable `PATH`, namely
+
+```bash
+export PATH="path/to/mushroom/scripts:$PATH"
+```
+
+## Use
 

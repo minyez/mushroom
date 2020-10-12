@@ -2,18 +2,19 @@
 # -*- coding: utf-8 -*-
 """create a cell and export to various code-specific format
 
-Use `-s` for creating from predefined sample, stored in `db/cell`
+Use `-s` for creating from predefined sample, stored in `db/cell`.
+Use `--show` for curating available samples.
 """
 import pathlib
-from argparse import ArgumentParser
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from mushroom._core.cell import Cell
 
 cell_db = pathlib.Path(__file__).parent.parent / "db" / "cell"
 
 def curate_samples():
     """curate avail samples"""
-    for s in get_avail_samples():
-        print(s)
+    for i, s in enumerate(get_avail_samples()):
+        print("{:>3d}: {:s}".format(i, s))
 
 def get_avail_samples():
     """get available choices of cell sample"""
@@ -28,19 +29,27 @@ def get_avail_samples():
     return d
 
 def get_cell_sample(sample):
-    """get the Cell instance from predefined sample data"""
+    """get the Cell instance from predefined sample data
+
+    Args:
+        sample (str or int)
+    """
+    try:
+        sample = get_avail_samples()[int(sample)]
+    except ValueError:
+        pass
     p = cell_db / sample
     return Cell.read(p)
 
 def _parser():
     """parser"""
-    parser = ArgumentParser(description=__doc__)
-    parser.add_argument('-o', dest='output_format', type=str, choices=Cell.avail_exporter,
-                        default=Cell.avail_exporter[0], help="output format")
+    parser = ArgumentParser(description=__doc__, formatter_class=RawDescriptionHelpFormatter)
+    parser.add_argument('-o', dest='output_format', type=str, choices=Cell.avail_exporters,
+                        default=Cell.avail_exporters[0], help="output format")
     igrp = parser.add_mutually_exclusive_group()
     igrp.add_argument('-I', dest='input_file', type=str, default=None, help="input file")
     igrp.add_argument('-s', dest='sample', type=str, default=None, 
-                      help="extract predefined sample")
+                      help="extract predefined sample. int or str. see --show")
     igrp.add_argument('--show', action="store_true",
                       help="show predefined sample")
     parser.add_argument('-a', dest='add_sample', action="store_true",
@@ -48,11 +57,11 @@ def _parser():
     parser.add_argument('-i', dest='input_format', type=str,
                         help="format of input file, automatic detection (TODO)")
     parser.add_argument('-O', dest='output_file', type=str, default=None,
-                        help="output file to store the")
+                        help="output file")
     return parser.parse_args()
 
     
-def create_cell():
+def build_cell():
     """main stream"""
     args = _parser()
     if args.input_file:
@@ -67,8 +76,9 @@ def create_cell():
         curate_samples()
         return
 
-    raise ValueError("spectify -I / -s / -a")
+    raise ValueError("specify -I / -s / --show")
 
 
 if __name__ == "__main__":
-    create_cell()
+    build_cell()
+
