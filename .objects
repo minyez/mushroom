@@ -7,7 +7,6 @@ DIST_FILES = mushroom \
 			requirements.txt \
 			LICENSE \
 			TODO.md \
-			rcsample.py \
 			CHANGELOG.md \
 			README.md \
 			Makefile

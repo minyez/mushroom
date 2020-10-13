@@ -46,5 +46,7 @@ To use shell scripts, add `scripts` directory to environment variable `PATH`, na
 export PATH="path/to/mushroom/scripts:$PATH"
 ```
 
-## Use
+## Usage
+
+See documentaion for usage.
 
