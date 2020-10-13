@@ -25,7 +25,7 @@ def get_dirpath(filePath):
     return os.path.dirname(_path)
 
 
-def get_file_ext(path):
+def get_file_ext(path: str) -> str:
     """Return the extension name of file at path
 
     If filePath is a existing directory, None will be returned
@@ -41,7 +41,7 @@ def get_file_ext(path):
     return os.path.splitext(base)[1][1:]
 
 
-def get_filename_wo_ext(path):
+def get_filename_wo_ext(path: str) -> str:
     """Get the filename without extension
 
     Args:
@@ -57,7 +57,7 @@ def get_cwd_name():
     return os.path.basename(os.getcwd())
 
 
-def get_matched_files(dirPath=".", regex=None):
+def get_matched_files(dir_path=".", regex=None) -> tuple:
     """Get the abspath of the files whose name matches a regex
 
     Only files will be returned, and directories are excluded.
@@ -71,19 +71,19 @@ def get_matched_files(dirPath=".", regex=None):
     """
     # check the exisitence of path
     fns = []
-    _absDir = os.path.abspath(dirPath)
-    if os.path.isdir(_absDir):
-        for i in os.listdir(_absDir):
+    _abs_dir = os.path.abspath(dir_path)
+    if os.path.isdir(_abs_dir):
+        for i in os.listdir(_abs_dir):
             if regex is not None:
                 if not re.match(regex, i):
                     continue
-            _fpath = os.path.join(_absDir, i)
+            _fpath = os.path.join(_abs_dir, i)
             if os.path.isfile(_fpath):
                 fns.append(_fpath)
     return tuple(fns)
 
 
-def trim_after(string, regex, include_pattern=False):
+def trim_after(string: str, regex: str, include_pattern=False) -> str:
     """Trim a string after the first match of regex.
 
     If fail to match any pattern, the original string is returned
@@ -104,12 +104,12 @@ def trim_after(string, regex, include_pattern=False):
     return string
 
 
-def trim_comment(string):
+def trim_comment(string: str) -> str:
     """remove comments, starting with # or !"""
     return trim_after(string, r'[\#\!]')
 
 
-def trim_before(string, regex, include_pattern=False):
+def trim_before(string: str, regex: str, include_pattern=False) -> str:
     """Trim a string from the beginning to the first match of regex.
 
     If fail to match any pattern, the original string is returned.
@@ -128,7 +128,7 @@ def trim_before(string, regex, include_pattern=False):
     return string
 
 
-def trim_both_sides(string, regex_left, regex_right, include_pattern=False):
+def trim_both_sides(string: str, regex_left: str, regex_right: str, include_pattern=False) -> str:
     """Trim a string from both sides.
 
     Basically it first tries to match regex_left, trim the characters on the left
@@ -140,12 +140,11 @@ def trim_both_sides(string, regex_left, regex_right, include_pattern=False):
         include_pattern (bool): if the matched pattern is included
         in the return string
     """
-    _trimed = trim_before(string, regex_left, include_pattern=include_pattern)
-    _trimed = trim_after(_trimed, regex_right, include_pattern=include_pattern)
-    return _trimed
+    string = trim_before(string, regex_left, include_pattern=include_pattern)
+    return trim_after(string, regex_right, include_pattern=include_pattern)
 
 
-def check_duplicates_in_tag_tuple(tagtuple):
+def check_duplicates_in_tag_tuple(tagtuple) -> int:
     """Check if there is duplicate in a tag tuple, case sensitive
 
     Args:
@@ -167,9 +166,6 @@ def check_duplicates_in_tag_tuple(tagtuple):
 #         normByPeak (bool) : when set True, the normalization factor will be
 #             the peak absolute value. Otherwise, the sum of absolute values
 #             will be used as normalization factor.
-
-#     TODO:
-#         Generalize the normalization
 
 #     Returns:
 #         numpy array, the normalized data
@@ -193,9 +189,6 @@ def check_duplicates_in_tag_tuple(tagtuple):
 
 # def find_data_extreme(data):
 #     '''Find the point at which the data reaches extrema
-
-#     TODO:
-#         Generalize to 2D and 3D coordinate
 
 #     Returns:
 #         dict, with two keys, "min" and "max".

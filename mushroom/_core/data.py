@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """helper function in dealing with data, digits and mathematics"""
 import re
+from typing import List
 import numpy as np
 
 from mushroom._core.ioutils import trim_after
@@ -9,7 +10,7 @@ from mushroom._core.logger import create_logger
 _logger = create_logger(__name__)
 del create_logger
 
-def conv_estimate_number(s, reserved=True):
+def conv_estimate_number(s: str, reserved: bool = True) -> float:
     """Convert a string representing a number with error to a float number.
 
     Args:
@@ -78,7 +79,7 @@ class Data:
         }
     available_types = tuple(DATATYPES.keys())
 
-    def __init__(self, *xyz, datatype=None, label=None, comment=None,
+    def __init__(self, *xyz, datatype: str = None, label: str = None, comment: str = None,
                  **errors):
         datatype, self._error_cols = Data._check_data_type(*xyz, datatype=datatype, **errors)
         if datatype == "xyz":
@@ -98,17 +99,17 @@ class Data:
         self.comment = comment
         self.datatype = datatype
 
-    def xmin(self):
+    def xmin(self) -> float:
         """get the min value of abscissa 
         """
         return self.x.min()
 
-    def xmax(self):
+    def xmax(self) -> float:
         """get the max value of abscissa 
         """
         return self.x.max()
 
-    def max(self):
+    def max(self) -> float:
         """get the max value among data point
 
         If the datatype is xyz, the maximal z value will be returned
@@ -119,7 +120,7 @@ class Data:
         except AttributeError:
             return self.__getattribute__('y').max()
 
-    def min(self):
+    def min(self) -> float:
         """get the min value among data point
 
         If the datatype is xyz, the minimal z value will be returned
@@ -149,7 +150,7 @@ class Data:
             d = d.transpose()
         return d * scale
 
-    def _export(self, data_cols, form=None, transpose=False, sep=None):
+    def _export(self, data_cols, form=None, transpose=False, sep=None) -> List[str]:
         """export data/error to a list, each member as a line of string for data
 
         Default output will be one line for each data type, i.e.
@@ -232,7 +233,7 @@ class Data:
         """
         return self._get(self._data_cols + self._error_cols, transpose=transpose)
 
-    def export_data(self, form=None, transpose=False, sep=None):
+    def export_data(self, form=None, transpose=False, sep=None) -> List[str]:
         """Export the data as a list of strings
         
         See get for the meaning of transpose
@@ -245,7 +246,7 @@ class Data:
         """
         return self._export(self._data_cols, form=form, transpose=transpose, sep=sep)
 
-    def export_error(self, form=None, transpose=False, sep=None):
+    def export_error(self, form=None, transpose=False, sep=None) -> List[str]:
         """Export the error as a list of strings
 
         See get_error for the meaning of transpose
@@ -258,7 +259,7 @@ class Data:
         """
         return self._export(self._error_cols, form=form, transpose=transpose, sep=sep)
 
-    def export(self, form=None, transpose=False, sep=None):
+    def export(self, form=None, transpose=False, sep=None) -> List[str]:
         """Export both data and error as a list of strings
         
         See get_all for the meaning of transpose
@@ -315,7 +316,7 @@ class Data:
         # some error is parsed
         return t, err_cols
 
-def print_2d_data(data, form=None, transpose=False, sep=None):
+def print_2d_data(data, form: str = None, transpose: bool = False, sep: str = None) -> List[str]:
     """print the 2-dimension data into list of strings
 
     Args:

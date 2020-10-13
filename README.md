@@ -13,10 +13,14 @@ Any suggestions concerning code style, feature, etc, are totally welcome.
 
 ## Dependencies
 
-- Python >= 3.4
+- Python >= 3.5
 - NumPy
 - Spglib
 - PyCIFRW
+
+To use scrappers,
+
+- BeautifulSoup4
 
 Run `pip install -r requirements.txt` to install dependcies.
 If you use `conda`, try

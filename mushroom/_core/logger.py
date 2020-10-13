@@ -34,7 +34,8 @@ STREAM_HAND.setFormatter(STREAM_FORM)
 STREAM_HAND.setLevel(STREAM_LEVEL)
 
 
-def create_logger(name, level=None, f_handler=True, s_handler=False):
+def create_logger(name: str, level: str = None,
+                  f_handler: bool = True, s_handler: bool = False) -> logging.Logger:
     """create a logger object for recording log
     
     Args:

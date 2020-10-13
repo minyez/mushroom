@@ -130,7 +130,7 @@ class Cell(LengthUnit):
         '''
         return self._latt, self._atms, self._posi
 
-    def get_kwargs(self):
+    def get_kwargs(self) -> dict:
         '''return all kwargs useful to constract program-dependent cell input from ``Cell`` instance
 
         Returns :
@@ -146,7 +146,7 @@ class Cell(LengthUnit):
         }
         return _d
 
-    def get_reference(self):
+    def get_reference(self) -> str:
         '''Return the reference of the structure
         '''
         return self.__reference
@@ -302,7 +302,7 @@ class Cell(LengthUnit):
             self._bubble_sort_atoms(keys, ind, reverse=not reverse)
 
     # * Cell manipulation
-    def scale(self, scale):
+    def scale(self, scale: float):
         '''Scale the lattice, i.e. increase the lattice by ``scale`` time
         '''
         try:
@@ -365,7 +365,7 @@ class Cell(LengthUnit):
         # _posSum = np.sum(self._posi * _dup[:, None], axis=0)
         return _posSum / self.natm
 
-    def centering(self, axis=0):
+    def centering(self, axis: int = 0):
         '''Centering the atoms along axes. Mainly use for slab model.
 
         TODO:
@@ -374,9 +374,9 @@ class Cell(LengthUnit):
         Args:
             axis (int or iterable of int) : the axes along which the atoms will be centered.
         '''
-        _aList = axis_list(axis)
-        _wasCart = self.coord_sys == "C"
-        if _wasCart:
+        _alist = axis_list(axis)
+        _was_cart = self.coord_sys == "C"
+        if _was_cart:
             self.coord_sys = "D"
         # get the geometric center of all atoms
         _center = self.center
@@ -384,7 +384,7 @@ class Cell(LengthUnit):
 
         for i in range(3):
             ia = i + 1
-            if ia not in _aList:
+            if ia not in _alist:
                 _shift[i] = 0.0
         self.__move_all(_shift)
         #     if self.check_vacuum_pos(zdirt):
@@ -398,7 +398,7 @@ class Cell(LengthUnit):
         #         shift = 0.5 - sum([self.innerpos[i-1][iz] for i in surf_atom])/2.0
         #         self.action_shift(shift,zdirt)
         # self.__print(" Complete centering.")
-        if _wasCart:
+        if _was_cart:
             self.coord_sys = "C"
 
     @property
@@ -496,13 +496,13 @@ class Cell(LengthUnit):
         return [_dict[_a] for _a in self._atms]
 
     @property
-    def vol(self):
+    def vol(self) -> float:
         """Volume of the cell
         """
         return np.linalg.det(self._latt)
 
     @property
-    def natm(self):
+    def natm(self) -> int:
         """Int. Total number of atoms
         """
         return len(self._atms)
@@ -650,7 +650,8 @@ class Cell(LengthUnit):
         '''
         return self.latt, self.posi, self.type_index
 
-    def export(self, output_format, filename=None, scale=1.0):
+    # * Exporter implementations
+    def export(self, output_format: str, filename=None, scale: float=1.0):
         """Export cell to file in the format `output_format`
         Args:
             output_format (str)
@@ -662,8 +663,7 @@ class Cell(LengthUnit):
             raise ValueError("Unsupported export:", output_format)
         print_file_or_iowrapper(e(scale=scale), f=filename)
 
-    # export to software-specific output
-    def export_vasp(self, scale=1.0):
+    def export_vasp(self, scale: float = 1.0):
         '''Export in VASP POSCAR format'''
         # list containting strings to return
         ret = []
@@ -703,7 +703,7 @@ class Cell(LengthUnit):
         '''Export in JSON format'''
         raise NotImplementedError
 
-    # * Factory methods
+    # * Reader implementations
     @classmethod
     def read(cls, path, form=None):
         """read file at path and return a Cell instance
@@ -876,7 +876,7 @@ class Cell(LengthUnit):
                        all_relax=True, select_dyn=fixed, comment=comment)
 
 
-
+    # * Factory methods
     @classmethod
     def _bravais_o(cls, kind, atom, a, b, c, **kwargs):
         assert kind in ["P", "I", "F"]

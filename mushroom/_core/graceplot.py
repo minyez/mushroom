@@ -1565,7 +1565,7 @@ class Dataset(_Dataset):
             sc = color
         if sfc is None:
             sfc = color
-        self._symbol = Symbol(symbol, color=sc, size=ssize, pattern=sp, fc=sfc, fp=sfp, lw=slw,
+        self._symbol = Symbol(st=symbol, color=sc, size=ssize, pattern=sp, fc=sfc, fp=sfp, lw=slw,
                               ls=sls, char=char, charfont=charfont, skip=skip)
         if lc is None:
             lc = color
@@ -2274,11 +2274,18 @@ class Plot:
     def __getitem__(self, i):
         return self._get_graph(i)
 
-    def get(self, i):
-        """Get the Graph object of index i"""
-        return self._get_graph(i)
+    def get(self, i: int = None):
+        """Get the Graph object of index i
+        
+        Args:
+            i (int) : index of graph.
+                If not specified, all graphs are returned in a list
+        """
+        if i:
+            return self._get_graph(i)
+        return self._graphs
 
-    def _get_graph(self, i):
+    def _get_graph(self, i: int) -> Graph:
         """Get the Graph object of index i"""
         try:
             return self._graphs[i]

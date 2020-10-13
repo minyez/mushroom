@@ -2,8 +2,9 @@
 """Test graceplot"""
 import unittest as ut
 
-from mushroom._core.graceplot import (_ColorMap, Font,
-                                      Graph, View)
+from mushroom._core.graceplot import (_ColorMap, Color, Font, Symbol,
+                                      Graph, View,
+                                      Plot)
 
 class test_ColorMap(ut.TestCase):
     """test colormap utilites"""
@@ -90,11 +91,46 @@ class test_Graph(ut.TestCase):
         g.set_view(0.0, 0.0, 1.0, 0.5)
         self.assertListEqual(g._view.view_location, [0.0, 0.0, 1.0, 0.5])
 
+    def test_plot(self):
+        """test plotting data"""
+        g = Graph(index=1)
+        x = [0.0, 1.0, 2.0]
+        y = [1.0, 2.0, 3.0]
+        g.plot(x, y, label="y=x+1", symbol="o", color="red")
+        self.assertEqual(g[0]._symbol.type, Symbol.get("o"))
+        self.assertEqual(g[0]._symbol.color, Color.get("red"))
+        self.assertEqual(g[0]._line.color, Color.get("red"))
+        
+
 class test_Axis(ut.TestCase):
     """test Axix functionality"""
 
-class test_IntConstMap(ut.TestCase):
-    """test subclasses of IntConstMap"""
+
+class test_Plot(ut.TestCase):
+    """test Plot functionality"""
+
+    def test_set_default(self):
+        """default properties"""
+        p = Plot(1, 1)
+        p.set_default(font=2)
+        self.assertEqual(2, p._default.font)
+
+    def test_change_limits(self):
+        """test limits manipulation of all graphs"""
+        p = Plot(2, 2)
+        p.set_xlim(xmin=1.0, xmax=2.0)
+        p.set_ylim(ymin=3.0, ymax=4.0)
+        for g in p.get():
+            self.assertListEqual(g._world.world_location,
+                                 [1.0, 3.0, 2.0, 4.0])
+
+    def test_regular_graphs(self):
+        """generate regular graph alignment"""
+        p = Plot(1, 1)
+        self.assertEqual(len(p._graphs), 1*1)
+        p = Plot(3, 4, hgap=[0.01, 0.0, 0.02], vgap=[0.02, 0.0],
+                 width_ratios="3:2:1:4", heigh_ratios="1:3:2")
+        self.assertEqual(len(p._graphs), 3*4)
 
 
 if __name__ == "__main__":

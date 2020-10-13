@@ -22,26 +22,26 @@ class EnergyUnit:
         ('ry', 'au'): RY2HA,
     }
 
-    def __init__(self, eunit=None):
+    def __init__(self, eunit: str = None):
         if eunit is None:
             self._eunit = self._defaul_eu
         else:
             self._check_valid_eunit(eunit)
         self._eunit = eunit.lower()
 
-    def _get_eunit_conversion(self, unit_to):
+    def _get_eunit_conversion(self, unit_to: str) -> float:
         self._check_valid_eunit(unit_to)
         tu = unit_to.lower()
         fu = self._eunit
         pair = (fu, tu)
-        co = 1
+        co = 1.
         if pair in self._conv_eu:
             co = self._conv_eu[pair]
         elif pair[::-1] in self._conv_eu:
             co = 1.0 / self._conv_eu[pair[::-1]]
         return co
     
-    def _check_valid_eunit(self, eunit):
+    def _check_valid_eunit(self, eunit: str):
         try:
             assert isinstance(eunit, str)
             u = eunit.lower()
@@ -64,26 +64,26 @@ class LengthUnit:
         ('ang', 'au'): ANG2AU,
     }
 
-    def __init__(self, lunit=None):
+    def __init__(self, lunit: str = None):
         if lunit is None:
             self._lunit = self._default_lu
         else:
             self._check_valid_lunit(lunit)
         self._lunit = lunit.lower()
 
-    def _get_lunit_conversion(self, unit_to):
+    def _get_lunit_conversion(self, unit_to: str) -> float:
         self._check_valid_lunit(unit_to)
         tu = unit_to.lower()
         fu = self._lunit
         pair = (fu, tu)
-        co = 1
+        co = 1.
         if pair in self._conv_lu:
             co = self._conv_lu[pair]
         elif pair[::-1] in self._conv_lu:
             co = 1.0 / self._conv_lu[pair[::-1]]
         return co
 
-    def _check_valid_lunit(self, lunit):
+    def _check_valid_lunit(self, lunit: str):
         try:
             assert isinstance(lunit, str)
             u = lunit.lower()

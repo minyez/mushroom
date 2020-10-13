@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
 """Utilities for processing crystall-related quantities"""
 from copy import deepcopy
+from typing import List, Iterable
 import numpy as np
 from mushroom._core.constants import PI
 
-def get_latt_vecs_from_latt_consts(a, b, c, alpha=90, beta=90, gamma=90):
+def get_latt_vecs_from_latt_consts(a: float, b: float, c: float,
+                                   alpha: float = 90.,
+                                   beta: float = 90.,
+                                   gamma: float = 90.) -> List[List[float]]:
     """Convert lattice constants to lattice vectors in right-hand system
 
     Currently support orthormrhobic lattice only!!!
@@ -17,9 +21,9 @@ def get_latt_vecs_from_latt_consts(a, b, c, alpha=90, beta=90, gamma=90):
     a = abs(a)
     b = abs(b)
     c = abs(c)
-    if alpha != 90 or beta != 90 or gamma != 90:
+    if alpha != 90. or beta != 90. or gamma != 90.:
         raise NotImplementedError
-    return [[a, 0, 0], [0, b, 0], [0, 0, c]]
+    return [[a, 0., 0.], [0., b, 0.], [0., 0., c]]
 
 
 def get_latt_consts_from_latt_vecs(latt):
@@ -48,7 +52,7 @@ def get_latt_consts_from_latt_vecs(latt):
     return (*alen, *angle)
 
 
-def get_all_atoms_from_sym_ops(ineq_atms, ineq_posi, symops, left_mult=True):
+def get_all_atoms_from_sym_ops(ineq_atms: Iterable[str], ineq_posi, symops, left_mult=True):
     """Get atomic symbols and positions of all atoms in the cell
     by performing symmetry operations on inequivalent atoms
 
@@ -82,7 +86,7 @@ def get_all_atoms_from_sym_ops(ineq_atms, ineq_posi, symops, left_mult=True):
                 posi.append(a)
     return atms, posi
 
-
+# pylint: disable=C0301
 def periodic_duplicates_in_cell(direct_coord):
     '''Return the coordinates and numbers of the duplicates of an atom
     in a cell due to lattice translation symmetry
@@ -123,7 +127,7 @@ def periodic_duplicates_in_cell(direct_coord):
     return tuple(_dupcs), _n
 
 
-def atms_from_sym_nat(sym, nat):
+def atms_from_sym_nat(sym: Iterable[str], nat: Iterable[int]) -> List[str]:
     """Generate ``atom`` list for ``Cell`` initilization from list of atomic symbols 
     and number of atoms
 
@@ -147,7 +151,7 @@ def atms_from_sym_nat(sym, nat):
     return atms
 
 
-def sym_nat_from_atms(atms):
+def sym_nat_from_atms(atms: Iterable[str]):
     '''Generate lists of atomic symbols and number of atoms from whole atoms list
 
     The order of appearence of the element is conserved in the output.
@@ -174,14 +178,13 @@ def sym_nat_from_atms(atms):
     return syms, [nat_dict[at] for at in syms]
 
 
-def select_dyn_flag_from_axis(axis, relax=False):
+def select_dyn_flag_from_axis(axis, relax: bool = False):
     """Generate selective dynamic flags, i.e. [bool, bool, bool]
 
     Args:
         relax (bool): if True, the flag for axis will be set as True.
             Otherwise False
     """
-    assert isinstance(relax, bool)
     _flag = [not relax, not relax, not relax]
     _aList = axis_list(axis)
     for _a in _aList:
@@ -189,7 +192,7 @@ def select_dyn_flag_from_axis(axis, relax=False):
     return _flag
 
 
-def axis_list(axis):
+def axis_list(axis) -> tuple:
     """Generate axis indices from ``axis``
 
     Args:

@@ -9,6 +9,7 @@
 - `scripts` : 利用 `mushroom` 中定义的对象来实现的完成多种研究目的的脚本, 也包含拷贝 `workflows` 中脚本的 convenience function 和 helper function.
 - `doc` : mushroom 使用与开发文档
 - `examples` : 除了 mushroom 包的使用样例外, 也包含一些小技巧.
+- `db` : 数据库
 
 ### 测试文件
 
@@ -18,6 +19,10 @@
 ## Python 库 mushroom
 
 原则是尽可能减少子 package 的数量. 主要的考虑因素不是模块的长度, 而是模块的功能一致, 集成度和自洽.
+
+### 核心库 `_core`
+
+- [ ] type hints
 
 ### VASP
 
@@ -63,5 +68,5 @@ Require `pymatgen`
 
 ### GPAW
 
-## ? 数据库 db
+## 数据库 db
 
