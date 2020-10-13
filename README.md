@@ -22,7 +22,7 @@ To use scrappers,
 
 - BeautifulSoup4
 
-Run `pip install -r requirements.txt` to install dependcies.
+Run `pip install -r requirements.txt` to install dependencies.
 If you use `conda`, try
 
 ```bash
