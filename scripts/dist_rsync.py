@@ -12,7 +12,6 @@ will sync mushroom distribution to `A:B/`. B must be absolute path
 import pathlib
 import subprocess as sp
 import warnings
-from os import getcwd
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from mushroom import __version__
 try:
@@ -77,7 +76,7 @@ def dist_rsync():
         if dirpath.startswith("~"):
             print("Relative path detected for {}. Skip".format(r))
             continue
-        rsync_and_untar(tarball.relative_to(getcwd()), r, dirpath, verbose=args.verbose)
+        rsync_and_untar(tarball, r, dirpath, verbose=args.verbose)
 
 
 if __name__ == "__main__":
