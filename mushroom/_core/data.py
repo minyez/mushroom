@@ -10,7 +10,7 @@ from mushroom._core.logger import create_logger
 _logger = create_logger(__name__)
 del create_logger
 
-def conv_estimate_number(s: str, reserved: bool = True) -> float:
+def conv_estimate_number(s: str, reserved: bool = False) -> float:
     """Convert a string representing a number with error to a float number.
 
     Args:

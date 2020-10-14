@@ -15,7 +15,7 @@ class test_number_conversion(ut.TestCase):
     """test number conversion"""
 
     def test_conv_estimate(self):
-        self.assertEqual(conv_estimate_number("5.43(2)"), 5.432)
+        self.assertEqual(conv_estimate_number("5.43(2)", reserved=True), 5.432)
         self.assertEqual(conv_estimate_number("5.43(2)", reserved=False), 5.43)
 
 
