@@ -45,7 +45,7 @@ class simple_cubic_lattice(ut.TestCase):
         self.assertEqual(1, self.cell.natm)
         self.assertListEqual(["C", ], self.cell.atom_types)
         self.assertDictEqual({0: "C"}, self.cell.type_mapping)
-        self.assertListEqual([0, ], self.cell.type_index)
+        self.assertListEqual([0, ], self.cell.type_index())
 
     def test_magic(self):
         self.assertEqual(1, len(self.cell))
@@ -93,7 +93,7 @@ class simple_cubic_lattice(ut.TestCase):
     def test_spglib_input(self):
         ip = self.cell.get_spglib_input()
         self.assertTupleEqual(
-            (self.cell.latt, self.cell.posi, self.cell.type_index), ip)
+            (self.cell.latt, self.cell.posi, self.cell.type_index()), ip)
 
 
 class cell_raise(ut.TestCase):
