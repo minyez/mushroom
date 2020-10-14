@@ -21,11 +21,13 @@ import string
 import os
 from collections import OrderedDict
 from numbers import Real
+from typing import List
 
 import numpy as np
 
 from mushroom._core.constants import PI
 from mushroom._core.cif import Cif
+from mushroom._core.elements import NUCLEAR_CHARGE
 from mushroom._core.unit import LengthUnit
 from mushroom._core.crystutils import (get_latt_consts_from_latt_vecs,
                                        periodic_duplicates_in_cell,
@@ -67,7 +69,7 @@ class Cell(LengthUnit):
 
     _err = CellError
     _dtype = 'float64'
-    avail_exporters = ['vasp',]
+    avail_exporters = ['vasp', 'abi']
 
     def __init__(self, latt, atms, posi, unit='ang', **kwargs):
 
@@ -90,6 +92,7 @@ class Cell(LengthUnit):
         self._sanitize_atoms()
         self.exporters = {
             'vasp': self.export_vasp,
+            'abi': self.export_abi,
             }
 
     def __len__(self):
@@ -273,7 +276,7 @@ class Cell(LengthUnit):
 
         It mainly deals with arbitrary input of ``atoms`` when initialized.
         """
-        self._bubble_sort_atoms(self.type_index, range(self.natm))
+        self._bubble_sort_atoms(self.type_index(), range(self.natm))
 
     def sort_posi(self, axis=3, reverse=False):
         '''Sort the atoms by its coordinate along axis.
@@ -470,8 +473,8 @@ class Cell(LengthUnit):
 
     @property
     def atom_types(self):
-        '''All atom types in the cell
-        '''
+        """All atom types in the cell
+        """
         _d = OrderedDict.fromkeys(self._atms)
         return list(_d.keys())
 
@@ -485,14 +488,16 @@ class Cell(LengthUnit):
             _dict.update({i: _at})
         return _dict
 
-    @property
-    def type_index(self):
-        '''Indices of atom type of all atoms
-        '''
+    def type_index(self, start: int = 0) -> List[str]:
+        """Indices of atomic type of all atoms
+
+        Args:
+            start (int) : index of the first atomic type
+        """
         _ats = self.atom_types
         _dict = {}
         for i, _at in enumerate(_ats):
-            _dict.update({_at: i})
+            _dict.update({_at: i + start})
         return [_dict[_a] for _a in self._atms]
 
     @property
@@ -648,7 +653,7 @@ class Cell(LengthUnit):
         Returns:
             cell (3,3), pos (n,3), index of atom type (n), with n = self.natm
         '''
-        return self.latt, self.posi, self.type_index
+        return self.latt, self.posi, self.type_index()
 
     # * Exporter implementations
     def export(self, output_format: str, filename=None, scale: float=1.0):
@@ -662,6 +667,41 @@ class Cell(LengthUnit):
         if e is None:
             raise ValueError("Unsupported export:", output_format)
         print_file_or_iowrapper(e(scale=scale), f=filename)
+
+    def export_abi(self, scale: float = 1.0) -> str:
+        """Export in ABINIT format.
+
+        Support direct coordinates only.
+
+        Args:
+            scale (float)
+
+        TODO:
+            selective dynamic flags
+        """
+        syms, nats = sym_nat_from_atms(self._atms)
+        ret = ["#" + self.comment,
+               "acell 3*{:f} {:s}".format(scale, {"ang": "angstrom"}.get(self.unit, "")),
+               "natom {:d}".format(self.natm),
+               "ntypat {:d}".format(len(syms)),
+               ]
+        # lattice vector
+        form = "rprim\n" + " {:9f} {:9f} {:9f}\n" * 3
+        ret.append(form[:-1].format(*self._latt.flatten()))
+        # nuclear charge of each atom type
+        form = "znucl " + " {:d}" * len(syms)
+        ret.append(form.format(*map(NUCLEAR_CHARGE.__getitem__, syms)))
+        # type of each atom
+        form = "typat" + " {:d}" * self.natm
+        ret.append(form.format(*self.type_index(start=1)))
+        # coordinates of each atom
+        cwas = self.coord_sys
+        self.coord_sys = "D"
+        form = "xred\n" + " {} {} {}\n" * self.natm
+        ret.append(form[:-1].format(*self._posi.flatten()))
+        if cwas == "C":
+            self.coord_sys = "C"
+        return "\n".join(ret)
 
     def export_vasp(self, scale: float = 1.0) -> str:
         """Export in VASP POSCAR format"""

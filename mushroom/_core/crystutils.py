@@ -152,7 +152,7 @@ def atms_from_sym_nat(sym: Iterable[str], nat: Iterable[int]) -> List[str]:
 
 
 def sym_nat_from_atms(atms: Iterable[str]):
-    '''Generate lists of atomic symbols and number of atoms from whole atoms list
+    """Generate lists of atomic symbols and number of atoms from whole atoms list
 
     The order of appearence of the element is conserved in the output.
 
@@ -166,7 +166,7 @@ def sym_nat_from_atms(atms: Iterable[str]):
     Examples:
     >>> sym_nat_from_atms(["C", "Al", "Al", "C", "Al", "F"])
     ["C", "Al", "F"], [2, 3, 1]
-    '''
+    """
     syms = []
     nat_dict = {}
     for at in atms:

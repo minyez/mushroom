@@ -24,7 +24,7 @@ ELEMENT_SYMBOLS = ('X' , # pseudo atom
                 # 'Nh', 'Fl', 'Mc', 'Lv', 'Ts', 'Og', 
                 )
 
-NUCLEAR_CHARGE = dict([(s, i) for i, s in enumerate(ELEMENT_SYMBOLS)])
+NUCLEAR_CHARGE = {s: i for i, s in enumerate(ELEMENT_SYMBOLS)}
 
 # ====================================================
 # Standard atomic weight, or relative atomic mass of the element 
