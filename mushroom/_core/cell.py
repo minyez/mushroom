@@ -72,7 +72,7 @@ class Cell(LengthUnit):
     def __init__(self, latt, atms, posi, unit='ang', **kwargs):
 
         self.comment = "Default Cell class"
-        self.__reference = ''
+        self._reference = ''
         self._all_relax = True
         self._select_dyn = {}
         self._coord_sys = 'D'
@@ -117,7 +117,7 @@ class Cell(LengthUnit):
         if "select_dyn" in kwargs:
             self._select_dyn = kwargs["select_dyn"]
         if "reference" in kwargs:
-            self.__reference = "{}".format(kwargs["reference"])
+            self._reference = "{}".format(kwargs["reference"])
         if "comment" in kwargs:
             self.comment = "{}".format(kwargs["comment"])
 
@@ -140,7 +140,7 @@ class Cell(LengthUnit):
             "unit": self._lunit,
             "coord_sys": self._coord_sys,
             "comment": self.comment,
-            "reference": self.__reference,
+            "reference": self._reference,
             "all_relax": self._all_relax,
             "select_dyn": self._select_dyn
         }
@@ -149,7 +149,7 @@ class Cell(LengthUnit):
     def get_reference(self) -> str:
         '''Return the reference of the structure
         '''
-        return self.__reference
+        return self._reference
 
     def _check_input_consistency(self):
         try:
@@ -663,8 +663,8 @@ class Cell(LengthUnit):
             raise ValueError("Unsupported export:", output_format)
         print_file_or_iowrapper(e(scale=scale), f=filename)
 
-    def export_vasp(self, scale: float = 1.0):
-        '''Export in VASP POSCAR format'''
+    def export_vasp(self, scale: float = 1.0) -> str:
+        """Export in VASP POSCAR format"""
         # list containting strings to return
         ret = []
         # convert to ang, as vasp use ang only
@@ -672,7 +672,7 @@ class Cell(LengthUnit):
         self.unit = "ang"
 
         syms, nats = sym_nat_from_atms(self._atms)
-        ret.append(self.comment)
+        ret.append("{} ({})".format(self.comment, self._reference))
         ret.append("{:8.6f}".format(scale))
         for i in range(3):
             ret.append("  %12.8f  %12.8f  %12.8f"
@@ -700,7 +700,7 @@ class Cell(LengthUnit):
         return '\n'.join(ret)
 
     def export_json(self, scale=1.0):
-        '''Export in JSON format'''
+        """Export in JSON format"""
         raise NotImplementedError
 
     # * Reader implementations

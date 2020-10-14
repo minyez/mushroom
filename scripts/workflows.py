@@ -1,24 +1,25 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """copy the desired workflow script from workflows directory
+
+If platform is specified, job scheduler head will be added following the sheban
+of workflow script.
 """
 import os
 from shutil import copyfile
 from pathlib import Path
-from argparse import ArgumentParser
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
+from typing import List
 
 from mushroom._core.logger import create_logger
+from mushroom._core.hpc import get_scheduler_head
 
 DIR_WORKFLOWS = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'workflows'))
 PATH_WORKFLOWS = Path(DIR_WORKFLOWS)
 _logger = create_logger("workflows")
 del create_logger
 
-def add_sbatch_header(wf, platform):
-    """add platform-specific sbatch header to workflow script"""
-    raise NotImplementedError
-
-def copy_wf_to_dst(wf, dst="."):
+def copy_wf_to_dst(wf: str, dst: str = "."):
     """copy the workflow files to directory dst
 
     Args:
@@ -27,13 +28,26 @@ def copy_wf_to_dst(wf, dst="."):
     """
     p = PATH_WORKFLOWS / wf
     dst = Path(dst)
+    if not dst.is_dir():
+        raise ValueError("destination must be a directory")
     _logger.info("Copying %s files to %s", p, dst)
     for x in p.glob("*"):
         if not x.name.startswith("."):
             copyfile(x, dst / x.name)
             _logger.info(">> %s", x.name)
 
-def get_avail_workflows(prog=None):
+def add_scheduler_header(wf: str, dirpath: str, platform: str, use_pbs=False):
+    """add platform scheduler header to workflow control script.
+    """
+    head = get_scheduler_head(platform, use_pbs)
+    wf_script = Path(dirpath) / "run_{}.sh".format(wf)
+    with open(wf_script, "r") as h:
+        lines = h.readlines()
+        lines[0] += head
+    with open(wf_script, "w") as h:
+        print(*lines, sep="", file=h)
+
+def get_avail_workflows(prog: str = None) -> List[str]:
     """get all available workflows in the directory
 
     Args:
@@ -73,7 +87,7 @@ def init_workflow_symlink(wf):
         if not p.is_symlink():
             p.symlink_to(PATH_WORKFLOWS / 'libs' / prog)
 
-def complete_workflow_name(wf):
+def complete_workflow_name(wf: str) -> str:
     """complete the workflow name
 
     Args:
@@ -91,7 +105,7 @@ def complete_workflow_name(wf):
 
 def _parser():
     """the argument parser"""
-    p = ArgumentParser(description=__doc__)
+    p = ArgumentParser(description=__doc__, formatter_class=RawDescriptionHelpFormatter)
     g = p.add_mutually_exclusive_group()
     g.add_argument("-f", dest="wf", type=str, default=None,
                    help="the name of workflow to add")
@@ -99,12 +113,14 @@ def _parser():
                    help="search available workflows for program")
     g.add_argument("-p", dest='print', action="store_true",
                    help="print available workflows")
-    g.add_argument("--hpc", dest='platform', type=str, default=None,
-                   help="name of HPC platform")
     g.add_argument("--init-links", dest='init_links', action="store_true",
                    help="initialize all links of dependency scripts")
     p.add_argument("--dst", type=str, default=".",
                    help="destination to copy the workflow files")
+    p.add_argument("--hpc", dest='platform', type=str, default=None,
+                   help="name of HPC platform")
+    p.add_argument("--pbs", dest='use_pbs', action="store_true",
+                   help="use PBS instead of SLURM (sbatch)")
     p.add_argument("-D", dest='debug', action="store_true",
                    help="debug mode")
     return p.parse_args()
@@ -128,6 +144,8 @@ def workflows():
         wf = complete_workflow_name(args.wf)
         init_workflow_symlink(wf)
         copy_wf_to_dst(wf, args.dst)
+        if args.platform:
+            add_scheduler_header(wf, args.dst, args.platform, args.use_pbs)
 
 
 if __name__ == "__main__":

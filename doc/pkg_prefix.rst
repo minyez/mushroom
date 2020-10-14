@@ -3,6 +3,7 @@ Package identifier
 
 Prefices of package-specific scripts and workflows
 
+
 +------------------+------------+
 | Package          | Identifier |
 +==================+============+
@@ -16,4 +17,5 @@ Prefices of package-specific scripts and workflows
 | GAP2c            | ``g2c``    |
 | CP2k             | ``cp2k``   |
 +------------------+------------+
+
 
