@@ -18,7 +18,7 @@ clean:
 test:
 	@echo "Run pytest"; pytest --cov=./
 
-commit:
+commit: test
 	git commit -F $(MESSAGE_FILE)
 	rm -f $(MESSAGE_FILE); touch $(MESSAGE_FILE)
 

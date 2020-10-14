@@ -26,6 +26,110 @@ def conv_estimate_number(s: str, reserved: bool = True) -> float:
         return float(re.sub(r"[\(\)]", "", s))
     return float(trim_after(s, r"\("))
 
+def get_divisors(n: int) -> List[int]:
+    """get all divisors of integer n, including itself and excluding 1
+
+    Args:
+        n (int)
+    """
+    divs = []
+
+    for i in range(2, n + 1):
+        if n % i == 0:
+            divs.append(i)
+    return divs
+
+def get_mutual_primes(n):
+    """find all mutual primer of integer n that are smaller than n
+
+    Args:
+        n (int)
+
+    Examples:
+    >>> get_mutual_primes(10)
+    [1, 3, 7, 9]
+    >>> get_mutual_primes(15)
+    [1, 2, 4, 7, 8, 11, 13, 14]
+    """
+    mp = [1,]
+    for i in range(2, n):
+        is_mp = True
+        for j in get_divisors(i):
+            if n % j == 0:
+                is_mp = False
+                break
+        if is_mp:
+            mp.append(i)
+    return mp
+
+
+def closest_frac(decimal: float, maxn=100, thres=None, ret=1):
+    """find the closest fraction number of decimal
+
+    Args:
+        decimal (float)
+        maxn (int)
+        thres (float)
+
+    Returns:
+        If such fraction is found, depending on ``ret``, returns
+
+            - 1: float, the guessed fraction
+            - 2: (int, int), numerator and denominator 
+            - 3: (int, int, float), numerator and denominator, error
+            - otherwise: string, the guessed fraction
+
+        ValueError is raised if no such fraction is found
+    """
+    def _select_return(num, denom, error, ret):
+        d = {
+            1: num / denom,
+            2: (num, denom),
+            3: (num, denom, error),
+            }
+        return d.get(ret, "{:d}/{:d}".format(num, denom))
+
+    f = decimal
+    int_part = 0
+    err = 1.0
+    num = 0
+    den = 0
+    int_part = int(np.floor(f))
+    f -= int_part
+
+    if thres is None:
+        # 0.9 is added to avoid getting 0.2 (1/5) for 0.1
+        thres = 0.1 ** len(str(decimal).strip('0').split('.')[1]) * 0.9
+
+    # return 0 when value is smaller than threshold
+    if f <= thres:
+        return _select_return(0 + int_part, 1, thres, ret)
+
+    for _de in range(2, maxn):
+        fp = float(_de)
+        for _nu in get_mutual_primes(_de):
+            __v = float(_nu) / fp
+            diff = abs(__v - f)
+            if diff < thres:
+                return _select_return(_nu + int_part * _de, _de, diff, ret)
+            if diff < err:
+                num = _nu
+                den = _de
+    raise ValueError
+
+def fraction(s: str) -> float:
+    """compute the value of a string of fraction, e.g. '1/2'
+
+    Args:
+        s (str)
+
+    Returns:
+        float
+    """
+    assert s.count('/') == 1
+    nu, de = s.split('/')
+    return float(nu) / float(de)
+
 
 class Data:
     """Object for storage and extraction of data

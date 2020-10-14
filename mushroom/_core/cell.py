@@ -686,7 +686,7 @@ class Cell(LengthUnit):
                "ntypat {:d}".format(len(syms)),
                ]
         # lattice vector
-        form = "rprim\n" + " {:9f} {:9f} {:9f}\n" * 3
+        form = "rprim\n" + " {:12.8f} {:12.8f} {:12.8f}\n" * 3
         ret.append(form[:-1].format(*self._latt.flatten()))
         # nuclear charge of each atom type
         form = "znucl " + " {:d}" * len(syms)
@@ -697,7 +697,7 @@ class Cell(LengthUnit):
         # coordinates of each atom
         cwas = self.coord_sys
         self.coord_sys = "D"
-        form = "xred\n" + " {} {} {}\n" * self.natm
+        form = "xred\n" + " {:12.8f} {:12.8f} {:12.8f}\n" * self.natm
         ret.append(form[:-1].format(*self._posi.flatten()))
         if cwas == "C":
             self.coord_sys = "C"

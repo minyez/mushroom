@@ -5,8 +5,11 @@ import re
 import CifFile
 
 from mushroom._core.crystutils import get_latt_vecs_from_latt_consts, get_all_atoms_from_sym_ops
-from mushroom._core.data import conv_estimate_number
+from mushroom._core.data import conv_estimate_number, closest_frac
+from mushroom._core.logger import create_logger
 
+_logger = create_logger("cif")
+del create_logger
 
 class Cif:
     """Class to read CIF files and initialize atomic data by PyCIFRW
@@ -29,21 +32,28 @@ class Cif:
 
     def __init_inequiv(self):
         """initialize the positions and symbols of all inequivalent atoms"""
-        posInequiv = []
-        atomsInequiv = []
+        posi_ineq = []
+        atms_ineq = []
         natomsPerInequiv = []
         for l in self._blk.GetLoop("_atom_site_fract_x"):
             posOne = []
             for a in ["_atom_site_fract_x", "_atom_site_fract_y", "_atom_site_fract_z"]:
                 p = conv_estimate_number(l.__getattribute__(a))
+                # deal with approximate value of fractions
+                _logger.debug("read %s: %s", a, p)
+                try:
+                    p = closest_frac(p, maxn=20)
+                except ValueError:
+                    pass
+                _logger.debug("cloest fraction: %s", p)
                 posOne.append(p)
-            posInequiv.append(posOne)
+            posi_ineq.append(posOne)
             natomsPerInequiv.append(int(l._atom_site_symmetry_multiplicity))
             # remove chemical valence
-            atomsInequiv.append(re.sub(r"[\d]+[+-]?", "", l._atom_site_type_symbol))
-        self.posiInequiv = posInequiv
-        self.atmsInequiv = atomsInequiv
-        self._natomsPerInequiv = natomsPerInequiv
+            atms_ineq.append(re.sub(r"[\d]+[+-]?", "", l._atom_site_type_symbol))
+        self.posi_ineq = posi_ineq
+        self.atms_ineq = atms_ineq
+        self.natm_ineq = natomsPerInequiv
 
     def __init_symmetry_operations(self):
         """get all symmetry operations"""
@@ -93,7 +103,9 @@ class Cif:
             angles = []
             for a in ["_cell_angle_alpha", "_cell_angle_beta", "_cell_angle_gamma"]:
                 angles.append(conv_estimate_number(self._blk.GetItemValue(a)))
+            _logger.debug("found angles: %r", angles)
             self.latt = get_latt_vecs_from_latt_consts(latta, lattb, lattc, *angles)
+        _logger.debug("lattice parameters: %r", self.latt)
         return self.latt
 
     def get_all_atoms(self):
@@ -106,27 +118,15 @@ class Cif:
         """
         if self.atms is None or self.posi is None:
             atms, posi = get_all_atoms_from_sym_ops(
-                self.atmsInequiv, self.posiInequiv, self.operations)
-            # pos = []
-            # atoms = []
-            # for r, t in zip(self.operations["rotations"], self.operations["translations"]):
-            #    for i, p in enumerate(self.posiInequiv):
-            #        a = np.add(np.dot(r, p), t)
-            #        # move to the lattice at origin
-            #        a = np.subtract(a, np.floor(a))
-            #        try:
-            #            for pPrev in pos:
-            #                if np.allclose(pPrev, a):
-            #                    raise ValueError
-            #        except ValueError:
-            #            continue
-            #        else:
-            #            atoms.append(self.atmsInequiv[i])
-            #            pos.append(a)
+                self.atms_ineq, self.posi_ineq, self.operations)
             # consistency check
-            if sum(self._natomsPerInequiv) != len(atms):
-                raise IOError(
-                    "inconsistent number of atoms and entries after symmetry operations"
+            _logger.debug("natoms of each inequiv type: %r", self.natm_ineq)
+            _logger.debug("positions of each inequiv type: %r", self.posi_ineq)
+            _logger.debug("number of all atoms: %r", len(atms))
+            if sum(self.natm_ineq) != len(atms):
+                raise ValueError(
+                    "inconsistent number of atoms and entries after symmetry operations:",
+                    sum(self.natm_ineq), len(atms)
                 )
             self.atms = atms
             self.posi = posi

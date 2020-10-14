@@ -6,6 +6,9 @@ import unittest as ut
 import numpy as np
 
 from mushroom._core.data import (conv_estimate_number,
+                                 get_divisors,
+                                 get_mutual_primes,
+                                 closest_frac,
                                  Data)
 
 class test_number_conversion(ut.TestCase):
@@ -14,6 +17,28 @@ class test_number_conversion(ut.TestCase):
     def test_conv_estimate(self):
         self.assertEqual(conv_estimate_number("5.43(2)"), 5.432)
         self.assertEqual(conv_estimate_number("5.43(2)", reserved=False), 5.43)
+
+
+class test_fraction(ut.TestCase):
+    """test the functionality of finding minimal fractions"""
+    def test_get_divisors(self):
+        """divisors of integer"""
+        self.assertListEqual([2, 4, 8], get_divisors(8))
+        self.assertListEqual([2, 3, 4, 6, 9, 12, 18, 36], get_divisors(36))
+
+    def test_get_mutual_primes(self):
+        """mutual primes of integer"""
+        self.assertListEqual([1, 3, 7, 9], get_mutual_primes(10))
+        self.assertListEqual([1, 2, 4, 7, 8, 11, 13, 14], get_mutual_primes(15))
+
+    def test_find_truefrac(self):
+        """get the closest fraction number closest to a decimal"""
+        self.assertEqual("1/3", closest_frac(0.3333, ret=0))
+        self.assertEqual("1/3", closest_frac(0.333, ret=0))
+        self.assertEqual("1/3", closest_frac(0.33330000, ret=0))
+        self.assertEqual("2/3", closest_frac(0.667, ret=0))
+        self.assertNotEqual("1/5", closest_frac(0.1, ret=0))
+        self.assertEqual("2/3", closest_frac(0.6666, thres=0.0001, ret=0))
 
 class test_Data(ut.TestCase):
     """Test Data object"""

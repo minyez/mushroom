@@ -3,27 +3,47 @@
 from copy import deepcopy
 from typing import List, Iterable
 import numpy as np
+from numpy import cos, sin
 from mushroom._core.constants import PI
+from mushroom._core.logger import create_logger
+
+_logger = create_logger("crystutils")
+del create_logger
 
 def get_latt_vecs_from_latt_consts(a: float, b: float, c: float,
                                    alpha: float = 90.,
                                    beta: float = 90.,
-                                   gamma: float = 90.) -> List[List[float]]:
+                                   gamma: float = 90.,
+                                   decimals: int = 7) -> List[List[float]]:
     """Convert lattice constants to lattice vectors in right-hand system
 
-    Currently support orthormrhobic lattice only!!!
+    Note that by now a1 is forced along x axis, a1, a2 is forced on the xOy plane, i.e.
+        a1_y = a1_z = a2_z = 0
 
     Args:
-        a, b, c (float): length of lattice vectors
+        a, b, c (float): length of lattice vectors (>0)
         alpha, beta, gamma (float): angles between lattice vectors in degree.
-            90 used as default.
+            90. is used for each as default.
+        decmials (int): round the calculated vectors, parsed to numpy ``around`` function
     """
+    angle_thres = 1.E-3
     a = abs(a)
     b = abs(b)
     c = abs(c)
-    if alpha != 90. or beta != 90. or gamma != 90.:
-        raise NotImplementedError
-    return [[a, 0., 0.], [0., b, 0.], [0., 0., c]]
+    is_ortho = all(map(lambda x: abs(x-90.) <= angle_thres, [alpha, beta, gamma]))
+    if is_ortho:
+        return [[a, 0., 0.], [0., b, 0.], [0., 0., c]]
+    alpha *= PI / 180.
+    beta *= PI / 180.
+    gamma *= PI / 180.
+    a1 = [a, 0., 0.]
+    a2 = [b*cos(gamma), b*sin(gamma), 0.0]
+    a3 = [c*cos(beta),
+          c/sin(gamma)*(cos(alpha)-cos(gamma)*cos(beta)),
+          c/sin(gamma)*np.sqrt(sin(alpha)*sin(alpha) - \
+                               cos(beta)*cos(beta)*(1.0+cos(gamma)*cos(gamma)))
+          ]
+    return np.round([a1, a2, a3], decimals=decimals)
 
 
 def get_latt_consts_from_latt_vecs(latt):
@@ -52,23 +72,31 @@ def get_latt_consts_from_latt_vecs(latt):
     return (*alen, *angle)
 
 
-def get_all_atoms_from_sym_ops(ineq_atms: Iterable[str], ineq_posi, symops, left_mult=True):
+def get_all_atoms_from_sym_ops(ineq_atms: Iterable[str], ineq_posi, symops,
+                               left_mult=True, iden_thres=1e-5):
     """Get atomic symbols and positions of all atoms in the cell
     by performing symmetry operations on inequivalent atoms
 
     Args:
-        inEqAtoms (list of str):
-        inEqPos (array-like):
+        ineq_atms (list of str):
+        ineq_posi (array-like):
         symops (dict): dictionary containing symmetry operations
-        left_mult (bool)
+        left_mult (bool):
             True : x' = Rx + t
             False: x'^T = x^T R + t^T
+
+    TODO:
+        use Cartisian to determine identical atoms
     """
     assert len(ineq_atms) == len(ineq_posi)
     assert isinstance(symops, dict)
     posi = []
     atms = []
-    for r, t in zip(symops["rotations"], symops["translations"]):
+    _logger.debug("ineq_atms: %r", ineq_atms)
+    _logger.debug("ineq_posi: %r", ineq_posi)
+    _logger.debug("# of symops: %r", len(symops["translations"]))
+    rots, trans = symops["rotations"], symops["translations"]
+    for r, t in zip(rots, trans):
         if not left_mult:
             r = np.transpose(r)
         for i, p in enumerate(ineq_posi):
@@ -77,12 +105,14 @@ def get_all_atoms_from_sym_ops(ineq_atms: Iterable[str], ineq_posi, symops, left
             a = np.subtract(a, np.floor(a))
             try:
                 for xyz in posi:
-                    if np.allclose(xyz, a):
+                    if np.allclose(xyz, a, atol=iden_thres):
                         raise ValueError
             except ValueError:
+                _logger.debug("Found duplicate: %r", a)
                 continue
             else:
                 atms.append(ineq_atms[i])
+                _logger.debug("Add new atom: %r", a)
                 posi.append(a)
     return atms, posi
 
