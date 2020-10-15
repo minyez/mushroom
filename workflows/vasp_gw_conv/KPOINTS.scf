@@ -1,5 +1,5 @@
-gw kpts
+scf kpts
 0
 G
-2 2 2
+8 8 8
 0 0 0

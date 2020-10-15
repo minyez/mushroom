@@ -77,28 +77,33 @@ function outcar_nbands () {
   awk '/NBANDS/ {print $15}' "$fn"
 }
 
-function eig_outcar_eigen_ik () {
-  # get the vb and cb eigen values at ik
-  # $1: index of k (1)
-  # $2: eigen value file (EIGENVAL)
-  # $3: outcar file (OUTCAR)
+function eigen_outcar_vbcb_ik () {
+  # get the vb and cb eigen values at ik from eigenvalue file
+  #
+  # 3 arguments:
+  #   $1: eigen value file (EIGENVAL)
+  #   $2: outcar file (OUTCAR)
+  #   $3: index of k (1)
+  # 2 arguments: eigen file and index of k
+  # 1 arguments: index of k
+  #
   # returns: vb energy and cb energy at ik
   if (( $# == 3 )); then
-    ik=$1
-    fneig=$2
-    fnout=$3
+    fneig=$1
+    fnout=$2
+    ik=$3
   elif (( $# == 2 )); then
-    ik=$1
-    fneig=$2
+    fneig=$1
     fnout="OUTCAR"
+    ik=$2
   elif (( $# == 1 )); then
+    fneig="EIGENVAL"
+    fnout="OUTCAR"
     ik=$1
-    fneig="EIGENVAL"
-    fnout="OUTCAR"
   else
-    ik=1
     fneig="EIGENVAL"
     fnout="OUTCAR"
+    ik=1
   fi
   vb=$(get_vb "$fnout")
   nbs=$(get_nbands "$fnout")

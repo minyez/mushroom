@@ -12,7 +12,7 @@ module load "${modules[@]}"
 # ===== functions =====
 function gw_calc () {
   run_gw_3steps "$vaspcmd"
-  gap=$(get_eigen_ik 1 "EIGENVAL" "OUTCAR" | awk '{print($2-$1)}')
+  gap=$(eigen_outcar_vbcb_ik "EIGENVAL" "OUTCAR" 1 | awk '{print($2-$1)}')
   etime=$(wall_time "OUTCAR")
   echo "$gap $etime"
   rm -f ./*.tmp ./WAVE*
@@ -46,8 +46,8 @@ function run_vasp_gw_conv () {
         cp ../KPOINTS.scf KPOINTS.scf
         cp ../KPOINTS.gw KPOINTS.gw
         values=$(gw_calc 0)
-        echo "$encut $encutgw $nbands $values" >> results.txt
         cd ..
+        echo "$encut $encutgw $nbands $values" >> results.txt
       done
     done
   done
