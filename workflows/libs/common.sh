@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # constants and common utilities for workflows
-_PI=3.141592653589793
-_HA2EV=27.21138602
-_AU2ANG=0.52917721067
+readonly _PI=3.141592653589793
+readonly _HA2EV=27.21138602
+readonly _AU2ANG=0.52917721067
 
 function ev2ha () {
   echo "$1 $_HA2EV" | awk '{printf("%f\n", $1/$2)}'

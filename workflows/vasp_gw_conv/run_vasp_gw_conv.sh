@@ -21,13 +21,12 @@ function gw_calc () {
 function run_vasp_gw_conv_help () {
   cat << EOF
 Usage:
-  $0           : run VASP convergence calculation 
-  $0 dry       : dry run
-  $0 data      : extract data to "vasp_gw_conv.dat"
-  $0 clean     : cleanup all directories
-  $0 help | -h : print this help message
+  $1 [calc | -r] : run convergence calculation for VASP GW
+  $1 dry | -d    : dry run
+  $1 data        : extract data to "vasp_gw_conv.dat"
+  $1 clean       : cleanup all directories
+  $1 help | -h   : print this help message
 EOF
-  return 0
 }
 
 function run_vasp_gw_conv_calc () {
@@ -113,11 +112,12 @@ function run_vasp_gw_conv () {
   else
     case "${opts[0]}" in
       "help" | "-h" ) run_vasp_gw_conv_help "$0" ;;
-      "clean" ) run_vasp_gw_conv_clean ;;
       "calc" | "-r" ) run_vasp_gw_conv_calc ;;
       "dry" | "-d" ) run_vasp_gw_conv_calc "dry" ;;
       "data" ) run_vasp_gw_conv_data "${opts[@]:1}" ;;
-      *) echo "unknown options:" "${opts[0]}"; return 1 ;;
+      "clean" ) run_vasp_gw_conv_clean ;;
+      *) echo "Error: unknown options " "${opts[0]}";\
+        run_vasp_gw_conv_help "$0"; return 1 ;;
     esac
   fi
 }

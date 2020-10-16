@@ -16,7 +16,7 @@ Things you may need to adapt
 - `INCAR.hf` : input for HF SCF loop
 
 Thins usually not necessary to change
-- `run_vasp_hf_conv.sh` : flow control file
+- `run_vasp_hf_conv.sh` : flow control script 
 - `common.sh` : infrastructure functions for common use
 - `vasp.sh` : VASP infrastructure functions
 

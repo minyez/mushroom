@@ -1,0 +1,9 @@
+PBE
+
+LREAL = .FALSE.
+EDIFF = _ediff_
+ENCUT = _encut_
+ISMEAR = -5
+PREC = _prec_
+ISPIN = 1
+LMAXMIX = 6

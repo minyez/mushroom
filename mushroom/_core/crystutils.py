@@ -208,18 +208,18 @@ def sym_nat_from_atms(atms: Iterable[str]):
     return syms, [nat_dict[at] for at in syms]
 
 
-def select_dyn_flag_from_axis(axis, relax: bool = False):
+def select_dyn_flag_from_axis(axis, relax: bool = False) -> List[bool]:
     """Generate selective dynamic flags, i.e. [bool, bool, bool]
 
     Args:
         relax (bool): if True, the flag for axis will be set as True.
             Otherwise False
     """
-    _flag = [not relax, not relax, not relax]
-    _aList = axis_list(axis)
-    for _a in _aList:
-        _flag[_a-1] = not _flag[_a-1]
-    return _flag
+    flag = [not relax, not relax, not relax]
+    alist = axis_list(axis)
+    for a in alist:
+        flag[a-1] = not flag[a-1]
+    return flag
 
 
 def axis_list(axis) -> tuple:

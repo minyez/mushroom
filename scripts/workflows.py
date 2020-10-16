@@ -32,7 +32,7 @@ def copy_wf_to_dst(wf: str, dst: str = ".", overwrite: bool = False):
         raise ValueError("destination must be a directory")
     _logger.info("Copying %s files to %s", p, dst)
     for x in p.glob("*"):
-        if not x.name.startswith("."):
+        if not x.name.startswith(".") and not x.name.endswith(".log"):
             f = dst / x.name
             if not f.is_file() or overwrite:
                 copy(x, f)

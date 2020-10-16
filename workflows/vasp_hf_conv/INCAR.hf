@@ -1,0 +1,20 @@
+hybrid functional
+
+ISTART = 1
+LREAL = .FALSE.
+EDIFF = _ediff_
+ENCUT = _encut_
+
+ISMEAR = 0
+SIGMA = 0.05
+PREC = _prec_
+ISPIN = 1
+LMAXMIX = 6
+ALGO = ALL
+
+GGA = PE
+LHFCALC = .TRUE.
+PRECFOCK = Normal
+TIME = 0.4
+HFSCREEN = _hfscreen_
+

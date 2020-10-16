@@ -278,3 +278,15 @@ function poscar_latt_vec () {
   awk 'FNR<6 && FNR>2 {printf("%s ", $0)}' "$poscar"
   echo ""
 }
+
+function optimal_npar () {
+  nproc=$1
+  if (( $# == 2 )); then
+    if [[ $2 == "gw" ]]; then
+      echo ""
+    fi
+  fi
+  echo "$nproc"
+  # TODO find divider
+  #echo "$nproc" | awk '{printf("%d\n", sqrt($1))}'
+}
