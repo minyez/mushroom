@@ -22,14 +22,19 @@ function run_vasp_gw_conv_help () {
   cat << EOF
 Usage:
   $0           : run VASP convergence calculation 
+  $0 dry       : dry run
   $0 data      : extract data to "vasp_gw_conv.dat"
-  $0 clean     : cleanup
+  $0 clean     : cleanup all directories
   $0 help | -h : print this help message
 EOF
   return 0
 }
 
 function run_vasp_gw_conv_calc () {
+  dry=0
+  if (( $# == 1 )); then
+    dry=1
+  fi
   raise_noexec "$vaspexe"
   reqs=(INCAR.scf INCAR.diag INCAR.gw POSCAR POTCAR KPOINTS.scf KPOINTS.gw)
   raise_missing_prereq "${reqs[@]}"
@@ -40,7 +45,10 @@ function run_vasp_gw_conv_calc () {
   comment_datetime >> results.txt
   
   for encut in "${encuts[@]}"; do
-    nbandsmax=$(echo "$encut 750 1139" | awk '{printf("%d",0.5 + ($1/$2)**1.5 * $3)}')
+    # estimate number of bands from volumel
+    vol=$(triple_prod "$(poscar_latt_vec "POSCAR")")
+    nbandsmax=$(estimate_npw "$encut" "$vol")
+    #nbandsmax=$(echo "$encut 750 1139" | awk '{printf("%d",0.5 + ($1/$2)**1.5 * $3)}')
     for encutgwratio in "${encutgwratios[@]}"; do
       encutgw=$(echo "$encut $encutgwratio" | awk '{printf("%d", 0.5 + $1*$2)}')
       for nbandsratio in "${nbandsratios[@]}"; do
@@ -58,16 +66,18 @@ function run_vasp_gw_conv_calc () {
         ln -s ../POTCAR POTCAR
         cp ../KPOINTS.scf KPOINTS.scf
         cp ../KPOINTS.gw KPOINTS.gw
-        results=$(gw_calc 0)
+        if (( dry != 1 )); then
+          results=$(gw_calc 0)
+          echo "$encut $encutgw $nbands $results" >> ../results.txt
+        fi
         cd ..
-        echo "$encut $encutgw $nbands $results" >> results.txt
       done
     done
   done
 }
 
 function run_vasp_gw_conv_clean () {
-  return 0
+  rm -rf encut_*_encutgw_*_nbands_*/
 }
 
 function run_vasp_gw_conv_data () {
@@ -85,7 +95,7 @@ function run_vasp_gw_conv_data () {
     encutgw=${d##*_encutgw_}
     encutgw=${encutgw%%_nbands_*}
     nbands=${d##*_nbands_}
-    if [[ "$nbands" != "*" ]]; then
+    if [[ "$nbands" != "*" ]] && [[ -f "$d/EIGENVAL.gw" ]] && [[ -f "$d/OUTCAR.gw" ]]; then
       gap=$(eigen_outcar_vbcb_ik "$d/EIGENVAL.gw" "$d/OUTCAR.gw" "$ik" | awk '{print($2-$1)}')
       qpdata=()
       split_str qpdata "$(outcar_qpc_vb_cb "$d/OUTCAR.gw" "$ik")"
@@ -104,6 +114,8 @@ function run_vasp_gw_conv () {
     case "${opts[0]}" in
       "help" | "-h" ) run_vasp_gw_conv_help "$0" ;;
       "clean" ) run_vasp_gw_conv_clean ;;
+      "calc" | "-r" ) run_vasp_gw_conv_calc ;;
+      "dry" | "-d" ) run_vasp_gw_conv_calc "dry" ;;
       "data" ) run_vasp_gw_conv_data "${opts[@]:1}" ;;
       *) echo "unknown options:" "${opts[0]}"; return 1 ;;
     esac

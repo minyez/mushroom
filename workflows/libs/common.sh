@@ -1,5 +1,16 @@
 #!/usr/bin/env bash
-# common utilities for workflows
+# constants and common utilities for workflows
+_PI=3.141592653589793
+_HA2EV=27.21138602
+_AU2ANG=0.52917721067
+
+function ev2ha () {
+  echo "$1 $_HA2EV" | awk '{printf("%f\n", $1/$2)}'
+}
+
+function ha2ev () {
+  echo "$1 $_HA2EV" | awk '{printf("%f\n", $1*$2)}'
+}
 
 function comment_datetime () {
   # create a datetime comment
@@ -77,3 +88,37 @@ function split_str () {
       s=${s#*"$delim"}
   done
 }
+
+function triple_prod () {
+  # triple product of an array. two kinds of inputs
+  # 1. 9 arguments can be either C-like or F-like
+  #    since determinant of a matrix is equal to that of its tranpose
+  # 2. one string composed of 9 floats separated by single space
+  if (( $# == 9 )); then
+    echo "$@" | awk '{printf("%f\n",$1*($5*$9-$6*$8)-$2*($4*$9-$6*$7)+$3*($4*$8-$5*$7))}'
+  elif (( $# == 1 )); then
+    arr=()
+    s="$1 "
+    while [[ $s ]]; do
+      arr+=("${s%%" "*}")
+      s=${s#*" "}
+    done
+    echo "${arr[@]}" | awk '{printf("%f\n",$1*($5*$9-$6*$8)-$2*($4*$9-$6*$7)+$3*($4*$8-$5*$7))}'
+  else
+    exit 1
+  fi
+}
+
+function estimate_npw () {
+  # estimate the maximum number of plane waves
+  # $1: ENCUT in eV
+  # $2: volume of crystal, in Angstrom^3
+  if (( $# != 2 )); then
+    exit 1
+  fi
+  encut=$1
+  vol=$2
+  echo "$encut $_HA2EV $_AU2ANG $vol $_PI" | awk \
+    '{printf("%d\n", 0.5 + (2.0*$1/$2)**1.5 / $3**3 * $4 / 6.0 / $5**2)}'
+}
+

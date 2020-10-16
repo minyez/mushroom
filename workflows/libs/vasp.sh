@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+
 # common functions to be used in vasp workflows
 function raise_chgcar_change () {
   # raise when two CHGCAR files are different, used for sanity check of band calculation
@@ -266,4 +267,14 @@ function xml_kpts_weigh () {
   weigh=$(awk "FNR <= $(( lnwei+nkpt ))&& FNR > $lnwei {print int($nkall * \$2 + 0.1)}" "$vaspxml")
   echo "$kpts" > .kpts.tmp; echo "$weigh" > .weigh.tmp; paste .kpts.tmp .weigh.tmp
   rm -f .kpts.tmp .weigh.tmp
+}
+
+function poscar_latt_vec () {
+  if (( $# == 1 )); then
+    poscar=$1
+  else
+    poscar="POSCAR"
+  fi
+  awk 'FNR<6 && FNR>2 {printf("%s ", $0)}' "$poscar"
+  echo ""
 }

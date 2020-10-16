@@ -16,7 +16,8 @@ Any suggestions concerning code style, feature, etc, are totally welcome.
 - Python >= 3.5
 - NumPy
 - Spglib
-- PyCIFRW
+- PyCIFRW (for reading cif)
+- Bash >= 4.4 (for scripts)
 
 Run `pip install -r requirements.txt` to install dependencies.
 If you use `conda`, try
