@@ -1,5 +1,6 @@
 PROJ = mushroom
 VERSION = 0.0.1
+BUILDTIME = $(shell date +'%Y-%m-%d %H:%M:%S')
 MESSAGE_FILE = mcm.info
 DIST_TARBALL = dist/$(PROJ)-$(VERSION).tar.gz
 SED = gsed
@@ -16,7 +17,12 @@ clean:
 	rm -rf dist
 
 test:
+	$(MAKE) clean
 	@echo "Run pytest"; pytest --cov=./
+
+testfarm: test
+	$(MAKE) $(DIST_TARBALL)
+	scripts/dist_rsync.py
 
 commit: test
 	git commit -F $(MESSAGE_FILE)
@@ -30,10 +36,11 @@ dist: $(DIST_TARBALL)
 	scripts/dist_rsync.py
 
 $(DIST_TARBALL): $(DIST_FILES)
-	$(MAKE) clean
 	mkdir -p dist/$(PROJ)
-	cp -r $^ dist/$(PROJ)
-	$(SED) "/CircleCI/d;/codecov/,+1 d" README.md > dist/$(PROJ)/README.md
+	cp -r $^ dist/$(PROJ)/
+	$(SED) "/CircleCI/d;/codecov/,+1 d;s/build time/build time: $(BUILDTIME)/g" \
+		README.md > dist/$(PROJ)/README.md
+	$(SED) "/testfarm/,+3 d" Makefile > dist/$(PROJ)/Makefile
 	cd dist; tar --exclude=".DS_Store" \
 		--exclude="*.pyc" --exclude="__pycache__" \
 		--exclude="*.log" \

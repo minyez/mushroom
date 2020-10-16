@@ -9,18 +9,32 @@ source ./vasp.sh
 np=${SLURM_NTASKS:=$defaultnp}
 vaspcmd="mpirun -np $np $vaspexe"
 module load "${modules[@]}"
+
 # ===== functions =====
 function gw_calc () {
   run_gw_3steps "$vaspcmd"
-  gap=$(eigen_outcar_vbcb_ik "EIGENVAL" "OUTCAR" 1 | awk '{print($2-$1)}')
+  gap=$(eigen_outcar_vbcb_ik "EIGENVAL.gw" "OUTCAR.gw" 1 | awk '{print($2-$1)}')
   etime=$(wall_time "OUTCAR")
   echo "$gap $etime"
   rm -f ./*.tmp ./WAVE*
 }
-# =====================
 
-# ===== run_vasp_gw_conv =====
-function run_vasp_gw_conv () {
+function run_vasp_gw_conv_help () {
+  cat << EOF
+Usage:
+  $0           : run VASP convergence calculation 
+  $0 data      : extract data to "vasp_gw_conv.dat"
+  $0 clean     : cleanup
+  $0 help | -h : print this help message
+EOF
+  return 0
+}
+
+function run_vasp_gw_conv_calc () {
+  raise_noexec "$vaspexe"
+  reqs=(INCAR.scf INCAR.diag INCAR.gw POSCAR POTCAR KPOINTS.scf KPOINTS.gw)
+  raise_missing_prereq "${reqs[@]}"
+
   if [ ! -f results.txt ]; then
     echo "ENCUT  ENCUTGW  NBANDS    Eg   time" > results.txt
   fi
@@ -51,6 +65,46 @@ function run_vasp_gw_conv () {
       done
     done
   done
+}
+
+function run_vasp_gw_conv_clean () {
+  return 0
+}
+
+function run_vasp_gw_conv_data () {
+  if (( $# == 1 )); then
+    cwd="$1"
+  else
+    cwd="./"
+  fi
+  ik=1
+  echo "# ENCUT ENCUTGW NBANDS EgGW QPC_VB QPC_CB UQPC_VB UQPC_CB"
+  for d in "$cwd"/encut_*_encutgw_*_nbands_*; do
+    encut=${d##*encut_}
+    encut=${encut%%_encutgw_*}
+    encutgw=${d##*_encutgw_}
+    encutgw=${encutgw%%_nbands_*}
+    nbands=${d##*_nbands_}
+    gap=$(eigen_outcar_vbcb_ik "$d/EIGENVAL.gw" "$d/OUTCAR.gw" "$ik" | awk '{print($2-$1)}')
+    # TODO split qpdata string
+    qpdata=$(outcar_qpc_vb_cb "$d/OUTCAR.gw" "$ik")
+    echo "$encut $encutgw $nbands $gap $qpdata"
+  done
+}
+
+# ===== control function =====
+function run_vasp_gw_conv () {
+  opts=("$@")
+  if (( $# == 0 )); then
+    run_vasp_gw_conv
+  else
+    case "${opts[0]}" in
+      "help" | "-h" ) run_vasp_gw_conv_help "$0" ;;
+      "clean" ) run_vasp_gw_conv_clean ;;
+      "data" ) run_vasp_gw_conv_data "${opts[@]:1}" ;;
+      *) echo "unknown options:" "${opts[0]}"; return 1 ;;
+    esac
+  fi
 }
 
 run_vasp_gw_conv "$@"

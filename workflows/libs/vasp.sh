@@ -105,8 +105,8 @@ function eigen_outcar_vbcb_ik () {
     fnout="OUTCAR"
     ik=1
   fi
-  vb=$(get_vb "$fnout")
-  nbs=$(get_nbands "$fnout")
+  vb=$(outcar_vb "$fnout")
+  nbs=$(outcar_nbands "$fnout")
   vbln=$(( (nbs+2)*(ik-1)+vb+8))
   cbln=$(( vbln+1 ))
   vb=$(awk "FNR == $vbln {print \$2}" "$fneig")
@@ -125,7 +125,7 @@ function outcar_qpc_vb_cb () {
     ik=$2
   fi
 
-  vb=$(get_vb "$fn")
+  vb=$(outcar_vb "$fn")
   ln=$(grep -n -m "$ik" "band No.  KS-energies  QP-energies" "$fn" | tail -1 | awk '{print $1}')
   ln="${ln/:/}"
   
