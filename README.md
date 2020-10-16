@@ -3,7 +3,7 @@
 [![CircleCI](https://circleci.com/gh/minyez/mushroom.svg?style=svg&circle-token=ffe7a030a0398a96231dfde5ab97f5e797256fd2)](https://app.circleci.com/pipelines/github/minyez/mushroom/)
 [![codecov](https://codecov.io/gh/minyez/mushroom/branch/master/graph/badge.svg?token=SM7R1XB2VW)](https://codecov.io/gh/minyez/mushroom)
 
-A **M**ulti-f**U**nctional, **S**imple and **H**elpful **R**esearch t**OO**lkit for **M**aterial science
+A **M**ulti-f**U**nctional, **S**imple and **H**elpful **R**esearch t**OO**lkit for **M**aterial science (build time)
 
 This is just a contrived name for yet another analysis tool for scientific computations in material science.
 
@@ -17,10 +17,6 @@ Any suggestions concerning code style, feature, etc, are totally welcome.
 - NumPy
 - Spglib
 - PyCIFRW
-
-To use scrappers,
-
-- BeautifulSoup4
 
 Run `pip install -r requirements.txt` to install dependencies.
 If you use `conda`, try
@@ -38,6 +34,18 @@ To use mushroom python package
 
 ```bash
 export PYTHONPATH="path/to/mushroom:$PYTHONPATH"
+```
+
+You may test the Python pacakge by running `pytest`
+
+```bash
+pytest
+```
+
+or just
+
+```bash
+make test
 ```
 
 To use shell scripts, add `scripts` directory to environment variable `PATH`, namely

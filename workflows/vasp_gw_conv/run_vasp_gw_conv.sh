@@ -9,27 +9,40 @@ source ./vasp.sh
 np=${SLURM_NTASKS:=$defaultnp}
 vaspcmd="mpirun -np $np $vaspexe"
 module load "${modules[@]}"
+
 # ===== functions =====
 function gw_calc () {
   run_gw_3steps "$vaspcmd"
-  gap=$(eigen_outcar_vbcb_ik "EIGENVAL" "OUTCAR" 1 | awk '{print($2-$1)}')
   etime=$(wall_time "OUTCAR")
-  echo "$gap $etime"
+  echo "$etime"
   rm -f ./*.tmp ./WAVE*
 }
-# =====================
 
-# ===== run_vasp_gw_conv =====
-function run_vasp_gw_conv () {
+function run_vasp_gw_conv_help () {
+  cat << EOF
+Usage:
+  $0           : run VASP convergence calculation 
+  $0 data      : extract data to "vasp_gw_conv.dat"
+  $0 clean     : cleanup
+  $0 help | -h : print this help message
+EOF
+  return 0
+}
+
+function run_vasp_gw_conv_calc () {
+  raise_noexec "$vaspexe"
+  reqs=(INCAR.scf INCAR.diag INCAR.gw POSCAR POTCAR KPOINTS.scf KPOINTS.gw)
+  raise_missing_prereq "${reqs[@]}"
+
   if [ ! -f results.txt ]; then
-    echo "ENCUT  ENCUTGW  NBANDS    Eg   time" > results.txt
+    echo "ENCUT  ENCUTGW  NBANDS   time" > results.txt
   fi
   comment_datetime >> results.txt
   
   for encut in "${encuts[@]}"; do
-    nbandsmax=$(echo "$encut 750 1139" | awk '{printf("%d",($1/$2)**1.5 * $3)}')
+    nbandsmax=$(echo "$encut 750 1139" | awk '{printf("%d",0.5 + ($1/$2)**1.5 * $3)}')
     for encutgwratio in "${encutgwratios[@]}"; do
-      encutgw=$(echo "$encut $encutgwratio" | awk '{print($1*$2)}')
+      encutgw=$(echo "$encut $encutgwratio" | awk '{printf("%d", 0.5 + $1*$2)}')
       for nbandsratio in "${nbandsratios[@]}"; do
         nbands=$(echo "$nbandsmax $nbandsratio $np" | awk '{printf("%d",($1*$2) - ($1*$2) % $3)}')
         workdir="encut_${encut}_encutgw_${encutgw}_nbands_${nbands}"
@@ -45,12 +58,56 @@ function run_vasp_gw_conv () {
         ln -s ../POTCAR POTCAR
         cp ../KPOINTS.scf KPOINTS.scf
         cp ../KPOINTS.gw KPOINTS.gw
-        values=$(gw_calc 0)
+        results=$(gw_calc 0)
         cd ..
-        echo "$encut $encutgw $nbands $values" >> results.txt
+        echo "$encut $encutgw $nbands $results" >> results.txt
       done
     done
   done
+}
+
+function run_vasp_gw_conv_clean () {
+  return 0
+}
+
+function run_vasp_gw_conv_data () {
+  if (( $# == 1 )); then
+    cwd="$1"
+  else
+    cwd="./"
+  fi
+  ik=1
+  printf "%6s%8s%7s%12s%12s%12s%12s%12s\n" \
+    "#ENCUT" "ENCUTGW" "NBANDS" "EgGW" "QPC_VB" "QPC_CB" "UQPC_VB" "UQPC_CB"
+  for d in "$cwd"/encut_*_encutgw_*_nbands_*; do
+    encut=${d##*encut_}
+    encut=${encut%%_encutgw_*}
+    encutgw=${d##*_encutgw_}
+    encutgw=${encutgw%%_nbands_*}
+    nbands=${d##*_nbands_}
+    if [[ "$nbands" != "*" ]]; then
+      gap=$(eigen_outcar_vbcb_ik "$d/EIGENVAL.gw" "$d/OUTCAR.gw" "$ik" | awk '{print($2-$1)}')
+      qpdata=()
+      split_str qpdata "$(outcar_qpc_vb_cb "$d/OUTCAR.gw" "$ik")"
+      printf "%6d%8d%7d%12.5f%12.5f%12.5f%12.5f%12.5f\n" \
+        "$encut" "$encutgw" "$nbands" "$gap" "${qpdata[@]}"
+    fi
+  done
+}
+
+# ===== control function =====
+function run_vasp_gw_conv () {
+  opts=("$@")
+  if (( $# == 0 )); then
+    run_vasp_gw_conv_calc
+  else
+    case "${opts[0]}" in
+      "help" | "-h" ) run_vasp_gw_conv_help "$0" ;;
+      "clean" ) run_vasp_gw_conv_clean ;;
+      "data" ) run_vasp_gw_conv_data "${opts[@]:1}" ;;
+      *) echo "unknown options:" "${opts[0]}"; return 1 ;;
+    esac
+  fi
 }
 
 run_vasp_gw_conv "$@"

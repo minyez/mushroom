@@ -6,7 +6,7 @@ If platform is specified, job scheduler head will be added following the sheban
 of workflow script.
 """
 import os
-from shutil import copyfile
+from shutil import copy
 from pathlib import Path
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from typing import List
@@ -19,7 +19,7 @@ PATH_WORKFLOWS = Path(DIR_WORKFLOWS)
 _logger = create_logger("workflows")
 del create_logger
 
-def copy_wf_to_dst(wf: str, dst: str = "."):
+def copy_wf_to_dst(wf: str, dst: str = ".", overwrite: bool = False):
     """copy the workflow files to directory dst
 
     Args:
@@ -33,8 +33,12 @@ def copy_wf_to_dst(wf: str, dst: str = "."):
     _logger.info("Copying %s files to %s", p, dst)
     for x in p.glob("*"):
         if not x.name.startswith("."):
-            copyfile(x, dst / x.name)
-            _logger.info(">> %s", x.name)
+            f = dst / x.name
+            if not f.is_file() or overwrite:
+                copy(x, f)
+                _logger.info(">> %s", f.name)
+            else:
+                _logger.warning(">> %s found. Use --force to overwrite.", f.name)
 
 def add_scheduler_header(wf: str, dirpath: str, platform: str, use_pbs=False):
     """add platform scheduler header to workflow control script.
@@ -121,9 +125,11 @@ def _parser():
                    help="name of HPC platform")
     p.add_argument("--pbs", dest='use_pbs', action="store_true",
                    help="use PBS instead of SLURM (sbatch)")
-    p.add_argument("-D", dest='debug', action="store_true",
-                   help="debug mode")
+    p.add_argument("--force", dest='overwrite', action="store_true",
+                   help="force overwrite")
+    p.add_argument("-D", dest='debug', action="store_true", help="debug mode")
     return p.parse_args()
+
 
 def workflows():
     """main stream"""
@@ -143,7 +149,7 @@ def workflows():
     if args.wf:
         wf = complete_workflow_name(args.wf)
         init_workflow_symlink(wf)
-        copy_wf_to_dst(wf, args.dst)
+        copy_wf_to_dst(wf, args.dst, args.overwrite)
         if args.platform:
             add_scheduler_header(wf, args.dst, args.platform, args.use_pbs)
 

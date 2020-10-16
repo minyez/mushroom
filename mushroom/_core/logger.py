@@ -18,15 +18,15 @@ try:
     from mushroom.__config__ import stream_level
     STREAM_LEVEL = get_logging_level(stream_level)
 except ImportError:
-    STREAM_LEVEL = logging.WARNING
+    STREAM_LEVEL = logging.INFO
 
 LOGFILE = "mushroom.log"
 
 ROOT_HAND = logging.FileHandler(LOGFILE, mode='w')
 STREAM_HAND = logging.StreamHandler()
-ROOT_FORM = logging.Formatter(fmt='%(asctime)s - %(name)s:%(levelname)s - %(message)s',
+ROOT_FORM = logging.Formatter(fmt='%(asctime)s - %(name)s:%(levelname)8s - %(message)s',
                               datefmt='%Y-%m-%d %H:%M:%S')
-STREAM_FORM = logging.Formatter(fmt='%(name)s:%(levelname)s - %(message)s')
+STREAM_FORM = logging.Formatter(fmt='%(name)s:%(levelname)8s - %(message)s')
 
 ROOT_HAND.setFormatter(ROOT_FORM)
 ROOT_HAND.setLevel(LOG_LEVEL)
@@ -35,7 +35,7 @@ STREAM_HAND.setLevel(STREAM_LEVEL)
 
 
 def create_logger(name: str, level: str = None,
-                  f_handler: bool = True, s_handler: bool = False) -> logging.Logger:
+                  f_handler: bool = True, s_handler: bool = True) -> logging.Logger:
     """create a logger object for recording log
     
     Args:

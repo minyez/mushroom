@@ -901,12 +901,12 @@ class _Default(_BaseOutput):
     """_Default options at head"""
     _marker = "default"
     _attrs = {
-        "linewidth": (float, 1., "{:3.1f}"),
+        "linewidth": (float, 1.5, "{:3.1f}"),
         "linestyle": (int, LineStyle.SOLID, "{:d}"),
         "color": (int, 1, "{:d}"),
         "pattern": (int, 1, "{:d}"),
         "font": (int, 0, "{:d}"),
-        "char_size": (float, 1., "{:8f}"),
+        "char_size": (float, 1.5, "{:8f}"),
         "symbol_size": (float, 1., "{:8f}"),
         "sformat": (str, "%.8g", "\"{:s}\""),
         }
@@ -1103,15 +1103,14 @@ class _Tick(_BaseOutput):
         'major': (float, 1., "{:3.1f}"),
         'major_size': (float, 0.5, "{:8f}"),
         'major_color': (float, 1., "{:3.1f}"),
-        'major_linewidth': (float, 2.0, "{:3.1f}"),
+        'major_linewidth': (float, 1.5, "{:3.1f}"),
         'major_linestyle': (int, LineStyle.SOLID, "{:d}"),
         'major_grid_switch': (bool, Switch.OFF, "{:s}"),
-        'minor': (float, 1., "{:3.1f}"),
         'minor_color': (float, 1., "{:3.1f}"),
         'minor_size': (float, 1., "{:8f}"),
         'minor_ticks': (int, 1, "{:d}"),
         'minor_grid_switch': (bool, Switch.OFF, "{:s}"),
-        'minor_linewidth': (float, 2.0, "{:3.1f}"),
+        'minor_linewidth': (float, 1.5, "{:3.1f}"),
         'minor_linestyle': (int, LineStyle.SOLID, "{:d}"),
         'place_rounded': (str, True, "{:s}"),
         'place_position': (bool, Position.BOTH, "{:s}"),
@@ -1120,43 +1119,49 @@ class _Tick(_BaseOutput):
 
     def __init__(self, **kwargs):
         _BaseOutput.__init__(self, **kwargs)
-        self.spec_ticks = None
-        self.spec_labels = None
-        self.spec_major = None
+        self.spec_ticks = []
+        self.spec_labels = []
+        self.spec_majors = []
 
     def export(self):
         slist = _BaseOutput.export(self)
         if self.__getattribute__("spec_type") in ["ticks", "both"]:
             slist.append("{:s} spec {:d}".format(self._marker, len(self.spec_ticks)))
-            for i, (loc, m) in enumerate(zip(self.spec_ticks, self.spec_major)):
+            for i, (loc, m) in enumerate(zip(self.spec_ticks, self.spec_majors)):
                 slist.append("{:s} {:s} {:d}, {:.3f}".format(self._marker, m, i, loc))
         if self.__getattribute__("spec_type") == "both":
-            for i, (label, m) in enumerate(zip(self.spec_labels, self.spec_major)):
+            for i, (label, m) in enumerate(zip(self.spec_labels, self.spec_majors)):
                 if m == "major":
                     slist.append("ticklabel {:d} \"{:s}\"".format(i, label))
         return slist
 
 class Tick(_Tick):
-    """User interface of tick"""
+    """User interface of axis tick"""
     def __init__(self, major=None, mjc=None, mjs=None, mjlw=None, mjls=None, mjg=None,
-                 minor=None, mic=None, mis=None, mit=None,
+                 mic=None, mis=None, mit=None,
                  milw=None, mils=None, mig=None, **kwargs):
         _raise_unknown_attr(self, *kwargs)
         _Tick.__init__(self, major=major, major_color=Color.get(mjc), major_size=mjs,
                        major_grid_switch=Switch.get(mjg), major_linewidth=mjlw,
                        major_linestyle=LineStyle.get(mjls),
-                       minor=minor, minor_color=Color.get(mic), minor_size=mis, minor_ticks=mit,
+                       minor_color=Color.get(mic), minor_size=mis, minor_ticks=mit,
                        minor_grid_switch=Switch.get(mig), minor_linewidth=milw,
                        minor_linestyle=LineStyle.get(mils))
 
     def set(self, major=None, mjc=None, mjs=None, mjlw=None, mjls=None, mjg=None,
-            minor=None, mic=None, mis=None, mit=None, milw=None, mils=None,
+            mic=None, mis=None, mit=None, milw=None, mils=None,
             mig=None, **kwargs):
+        """setup axis ticks
+        Args:
+            major (float) : distance between major ticks
+            mjc, mic (str or int) : color of major and minor ticks
+            mjs, mis (str or int) : tick style of major and minor ticks
+        """
         _raise_unknown_attr(self, *kwargs)
         self._set(major=major, major_color=Color.get(mjc), major_size=mjs,
                   major_grid_switch=Switch.get(mjg), major_linewidth=mjlw,
                   major_linestyle=LineStyle.get(mjls),
-                  minor=minor, minor_color=Color.get(mic), minor_size=mis, minor_ticks=mit,
+                  minor_color=Color.get(mic), minor_size=mis, minor_ticks=mit,
                   minor_grid_switch=Switch.get(mig), minor_linewidth=milw,
                   minor_linestyle=LineStyle.get(mils))
 
@@ -1167,11 +1172,11 @@ class Tick(_Tick):
                   major_grid_switch=Switch.get(grid),
                   major_linewidth=lw, major_linestyle=LineStyle.get(ls))
 
-    def set_minor(self, minor=None, color=None,
+    def set_minor(self, color=None,
                   size=None, ticks=None, grid=None,
                   lw=None, ls=None, **kwargs):
         _raise_unknown_attr(self, *kwargs)
-        self._set(minor=minor, minor_color=Color.get(color), minor_size=size,
+        self._set(minor_color=Color.get(color), minor_size=size,
                   minor_ticks=ticks, minor_grid_switch=Switch.get(grid),
                   minor_linewidth=lw, minor_linestyle=LineStyle.get(ls))
 
@@ -1180,7 +1185,7 @@ class Tick(_Tick):
         self._set(place_rounded=rounded, place_position=Position.get(place))
 
     def set_spec(self, locs, labels=None, use_minor=None):
-        """set custom ticks on axis.
+        """set custom specific ticks on axis.
 
         Note that locs should have same length as labels
 
@@ -1191,17 +1196,22 @@ class Tick(_Tick):
         """
         if not isinstance(locs, Iterable):
             raise TypeError("locs should be Iterable, but got ", type(locs))
+        # return immediately with empty tick locations
+        if not locs:
+            return
         self.__setattr__("spec_type", "ticks")
-        self.spec_ticks = locs
+        spec_ticks = locs
         if labels:
             if len(labels) != len(locs):
                 raise ValueError("labels should have the same length as locs")
             self.__setattr__("spec_type", "both")
-            self.spec_labels = labels
-        self.spec_major = ["major" for _ in self.spec_labels]
+        spec_major = ["major" for _ in labels]
         if use_minor:
             for i in use_minor:
-                self.spec_major[i] = "minor"
+                spec_major[i] = "minor"
+        self.spec_ticks.extend(spec_ticks)
+        self.spec_majors.extend(spec_major)
+        self.spec_labels.extend(str(l) for l in labels)
 
 
 class _Bar(_BaseOutput):
@@ -1211,7 +1221,7 @@ class _Bar(_BaseOutput):
         'bar_switch': (bool, Switch.ON, '{:s}'),
         'color': (int, Color.BLACK, '{:d}'),
         'linestyle': (int, LineStyle.SOLID, '{:d}'),
-        'linewidth': (float, 2., '{:3.1f}'),
+        'linewidth': (float, 1.5, '{:3.1f}'),
         }
 
 class Bar(_Bar):
@@ -1301,8 +1311,9 @@ class TickLabel(_TickLabel):
     """user interface of label of axis tick
 
     Args:
-        switch (bool)
+        switch (bool) : switch of tick label
         tlf (str) : ticklabel format
+        formular (str)
     """
     def __init__(self, switch=None, tlf=None, formula=None, append=None, prepend=None, prec=None,
                  angle=None, font=None, color=None, skip=None, stagger=None,
@@ -1341,9 +1352,9 @@ class _Errorbar(_BaseOutput):
         'color': (int, Color.BLACK, '{:d}'),
         'pattern': (int, 1, '{:d}'),
         'size': (float, 1.0, '{:8f}'),
-        'linewidth': (float, 1.0, '{:3.1f}'),
+        'linewidth': (float, 1.5, '{:3.1f}'),
         'linestyle': (int, LineStyle.SOLID, '{:d}'),
-        'riser_linewidth': (float, 1.0, '{:3.1f}'),
+        'riser_linewidth': (float, 1.5, '{:3.1f}'),
         'riser_linestyle': (int, LineStyle.SOLID, '{:d}'),
         'riser_clip_switch': (bool, Switch.OFF, '{:s}'),
         'riser_clip_length': (float, 0.1, '{:8f}'),
@@ -1423,7 +1434,7 @@ class Axis(_Axis):
         _Axis.__init__(self, axis, axis_switch=Switch.get(switch), type=at, offset=offset)
         self._bar = Bar(switch=bar, color=bc, ls=bls, lw=blw)
         self._tick = Tick(major=major, mjc=mjc, mjs=mjs, mjlw=mjlw, mjls=mjls, mjg=mjg,
-                          minor=minor, mic=mic, mis=mis, mit=mit, milw=milw, mils=mils, mig=mig)
+                          mic=mic, mis=mis, mit=mit, milw=milw, mils=mils, mig=mig)
         self._label = Label(label=label, layout=layout, position=position, charsize=lsize,
                             font=lfont, color=lc, place=lplace)
         self._ticklabel = TickLabel(switch=ticklabel, tlf=tlf, formula=formula, append=append,

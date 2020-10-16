@@ -10,14 +10,14 @@ function raise_noexec () {
   # check if the parsed path/command exists and is executable
   # $1: command or path
   executable=$1
-  e=$(which "$executable")
-  if (( $? == 0 )); then
+  if which "$executable" &> /dev/null; then
     return 0
   fi
   if [[ -x "$executable" ]]; then
     return 0
   fi
-  echo "Valid executable $executable not found"; exit 1
+  echo "Valid executable $executable not found"
+  exit 1
 }
 
 function raise_isdir () {
@@ -57,5 +57,23 @@ function raise_missing_prereq (){
       echo "Missing required file \"$f\""
       exit 1
     fi
+  done
+}
+
+function match_directory () {
+  echo "$@"
+}
+
+function split_str () {
+  local -n arr=$1
+  if [[ $# == 3 ]]; then
+    delim=$3
+  else
+    delim=" "
+  fi
+  s="$2$delim"
+  while [[ $s ]]; do
+      arr+=("${s%%"$delim"*}")
+      s=${s#*"$delim"}
   done
 }
