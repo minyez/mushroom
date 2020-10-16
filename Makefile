@@ -28,7 +28,7 @@ commit: pytest
 	git commit -F $(MESSAGE_FILE)
 	rm -f $(MESSAGE_FILE); touch $(MESSAGE_FILE)
 
-amend:
+amend: pytest
 	git commit --amend
 
 dist: $(DIST_TARBALL)
