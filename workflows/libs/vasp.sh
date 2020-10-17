@@ -25,7 +25,7 @@ function backup_results () {
 function clean () {
   # clean all result and temporary files. back up those you need before you do
   rm -f IBZKPT XDATCAR CONTCAR PROCAR OUTCAR OSZICAR vasprun.xml \
-    REPORT ELFCAR LOCPOT PCDAT DOCAR EIGENVAL CHG W*.tmp
+    REPORT ELFCAR LOCPOT PCDAT DOSAR EIGENVAL CHG W*.tmp
 }
 
 function cleanall () {
@@ -65,6 +65,15 @@ function outcar_vb () {
     fn=$1
   fi
   awk '/NELECT/ {printf("%d", $3/2.0)}' "$fn"
+}
+
+function outcar_totene () {
+  case $# in
+    0 ) outcar="OUTCAR"; iostep=1;;
+    1 ) outcar="$1"; iostep=1;;
+    * ) outcar="$1"; iostep=$2;;
+  esac
+  grep -m "$iostep" 'energy  without' "$outcar" | tail -1 | awk '{print $7}' 
 }
 
 function outcar_nbands () {

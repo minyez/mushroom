@@ -10,14 +10,12 @@ from mushroom._core.logger import create_logger
 from mushroom._core.unit import EnergyUnit
 from mushroom._core.ioutils import get_str_indices_by_iden
 
-# from mykit.core.visualizer import _BandVisualizer
-
 # eigen, occ (array): shape (nspins, nkpt, nbands)
 DIM_EIGEN_OCC = 3
 """int. Required dimension of eigenvalues and occupation numbers
 """
 
-KEYS_BAND_PROJ = ("atoms", "projs", "pwave")
+KEYS_BAND_PROJ = ("atms", "prjs", "pwav")
 """tuple. Required keys for wave projection input
 """
 
@@ -46,40 +44,53 @@ class BandStructure(EnergyUnit):
 
     Optional keyword arguments, if parsed, should have consistent
     shape with the required arguments.
-    They will be ignored if their shapes are inconsistent.
+    Exception will be raised if their shapes are inconsistent.
 
     Args:
         eigen (array-like) : the energy (eigenvalues) of all bands to be considered
         occ (array-like) : the occupation numbers of all bands
-        weight (array-like) : the weights of each kpoint, 1-d array,
-            either int or float.
 
     Optional args:
-        unit ('ev','ry','au'): the unit of the eigenvalues, in lower case. 
-        kvec (array-like): kpoints vectors in reciprocal space (N.B. not the coordinate)
+        weight (array-like) : the weights of each kpoint, 1-d array,
+            either int or float. default to 1.0
+        unit ('ev','ry','au'): the unit of the eigenvalues
         efermi (float): the Fermi level. 
             If not parsed, the valence band maximum will be used.
-        projected (dict) : wave projection information. 
-            It should have three keys, "atoms", "projs" and "pwave"
+        keyword argument: wave projection information projection 
+            It should have three keys, "atms", "prjs" and "pwav"
 
     Attributes:
     """
     _dtype = "float64"
 
-    def __init__(self, eigen, occ, weight=None, unit='ev', efermi=None, projected=None):
-        self._nspins, self._nkpts, self._nbands = \
-            _check_eigen_occ_weight_consistency(eigen, occ, weight)
-        if self._nspins is None:
-            info = "Bad eigen, occ and weight shapes: {}, {}, {}".format(
-                *map(np.shape, (eigen, occ, weight)))
-            raise BandStructureError(info)
+    def __init__(self, eigen, occ, weight=None, unit='ev', efermi=None,
+                 pwav=None, atms=None, prjs=None):
+        shape_e = np.shape(eigen)
+        shape_o = np.shape(occ)
+        consist = [len(shape_e) == DIM_EIGEN_OCC,
+                   shape_e == shape_o, shape_e[0] <= 2]
+        if not all(consist):
+            info = "Bad eigen and occ shapes: {}, {}".format(
+                *map(np.shape, (eigen, occ)))
+            _logger.error(info)
+            raise BandStructureError
+        self._nspins, self._nkpts, self._nbands = shape_e
+        # if weight is manually parsed
+        if weight is not None:
+            shape_w = np.shape(weight)
+            consist = [len(shape_w) == 1, shape_w[0] == shape_e[1]]
+            if not all(consist):
+                _logger.error("invalid weight shape")
+                raise BandStructureError
+        else:
+            weight = np.ones(self._nkpts)
+
         try:
             self._eigen = np.array(eigen, dtype=self._dtype)
             self._occ = np.array(occ, dtype=self._dtype)
-            if weight is None:
-                weight = np.zeros(self._nkpts)
             self._weight = np.array(weight, dtype=self._dtype)
         except TypeError:
+            _logger.error("failt to convert eigen/occ/weight to ndarray")
             raise BandStructureError
 
         EnergyUnit.__init__(self, eunit=unit)
@@ -90,20 +101,24 @@ class BandStructure(EnergyUnit):
         # In this case, reassign with unit weight
         if np.isclose(np.sum(self._weight), 0.0):
             self._weight[:] = 1.0
-        self._nelect_sp = np.dot(
-            self._nelect_sp_kp, self._weight) / np.sum(self._weight)
+        self._nelect_sp = np.dot(self._nelect_sp_kp, self._weight) / np.sum(self._weight)
         self._nelect = np.sum(self._nelect_sp)
 
         self._has_infty_cbm = False
-        self._compute_vbm_cbm()
         if efermi is not None:
             assert isinstance(efermi, Real)
             self._efermi = efermi
         else:
+            self.compute_band_edges()
             self._efermi = self.vbm
 
-        self._has_proj = False
-        self._parse_proj(projected)
+        self._pwav = None
+        self._atms = None
+        self._prjs = None
+        self._natms = 0
+        self._nprjs = 0
+        if pwav is not None:
+            self.parse_proj(pwav=pwav, atms=atms, prjs=prjs)
 
     def get_band_indices(self, *bands):
         '''Filter the band indices in ``bands``. 
@@ -132,23 +147,23 @@ class BandStructure(EnergyUnit):
             b = list(range(self._nbands))
         return b
 
-    def _convert_band_str(self, s):
+    def _convert_band_str(self, band_str):
         """convert a string of band identifier, like "vbm", "cbm-2", "vbm+3"
         to the correpsonding band index.
 
         Args:
-            bandStr (str)
+            band_str (str)
 
         Returns:
             int
         """
-        assert isinstance(s, str)
-        if BAND_STR_PATTERN.match(s):
-            ref = {"v": self.ivbm[-1], "c": self.icbm[-1]}[s[0]]
-            if len(s) == 3:
+        assert isinstance(band_str, str)
+        if BAND_STR_PATTERN.match(band_str):
+            ref = {"v": self.ivbm[-1], "c": self.icbm[-1]}[band_str[0]]
+            if len(band_str) == 3:
                 return ref
-            n = int(re.split(r"[-+]", s)[-1])
-            if s[3] == '-':
+            n = int(re.split(r"[-+]", band_str)[-1])
+            if band_str[3] == '-':
                 ib = ref - n
             else:
                 ib = ref + n
@@ -165,15 +180,15 @@ class BandStructure(EnergyUnit):
     @unit.setter
     def unit(self, newu):
         coef = self._get_eunit_conversion(newu)
-        toConv = [self._eigen, self._bandWidth,
-                  self._vbm_sp, self._vbm_sp_kp,
-                  self._cbm_sp, self._cbm_sp_kp,
+        to_conv = [self._eigen,
+                   self._vbm_sp, self._vbm_sp_kp,
+                   self._cbm_sp, self._cbm_sp_kp,
                   ]
         if coef != 1:
             self._efermi *= coef
             self._vbm *= coef
             self._cbm *= coef
-            for item in toConv:
+            for item in to_conv:
                 item *= coef
             self._eunit = newu.lower()
 
@@ -217,74 +232,80 @@ class BandStructure(EnergyUnit):
         '''Int. number of bands'''
         return self._nbands
 
-    def _parse_proj(self, projected):
+    def parse_proj(self, pwav=None, atms=None, prjs=None):
         """Parse the partial wave information
         """
-        if not projected is None:
-            try:
-                self._atms, self._projs, pwave = \
-                    self._check_project_consistency(projected)
-                self._pwave = np.array(pwave, dtype=self._dtype)
-                self._has_proj = True
-            except ValueError:
-                _logger.warning("Bad projection input. Skip.")
+        if pwav is None:
+            _logger.warning("no partial wave info parsed. skip")
+            return
+        try:
+            shape = np.shape(pwav)
+            if shape[:3] != (self._nspins, self._nkpts, self._nbands) or len(shape) != 5:
+                raise BandStructureError("invalid shape of pwav")
+
+            self._atms = atms
+            self._prjs = prjs
+            if self._atms:
+                self._natms = len(self._atms)
+            if self._prjs:
+                self._nprjs = len(self._prjs)
+            natms, nprjs = shape[3:]
+            if natms:
+                if natms != self._natms:
+                    raise ValueError
+                self._nprjs = nprjs
+            if nprjs:
+                if nprjs != self._nprjs:
+                    raise ValueError
+                self._natms = natms
+            self._pwav = np.array(pwav, dtype=self._dtype)
+        except (ValueError, KeyError) as err:
+            raise BandStructureError("inconsistent atms and prjs length")
 
     @property
     def has_proj(self):
-        '''Bool'''
-        return self._has_proj
+        """Bool"""
+        return self._pwav is not None
 
     @property
     def atms(self):
-        '''list of strings, types of each atom. 
-
-        Returns:
-            list of str, atomic symbols
-            None if no projection information was parsed
-        '''
-        if self._has_proj:
-            return self._atms
-        return None
-
+        """list of strings, types of each atom. None for no atoms info"""
+        return self._atms
+    @atms.setter
+    def atms(self, new):
+        if len(new) != self._natms:
+            raise ValueError("Inconsistent atms input. Should be {:d}-long".format(self._natms))
+        self._atms = new
     @property
-    def natoms(self):
+    def natms(self):
         """number of atoms"""
-        try:
-            return len(self.atms)
-        except TypeError:
-            return 0
+        return self._natms
 
     @property
-    def projs(self):
-        '''list of strings, names of atomic projectors
-
-        None if no projection information was parsed
-        '''
-        if self.has_proj:
-            return self._projs
-        return None
-
+    def prjs(self):
+        """list of strings, names of atomic projectors. None for no projectors info"""
+        return self._prjs
+    @prjs.setter
+    def prjs(self, new):
+        if len(new) != self._nprjs:
+            raise ValueError("Inconsistent prjs input. Should be {:d}-long".format(self._nprjs))
+        self._prjs = new
     @property
-    def nprojs(self):
+    def nprjs(self):
         """number of projectors"""
-        try:
-            return len(self.projs)
-        except TypeError:
-            return 0
+        return self._nprjs
 
     @property
-    def pwave(self):
-        '''Array, partial waves for each projector on each atom.
+    def pwav(self):
+        """Array, partial waves for each projector on each atom.
 
-        shape (nspins, nkpts, nbands, natoms, nprojs)
+        shape (nspins, nkpts, nbands, natms, nprjs)
 
         None if no projection information was parsed.
-        '''
-        if self.has_proj:
-            return self._pwave
-        return None
+        """
+        return self._pwav
 
-    def _compute_vbm_cbm(self):
+    def compute_band_edges(self, reload=False):
         '''compute the band edges on each spin-kpt channel
 
         Note:
@@ -293,8 +314,18 @@ class BandStructure(EnergyUnit):
             be set to ``np.infty``. 
             Setup of indices of CB remains, thus IndexError might be raised when trying
             get CB value from `icbm` attributes
+
+        Args:
+            reload (bool) : redo the calculation of band edges
         '''
         is_occ = self._occ > THRES_OCC
+        try:
+            self.__getattribute__("_vbm")
+        except AttributeError:
+            pass
+        else:
+            if not reload:
+                return
 
         self._ivbm_sp_kp = np.sum(is_occ, axis=2) - 1
         # when any two indices of ivbm differ, the system is metal
@@ -353,13 +384,27 @@ class BandStructure(EnergyUnit):
         self._icbm[1:3] = self._icbm_sp[self._icbm[0], :]
         self._cbm = self._cbm_sp[self._icbm[0]]
 
-    @property
+    def __lazy_bandedge_return(self, attr):
+        """lazy return of attribute related to band edges
+
+        Args:
+            attr (str): name of attribute
+        """
+        try:
+            self.__getattribute__(attr)
+        except AttributeError:
+            self.compute_band_edges()
+        try:
+            return self.__getattribute__(attr)
+        except AttributeError as err:
+            raise err
+
     def is_metal(self):
         '''bool.
 
         True if the bandstructure belongs to a metal, False otherwise
         '''
-        return self._is_metal
+        return self.__lazy_bandedge_return("_is_metal")
 
     @property
     def ivbm_sp_kp(self):
@@ -367,7 +412,7 @@ class BandStructure(EnergyUnit):
 
         int, shape (nspins, nkpts)
         '''
-        return self._ivbm_sp_kp
+        return self.__lazy_bandedge_return("_ivbm_sp_kp")
 
     @property
     def icbm_sp_kp(self):
@@ -375,7 +420,7 @@ class BandStructure(EnergyUnit):
 
         int, shape (nspins, nkpts)
         '''
-        return self._icbm_sp_kp
+        return self.__lazy_bandedge_return("_icbm_sp_kp")
 
     @property
     def ivbm_sp(self):
@@ -383,7 +428,7 @@ class BandStructure(EnergyUnit):
 
         int, shape (nspins, 2), ikpt, iband
         '''
-        return self._ivbm_sp
+        return self.__lazy_bandedge_return("_ivbm_sp")
 
     @property
     def icbm_sp(self):
@@ -391,7 +436,7 @@ class BandStructure(EnergyUnit):
 
         int, shape (nspins, 2), ikpt, iband
         '''
-        return self._icbm_sp
+        return self.__lazy_bandedge_return("_icbm_sp")
 
     @property
     def ivbm(self):
@@ -399,7 +444,7 @@ class BandStructure(EnergyUnit):
 
         int, shape (3,), ispin, ikpt, iband
         '''
-        return self._ivbm
+        return self.__lazy_bandedge_return("_ivbm")
 
     @property
     def icbm(self):
@@ -407,7 +452,7 @@ class BandStructure(EnergyUnit):
 
         int, shape (3,), ispin, ikpt, iband
         '''
-        return self._icbm
+        return self.__lazy_bandedge_return("_icbm")
 
     @property
     def vbm_sp_kp(self):
@@ -415,7 +460,7 @@ class BandStructure(EnergyUnit):
 
         float, shape (nspins, nkpts)
         '''
-        return self._vbm_sp_kp
+        return self.__lazy_bandedge_return("_vbm_sp_kp")
 
     @property
     def cbm_sp_kp(self):
@@ -423,7 +468,7 @@ class BandStructure(EnergyUnit):
 
         float, shape (nspins, nkpts)
         '''
-        return self._cbm_sp_kp
+        return self.__lazy_bandedge_return("_cbm_sp_kp")
 
     @property
     def vbm_sp(self):
@@ -431,7 +476,7 @@ class BandStructure(EnergyUnit):
 
         float, shape (nspins,)
         '''
-        return self._vbm_sp
+        return self.__lazy_bandedge_return("_vbm_sp")
 
     @property
     def cbm_sp(self):
@@ -439,7 +484,7 @@ class BandStructure(EnergyUnit):
 
         float, shape (nspins,)
         """
-        return self._cbm_sp
+        return self.__lazy_bandedge_return("_cbm_sp")
 
     @property
     def vbm(self):
@@ -447,7 +492,7 @@ class BandStructure(EnergyUnit):
 
         float
         """
-        return self._vbm
+        return self.__lazy_bandedge_return("_vbm")
 
     @property
     def cbm(self):
@@ -455,25 +500,23 @@ class BandStructure(EnergyUnit):
 
         float
         '''
-        return self._cbm
+        return self.__lazy_bandedge_return("_cbm")
 
     @property
-    def bandWidth(self):
+    def band_width(self):
         '''the lower and upper bound of a band
 
         float, shape (nspins, nbands, 2)
         '''
-        return self._bandWidth
+        return self.__lazy_bandedge_return("_band_width")
 
-    @property
     def direct_gap(self):
         '''Direct gap between VBM and CBM of each spin-kpt channel
 
         float, shape (nspins, nkpts)
         '''
-        return self._cbm_sp_kp - self._vbm_sp_kp
+        return self.cbm_sp_kp - self.vbm_sp_kp
 
-    @property
     def fund_gap(self):
         '''Fundamental gap for each spin channel.
 
@@ -481,56 +524,27 @@ class BandStructure(EnergyUnit):
         If it is metal, it is equivalent to the negative value of bandwidth
         of the unfilled band.
         '''
-        return self._cbm_sp - self._vbm_sp
+        return self.cbm_sp - self.vbm_sp
 
-    @property
     def fund_trans(self):
         '''Transition responsible for the fundamental gap
 
         int, shape (nspins, 2)
         '''
-        vb = np.argmax(self._vbm_sp_kp, axis=1)
-        cb = np.argmin(self._vbm_sp_kp, axis=1)
+        vb = np.argmax(self.vbm_sp_kp, axis=1)
+        cb = np.argmin(self.vbm_sp_kp, axis=1)
         return tuple(zip(vb, cb))
 
-    @property
     def kavg_gap(self):
         '''direct band gap averaged over kpoints
 
         float, shape (nspins,)
         '''
-        return np.dot(self.direct_gap, self._weight) / np.sum(self._weight)
-
-    def _check_project_consistency(self, projected):
-        try:
-            assert isinstance(projected, dict)
-        except AssertionError:
-            return (None, None, None)
-        try:
-            for key in KEYS_BAND_PROJ:
-                assert key in projected
-        except AssertionError:
-            return (None, None, None)
-        # print(projected)
-        atoms = projected["atoms"]
-        projs = projected["projs"]
-        pwave = projected["pwave"]
-        try:
-            natoms = len(atoms)
-            nprojs = len(projs)
-            _logger.info("Shapes: %r %r", np.shape(pwave),
-                              (self._nspins, self._nkpts,
-                               self._nbands, natoms, nprojs),
-                             )
-            assert np.shape(pwave) == \
-                (self._nspins, self._nkpts, self._nbands, natoms, nprojs)
-        except (AssertionError, TypeError):
-            return (None, None, None)
-        return atoms, projs, pwave
+        return np.dot(self.direct_gap(), self._weight) / np.sum(self._weight)
 
     # * Projection related functions
-    def effective_gap(self, ivb=None, atom_vbm=None, proj_vbm=None,
-                      icb=None, atom_cbm=None, proj_cbm=None):
+    def effective_gap(self, ivb=None, atm_vbm=None, prj_vbm=None,
+                      icb=None, atm_cbm=None, prj_cbm=None):
         '''Compute the effective band gap between ``ivb`` and ``icb``, 
         the responsible transition of which associates projector `proj_vbm` on `atom_vbm` in VB
         and `proj_cbm` on atom `atom_cbm` in CB.
@@ -541,16 +555,16 @@ class BandStructure(EnergyUnit):
         Args:
             ivb (int): index of the lower band. Use VBM if not specified or is invalid index.
             icb (int): index of the upper band. Use CBM if not specified or is invalid index.
-            atom_vbm (int, str, Iterable): atom where the VB projector is located
-            atom_cbm (int, str, Iterable): atom where the CB projector is located
-            proj_vbm (int, str, Iterable): index of VB projector
-            proj_cbm (int, str, Iterable): index of CB projector
+            atm_vbm (int, str, Iterable): atom where the VB projector is located
+            atm_cbm (int, str, Iterable): atom where the CB projector is located
+            prj_vbm (int, str, Iterable): index of VB projector
+            prj_cbm (int, str, Iterable): index of CB projector
 
         Note:
             Spin-polarization is not considered in retriving projection coefficients.
         '''
-        vb_coefs = self.sum_atom_proj_comp(atom_vbm, proj_vbm, fail_one=True)
-        cb_coefs = self.sum_atom_proj_comp(atom_cbm, proj_cbm, fail_one=True)
+        vb_coefs = self.sum_atm_prj_comp(atm_vbm, prj_vbm, fail_one=True)
+        cb_coefs = self.sum_atm_prj_comp(atm_cbm, prj_cbm, fail_one=True)
         if ivb is None or not ivb in range(self.nbands):
             vb_coef = vb_coefs[:, :, np.max(self.ivbm)]
         else:
@@ -560,12 +574,12 @@ class BandStructure(EnergyUnit):
         else:
             cb_coef = cb_coefs[:, :, icb]
         # ! abs is added in case ivb and icb are put in the opposite
-        inv = np.sum(np.abs(np.reciprocal(self.direct_gap) * vb_coef * cb_coef))
+        inv = np.sum(np.abs(np.reciprocal(self.direct_gap()) * vb_coef * cb_coef))
         if np.allclose(inv, 0.0):
             return np.infty
         return 1.0/inv
 
-    def sum_atom_proj_comp(self, atom=None, proj=None, fail_one=True):
+    def sum_atm_prj_comp(self, atm=None, prj=None, fail_one=True):
         """Sum the partial wave for projectors `proj` on atoms `atom`
 
         Args:
@@ -583,28 +597,28 @@ class BandStructure(EnergyUnit):
                 return func[fail_one]((self.nspins, self.nkpts, self.nbands))
             except KeyError:
                 raise TypeError("fail_one should be bool type.")
-        if atom is None:
-            at_ids = list(range(self.natoms))
+        if atm is None:
+            at_ids = list(range(self.natms))
         else:
-            at_ids = self._get_atom_indices(atom)
-        if proj is None:
-            pr_ids = list(range(self.nprojs))
+            at_ids = self._get_atom_indices(atm)
+        if prj is None:
+            pr_ids = list(range(self.nprjs))
         else:
-            pr_ids = self._get_proj_indices(proj)
+            pr_ids = self._get_proj_indices(prj)
         coeff = np.zeros((self.nspins, self.nkpts, self.nbands))
         for a in at_ids:
             for p in pr_ids:
-                coeff += self.pwave[:, :, :, a, p]
+                coeff += self.pwav[:, :, :, a, p]
         return coeff
 
-    def _get_atom_indices(self, atom):
+    def _get_atom_indices(self, atm):
         if self.has_proj:
-            return get_str_indices_by_iden(self._atms, atom)
+            return get_str_indices_by_iden(self._atms, atm)
         return []
 
-    def _get_proj_indices(self, proj):
+    def _get_proj_indices(self, prj):
         if self.has_proj:
-            return get_str_indices_by_iden(self._projs, proj)
+            return get_str_indices_by_iden(self._projs, prj)
         return []
 
     #def get_dos(self, emin=None, emax=None, nedos=3000, smearing="Gaussian", sigma=0.05):
@@ -665,32 +679,12 @@ class BandStructure(EnergyUnit):
     #            p = np.tile(d, (self.natoms, self.nprojs, 1, 1, 1))
     #            for _j in range(2):
     #                p = np.moveaxis(p, 0, -1)
-    #            pDos[i, :, :, :] += np.sum(p * self._pwave, axis=(1, 2))
+    #            pDos[i, :, :, :] += np.sum(p * self._pwav, axis=(1, 2))
     #    return Dos(egrid, totalDos, self._efermi, unit=self.unit, projected=projected)
 
 
-def _check_eigen_occ_weight_consistency(eigen, occ, weight=None):
-    """Check if eigenvalues, occupation number and kweights data have the correct shape
-
-    Returns:
-        tuple, the shape of eigen/occ when the shapes of input are consistent,
-            empty tuple otherwise.
-    """
-    shapee = np.shape(eigen)
-    shapeo = np.shape(occ)
-    consist = [len(shapee) == DIM_EIGEN_OCC,
-               shapee == shapeo,]
-    # if weight is manually parsed
-    if weight is not None:
-        shapew = np.shape(weight)
-        consist.extend([len(shapew) == 1,
-                        shapew[0] == shapee[1]])
-    if all(consist):
-        return shapee
-    return (None,) * DIM_EIGEN_OCC
-
-
-def random_band_structure(nspins=1, nkpts=1, nbands=2, natoms=1, nprojs=1,
+# pylint: disable=R0914
+def random_band_structure(nspins=1, nkpts=1, nbands=2, natms=1, nprjs=1,
                           has_proj=False, is_metal=False):
     """Return a BandStructure object with fake band energies, occupations and
     projections
@@ -708,17 +702,17 @@ def random_band_structure(nspins=1, nkpts=1, nbands=2, natoms=1, nprojs=1,
         is_metal (bool): if set True, a band structure of metal is generated, 
         otherwise that of semiconductor
     """
-    atom_types = ["C", "Si", "Na", "Cl", "P"]
-    proj_names = ["s", "px", "py", "pz", "dyz", "dzx", "dxy", "dx2-y2", "dz2"]
+    atm_types = ["C", "Si", "Na", "Cl", "P"]
+    prj_names = ["s", "px", "py", "pz", "dyz", "dzx", "dxy", "dx2-y2", "dz2"]
     if nkpts < 1:
         nkpts = 1
     # at least one empty band
     if nbands < 2:
         nbands = 2
-    if natoms < 1:
-        natoms = 6
-    if nprojs < 1:
-        nprojs = 1
+    if natms < 1:
+        natms = 6
+    if nprjs < 1:
+        nprjs = 1
 
     shape = (nspins, nkpts, nbands)
     eigen = np.random.random_sample(shape)
@@ -736,21 +730,19 @@ def random_band_structure(nspins=1, nkpts=1, nbands=2, natoms=1, nprojs=1,
         occ[:, :, ivb] = np.exp(efermi - eigen[:, :, ivb])
         # normalize to 1
         occ[:, :, ivb] /= np.max(occ[:, :, ivb])
-    projected = None
+
+    pwav = None
+    atms = None
+    prjs = None
     if has_proj:
-        atoms = list(np.random.choice(atom_types, natoms))
-        projs = proj_names[:nprojs]
-        pwave = np.random.random_sample((*shape, natoms, nprojs))
+        atms = list(np.random.choice(atm_types, natms))
+        prjs = prj_names[:nprjs]
+        pwav = np.random.random_sample((*shape, natms, nprjs))
         # normalize
         for ispin in range(nspins):
             for ik in range(nkpts):
                 for ib in range(nbands):
-                    pwave[ispin, ik, ib, :,
-                          :] /= np.sum(pwave[ispin, ik, ib, :, :])
-                    projected = {
-                        "atoms": atoms,
-                        "projs": projs,
-                        "pwave": pwave,
-                        }
-    return BandStructure(eigen, occ, weight=weight, efermi=efermi, projected=projected)
+                    pwav[ispin, ik, ib, :, :] /= np.sum(pwav[ispin, ik, ib, :, :])
+    return BandStructure(eigen, occ, weight=weight, efermi=efermi,
+                         pwav=pwav, atms=atms, prjs=prjs)
 

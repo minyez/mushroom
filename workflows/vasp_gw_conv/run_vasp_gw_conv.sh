@@ -13,8 +13,7 @@ module load "${modules[@]}"
 # ===== functions =====
 function gw_calc () {
   run_gw_3steps "$vaspcmd"
-  etime=$(wall_time "OUTCAR")
-  echo "$etime"
+  wall_time "OUTCAR.gw"
   rm -f ./*.tmp ./WAVE*
 }
 
@@ -57,17 +56,22 @@ function run_vasp_gw_conv_calc () {
           continue
         fi
         mkdir -p "$workdir"
-        sed "s/_encut_/$encut/g" INCAR.scf  > "$workdir"/INCAR.scf
-        sed "s/_encut_/$encut/g;s/_nbands_/$nbands/g" INCAR.diag  > "$workdir"/INCAR.diag
-        sed "s/_encut_/$encut/g;s/_nbands_/$nbands/g;s/_encutgw_/$encutgw/g" INCAR.gw  > "$workdir"/INCAR.gw
+
+        sed "s/_encut_/$encut/g" INCAR.scf \
+          > "$workdir"/INCAR.scf
+        sed "s/_encut_/$encut/g;s/_nbands_/$nbands/g" INCAR.diag \
+          > "$workdir"/INCAR.diag
+        sed "s/_encut_/$encut/g;s/_nbands_/$nbands/g;s/_encutgw_/$encutgw/g" INCAR.gw \
+          > "$workdir"/INCAR.gw
+
         cd "$workdir" || exit 1
         ln -s ../POSCAR POSCAR
         ln -s ../POTCAR POTCAR
         cp ../KPOINTS.scf KPOINTS.scf
         cp ../KPOINTS.gw KPOINTS.gw
         if (( dry != 1 )); then
-          results=$(gw_calc 0)
-          echo "$encut $encutgw $nbands $results" >> ../results.txt
+          wt=$(gw_calc 0)
+          echo "ENCUT=$encut ENCUTGW=$encutgw NBANDS=$nbands computed, wall time = $wt"
         fi
         cd ..
       done
@@ -80,12 +84,12 @@ function run_vasp_gw_conv_clean () {
 }
 
 function run_vasp_gw_conv_data () {
-  if (( $# == 1 )); then
-    cwd="$1"
-  else
-    cwd="./"
-  fi
-  ik=1
+  case $# in
+    0 ) cwd="./"; ik=1 ;;
+    1 ) cwd="$1"; ik=1 ;;
+    * ) cwd="$1"; ik="$2" ;;
+  esac
+
   printf "%6s%8s%7s%12s%12s%12s%12s%12s\n" \
     "#ENCUT" "ENCUTGW" "NBANDS" "EgGW" "QPC_VB" "QPC_CB" "UQPC_VB" "UQPC_CB"
   for d in "$cwd"/encut_*_encutgw_*_nbands_*; do

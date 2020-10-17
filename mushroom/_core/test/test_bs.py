@@ -2,16 +2,15 @@
 # coding = utf-8
 import json
 import os
-import re
+#import re
 import unittest as ut
 
 import numpy as np
 
 from mushroom._core.bs import BandStructure as BS
 from mushroom._core.bs import BandStructureError as BSE
-from mushroom._core.bs import (_check_eigen_occ_weight_consistency,
-                               random_band_structure)
-from mushroom._core.constants import EV2HA, EV2RY
+from mushroom._core.bs import random_band_structure
+from mushroom._core.constants import EV2RY
 from mushroom._core.ioutils import get_matched_files
 
 # pylint: disable=bad-whitespace
@@ -36,29 +35,16 @@ efermi = 1.0
 nspins, nkpts, nbands = np.shape(goodEigen)
 
 
-class test_check_consistency(ut.TestCase):
-
-    def test_check_eigen_occ(self):
-        self.assertTupleEqual(_check_eigen_occ_weight_consistency(goodEigen, goodOcc, goodWeight),
-                              (nspins, nkpts, nbands))
-        self.assertTupleEqual(_check_eigen_occ_weight_consistency(badEigen, badOcc, goodWeight),
-                              (None, None, None))
-        self.assertTupleEqual(_check_eigen_occ_weight_consistency(goodEigen, goodOcc, badWeight),
-                              (None, None, None))
-
-
 class test_BS_no_projection(ut.TestCase):
 
     def test_raise_inconsistent_eigen_occ(self):
-        self.assertRaisesRegex(BSE, r"Bad eigen, occ and weight shapes *",
-                               BS, badEigen, goodOcc, goodWeight)
-        self.assertRaisesRegex(BSE, r"Bad eigen, occ and weight shapes *",
-                               BS, goodEigen, badOcc, goodWeight)
-        self.assertRaisesRegex(BSE, r"Bad eigen, occ and weight shapes *",
-                               BS, goodEigen, goodOcc, badWeight)
+        self.assertRaises(BSE, BS, badEigen, goodOcc)
+        self.assertRaises(BSE, BS, goodEigen, badOcc)
+        self.assertRaises(BSE, BS, goodEigen, goodOcc, badWeight)
 
     def test_properties(self):
         bs = BS(goodEigen, goodOcc, goodWeight, efermi=efermi)
+        bs.compute_band_edges()
         self.assertTrue(np.allclose(goodEigen, bs.eigen))
         self.assertTrue(np.allclose(goodOcc, bs.occ))
         self.assertEqual(bs.nspins, nspins)
@@ -76,14 +62,14 @@ class test_BS_no_projection(ut.TestCase):
         self.assertTupleEqual((nspins, nkpts), np.shape(bs.cbm_sp_kp))
         self.assertTupleEqual((nspins,), np.shape(bs.cbm_sp))
         self.assertTupleEqual((), np.shape(bs.cbm))
-        self.assertTupleEqual((nspins, nkpts), np.shape(bs.direct_gap))
-        self.assertTupleEqual((nspins,), np.shape(bs.fund_gap))
-        self.assertTupleEqual((nspins, 2), np.shape(bs.fund_trans))
-        self.assertTupleEqual((nspins,), np.shape(bs.kavg_gap))
+        self.assertTupleEqual((nspins, nkpts), np.shape(bs.direct_gap()))
+        self.assertTupleEqual((nspins,), np.shape(bs.fund_gap()))
+        self.assertTupleEqual((nspins, 2), np.shape(bs.fund_trans()))
+        self.assertTupleEqual((nspins,), np.shape(bs.kavg_gap()))
         # empty properties when initialized without projections
         self.assertTrue(bs.atms is None)
-        self.assertTrue(bs.projs is None)
-        self.assertTrue(bs.pwave is None)
+        self.assertTrue(bs.prjs is None)
+        self.assertTrue(bs.pwav is None)
         self.assertFalse(bs.has_proj)
         # unit conversion
         self.assertTrue(np.array_equal(bs.eigen, goodEigen))
@@ -97,6 +83,7 @@ class test_BS_no_projection(ut.TestCase):
 
     def test_get_band_indices(self):
         bs = BS(goodEigen, goodOcc, goodWeight, efermi=efermi)
+        bs.compute_band_edges()
         self.assertListEqual([ivb, ], bs.get_band_indices('vbm'))
         self.assertListEqual(
             [ivb-1, ivb+1], bs.get_band_indices('vbm-1', 'cbm'))
@@ -123,9 +110,9 @@ class test_BS_projection(ut.TestCase):
             eigen = np.random.random(shape[:3])
             occ = np.random.choice([0.0, 1.0], shape[:3])
             weight = np.random.random(shape[1])
-            bs = BS(eigen, occ, weight, projected=j)
+            bs = BS(eigen, occ, weight, pwav=j["pwave"], atms=j["atoms"], prjs=j["projs"])
             self.assertListEqual(bs.atms, j["atoms"])
-            self.assertListEqual(bs.projs, j["projs"])
+            self.assertListEqual(bs.prjs, j["projs"])
             self.assertTrue(bs.has_proj)
             bs.effective_gap()
             #bs.get_dos()
@@ -149,8 +136,8 @@ class test_BS_randomize(ut.TestCase):
             self.assertEqual(bs.nspins, ns)
             self.assertEqual(bs.nkpts, nk)
             self.assertEqual(bs.nbands, nb)
-            self.assertFalse(bs.is_metal)
-            self.assertTrue(np.all(bs.fund_gap > 0))
+            self.assertFalse(bs.is_metal())
+            self.assertTrue(np.all(bs.fund_gap() > 0))
 
     def test_metal(self):
         """check random-generated metal-like band"""
@@ -160,7 +147,7 @@ class test_BS_randomize(ut.TestCase):
         nb = ri(10, 41)
         for _i in range(self.n):
             bs = random_band_structure(ns, nk, nb, is_metal=True)
-            self.assertTrue(bs.is_metal)
+            self.assertTrue(bs.is_metal())
 
 
 if __name__ == '__main__':

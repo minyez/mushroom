@@ -79,7 +79,7 @@ class DensityOfStates(EnergyUnit):
         try:
             shape = np.shape(pdos)
             if shape[:2] != (self._nspins, self._nedos) or len(shape) != 4:
-                raise TypeError
+                raise DosError
 
             self._atms = atms
             self._prjs = prjs
@@ -106,7 +106,6 @@ class DensityOfStates(EnergyUnit):
         return self._atms
     @atms.setter
     def atms(self, new):
-        """update atomic symbols"""
         if len(new) != self._natms:
             raise ValueError("Inconsistent atms input. Should be {:d}-long".format(self._natms))
         self._atms = new
@@ -123,7 +122,7 @@ class DensityOfStates(EnergyUnit):
     def prjs(self, new):
         if len(new) != self._nprjs:
             raise ValueError("Inconsistent prjs input. Should be {:d}-long".format(self._nprjs))
-        self._atms = new
+        self._prjs = new
     @property
     def nprjs(self):
         """int. number of projectors"""
@@ -132,9 +131,7 @@ class DensityOfStates(EnergyUnit):
 
     def has_pdos(self):
         """check if projected DOS is available"""
-        if self._pdos is not None:
-            return True
-        return False
+        return self._pdos is not None
 
     @property
     def unit(self):
@@ -176,13 +173,14 @@ class DensityOfStates(EnergyUnit):
         """array, shape (nedos,). energy grid points"""
         return self._egrid
 
-    def _get_dos(self, ispin=None, atms=None, prjs=None, transpose=False):
+    def get_dos(self, ispin=None, atms=None, prjs=None, transpose=False):
         """get the dos data
 
         Args:
             ispin (int) : 0 for spin-up and 1 for spin-down.
                 Total dos will be returned otherwise or nspins=1
-            transpose (bool) :
+            transpose (bool) : True for array (egrid, dos1, dos2)
+                False for (xa, xb, xc).
             atms (list) : str, atomic symbols, e.g. "Na", or int index
             prjs (list) : str, name of projectors, e.g., "s", "px", or int index
 
@@ -212,19 +210,19 @@ class DensityOfStates(EnergyUnit):
             d = d.transpose()
         return d
 
-    def _export_dos(self, ispin=None, atms=None, prjs=None, transpose=False, form=None, sep=None):
+    def export_dos(self, ispin=None, atms=None, prjs=None, transpose=False, form=None, sep=None):
         """export the dos data.
 
         The data are separated by `sep`
 
         Args:
-            ispin, atms, prjs, transpose: see `_get` method
+            ispin, atms, prjs, transpose: see `get_dos` method
             form (str or list/tuple): format string
             sep (str):
         """
         if separator is None:
             separator = ' '
-        data = self._get_dos(ispin=ispin, atms=atms,
-                             prjs=prjs, transpose=transpose)
+        data = self.get_dos(ispin=ispin, atms=atms,
+                            prjs=prjs, transpose=transpose)
         return print_2d_data(data, transpose=transpose, form=form, sep=sep)
 

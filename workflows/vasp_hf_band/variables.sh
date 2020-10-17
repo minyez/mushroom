@@ -8,9 +8,11 @@ vaspexe="vasp_std"
 defaultnp=4
 # planewave cutoff to use
 encut=500
+ediff=1E-06
 # precision
 prec="Accurate"
 # screening
 hfscreen=0
+lthomas=0
 # modules to load
 modules=()

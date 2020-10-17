@@ -23,5 +23,7 @@ kmeshes=(
 )
 
 hfscreen=0
+# switch on thomas-fermi screening, use for SX-PBE/LDA
+lthomas=0
 
 modules=()

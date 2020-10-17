@@ -9,10 +9,10 @@ Therefore, platform-related functions are generally discarded. (minyez)
 """
 import sys
 import time
-from io import TextIOWrapper
+from io import TextIOWrapper, StringIO
 from collections.abc import Iterable
 from copy import deepcopy
-from numpy import shape, absolute
+from numpy import shape, absolute, loadtxt
 
 from mushroom._core.data import Data
 
@@ -185,7 +185,7 @@ class _ColorMap(_MapOutput):
         try:
             return self._cn.index(name.lower())
         except ValueError:
-            raise ValueError("colro name {:s} is not found".format(name))
+            raise ValueError("color name {:s} is not found".format(name))
 
     def get_rgb(self, i):
         """get the rgb value of color with its code"""
@@ -268,8 +268,11 @@ class Color:
     def get(cls, marker):
         if marker is None:
             return None
-        marker = plot_colormap.get(marker)
-        return _get_int_const(cls.__name__, cls.pair, marker)
+        try:
+            return _get_int_const(cls.__name__, cls.pair, marker)
+        except ValueError:
+            return plot_colormap.get(marker)
+        raise ValueError
 
 
 class Pattern:
@@ -2478,3 +2481,33 @@ class Plot:
         """template for a double-yaxis plot"""
         p = Plot(1, 2)
         return p
+
+def extract_data_from_agr(pagr):
+    """extract all data from agr file
+
+    Support XY only
+
+    Args:
+        pagr (str) : path to the agr file
+
+    Returns:
+        list, each member is a 2d-array
+    """
+    starts = []
+    ends = []
+    with open(pagr, 'r') as h:
+        for i, l in enumerate(h.readlines()):
+            if l.startswith("@type"):
+                # exclude @type line
+                starts.append(i+1)
+            if l == "&\n":
+                ends.append(i)
+    data = []
+    
+    with open(pagr, 'r') as h:
+        lines = h.readlines()
+        for i, (start, end) in enumerate(zip(starts, ends)):
+            s = StringIO("".join(lines[start:end]))
+            data.append(loadtxt(s, unpack=True))
+    return data
+
