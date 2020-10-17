@@ -1,6 +1,5 @@
 PBE preconvergence
 
-ICHARG = 11
 LORBIT = 11
 LREAL = .FALSE.
 EDIFF = _ediff_

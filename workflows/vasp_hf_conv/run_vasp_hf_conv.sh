@@ -17,7 +17,7 @@ function run_vasp_hf_conv_data () {
     * ) exit 1;;
   esac
 
-  printf "%6s%9s%15s%8s\n" "#ENCUT" "kmesh" "Etot" "Egap"
+  printf "%6s%9s%15s%9s%9s%9s\n" "#ENCUT" "kmesh" "Etot" "CBM" "VBM" "Egap"
   for d in "$cwd"/encut_*_kmesh_*; do
     encut=${d##*encut_}
     encut=${encut%%_kmesh_*}
@@ -29,9 +29,12 @@ function run_vasp_hf_conv_data () {
       if [[ "$ik" == "min" ]]; then
         gap=0
       else
-        gap=$(eigen_outcar_vbcb_ik "$eigenf" "$outcarf" "$ik" | awk '{print($2-$1)}')
+        edges=$(eigen_outcar_vbcb_ik "$eigenf" "$outcarf" "$ik")
+        cbm=${edges##* }
+        vbm=${edges%% *}
+        gap=$(echo "$cbm $vbm" | awk '{print($1-$2)}')
       fi
-      printf "%6s%9s%15.9f%8.5f\n" "$encut" "$kmesh" "$etot" "$gap"
+      printf "%6s%9s%15.9f%9.5f%9.5f%9.5f\n" "$encut" "$kmesh" "$etot" "$cbm" "$vbm" "$gap"
     fi
   done
 }
@@ -95,7 +98,7 @@ function run_vasp_hf_conv_help () {
 Usage:
   $1 [calc | -r]         : run convergence calculation for VASP hybrid functional
   $1 dry | -d            : dry run
-  $1 data [dir] [ik|min] : extract data
+  $1 data [dir] [ik|min] : extract hf data
   $1 clean               : cleanup all working directories "encut_*_kmesh_*"
   $1 help | -h           : print this help message
 EOF

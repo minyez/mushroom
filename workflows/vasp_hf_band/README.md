@@ -10,17 +10,18 @@ The following 5-step procedure is adopted:
 2. Non-self-consistent PBE calculation (NELM=1) with homogenous grid `KPOINTS.scf` to get `IBZKPT.scf`
 3. PBE SCF with the KPOINTS.band which combines `IBZKPT.band` and `IBZKPT.band`,
     with all points in the second weighing zero.
-4. Fixed-charge coarse HF calculation with above KPOINTS.
-5. Fixed-charge accurate HF calculation with above KPOINTS.
+4. Coarse HF calculation with above KPOINTS.
+5. Accurate HF calculation with above KPOINTS.
 
 Note that:
 - give a further look to every INCAR
 - prepare your own `POSCAR` and `POTCAR`
 - check and adapt `variables.sh`. `KPOINTS.path`
 - `KPOINTS.scf` should be consistent with previous HF SCF calculation
-- For now, `CHGCAR` preconverged under a HF SCF calculation with the same SCF kmesh,
-   ENCUT and PREC is required (could be done with `vasp_hf_scf` workflow).
+- `CHGCAR` preconverged under a HF SCF calculation with the same SCF kmesh,
+   ENCUT and PREC can be parsed (could be done with `vasp_hf_scf` workflow).
    Copy it here and name it as `CHGCAR.hf`.
+   This can accelarate the convergence of SCF loop for band, as charge is already converged.
 
 ## Files
 

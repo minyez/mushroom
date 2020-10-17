@@ -1,7 +1,6 @@
 Accurate hybrid functional
 
 ISTART = 1
-ICHARG = 11
 LORBIT = 11
 LREAL = .FALSE.
 EDIFF = _ediff_

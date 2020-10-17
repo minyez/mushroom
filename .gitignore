@@ -31,5 +31,8 @@ workflows/vasp_*/vasp.sh
 workflows/*/common.sh
 !workflows/libs/*.sh
 
+# test scripts with underscore prefix
+scripts/_*.py
+
 mcm.info
 commit.info
