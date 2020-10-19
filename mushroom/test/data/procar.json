@@ -1,0 +1,16 @@
+{
+  "PROCAR_1": {
+    "nspins": 1,
+    "nkpts": 39,
+    "nbands": 6,
+    "natms": 1,
+    "nprjs": 9
+  },
+  "PROCAR_2": {
+    "nspins": 2,
+    "nkpts": 39,
+    "nbands": 6,
+    "natms": 1,
+    "nprjs": 9
+  }
+}
