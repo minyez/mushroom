@@ -48,22 +48,20 @@ function wall_time () {
 function outcar_nelect () {
   # get the number of electrons (float)
   # $1: outcar file (OUTCAR)
-  if (( $# == 0 )); then
-    fn="OUTCAR"
-  else
-    fn=$1
-  fi
+  case $# in
+    0 ) fn="OUTCAR";;
+    * ) fn=$1;;
+  esac
   awk '/NELECT/ {print $3}' "$fn"
 }
 
 function outcar_vb () {
   # get the number of valence bands
   # $1: outcar file (OUTCAR)
-  if (( $# == 0 )); then
-    fn="OUTCAR"
-  else
-    fn=$1
-  fi
+  case $# in
+    0 ) fn="OUTCAR";;
+    * ) fn=$1;;
+  esac
   awk '/NELECT/ {printf("%d", $3/2.0)}' "$fn"
 }
 
@@ -79,42 +77,30 @@ function outcar_totene () {
 function outcar_nbands () {
   # get the total number of bands
   # $1: outcar file (OUTCAR)
-  if (( $# == 0 )); then
-    fn="OUTCAR"
-  else
-    fn=$1
-  fi
+  case $# in
+    0 ) fn="OUTCAR";;
+    * ) fn=$1;;
+  esac
   awk '/NBANDS/ {print $15}' "$fn"
 }
 
 function eigen_outcar_vbcb_ik () {
   # get the vb and cb eigen values at ik from eigenvalue file
   #
-  # 3 arguments:
+  # 1 arguments: index of k
+  # 2 arguments: eigen file and index of k
+  # 3 or more arguments:
   #   $1: eigen value file (EIGENVAL)
   #   $2: outcar file (OUTCAR)
   #   $3: index of k (1)
-  # 2 arguments: eigen file and index of k
-  # 1 arguments: index of k
   #
   # returns: vb energy and cb energy at ik
-  if (( $# == 3 )); then
-    fneig=$1
-    fnout=$2
-    ik=$3
-  elif (( $# == 2 )); then
-    fneig=$1
-    fnout="OUTCAR"
-    ik=$2
-  elif (( $# == 1 )); then
-    fneig="EIGENVAL"
-    fnout="OUTCAR"
-    ik=$1
-  else
-    fneig="EIGENVAL"
-    fnout="OUTCAR"
-    ik=1
-  fi
+  case $# in
+    0 ) fneig="EIGENVAL"; fnout="OUTCAR"; ik=1;;
+    1 ) fneig="EIGENVAL"; fnout="OUTCAR"; ik=$1;;
+    2 ) fneig="$1"; fnout="OUTCAR"; ik=$2;;
+    * ) fneig="$1"; fnout="$2"; ik=$3;;
+  esac
   vb=$(outcar_vb "$fnout")
   nbs=$(outcar_nbands "$fnout")
   vbln=$(( (nbs+2)*(ik-1)+vb+8))
@@ -129,11 +115,11 @@ function outcar_qpc_vb_cb () {
   # $1: OUTCAR file
   # $2: index of kpoints
   # returns: qpc (VB), qpc (CB), unscaled QPC (VB), unscaled QPC (CB)
-  fn=$1
-  ik=1
-  if (( $# == 2 )); then
-    ik=$2
-  fi
+  case $# in
+    0 ) fn="OUTCAR"; ik=1;;
+    1 ) fn="$1"; ik=1;;
+    * ) fn="$1"; ik=$2;;
+  esac
 
   vb=$(outcar_vb "$fn")
   ln=$(grep -n -m "$ik" "band No.  KS-energies  QP-energies" "$fn" | tail -1 | awk '{print $1}')
@@ -141,12 +127,6 @@ function outcar_qpc_vb_cb () {
   
   vbln=$(( ln + vb + 1 ))
   cbln=$(( vbln + 1 ))
-  
-  #ks_vb=$(awk "FNR == $vbln {print \$2}" "$fn")
-  #ks_cb=$(awk "FNR == $cbln {print \$2}" "$fn")
-  #qp_vb=$(awk "FNR == $vbln {print \$3}" "$fn")
-  #qp_cb=$(awk "FNR == $cbln {print \$3}" "$fn")
-  #qp_gap=$(echo "$qp_cb $qp_vb" | awk '{print($1-$2)}')
   
   qpc_vb=$(awk "FNR == $vbln {print(\$3-\$2)}" "$fn")
   qpc_cb=$(awk "FNR == $cbln {print(\$3-\$2)}" "$fn")
@@ -263,11 +243,12 @@ function xml_kpts_weigh () {
   # $1 : path of vasprun.xml file
   # $2 (optional) : index of Gamma point to get the number of kpoints in BZ
   # TODO automatic the process of getting the number of kpoints in BZ
-  vaspxml=$1
-  gamma=1
-  if (( $# == 2 )); then
-    gamma=$2
-  fi
+  case $# in
+    0 ) vaspxml="vasprun.xml"; gamma=1;;
+    1 ) vaspxml="$1"; gamma=1;;
+    * ) vaspxml="$1"; gamma=$2;;
+  esac
+
   kpts=$(xml_kpts "$vaspxml")
   nkpt=$(echo "$kpts" | wc -l)
   lnwei=$(grep -n -m 1 "<varray name=\"weights\" >" "$vaspxml" | tail -1 | awk '{print $1}')
@@ -279,23 +260,25 @@ function xml_kpts_weigh () {
 }
 
 function poscar_latt_vec () {
-  if (( $# == 1 )); then
-    poscar=$1
-  else
-    poscar="POSCAR"
-  fi
+  case $# in
+    0 ) poscar="POSCAR";;
+    * ) poscar="$1";;
+  esac
   awk 'FNR<6 && FNR>2 {printf("%s ", $0)}' "$poscar"
   echo ""
 }
 
-function optimal_npar () {
-  nproc=$1
-  if (( $# == 2 )); then
-    if [[ $2 == "gw" ]]; then
-      echo ""
-    fi
+function incar_change_tag () {
+  case $# in
+    2 ) tag="$1"; value="$2"; incar="INCAR";;
+    3 ) tag="$1"; value="$2"; incar="$3";;
+    * ) echo "Error! specify tag and value"; exit 1;;
+  esac
+  if grep "$tag =" "$incar"; then
+    n=$(grep -n "$tag = " "test.dat" | awk '{print $1}')
+    n="${n%%:*}"
+    sed -i -e "/$tag = /a $tag = $value" -e "${n}d" "$incar"
+  else
+    echo "$tag = $value" >> "$incar"
   fi
-  echo "$nproc"
-  # TODO find divider
-  #echo "$nproc" | awk '{printf("%d\n", sqrt($1))}'
 }

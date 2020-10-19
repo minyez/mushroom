@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # constants and common utilities for workflows
-readonly _PI=3.141592653589793
-readonly _HA2EV=27.21138602
-readonly _AU2ANG=0.52917721067
+_PI=3.141592653589793
+_HA2EV=27.21138602
+_AU2ANG=0.52917721067
 
 function ev2ha () {
   echo "$1 $_HA2EV" | awk '{printf("%f\n", $1/$2)}'
@@ -122,3 +122,14 @@ function estimate_npw () {
     '{printf("%d\n", 0.5 + (2.0*$1/$2)**1.5 / $3**3 * $4 / 6.0 / $5**2)}'
 }
 
+function largest_div_below_sqrt () {
+  # get the largest divider of integer n below its square root
+  num=$1
+  sqr=$(echo "$num" | awk '{printf("%d", sqrt($1))}')
+  for i in $(seq "$sqr" 1); do
+    if (( num%i == 0 )); then
+      echo "$i"
+      break
+    fi
+  done
+}

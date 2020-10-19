@@ -47,9 +47,13 @@ def add_scheduler_header(wf: str, dirpath: str, platform: str, use_pbs=False):
     wf_script = Path(dirpath) / "run_{}.sh".format(wf)
     with open(wf_script, "r") as h:
         lines = h.readlines()
-        lines[0] += head
-    with open(wf_script, "w") as h:
-        print(*lines, sep="", file=h)
+    # avoid duplicate insertion
+    prefix = {True: "#PBS"}.get(use_pbs, "#SBATCH")
+    if len(lines) > 1:
+        if not lines[1].startswith(prefix):
+            lines[0] += head
+            with open(wf_script, "w") as h:
+                print(*lines, sep="", file=h)
 
 def get_avail_workflows(prog: str = None) -> List[str]:
     """get all available workflows in the directory
