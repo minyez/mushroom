@@ -238,29 +238,22 @@ class BandStructure(EnergyUnit):
         if pwav is None:
             _logger.warning("no partial wave info parsed. skip")
             return
-        try:
-            shape = np.shape(pwav)
-            if shape[:3] != (self._nspins, self._nkpts, self._nbands) or len(shape) != 5:
-                raise BandStructureError("invalid shape of pwav")
+        shape = np.shape(pwav)
+        if shape[:3] != (self._nspins, self._nkpts, self._nbands) or len(shape) != 5:
+            raise BandStructureError("invalid shape of pwav")
 
+        self._natms, self._nprjs = shape[3:]
+        if atms:
+            natms = len(atms)
+            if natms != self._natms:
+                raise BandStructureError("inconsistent atms input {}".format(atms))
             self._atms = atms
+        if prjs:
+            nprjs = len(prjs)
+            if nprjs != self._nprjs:
+                raise BandStructureError("inconsistent prjs input {}".format(prjs))
             self._prjs = prjs
-            if self._atms:
-                self._natms = len(self._atms)
-            if self._prjs:
-                self._nprjs = len(self._prjs)
-            natms, nprjs = shape[3:]
-            if natms:
-                if natms != self._natms:
-                    raise ValueError
-                self._nprjs = nprjs
-            if nprjs:
-                if nprjs != self._nprjs:
-                    raise ValueError
-                self._natms = natms
-            self._pwav = np.array(pwav, dtype=self._dtype)
-        except (ValueError, KeyError) as err:
-            raise BandStructureError("inconsistent atms and prjs length")
+        self._pwav = np.array(pwav, dtype=self._dtype)
 
     @property
     def has_proj(self):

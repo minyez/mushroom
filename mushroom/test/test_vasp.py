@@ -15,9 +15,10 @@ class test_read_doscar(ut.TestCase):
         with open(p / "data" / "doscar.json", 'r') as fp:
             verifies = json.load(fp)
         dir_poscar = p / "data"
-        for f in dir_poscar.glob(r"DOSCAR_(\d)+"):
-            dos = vasp.read_doscar(f.relative_to(p))
+        for f in dir_poscar.glob(r"DOSCAR_*"):
+            dos = vasp.read_doscar(f)
             verify = verifies[f.name]
+            print("Testing {}".format(f.name))
             for k, v in verify.items():
                 self.assertEqual(dos.__getattribute__(k), v)
 
@@ -29,9 +30,10 @@ class test_read_procar(ut.TestCase):
         with open(p / "data" / "procar.json", 'r') as fp:
             verifies = json.load(fp)
         dir_poscar = p / "data"
-        for f in dir_poscar.glob(r"PROCAR_(\d)+"):
-            bs = vasp.read_procar(f.relative_to(p))
+        for f in dir_poscar.glob(r"PROCAR_*"):
+            bs = vasp.read_procar(f)
             verify = verifies[f.name]
+            print("Testing {}".format(f.name))
             for k, v in verify.items():
                 self.assertEqual(bs.__getattribute__(k), v)
 

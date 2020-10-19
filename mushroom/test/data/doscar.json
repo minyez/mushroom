@@ -4,5 +4,11 @@
     "nedos": 1000,
     "natms": 42,
     "nprjs": 9
+  },
+  "DOSCAR_2": {
+    "nspins": 2,
+    "nedos": 301,
+    "natms": 1,
+    "nprjs": 9
   }
 }

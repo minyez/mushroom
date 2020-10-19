@@ -44,7 +44,7 @@ class DensityOfStates(EnergyUnit):
     """
     _dtype = 'float64'
 
-    def __init__(self, egrid, tdos, efermi=0.0, unit='ev', **projection):
+    def __init__(self, egrid, tdos, efermi=0.0, unit='ev', pdos=None, atms=None, prjs=None):
         try:
             shape_e = np.shape(egrid)
             shape_tdos = np.shape(tdos)
@@ -58,7 +58,7 @@ class DensityOfStates(EnergyUnit):
         EnergyUnit.__init__(self, eunit=unit)
         self._egrid = np.array(egrid, dtype=self._dtype)
         self._efermi = efermi
-        self._nedos, self._nspins = shape_tdos
+        self._nspins, self._nedos = shape_tdos
         self._tdos = np.array(tdos, dtype=self._dtype)
 
         self._pdos = None
@@ -66,7 +66,8 @@ class DensityOfStates(EnergyUnit):
         self._prjs = None
         self._natms = 0
         self._nprjs = 0
-        self.parse_proj(**projection)
+        if pdos is not None:
+            self.parse_proj(pdos=pdos, atms=atms, prjs=prjs)
 
     def parse_proj(self, pdos=None, atms=None, prjs=None):
         """parse the projected DOS information
@@ -75,30 +76,24 @@ class DensityOfStates(EnergyUnit):
             keyword argument:
         """
         if pdos is None:
+            _logger.warning("no projected dos info parsed. skip")
             return
-        try:
-            shape = np.shape(pdos)
-            if shape[:2] != (self._nspins, self._nedos) or len(shape) != 4:
-                raise DosError
+        shape = np.shape(pdos)
+        if shape[:2] != (self._nspins, self._nedos) or len(shape) != 4:
+            raise DosError("bad pdos shape: {}".format(shape))
 
+        self._natms, self._nprjs = shape[2:]
+        if atms:
+            natms = len(atms)
+            if natms != self._natms:
+                raise DosError("inconsistent atms input {}".format(atms))
             self._atms = atms
+        if prjs:
+            nprjs = len(prjs)
+            if nprjs != self._nprjs:
+                raise DosError("inconsistent prjs input {}".format(prjs))
             self._prjs = prjs
-            if self._atms:
-                self._natms = len(self._atms)
-            if self._prjs:
-                self._nprjs = len(self._prjs)
-            natms, nprjs = shape[2:]
-            if natms:
-                if natms != self._natms:
-                    raise ValueError
-                self._nprjs = nprjs
-            if nprjs:
-                if nprjs != self._nprjs:
-                    raise ValueError
-                self._natms = natms
-            self._pdos = np.array(pdos, dtype=self._dtype)
-        except (ValueError, KeyError) as err:
-            raise DosError("invalid pdos input")
+        self._pdos = np.array(pdos, dtype=self._dtype)
 
     @property
     def atms(self):
@@ -128,6 +123,10 @@ class DensityOfStates(EnergyUnit):
         """int. number of projectors"""
         return self._nprjs
 
+    @property
+    def pdos(self):
+        """projected DOS"""
+        return self._pdos
 
     def has_pdos(self):
         """check if projected DOS is available"""

@@ -21,7 +21,7 @@ badDos2 = [
     [0.0, 3.0]
 ]
 badDos = (badDos1, badDos2)
-nedos, nspins = np.shape(goodDos)
+nspins, nedos = np.shape(goodDos)
 
 
 class test_dos_initialize(ut.TestCase):

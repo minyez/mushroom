@@ -24,6 +24,14 @@ def _dict_read_doscar(path="DOSCAR", ncl=False):
     TODO:
         - automatic ncl check
     """
+    def __read_splitted_atom_data(dls, nspins):
+        data = np.array([x[1:] for x in dls])
+        nedos = len(dls)
+        nprjs = len(data[0]) // nspins
+        # reshape to (nspins, nedos, nprjs)
+        # first convert to (nedos, nspins, nprjs), then switch the first two axis
+        return data.reshape((nedos, nspins, nprjs), order='F').swapaxes(0, 1)
+
     _logger.info("Reading DOSCAR from %s", realpath(path))
     with open(path, 'r') as h:
         lines = [l.split() for l in h.readlines()]
@@ -36,22 +44,22 @@ def _dict_read_doscar(path="DOSCAR", ncl=False):
         nspins = 2
     if ncl:
         raise NotImplementedError
-    _logger.info("ISPIN = %d", nspins)
-    _logger.info("NEDOS = %d", nedos)
+    _logger.info(">> ISPIN = %d", nspins)
+    _logger.info(">> NEDOS = %d", nedos)
 
     egrid = np.array([x[0] for x in lines[6:6+nedos]])
-
     # total density of states
     tdos = [x[1:1+nspins] for x in lines[6:6+nedos]]
     tdos = np.array(tdos).transpose()
     # TODO read pdos
     pdos = None
-    #for ia in range(natms):
-    #    pdos_atom = []
-    #    for line in lines[6+(ia+1)*(nedos+1):6+(ia+2)*(nedos+1)-1]:
-    #        pdos_atom.append(line[1:])
-    #    pdos.append(pdos_atom)
-    #pdos = np.array(pdos)
+    if len(lines) > nedos + 7:
+        nprjs = (len(lines[nedos+7]) - 1) // nspins
+        pdos = np.zeros((nspins, nedos, natms, nprjs))
+        for ia in range(natms):
+            start = (ia+1) * (nedos+1) + 6
+            pdos[:, :, ia, :] = __read_splitted_atom_data(lines[start:start+nedos], nspins=nspins)
+
     return {"egrid": egrid,
             "tdos": tdos,
             "efermi": efermi,
@@ -59,19 +67,24 @@ def _dict_read_doscar(path="DOSCAR", ncl=False):
             "pdos": pdos,
             }
 
-def read_doscar(path="DOSCAR", ncl=False):
+def read_doscar(path="DOSCAR", reset_fermi=True, ncl=False):
     """read DOSCAR file and returns a DensitofStates object
     
     Args:
         path (str) : path to DOSCAR file. default to "DOSCAR"
+        reset_fermi (bool) : unset Fermi energy obtained from DOSCAR
+            this is useful when one wants a dos with it VBM as energy zero
         ncl (bool) : DOS file from non-collinear calculation
 
     Returns:
         a DensityOfStates object
     """
-    return DensityOfStates(**_dict_read_doscar(path=path, ncl=ncl))
+    d = _dict_read_doscar(path=path, ncl=ncl)
+    if reset_fermi:
+        d["efermi"] = None
+    return DensityOfStates(**d)
 
-
+# pylint: disable=R0914
 def _dict_read_procar(path="PROCAR"):
     """read PROCAR file
 
@@ -108,7 +121,7 @@ def _dict_read_procar(path="PROCAR"):
     pwav = np.zeros((nspins, nkpts, nbands, natms, nprjs))
     for ispin in range(nspins):
         for ikpt in range(nkpts):
-            weight[ikpt] = float(lines[ikpt*(nbands*(natms+4)+3)+2].split(-1))
+            weight[ikpt] = float(lines[ikpt*(nbands*(natms+4)+3)+2].split()[-1])
             for ib in range(nbands):
                 # the line index with prefix band
                 start = ispin * (1+nkpts*(nbands*(natms+4)+3)) + \
