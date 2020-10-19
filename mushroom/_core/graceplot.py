@@ -417,7 +417,8 @@ class _Affix:
 
     Args:
         affix (str) : the content to add as the affix, 0,1,2 or x,y,altx,alty
-        is_prefix (bool) : if True, the content will be added as prefix. Otherwise as suffix
+        is_prefix (bool) : if True, the content will be added as prefix to object marker
+            Otherwise as suffix
     """
     _marker = ""
 
@@ -1680,6 +1681,155 @@ class Dataset(_Dataset):
         return slist
 
 
+class Arrow:
+    """type of line arrow"""
+    NONE = 0
+    START = 1
+    END = 2
+    LINE = 0
+    FILLED = 1
+    OPAQUE = 2
+    pair = {
+        "none": NONE,
+        "start": START,
+        "end": END,
+        "line": LINE,
+        "filled": FILLED,
+        "opaque": OPAQUE,
+        }
+    @classmethod
+    def get(cls, marker):
+        return _get_int_const(cls.__name__, cls.pair, marker)
+    
+
+class _DrawString(_BaseOutput):
+    """class for string drawing"""
+    _marker = 'string'
+    _attrs = {
+        "string_switch": (bool, Switch.ON, '{:s}'),
+        # graph number when using for world coordinate
+        "string_comment": (bool, "g0", '{:s}'),
+        "loctype": (str, "view", '{:s}'),
+        "color": (int, Color.BLACK, '{:d}'),
+        "rot": (int, 0, '{:d}'),
+        "font": (int, 0, '{:d}'),
+        "just": (int, Justf.LEFT, '{:d}'),
+        "char_size": (float, 1.0, '{:.8f}'),
+        "def": (str, "", '\"{:s}\"'),
+        }
+    # add string_location
+    _attrs.update(_set_loclike_attr(_marker, '{:10f}', 0.0, 0.0))
+
+class DrawString(_DrawString):
+    """user interface of string drawing
+
+    Args:
+        s (str) : content of string
+        xy (2-member list) : location of string
+    """
+    def __init__(self, s, xy, ig=None, color=None, just=None, charsize=None,
+                 rot=None, font=None, loctype=None, **kwargs):
+        if ig is not None:
+            ig = "g" + str(ig)
+        _DrawString.__init__(self, loctype=loctype, color=Color.get(color), string_comment=ig,
+                             just=Justf.get(just), rot=rot, char_size=charsize, font=font,
+                             string_location=xy)
+        self.__setattr__("def", s)
+        _raise_unknown_attr(self, *kwargs)
+
+    def export(self):
+        return ["with " + self._marker,] + \
+               ["    {:s}".format(s) for s in _DrawString.export(self)]
+
+
+
+class _DrawLine(_BaseOutput):
+    """class for line drawing"""
+    _marker = 'line'
+    _attrs = {
+        "line_switch": (bool, Switch.ON, '{:s}'),
+        # graph number when using for world coordinate
+        "line_comment": (bool, "g0", '{:s}'),
+        "loctype": (str, "view", '{:s}'),
+        "color": (int, Color.BLACK, '{:d}'),
+        "linestyle": (int, LineStyle.SOLID, '{:d}'),
+        "linewidth": (float, 1.5, '{:8f}'),
+        "arrow": (int, Arrow.NONE, '{:d}'),
+        "arrow_type": (int, Arrow.LINE, '{:d}'),
+        "arrow_length": (float, 1.0, '{:8f}'),
+        "arrow_layout": (list, [1.0, 1.0], '{:8f}, {:8f}'),
+        }
+    # add string_location
+    _attrs.update(_set_loclike_attr(_marker, '{:10f}', 0.0, 0.0, 0.0, 0.0))
+
+class DrawLine(_DrawLine):
+    """user interface of drawing line object
+
+    Args:
+        start, end (2-member Iterable)
+    """
+    def __init__(self, start, end, ig=None, color=None, lw=None, ls=None,
+                 arrow=None, at=None, length=None, layout=None, loctype=None, **kwargs):
+        if ig is not None:
+            ig = "g" + str(ig)
+        if len(start) != 2 or len(end) != 2:
+            raise TypeError("Endpoint of line should have both x and y")
+        _DrawLine.__init__(self, loctype=loctype, color=Color.get(color), line_comment=ig,
+                           linestyle=LineStyle.get(ls), linewidth=lw,
+                           arrow=Arrow.get(arrow), arrow_type=Arrow.get(at),
+                           arrow_length=length, arrow_layout=layout, line_location=(*start, *end))
+        _raise_unknown_attr(self, *kwargs)
+
+    def export(self):
+        return ["with " + self._marker,] + ["    {:s}".format(s) for s in _DrawLine.export(self)] \
+               + [self._marker + " def"]
+
+
+class _DrawEllipse(_BaseOutput):
+    """class for line drawing"""
+    _marker = 'ellipse'
+    _attrs = {
+        _marker + "_switch": (bool, Switch.ON, '{:s}'),
+        # graph number `gn` when using world coordinate
+        _marker + "_comment": (bool, "g0", '{:s}'),
+        "loctype": (str, "view", '{:s}'),
+        "color": (int, Color.BLACK, '{:d}'),
+        "linestyle": (int, LineStyle.SOLID, '{:d}'),
+        "linewidth": (float, 1.5, '{:8f}'),
+        "fill_color": (int, Color.BLACK, '{:d}'),
+        "fill_pattern": (int, Pattern.SOLID, '{:d}'),
+        }
+    # add string_location
+    _attrs.update(_set_loclike_attr(_marker, '{:10f}', 0.0, 0.0, 0.0, 0.0))
+
+class DrawEllipse(_DrawEllipse):
+    """user interface of drawing line object
+    
+    Args:
+        xy (2-member Iterable) : location of center
+        width (float) : width of ellipse
+        heigh (float) : height of ellipse. Use width if not set
+    """
+    def __init__(self, xy, width, heigh=None, ig=None, color=None, lw=None, ls=None,
+                 fc=None, fp=None, loctype="world", **kwargs):
+        if ig is not None:
+            ig = "g" + str(ig)
+        if heigh is None:
+            heigh = width
+        x, y = xy
+        _DrawEllipse.__init__(self, loctype=loctype, color=Color.get(color), ellipse_comment=ig,
+                              linestyle=LineStyle.get(ls), linewidth=lw,
+                              ellipse_location=(x-width/2, y+heigh/2, x+width/2, y-heigh/2),
+                              fill_color=Color.get(fc),
+                              fill_pattern=Pattern.get(fp))
+        _raise_unknown_attr(self, *kwargs)
+
+    def export(self):
+        return ["with " + self._marker,] \
+               + ["    {:s}".format(s) for s in _DrawEllipse.export(self)] \
+               + [self._marker + " def"]
+
+
 class _Graph(_BaseOutput, _Affix):
     """Graph object, similar to Axes in matplotlib
     """
@@ -1745,6 +1895,11 @@ class Graph(_Graph):
         self._legend = Legend()
         self._frame = Frame()
         self._datasets = []
+        self._objects = []
+
+    def get_objects(self):
+        """get the drawing objects of graph"""
+        return self._objects
 
     def set(self, hidden=None, gt=None, stacked=None, barhgap=None,
             fp=None, fpt=None, fpxy=None, fpform=None, fpprec=None, **kwargs):
@@ -2007,152 +2162,100 @@ class Graph(_Graph):
             self._subtitle.__setattr__('subtitle_comment', subtitle)
         self._subtitle._set(**kwargs)
 
-class Arrow:
-    """type of line arrow"""
-    NONE = 0
-    START = 1
-    END = 2
-    LINE = 0
-    FILLED = 1
-    OPAQUE = 2
-    pair = {
-        "none": NONE,
-        "start": START,
-        "end": END,
-        "line": LINE,
-        "filled": FILLED,
-        "opaque": OPAQUE,
-        }
-    @classmethod
-    def get(cls, marker):
-        return _get_int_const(cls.__name__, cls.pair, marker)
-    
+    def text(self, s, xy, loctype=None, color=None,
+             just=None, charsize=None,rot=None, font=None, **kwargs):
+        """add string text to the plot
+        Args:
+            s (str)
+            xy (2-member list) : the location of text string
+        """
+        o = DrawString(s, xy, ig=self._index, loctype=loctype, color=color, just=just,
+                       charsize=charsize, rot=rot, font=font, **kwargs)
+        self._objects.append(o)
 
-class _DrawString(_BaseOutput):
-    """class for string drawing"""
-    _marker = 'string'
-    _attrs = {
-        "string_switch": (bool, Switch.ON, '{:s}'),
-        # graph number when using for world coordinate
-        "string_comment": (bool, "g0", '{:s}'),
-        "loctype": (str, "view", '{:s}'),
-        "color": (int, Color.BLACK, '{:d}'),
-        "rot": (int, 0, '{:d}'),
-        "font": (int, 0, '{:d}'),
-        "just": (int, Justf.LEFT, '{:d}'),
-        "char_size": (float, 1.0, '{:.8f}'),
-        "def": (str, "", '\"{:s}\"'),
-        }
-    # add string_location
-    _attrs.update(_set_loclike_attr(_marker, '{:10f}', 0.0, 0.0))
+    def circle(self, xy, width, heigh=None, color=None, loctype=None,
+               lw=None, ls=None, fc=None, fp=None, **kwargs):
+        """draw a circle on the plot
 
-class DrawString(_DrawString):
-    """user interface of string drawing
+        Args:
+            xy (2-member list)
+            width (float)
+            heigh (float)
+            color (str/int)
+            lw (float) : line width
+            ls (str/int) : line style
+            fc (str/int) : fill color
+            fp (str/int) : fill pattern
+        """
+        o = DrawEllipse(xy, width, heigh=heigh, ig=self._index, color=color, lw=lw,
+                        ls=ls, fc=fc, fp=fp, loctype=loctype, **kwargs)
+        self._objects.append(o)
 
-    Args:
-        s (str) : content of string
-        xy (2-member list) : location of string
-    """
-    def __init__(self, s, xy, ig=None, color=None, just=None, charsize=None,
-                 rot=None, font=None, loctype=None, **kwargs):
-        if ig is not None:
-            ig = "g" + str(ig)
-        _DrawString.__init__(self, loctype=loctype, color=Color.get(color), string_comment=ig,
-                             just=Justf.get(just), rot=rot, char_size=charsize, font=font,
-                             string_location=xy)
-        self.__setattr__("def", s)
-        _raise_unknown_attr(self, *kwargs)
+    def axhline(self, y, xmin=None, xmax=None, loctype=None, **kwargs):
+        """add a horizontal line
 
-    def export(self):
-        return ["with " + self._marker,] + \
-               ["    {:s}".format(s) for s in _DrawString.export(self)]
+        Args:
+            y (float) :
+            xmin, xmax (float, str): endpoints of horizontal line.
+                If str is parsed, it will be recognized as a percentage of the axis
+        """
+        if loctype is None:
+            loctype = "world"
+        try:
+            ends = {"view": self.get_view, "world": self.get_limit}
+            left, _, right, _ = ends[loctype]()
+        except KeyError:
+            raise KeyError("unknown location type {}".format(loctype))
+        if xmin is None:
+            xmin = left
+        elif isinstance(xmin, str):
+            xmin = left + float(xmin) / 100 * (right-left)
+        if xmax is None:
+            xmax = right
+        elif isinstance(xmax, str):
+            xmax = left + float(xmax) / 100 * (right-left)
+        start = (xmin, y)
+        end = (xmax, y)
+        self.axline(start, end, loctype=loctype, **kwargs)
 
+    def axvline(self, x, ymin=None, ymax=None, loctype=None, **kwargs):
+        """add a vertical line
 
-class _DrawLine(_BaseOutput):
-    """class for line drawing"""
-    _marker = 'line'
-    _attrs = {
-        "line_switch": (bool, Switch.ON, '{:s}'),
-        # graph number when using for world coordinate
-        "line_comment": (bool, "g0", '{:s}'),
-        "loctype": (str, "view", '{:s}'),
-        "color": (int, Color.BLACK, '{:d}'),
-        "linestyle": (int, LineStyle.SOLID, '{:d}'),
-        "linewidth": (float, 1.5, '{:8f}'),
-        "arrow": (int, Arrow.NONE, '{:d}'),
-        "arrow_type": (int, Arrow.LINE, '{:d}'),
-        "arrow_length": (float, 1.0, '{:8f}'),
-        "arrow_layout": (list, [1.0, 1.0], '{:8f}, {:8f}'),
-        }
-    # add string_location
-    _attrs.update(_set_loclike_attr(_marker, '{:10f}', 0.0, 0.0, 0.0, 0.0))
+        Args:
+            x (float) :
+            ymin, ymax (float, str): endpoints of vertical line.
+                If str is parsed, it will be recognized as a percentage of the axis
+        """
+        if loctype is None:
+            loctype = "world"
+        try:
+            ends = {"view": self.get_view, "world": self.get_limit}
+            _, bottom, _, top = ends[loctype]()
+        except KeyError:
+            raise KeyError("unknown location type {}".format(loctype))
+        if ymin is None:
+            ymin = bottom
+        elif isinstance(ymin, str):
+            ymin = bottom + float(ymin) / 100 * (top-bottom)
+        if ymax is None:
+            ymax = top
+        elif isinstance(ymax, str):
+            ymax = bottom + float(ymax) / 100 * (top-bottom)
+        start = (x, ymin)
+        end = (x, ymax)
+        self.axline(start, end, loctype=loctype, **kwargs)
 
-class DrawLine(_DrawLine):
-    """user interface of drawing line object
+    def axline(self, start, end, loctype=None, **kwargs):
+        """add a custom line"""
+        o = DrawLine(start, end, ig=self._index, loctype=loctype, **kwargs)
+        self._objects.append(o)
 
-    Args:
-        start, end (2-member Iterable)
-    """
-    def __init__(self, start, end, ig=None, color=None, lw=None, ls=None,
-                 arrow=None, at=None, length=None, layout=None, loctype=None, **kwargs):
-        if ig is not None:
-            ig = "g" + str(ig)
-        if len(start) != 2 or len(end) != 2:
-            raise TypeError("Endpoint of line should have both x and y")
-        _DrawLine.__init__(self, loctype=loctype, color=Color.get(color), line_comment=ig,
-                           linestyle=LineStyle.get(ls), linewidth=lw,
-                           arrow=Arrow.get(arrow), arrow_type=Arrow.get(at),
-                           arrow_length=length, arrow_layout=layout, line_location=(*start, *end))
-        _raise_unknown_attr(self, *kwargs)
-
-    def export(self):
-        return ["with " + self._marker,] + ["    {:s}".format(s) for s in _DrawLine.export(self)] \
-               + [self._marker + " def"]
-
-
-class _DrawEllipse(_BaseOutput):
-    """class for line drawing"""
-    _marker = 'ellipse'
-    _attrs = {
-        _marker + "_switch": (bool, Switch.ON, '{:s}'),
-        # graph number `gn` when using world coordinate
-        _marker + "_comment": (bool, "g0", '{:s}'),
-        "loctype": (str, "view", '{:s}'),
-        "color": (int, Color.BLACK, '{:d}'),
-        "linestyle": (int, LineStyle.SOLID, '{:d}'),
-        "linewidth": (float, 1.5, '{:8f}'),
-        "fill_color": (int, Color.BLACK, '{:d}'),
-        "fill_pattern": (int, Pattern.SOLID, '{:d}'),
-        }
-    # add string_location
-    _attrs.update(_set_loclike_attr(_marker, '{:10f}', 0.0, 0.0, 0.0, 0.0))
-
-class DrawEllipse(_DrawEllipse):
-    """user interface of drawing line object
-    
-    Args:
-        xy (2-member Iterable) : location of center
-        width (float) : width of ellipse
-        heigh (float) : height of ellipse. Use width if not set
-    """
-    def __init__(self, xy, width, heigh=None, ig=None, color=None, lw=None, ls=None,
-                 fc=None, fp=None, loctype="world", **kwargs):
-        if ig is not None:
-            ig = "g" + str(ig)
-        if heigh is None:
-            heigh = width
-        x, y = xy
-        _DrawEllipse.__init__(self, loctype=loctype, color=Color.get(color), ellipse_comment=ig,
-                              linestyle=LineStyle.get(ls), linewidth=lw,
-                              ellipse_location=(x-width/2, y+heigh/2, x+width/2, y-heigh/2),
-                              fill_color=Color.get(fc),
-                              fill_pattern=Pattern.get(fp))
-        _raise_unknown_attr(self, *kwargs)
-
-    def export(self):
-        return ["with " + self._marker,] \
-               + ["    {:s}".format(s) for s in _DrawEllipse.export(self)] \
-               + [self._marker + " def"]
+    def arrow(self, start, end, color=None, lw=None, ls=None, arrow=Arrow.END,
+              at=None, length=None, layout=None, loctype=None, **kwargs):
+        o = DrawLine(start, end, ig=self._index, color=color, lw=lw, ls=ls,
+                     arrow=arrow, at=at, length=length, layout=layout, loctype=loctype,
+                     **kwargs)
+        self._objects.append(o)
 
 # ===== functions related to graph alignment =====
 def __ga_regular(rows, cols, hgap, vgap, width_ratios=None, heigh_ratios=None):
@@ -2272,7 +2375,6 @@ class Plot:
                                 font=font, charsize=charsize, symbolsize=symbolsize,
                                 sformat=sformat)
         # drawing objects
-        self._objects = []
         # set the graphs by alignment
         self._graphs = _set_graph_alignment(rows=rows, cols=cols, hgap=hgap, vgap=vgap,
                                             width_ratios=width_ratios, heigh_ratios=heigh_ratios,
@@ -2288,8 +2390,9 @@ class Plot:
             slist += h.export()
         for g in self._graphs:
             slist += g.export()
-        for o in self._objects:
-            slist += o.export()
+        for g in self._graphs:
+            for o in g.get_objects():
+                slist += o.export()
         # add @ to each header line
         slist = self._comment_head + ["@" + v for v in slist]
         # export all data
@@ -2331,103 +2434,6 @@ class Plot:
             keyword arguments will parsed to Graph object
         """
         self._graphs[ig].plot(*xyz, **kwargs)
-
-    def text(self, s, xy, ig: int = 0, loctype=None, color=None,
-             just=None, charsize=None,rot=None, font=None, **kwargs):
-        """add string text to the plot
-        Args:
-            s (str)
-            xy (2-member list) : the location of text string
-        """
-        o = DrawString(s, xy, ig=ig, loctype=loctype, color=color, just=just,
-                       charsize=charsize, rot=rot, font=font, **kwargs)
-        self._objects.append(o)
-
-    def circle(self, xy, width, heigh=None, ig: int = 0, color=None, loctype=None,
-               lw=None, ls=None, fc=None, fp=None, **kwargs):
-        """draw a circle on the plot
-
-        Args:
-            xy (2-member list)
-            width (float)
-            heigh (float)
-            ig (int) : index of graph where the circle is drawn on
-                If not None, the world coordinate will be used
-            color (str/int)
-            lw (float) : line width
-            ls (str/int) : line style
-            fc (str/int) : fill color
-            fp (str/int) : fill pattern
-        """
-        o = DrawEllipse(xy, width, heigh=heigh, ig=ig, color=color, lw=lw,
-                        ls=ls, fc=fc, fp=fp, loctype=loctype, **kwargs)
-        self._objects.append(o)
-
-    def axhline(self, y, xmin=None, xmax=None, ig: int = 0, loctype=None, **kwargs):
-        """add a horizontal line
-
-        Args:
-            y (float) :
-            xmin, xmax (float, str): endpoints of horizontal line.
-                If str is parsed, it will be recognized as a percentage of the axis
-        """
-        if loctype is None:
-            loctype = "world"
-        try:
-            ends = {"view": self._graphs[ig].get_view, "world": self._graphs[ig].get_limit}
-            left, _, right, _ = ends[loctype]()
-        except KeyError:
-            raise KeyError("unknown location type {}".format(loctype))
-        if xmin is None:
-            xmin = left
-        elif isinstance(xmin, str):
-            xmin = left + float(xmin) / 100 * (right-left)
-        if xmax is None:
-            xmax = right
-        elif isinstance(xmax, str):
-            xmax = left + float(xmax) / 100 * (right-left)
-        start = (xmin, y)
-        end = (xmax, y)
-        self.axline(start, end, ig=ig, loctype=loctype, **kwargs)
-
-    def axvline(self, x, ymin=None, ymax=None, ig=0, loctype=None, **kwargs):
-        """add a vertical line
-
-        Args:
-            x (float) :
-            ymin, ymax (float, str): endpoints of vertical line.
-                If str is parsed, it will be recognized as a percentage of the axis
-        """
-        if loctype is None:
-            loctype = "world"
-        try:
-            ends = {"view": self._graphs[ig].get_view, "world": self._graphs[ig].get_limit}
-            _, bottom, _, top = ends[loctype]()
-        except KeyError:
-            raise KeyError("unknown location type {}".format(loctype))
-        if ymin is None:
-            ymin = bottom
-        elif isinstance(ymin, str):
-            ymin = bottom + float(ymin) / 100 * (top-bottom)
-        if ymax is None:
-            ymax = top
-        elif isinstance(ymax, str):
-            ymax = bottom + float(ymax) / 100 * (top-bottom)
-        start = (x, ymin)
-        end = (x, ymax)
-        self.axline(start, end, ig=ig, loctype=loctype, **kwargs)
-
-    def axline(self, start, end, ig: int = 0, loctype=None, **kwargs):
-        """add a custom line"""
-        o = DrawLine(start, end, ig=ig, loctype=loctype, **kwargs)
-        self._objects.append(o)
-
-    def arrow(self, start, end, ig: int = 0, color=None, lw=None, ls=None, arrow=Arrow.END,
-              at=None, length=None, layout=None, loctype=None, **kwargs):
-        o = DrawLine(start, end, ig=ig, color=color, lw=lw, ls=ls,
-                     arrow=arrow, at=at, length=length, layout=layout, loctype=loctype,
-                     **kwargs)
-        self._objects.append(o)
 
     def title(self, title=None, ig=0, **kwargs):
         """set the title of graph `igraph`"""
