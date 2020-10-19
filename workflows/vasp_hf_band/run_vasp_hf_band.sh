@@ -55,11 +55,11 @@ function run_vasp_hf_band_calc () {
   
   mkdir -p "$workdir"
   __setup_incars
+  if [ -f CHGCAR.hf ]; then
+    cp CHGCAR.hf "$workdir/"
+  fi
 
   cd "$workdir" || exit 2
-  if [ -f CHGCAR.hf ]; then
-    cp ../CHGCAR.hf .
-  fi
   ln -s ../POTCAR POTCAR
   ln -s ../POSCAR POSCAR
 

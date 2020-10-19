@@ -22,7 +22,7 @@ except ImportError:
 
 LOGFILE = "mushroom.log"
 
-ROOT_HAND = logging.FileHandler(LOGFILE, mode='w')
+ROOT_HAND = logging.FileHandler(LOGFILE, mode='a')
 STREAM_HAND = logging.StreamHandler()
 ROOT_FORM = logging.Formatter(fmt='%(asctime)s - %(name)s:%(levelname)8s - %(message)s',
                               datefmt='%Y-%m-%d %H:%M:%S')
