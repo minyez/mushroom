@@ -24,6 +24,7 @@ class KPath:
         self._ksegs = None
         self._find_ksegs()
         self._x = None
+        self._special_x = None
 
     def _find_ksegs(self):
         self._ksegs = find_k_segments(self.kpts)
@@ -31,18 +32,24 @@ class KPath:
     def _compute_x(self):
         """calculate 1d abscissa of kpoints"""
         xs = []
+        ispks = []
         accumu_l = 0.0
         for i, (st, ed) in enumerate(self._ksegs):
             l = np.linalg.norm(self.kpts[st, :] - self.kpts[ed, :])
+            # remove duplicate
+            if not st in ispks and not st-1 in ispks:
+                ispks.append(st)
+            ispks.append(ed)
             # skip the starting point if it is the same as the endpoint of last segment
             skip = 0
             if i > 0:
                 if st == self._ksegs[i-1][1]:
                     skip = 1
-            x = list(accumu_l + np.linalg.norm(self.kpts[st+skip:ed+1, :] - self.kpts[st, :], axis=1))
+            x = accumu_l + np.linalg.norm(self.kpts[st+skip:ed+1, :] - self.kpts[st, :], axis=1)
             xs.extend(x)
             accumu_l += l
-        self._x = xs
+        self._x = np.array(xs)
+        self._special_x = self._x[ispks]
 
     @property
     def x(self):
@@ -50,6 +57,14 @@ class KPath:
         if self._x is None:
             self._compute_x()
         return self._x
+
+    @property
+    def special_x(self):
+        """1d abscissa of points on kpath"""
+        if self._special_x is None:
+            self._compute_x()
+        return self._special_x
+
 
 
 def find_k_segments(kpts):

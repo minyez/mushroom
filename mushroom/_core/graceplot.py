@@ -254,7 +254,7 @@ class Color:
         "blue": BLUE, "b": BLUE,
         "yellow": YELLOW, "y": YELLOW,
         "brown": BROWN,
-        "grey": GREY,
+        "grey": GREY, "gray": GREY, "e": GREY,
         "violet": VIOLET,
         "cyan": CYAN,
         "magenta": MAGENTA,
@@ -683,7 +683,7 @@ class _Line(_BaseOutput):
     _attrs = {
         'type': (int, 1, "{:d}"),
         'linestyle': (int, LineStyle.SOLID, "{:d}"),
-        'linewidth': (float, 1.0, "{:3.1f}"),
+        'linewidth': (float, 1.5, "{:3.1f}"),
         'color': (int, Color.BLACK, "{:d}"),
         'pattern': (int, 1, "{:d}"),
         }
@@ -906,7 +906,7 @@ class _Default(_BaseOutput):
     _attrs = {
         "linewidth": (float, 1.5, "{:3.1f}"),
         "linestyle": (int, LineStyle.SOLID, "{:d}"),
-        "color": (int, 1, "{:d}"),
+        "color": (int, Color.BLACK, "{:d}"),
         "pattern": (int, 1, "{:d}"),
         "font": (int, 0, "{:d}"),
         "char_size": (float, 1.5, "{:8f}"),
@@ -982,7 +982,7 @@ class _Symbol(_BaseOutput):
     TRIGHT = 7
     PLUS = 8
     CROSS = 9
-    START = 10
+    STAR  = 10
     CHARACTER = 11
 
     pair = {
@@ -1003,7 +1003,7 @@ class _Symbol(_BaseOutput):
         "+": PLUS,
         "cross": CROSS,
         "x": CROSS,
-        "start": START,
+        "star": STAR,
         "character": CHARACTER,
     }
 
@@ -1135,7 +1135,7 @@ class _Tick(_BaseOutput):
         if self.__getattribute__("spec_type") == "both":
             for i, (label, m) in enumerate(zip(self.spec_labels, self.spec_majors)):
                 if m == "major":
-                    slist.append("ticklabel {:d} \"{:s}\"".format(i, label))
+                    slist.append("ticklabel {:d}, \"{:s}\"".format(i, label))
         return slist
 
 class Tick(_Tick):
@@ -1486,6 +1486,15 @@ class Axis(_Axis):
     def set_label(self, s=None, **kwargs):
         """set the label of axis"""
         self._label.set(s, **kwargs)
+
+    def set_spec(self, locs, labels=None, use_minor=False):
+        """set specific tick marks and labels
+
+        Args:
+            locs (Iterable)
+            labels (Iterable)
+        """
+        self._tick.set_spec(locs, labels=labels, use_minor=use_minor)
 
 
 class _Axes(_BaseOutput, _Affix):
@@ -1872,6 +1881,16 @@ class Graph(_Graph):
                 pre[i] = v
         self._view.set_view(pre)
         _logger.debug("view after %8f %8f %8f %8f", *self._view.get_view())
+
+    @property
+    def x(self):
+        """x axis"""
+        return self._xaxis
+
+    @property
+    def y(self):
+        """y axis"""
+        return self._yaxis
 
     def set_xaxis(self, **kwargs):
         """set x axis"""
@@ -2454,6 +2473,7 @@ class Plot:
     def bandstructure(cls):
         """template for a typical band structure plot"""
         p = Plot(1, 1)
+        p[0].x.set_major(grid="on")
         return p
 
     @classmethod
@@ -2472,6 +2492,7 @@ class Plot:
         p = Plot(1, 2, hgap=0.0, width_ratios=ratio)
         # turn off band structure legend
         p[0].set_legend(switch=False)
+        p[0].x.set_major(grid="on")
         # turn off y axis label (energy) in dos
         p[1].set_yticklabel(switch=False)
         return p
@@ -2482,24 +2503,25 @@ class Plot:
         p = Plot(1, 2)
         return p
 
+
 def extract_data_from_agr(pagr):
     """extract all data from agr file
-
-    Support XY only
 
     Args:
         pagr (str) : path to the agr file
 
     Returns:
-        list, each member is a 2d-array
+        list, type of each dataset; list, each member is a dataset as a 2d-array
     """
     starts = []
     ends = []
+    types = []
     with open(pagr, 'r') as h:
         for i, l in enumerate(h.readlines()):
             if l.startswith("@type"):
                 # exclude @type line
                 starts.append(i+1)
+                types.append(l.split()[-1].lower())
             if l == "&\n":
                 ends.append(i)
     data = []
@@ -2509,5 +2531,5 @@ def extract_data_from_agr(pagr):
         for i, (start, end) in enumerate(zip(starts, ends)):
             s = StringIO("".join(lines[start:end]))
             data.append(loadtxt(s, unpack=True))
-    return data
+    return types, data
 
