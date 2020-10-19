@@ -12,5 +12,12 @@
     "nbands": 6,
     "natms": 1,
     "nprjs": 9
+  },
+  "PROCAR_3": {
+    "nspins": 1,
+    "nkpts": 111,
+    "nbands": 68,
+    "natms": 12,
+    "nprjs": 9
   }
 }

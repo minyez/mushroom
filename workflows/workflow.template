@@ -2,7 +2,8 @@
 # shellcheck disable=SC2016,SC1004
 
 function template () {
-  echo '# naming the workflow to prog_task_subtask`addj`
+  echo '#!/usr/bin/env bash
+# naming the workflow to prog_task_subtask
 # and the control scripts to run_prog_task_subtask
 # source custom variables and backend infrastructure
 source ./variables.sh
@@ -33,7 +34,7 @@ function run_template_calc () {
   fi
 
   cd "$workdir" || exit 1
-  if (( dry != 1 )); then
+  if (( dry == 0 )); then
     $cmd
   fi
   cd ..

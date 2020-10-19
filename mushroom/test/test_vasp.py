@@ -31,9 +31,9 @@ class test_read_procar(ut.TestCase):
             verifies = json.load(fp)
         dir_poscar = p / "data"
         for f in dir_poscar.glob(r"PROCAR_*"):
+            print("Testing {}".format(f.name))
             bs = vasp.read_procar(f)
             verify = verifies[f.name]
-            print("Testing {}".format(f.name))
             for k, v in verify.items():
                 self.assertEqual(bs.__getattribute__(k), v)
 

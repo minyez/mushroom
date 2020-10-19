@@ -51,7 +51,6 @@ def _dict_read_doscar(path="DOSCAR", ncl=False):
     # total density of states
     tdos = [x[1:1+nspins] for x in lines[6:6+nedos]]
     tdos = np.array(tdos).transpose()
-    # TODO read pdos
     pdos = None
     if len(lines) > nedos + 7:
         nprjs = (len(lines[nedos+7]) - 1) // nspins
@@ -110,10 +109,13 @@ def _dict_read_procar(path="PROCAR"):
     l = lines[0].split()
     nkpts, nbands, natms = map(int, [l[3], l[7], l[-1]])
     nspins = 1
+    # extra line "tot" for more than 1 atom
+    has_tot_line = int(natms > 1)
     # remove the ion index and tot
     prjs = lines[7].split()[1:-1]
     nprjs = len(prjs)
-    if len(lines) > (1+nkpts*(nbands*(natms+4)+3)):
+    kpt_span = nbands*(natms+4+has_tot_line)+3
+    if len(lines) > (1+nkpts*kpt_span):
         nspins = 2
     eigen = np.zeros((nspins, nkpts, nbands))
     occ = np.zeros((nspins, nkpts, nbands))
@@ -121,11 +123,11 @@ def _dict_read_procar(path="PROCAR"):
     pwav = np.zeros((nspins, nkpts, nbands, natms, nprjs))
     for ispin in range(nspins):
         for ikpt in range(nkpts):
-            weight[ikpt] = float(lines[ikpt*(nbands*(natms+4)+3)+2].split()[-1])
+            weight[ikpt] = float(lines[ikpt*kpt_span+2].split()[-1])
             for ib in range(nbands):
                 # the line index with prefix band
-                start = ispin * (1+nkpts*(nbands*(natms+4)+3)) + \
-                        1 + ikpt * (nbands*(natms+4)+3) + ib*(natms+4) + 3
+                start = ispin * (1+nkpts*kpt_span) + \
+                        1 + ikpt * kpt_span + ib*(natms+4+has_tot_line) + 3
                 eigen[ispin, ikpt, ib], occ[ispin, ikpt, ib], pwav[ispin, ikpt, ib, :, :] \
                         = __read_band_data(lines[start:start+natms+3])
     return {"eigen": eigen,
