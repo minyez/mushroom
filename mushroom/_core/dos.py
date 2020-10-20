@@ -101,6 +101,8 @@ class DensityOfStates(EnergyUnit):
         return self._atms
     @atms.setter
     def atms(self, new):
+        if self._pdos is None:
+            raise BandStructureError("no projected dos found")
         if len(new) != self._natms:
             raise ValueError("Inconsistent atms input. Should be {:d}-long".format(self._natms))
         self._atms = new
@@ -115,6 +117,8 @@ class DensityOfStates(EnergyUnit):
         return self._prjs
     @prjs.setter
     def prjs(self, new):
+        if self._pdos is None:
+            raise BandStructureError("no projected dos found")
         if len(new) != self._nprjs:
             raise ValueError("Inconsistent prjs input. Should be {:d}-long".format(self._nprjs))
         self._prjs = new

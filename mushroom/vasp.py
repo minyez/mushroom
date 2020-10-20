@@ -6,6 +6,7 @@ import numpy as np
 from bs4 import BeautifulSoup
 
 from mushroom._core.logger import create_logger
+from mushroom._core.ioutils import conv_string
 from mushroom._core.dos import DensityOfStates
 from mushroom._core.bs import BandStructure
 
@@ -120,11 +121,11 @@ def _dict_read_procar(path="PROCAR"):
         nspins = 2
     eigen = np.zeros((nspins, nkpts, nbands))
     occ = np.zeros((nspins, nkpts, nbands))
-    weight = np.zeros(nkpts)
+    kptw = np.zeros((nkpts, 4))
     pwav = np.zeros((nspins, nkpts, nbands, natms, nprjs))
     for ispin in range(nspins):
         for ikpt in range(nkpts):
-            weight[ikpt] = float(lines[ikpt*kpt_span+2].split()[-1])
+            kptw[ikpt, :] = np.array(conv_string(lines[ikpt*kpt_span+2], float, 3, 4, 5, -1))
             for ib in range(nbands):
                 # the line index with prefix band
                 start = ispin * (1+nkpts*kpt_span) + \
@@ -133,19 +134,31 @@ def _dict_read_procar(path="PROCAR"):
                         = __read_band_data(lines[start:start+natms+3])
     return {"eigen": eigen,
             "occ": occ,
-            "weight": weight,
-            "unit": 'ev',
+            "weight": kptw[:, 3],
+            "kpoints": kptw[:, :3],
             "pwav": pwav,
             "prjs": prjs,
             }
 
-def read_procar(path="PROCAR"):
+def read_procar(path="PROCAR", filter_k_before=0, filter_k_after=None):
     """read PROCAR and return a BandStructure object
 
     Args:
         path (str) : path to the PROCAR file
+        filter_k_before (int)
+        filter_k_after (int)
     """
-    return BandStructure(**_dict_read_procar(path=path))
+    d = _dict_read_procar(path=path)
+    eigen, occ, weight, kpoints, pwav, prjs = \
+        map(d.get, ["eigen", "occ", "weight", "kpoints", "pwav", "prjs"])
+    if filter_k_after is None:
+        filter_k_after = len(kpoints)
+    eigen = eigen[:, filter_k_before:filter_k_after, :]
+    occ = occ[:, filter_k_before:filter_k_after, :]
+    weight = weight[filter_k_before:filter_k_after]
+    kpoints = kpoints[filter_k_before:filter_k_after, :]
+    pwav = pwav[:, filter_k_before:filter_k_after, :, :, :]
+    return BandStructure(eigen, occ, weight, unit='ev', pwav=pwav, prjs=prjs), kpoints
 
 def read_xml(*datakey, path="vasprun.xml"):
     """read vasprun.xml to extract data.

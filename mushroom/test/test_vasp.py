@@ -32,7 +32,7 @@ class test_read_procar(ut.TestCase):
         dir_procar = p / "data"
         for f, verify in verifies.items():
             print("Testing {}".format(f))
-            bs = vasp.read_procar(dir_procar / f)
+            bs, _ = vasp.read_procar(dir_procar / f)
             for k, v in verify.items():
                 self.assertEqual(bs.__getattribute__(k), v)
 
