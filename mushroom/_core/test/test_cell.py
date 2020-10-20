@@ -1,5 +1,6 @@
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
+"""test cell functionality"""
 import os
 import tempfile
 import json
@@ -10,10 +11,11 @@ import numpy as np
 
 from mushroom._core.cell import (Cell, CellError)
 from mushroom._core.constants import ANG2AU, AU2ANG, PI
-from mushroom._core.ioutils import get_dirpath, get_matched_files
+from mushroom._core.ioutils import get_dirpath
 
 
 class simple_cubic_lattice(ut.TestCase):
+    """simple cubic"""
 
     a = 5.0
     latt = [[a, 0.0, 0.0],
@@ -26,6 +28,7 @@ class simple_cubic_lattice(ut.TestCase):
     cell = Cell(latt, atms, posi, unit="ang", coord_sys="D")
 
     def test_properties(self):
+        """properties"""
         # unit
         self.assertEqual(self.cell.unit, "ang")
         # coordinate system
@@ -110,6 +113,7 @@ class cell_raise(ut.TestCase):
         self.assertRaises(CellError, Cell, latt, atms, posi)
 
     def test_bad_atoms_pos(self):
+        """raise for bad atom positions"""
         latt = [[5.0, 0.0, 0.0],
                 [0.0, 5.0, 0.0],
                 [0.0, 0.0, 5.0]]
@@ -185,7 +189,7 @@ class cell_factory_method(ut.TestCase):
         self.assertRaisesRegex(CellError, "invalid JSON file for cell: {}".format(tf.name),
                                Cell.read_json, tf.name)
 
-        jd= {"latt": [[5.0, 0.0, 0.0], [0.0, 5.0, 0.0], [0.0, 0.0, 5.0]]}
+        jd = {"latt": [[5.0, 0.0, 0.0], [0.0, 5.0, 0.0], [0.0, 0.0, 5.0]]}
         with open(tf.name, 'w') as h:
             json.dump(jd, h)
         self.assertRaisesRegex(CellError,
@@ -263,7 +267,7 @@ class cell_select_dynamics(ut.TestCase):
 
     def test_relax_all(self):
         c = Cell.bravais_cI("C", all_relax=False, primitive=False,
-                             select_dyn={1: [True, False, True]})
+                            select_dyn={1: [True, False, True]})
         c.relax_all()
         self.assertListEqual(c.sd_flag(1), [True, True, True])
         self.assertFalse(c.use_select_dyn)
@@ -380,65 +384,139 @@ class cell_sort(ut.TestCase):
 
 
 class test_cell_manipulation(ut.TestCase):
-   '''Test manipulation methods for lattice and atoms
-   '''
+    """Test manipulation methods for lattice and atoms
+    """
 
-   def test_add_atom_on_graphene(self):
-       '''Test adding atoms in a graphene cell
-       '''
-       a = 5.2
-       latt = [[a/2, 0.0, 0.0],
-               [-a/2, a/2*np.sqrt(3.0), 0.0],
-               [0.0, 0.0, 15.0]]
-       atms = ["C", "C", ]
-       posi = [[0.0, 0.0, 0.5],
-               [1.0/3, 2.0/3, 0.5], ]
-       gp = Cell(latt, atms, posi)
-       self.assertRaisesRegex(CellError,
-                              r"Invalid coordinate: *",
-                              gp.add_atom, "H", [0.2, 0.3])
-       self.assertRaisesRegex(CellError,
-                              "atom should be string, received <class 'int'>",
-                              gp.add_atom, 1, [0.2, 0.3, 0.4])
-       gp.fix_all()
-       gp.add_atom("H", [0.0, 0.0, 0.6], select_dyn=[False, False, True])
-       self.assertEqual(gp.natm, 3)
-       self.assertListEqual(gp.atms, ['C', 'C', 'H'])
-       self.assertDictEqual(gp.type_mapping, {0: 'C', 1: 'H'})
-       self.assertListEqual(gp.sd_flag(2), [False, False, True])
+    def test_add_atom_on_graphene(self):
+        '''Test adding atoms in a graphene cell
+        '''
+        a = 5.2
+        latt = [[a/2, 0.0, 0.0],
+                [-a/2, a/2*np.sqrt(3.0), 0.0],
+                [0.0, 0.0, 15.0]]
+        atms = ["C", "C", ]
+        posi = [[0.0, 0.0, 0.5],
+                [1.0/3, 2.0/3, 0.5], ]
+        gp = Cell(latt, atms, posi)
+        self.assertRaisesRegex(CellError,
+                               r"Invalid coordinate: *",
+                               gp.add_atom, "H", [0.2, 0.3])
+        self.assertRaisesRegex(CellError,
+                               "atom should be string, received <class 'int'>",
+                               gp.add_atom, 1, [0.2, 0.3, 0.4])
+        gp.fix_all()
+        gp.add_atom("H", [0.0, 0.0, 0.6], select_dyn=[False, False, True])
+        self.assertEqual(gp.natm, 3)
+        self.assertListEqual(gp.atms, ['C', 'C', 'H'])
+        self.assertDictEqual(gp.type_mapping, {0: 'C', 1: 'H'})
+        self.assertListEqual(gp.sd_flag(2), [False, False, True])
 
-   def test_atom_arrange_after_add_atom(self):
-       '''Test if the atoms are correctly rearranged
-       after adding new atom
-       '''
-       a = 2.0
-       latt = [[a, 0.0, 0.0],
-               [0.0, a, 0.0],
-               [0.0, 0.0, a]]
-       atms = ["Na", "Cl", ]
-       posi = [[0.0, 0.0, 0.0],
-               [0.5, 0.5, 0.5], ]
-       brokenNaCl = Cell(latt, atms, posi)
-       brokenNaCl.add_atom('Na', [0.0, 0.5, 0.5])
-       self.assertListEqual(brokenNaCl.atms, ['Na', 'Na', 'Cl'])
-       brokenNaCl.add_atom('Na', [0.5, 0.0, 0.5])
-       self.assertListEqual(brokenNaCl.atms, ['Na', 'Na', 'Na', 'Cl'])
-       brokenNaCl.add_atom('Cl', [0.5, 0.0, 0.0])
-       self.assertListEqual(brokenNaCl.atms, ['Na', 'Na', 'Na', 'Cl', 'Cl'])
-       self.assertTrue(np.array_equal(brokenNaCl.posi,
-                                      np.array([[0.0, 0.0, 0.0],
-                                                [0.0, 0.5, 0.5],
-                                                [0.5, 0.0, 0.5],
-                                                [0.5, 0.5, 0.5],
-                                                [0.5, 0.0, 0.0], ], dtype=brokenNaCl._dtype)))
+    def test_atom_arrange_after_add_atom(self):
+        """Test if the atoms are correctly rearranged after adding new atom
+        """
+        a = 2.0
+        latt = [[a, 0.0, 0.0],
+                [0.0, a, 0.0],
+                [0.0, 0.0, a]]
+        atms = ["Na", "Cl", ]
+        posi = [[0.0, 0.0, 0.0],
+                [0.5, 0.5, 0.5], ]
+        brokenNaCl = Cell(latt, atms, posi)
+        brokenNaCl.add_atom('Na', [0.0, 0.5, 0.5])
+        self.assertListEqual(brokenNaCl.atms, ['Na', 'Na', 'Cl'])
+        brokenNaCl.add_atom('Na', [0.5, 0.0, 0.5])
+        self.assertListEqual(brokenNaCl.atms, ['Na', 'Na', 'Na', 'Cl'])
+        brokenNaCl.add_atom('Cl', [0.5, 0.0, 0.0])
+        self.assertListEqual(brokenNaCl.atms, ['Na', 'Na', 'Na', 'Cl', 'Cl'])
+        self.assertTrue(np.array_equal(brokenNaCl.posi,
+                                       np.array([[0.0, 0.0, 0.0],
+                                                 [0.0, 0.5, 0.5],
+                                                 [0.5, 0.0, 0.5],
+                                                 [0.5, 0.5, 0.5],
+                                                 [0.5, 0.0, 0.0],], dtype=brokenNaCl._dtype)))
 
+class test_supercell(ut.TestCase):
+    """test the supercell creation"""
+    latt = [[1.0, 0.0, 0.0],
+            [0.0, 2.0, 0.0],
+            [0.0, 0.0, 3.0]]
+    atms = ["C", "Si"]
+    posi = [[0.0, 0.0, 0.0],
+            [0.5, 0.5, 0.5]]
+    cell = Cell(latt, atms, posi, coord_sys="D")
+
+    def test_211(self):
+        """test 2 1 1 supercell creation"""
+        sclatt = [[2.0, 0.0, 0.0],
+                  [0.0, 2.0, 0.0],
+                  [0.0, 0.0, 3.0]]
+        scatms = ["C", "C", "Si", "Si"]
+        scposi = [[0.0, 0.0, 0.0],
+                  [0.5, 0.0, 0.0],
+                  [0.25, 0.5, 0.5],
+                  [0.75, 0.5, 0.5]]
+        sc = self.cell.get_supercell(2, 1, 1)
+        self.assertListEqual(scatms, sc.atms)
+        self.assertTrue(np.array_equal(sc.latt, np.array(sclatt, dtype=Cell._dtype)))
+        self.assertTrue(np.array_equal(sc.posi, np.array(scposi, dtype=Cell._dtype)))
+
+    def test_121(self):
+        """test 1 2 1 supercell creation"""
+        sclatt = [[1.0, 0.0, 0.0],
+                  [0.0, 4.0, 0.0],
+                  [0.0, 0.0, 3.0]]
+        scatms = ["C", "C", "Si", "Si"]
+        scposi = [[0.0, 0.0, 0.0],
+                  [0.0, 0.5, 0.0],
+                  [0.5, 0.25, 0.5],
+                  [0.5, 0.75, 0.5]]
+        sc = self.cell.get_supercell(1, 2, 1)
+        self.assertListEqual(scatms, sc.atms)
+        self.assertTrue(np.array_equal(sc.latt, np.array(sclatt, dtype=Cell._dtype)))
+        self.assertTrue(np.array_equal(sc.posi, np.array(scposi, dtype=Cell._dtype)))
+
+
+    def test_112(self):
+        """test 1 2 1 supercell creation"""
+        sclatt = [[1.0, 0.0, 0.0],
+                  [0.0, 2.0, 0.0],
+                  [0.0, 0.0, 6.0]]
+        scatms = ["C", "C", "Si", "Si"]
+        scposi = [[0.0, 0.0, 0.0],
+                  [0.0, 0.0, 0.5],
+                  [0.5, 0.5, 0.25],
+                  [0.5, 0.5, 0.75]]
+        sc = self.cell.get_supercell(1, 1, 2)
+        self.assertListEqual(scatms, sc.atms)
+        self.assertTrue(np.array_equal(sc.latt, np.array(sclatt, dtype=Cell._dtype)))
+        self.assertTrue(np.array_equal(sc.posi, np.array(scposi, dtype=Cell._dtype)))
+
+
+    def test_122(self):
+        """test 2 2 2 supercell creation"""
+        sclatt = [[1.0, 0.0, 0.0],
+                  [0.0, 4.0, 0.0],
+                  [0.0, 0.0, 6.0]]
+        scatms = ["C", "C", "C", "C", "Si", "Si", "Si", "Si"]
+        scposi = [[0.0, 0.0, 0.0],
+                  [0.0, 0.5, 0.0],
+                  [0.0, 0.0, 0.5],
+                  [0.0, 0.5, 0.5],
+                  [0.5, 0.25, 0.25],
+                  [0.5, 0.75, 0.25],
+                  [0.5, 0.25, 0.75],
+                  [0.5, 0.75, 0.75]]
+        sc = self.cell.get_supercell(1, 2, 2)
+        self.assertListEqual(scatms, sc.atms)
+        print(sc.posi)
+        self.assertTrue(np.array_equal(sc.latt, np.array(sclatt, dtype=Cell._dtype)))
+        self.assertTrue(np.array_equal(sc.posi, np.array(scposi, dtype=Cell._dtype)))
 
 class cell_export(ut.TestCase):
     """test various output format of Cell"""
 
     def test_vasp_export(self):
         """test VASP POSCAR export"""
-        pass
 
 
 if __name__ == "__main__":

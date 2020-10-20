@@ -22,8 +22,13 @@ import os
 from collections import OrderedDict
 from numbers import Real
 from typing import List
+from itertools import product
 
 import numpy as np
+try:
+    import spglib
+except ImportError:
+    spglib = None
 
 from mushroom._core.constants import PI
 from mushroom._core.cif import Cif
@@ -71,7 +76,7 @@ class Cell(LengthUnit):
     _dtype = 'float64'
     avail_exporters = ['vasp', 'abi']
 
-    def __init__(self, latt, atms, posi, unit='ang', **kwargs):
+    def __init__(self, latt, atms, posi, unit='ang', sanitize=True, **kwargs):
 
         self.comment = "Default Cell class"
         self._reference = ''
@@ -89,7 +94,8 @@ class Cell(LengthUnit):
         self._atms = [a.capitalize() for a in atms]
         self._parse_cellkw(**kwargs)
         self._check_input_consistency()
-        self._sanitize_atoms()
+        if sanitize:
+            self._sanitize_atoms()
         self.exporters = {
             'vasp': self.export_vasp,
             'abi': self.export_abi,
@@ -268,8 +274,6 @@ class Cell(LengthUnit):
                         j -= 1
                     else:
                         break
-                # self.print_log("Sorting size {} done".format(_i+1), level=3, depth=_depth+1)
-        # self.print_log("Bubble sort done", level=3, depth=_depth)
 
     def _sanitize_atoms(self):
         """Sanitize the atoms arrangement after initialization.
@@ -338,6 +342,56 @@ class Cell(LengthUnit):
         self.move_atoms_to_first_lattice()
         if sanitize:
             self._sanitize_atoms()
+
+# pylint: disable=R0914
+    def get_supercell(self, n1: int = 1, n2: int = 1, n3: int = 1):
+        """create supercell from current
+
+        Note that selective dynamic flags will be lost in the new object.
+
+        Args:
+            n1, n2, n3 (int)
+
+        Returns:
+            Cell
+        """
+        was_c = self.coord_sys == "C"
+        multi = np.array([n1, n2, n3])
+        if np.prod(multi) == 0:
+            raise ValueError("encounter zero expansion")
+
+        self.coord_sys = "D"
+        latt, atms, posi = self.get_cell()
+        scatms = []
+        for _ in range(n1*n2*n3):
+            scatms.extend(atms)
+        sclatt = latt.transpose() * multi
+        sclatt = sclatt.transpose()
+        posi = posi / multi
+        scposi = []
+        # n3, n2, n1 to make the first coordinate goes fastest
+        for i3, i2, i1 in product(range(n3), range(n2), range(n1)):
+            shift = np.ones((self.natm, 3)) * np.divide([i1, i2, i3], multi)
+            scposi.extend(posi + shift)
+        sc = type(self)(sclatt, scatms, scposi, unit=self.unit, coord_sys="D",
+                        comment="{}x{}x{} S.C. of {}".format(n1, n2, n3, self.comment),
+                        reference=self.get_reference())
+        # convert back to Cartisian
+        if was_c:
+            self.coord_sys = "C"
+            sc.coord_sys = "C"
+        return sc
+
+    def primitize(self, standardized: bool = False):
+        """get the primitized cell
+        
+        Args:
+            standardized (bool)
+        """
+        if spglib is None:
+            raise ImportError("need spglib to primitize cell")
+        print(standardized)
+        raise NotImplementedError
 
     # TODO move atom
     def __move(self, ia):

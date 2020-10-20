@@ -57,7 +57,7 @@ function run_vasp_hf_conv_calc () {
         if [ -d "$workdir" ]; then
           continue
         fi
-        mkdir "$workdir"
+        mkdir -p "$workdir"
         sed "s/_encut_/$encut/g;s/_ediff_/$ediff/g;s/_prec_/$prec/g" \
           INCAR.pbe > "$workdir/INCAR.pbe"
         sed "s/_encut_/$encut/g;s/_ediff_/$ediff/g;s/_prec_/$prec/g;s/_hfscreen_/$hfscreen/g;" \
@@ -78,7 +78,7 @@ EOF
         cd "$workdir" || exit 1
         ln -s ../POSCAR POSCAR
         ln -s ../POTCAR POTCAR
-        if (( dry != 1 )); then
+        if (( dry == 0 )); then
           run_hf_3steps "$vaspcmd"
           wt=$(wall_time "OUTCAR.hf")
           echo "ENCUT=$encut kmesh=${kmesh// /-} computed, wall time = $wt"

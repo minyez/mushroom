@@ -26,18 +26,26 @@ function run_vasp_hf_band_clean () {
 function __setup_incars () {
   # copy INCARs
   sed "s/_encut_/$encut/g;s/_ediff_/$ediff/g;s/_prec_/$prec/g" \
-    INCAR.pbe > "$workdir/INCAR.pbe"
+    INCAR.pbe > "$1/INCAR.pbe"
   sed "s/_encut_/$encut/g;s/_ediff_/$ediff/g;s/_prec_/$prec/g;s/_hfscreen_/$hfscreen/g;" \
-    INCAR.hf > "$workdir/INCAR.hf"
+    INCAR.hf > "$1/INCAR.hf"
   sed "s/PRECFOCK = Normal/PRECFOCK = Fast/g" "$workdir/INCAR.hf" > "$workdir/INCAR.coarse"
   if (( "$lthomas" == 1 )); then
     s="AEXX = 1.0 ; AGGAC = 1.0 ; ALDAC = 1.0 ; LTHOMAS = T"
-    echo "$s" >> "$workdir/INCAR.coarse"
-    echo "$s" >> "$workdir/INCAR.hf"
+    echo "$s" >> "$1/INCAR.coarse"
+    echo "$s" >> "$1/INCAR.hf"
   fi
+  # parallel setup
+  kpar=$(largest_div_below_sqrt "$np")
+  npar=$((np / kpar))
+  for d in INCAR.pbe INCAR.coarse INCAR.hf; do
+    incar_change_tag "NPAR" "$npar" "$1/$d"
+    incar_change_tag "KPAR" "$kpar" "$1/$d"
+  done
+
   if [ -f CHGCAR.hf ]; then
     for d in INCAR.pbe INCAR.coarse INCAR.hf; do
-      echo "ICHARG = 11" >> "$workdir/$d"
+      echo "ICHARG = 11" >> "$1/$d"
     done
   fi
 }
@@ -54,7 +62,7 @@ function run_vasp_hf_band_calc () {
   fi
   
   mkdir -p "$workdir"
-  __setup_incars
+  __setup_incars "$workdir"
   if [ -f CHGCAR.hf ]; then
     cp CHGCAR.hf "$workdir/"
   fi
