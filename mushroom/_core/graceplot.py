@@ -23,9 +23,9 @@ _logger = create_logger("grace")
 del create_logger
 
 GREEK_PATTERN = {}
-for g in greeks:
-    k = r"\\{}".format(g)
-    GREEK_PATTERN[k] = r"\\x%s\\f{}" % g[0]
+for _g in greeks:
+    _k = r"\\{}".format(_g)
+    GREEK_PATTERN[_k] = r"\\x%s\\f{}" % _g[0]
 
 # pylint: disable=bad-whitespace
 def encode_string(string):
@@ -1831,6 +1831,8 @@ class DrawEllipse(_DrawEllipse):
         if heigh is None:
             heigh = width
         x, y = xy
+        if color is not None and fc is None:
+            fc = color
         _DrawEllipse.__init__(self, loctype=loctype, color=Color.get(color), ellipse_comment=ig,
                               linestyle=LineStyle.get(ls), linewidth=lw,
                               ellipse_location=(x-width/2, y+heigh/2, x+width/2, y-heigh/2),
@@ -2190,20 +2192,23 @@ class Graph(_Graph):
                        charsize=charsize, rot=rot, font=font, **kwargs)
         self._objects.append(o)
 
-    def circle(self, xy, width, heigh=None, color=None, loctype=None,
+    def circle(self, xy, width, heigh=None, color=None, loctype="world",
                lw=None, ls=None, fc=None, fp=None, **kwargs):
         """draw a circle on the plot
 
         Args:
             xy (2-member list)
             width (float)
-            heigh (float)
+            heigh (float): if left as None, it will try to draw a round circle
             color (str/int)
             lw (float) : line width
             ls (str/int) : line style
             fc (str/int) : fill color
             fp (str/int) : fill pattern
         """
+        if heigh is None:
+            xmin, ymin, xmax, ymax = {"world": self.get_limit, "view": self.get_view}.get(loctype)()
+            heigh = width / (xmax-xmin) * (ymax-ymin)
         o = DrawEllipse(xy, width, heigh=heigh, ig=self._index, color=color, lw=lw,
                         ls=ls, fc=fc, fp=fp, loctype=loctype, **kwargs)
         self._objects.append(o)

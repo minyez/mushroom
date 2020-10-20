@@ -23,6 +23,7 @@
 ### 核心库 `_core`
 
 - [ ] type hints
+- [ ] map `p`, `d`, `f` to corresponding projector lists
 
 ### VASP
 

@@ -5,11 +5,16 @@
 For atom-projector-band (apb) string, see ``mushroom._core.bs.split_apb``
 """
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
+import numpy as np
+
+from mushroom._core.logger import create_logger
 from mushroom._core.graceplot import Plot
 from mushroom._core.cell import Cell
 from mushroom._core.bs import split_apb
 from mushroom._core.kpoints import KPath
 from mushroom.vasp import read_procar
+
+_logger = create_logger("mv_pwav")
 
 def _parser():
     """the parser"""
@@ -37,7 +42,8 @@ def _parser():
 def m_v_pwav():
     """main stream"""
     args = _parser()
-    colors = ["red", "blue"]
+    # usually three are enough
+    colors = ["red", "blue", "orange"]
 
     c = Cell.read(args.poscar)
     bs, kpts = read_procar(args.procar, filter_k_before=args.removek)
@@ -60,13 +66,15 @@ def m_v_pwav():
     # draw partial wave with ellipse
     scale = args.scale
     if scale is None:
-        scale = (kp.x[-1] - kp.x[0]) / len(kp.x)
+        scale = 2.5
+    scale *= (kp.x[-1] - kp.x[0]) / len(kp.x)
+    _logger.info("scale set to %r", scale)
 
     if args.apb is not None:
         for i, apb in enumerate(args.apb.split()):
             atms, prjs, bands = split_apb(apb)
-            pwav = bs.get_pwav(atms, prjs, bands)[isp, :, :]
-            eigen = bs.get_eigen(bands)[isp, :, :]
+            pwav = np.sqrt(bs.get_pwav(atms, prjs, bands)[isp, :, :])
+            eigen = bs.get_eigen(bands)[isp, :, :] - bs.efermi
             nb = len(bands)
             for ib in range(nb):
                 for x, y, w in zip(kp.x, eigen[:, ib], pwav[:, ib]):

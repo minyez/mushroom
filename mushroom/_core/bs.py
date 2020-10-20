@@ -600,6 +600,7 @@ class BandStructure(EnergyUnit):
         return self._eigen[:, :, indices]
 
 
+    # TODO!!! problem when parsing string of proj. int is okay
     def get_pwav(self, atm=None, prj=None, indices=None):
         """get particular partial wave for projectors `proj` on atoms `atom`
 
