@@ -24,10 +24,10 @@ Run `pip install -r requirements.txt` to install dependencies.
 If you use `conda`, try
 
 ```bash
-conda install -c conda-forge --file requirements.txt
+conda install -c conda-forge -n myenv --file requirements.txt
 ```
 
-Note that in this case you may need to set your virtual environment first.
+Note that in this case you may need to set your virtual environment `myenv` first.
 
 ## Installation
 

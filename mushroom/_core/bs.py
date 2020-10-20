@@ -27,7 +27,7 @@ BAND_STR_PATTERN = re.compile(r"[vc]bm([-+][\d]+)?")
 THRES_EMP = 1.0E-3
 THRES_OCC = 1.0 - THRES_EMP
 
-_logger = create_logger(__name__)
+_logger = create_logger("bs")
 del create_logger
 
 class BandStructureError(Exception):
@@ -111,6 +111,11 @@ class BandStructure(EnergyUnit):
         else:
             self.compute_band_edges()
             self._efermi = self.vbm
+
+        _logger.info("Read bandstructure. Dimensions")
+        _logger.info(">> nspins = %d", self._nspins)
+        _logger.info(">>  nkpts = %d", self._nkpts)
+        _logger.info(">> nbands = %d", self._nbands)
 
         self._pwav = None
         self._atms = None
@@ -248,12 +253,15 @@ class BandStructure(EnergyUnit):
             if natms != self._natms:
                 raise BandStructureError("inconsistent atms input {}".format(atms))
             self._atms = atms
+            _logger.info("Read atoms of partial wave, dimension = %s", natms)
         if prjs:
             nprjs = len(prjs)
             if nprjs != self._nprjs:
                 raise BandStructureError("inconsistent prjs input {}".format(prjs))
             self._prjs = prjs
+            _logger.info("Read projectors of partial wave, dimension = %s", nprjs)
         self._pwav = np.array(pwav, dtype=self._dtype)
+        _logger.info("Read partial wave")
 
     @property
     def has_proj(self):
@@ -693,7 +701,7 @@ def random_band_structure(nspins=1, nkpts=1, nbands=2, natms=1, nprjs=1,
             the dimensions of eigenvalues, occupation numbers and projections.
         has_proj (bool): if fake projection information is generated
         is_metal (bool): if set True, a band structure of metal is generated, 
-        otherwise that of semiconductor
+            otherwise semiconductor
     """
     atm_types = ["C", "Si", "Na", "Cl", "P"]
     prj_names = ["s", "px", "py", "pz", "dyz", "dzx", "dxy", "dx2-y2", "dz2"]

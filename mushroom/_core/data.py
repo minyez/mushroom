@@ -7,7 +7,7 @@ import numpy as np
 from mushroom._core.ioutils import trim_after
 from mushroom._core.logger import create_logger
 
-_logger = create_logger(__name__)
+_logger = create_logger("data")
 del create_logger
 
 def conv_estimate_number(s: str, reserved: bool = False) -> float:

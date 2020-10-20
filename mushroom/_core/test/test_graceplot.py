@@ -4,7 +4,14 @@ import unittest as ut
 
 from mushroom._core.graceplot import (_ColorMap, Color, Font, Symbol,
                                       Graph, View,
-                                      Plot)
+                                      Plot,
+                                      encode_string)
+
+class test_string_encoder(ut.TestCase):
+    """test encoder to get grace-favored text string"""
+    def test_greek(self):
+        """encoding greek"""
+        self.assertEqual(encode_string(r"\Gamma \beta"), r"\xG\f{} \xb\f{}")
 
 class test_ColorMap(ut.TestCase):
     """test colormap utilites"""

@@ -221,11 +221,13 @@ def _dict_read_eigen(path="EIGENVAL") -> dict:
          "natms": natms,}
     return d
 
-def read_eigen(path="EIGENVAL"):
+def read_eigen(path="EIGENVAL", filter_k_before=0, filter_k_after=None):
     """read band structure from EIGENVAL
 
     Args:
         path (str) : path to EIGENVAL
+        filter_k_before (int)
+        filter_k_after (int)
 
     Returns:
         BandStructure, int, 2d-array
@@ -233,5 +235,11 @@ def read_eigen(path="EIGENVAL"):
     d = _dict_read_eigen(path=path)
     eigen, occ, weight, kpoints, natms = \
         map(d.get, ["eigen", "occ", "weight", "kpoints", "natms"])
+    if filter_k_after is None:
+        filter_k_after = len(kpoints)
+    eigen = eigen[:, filter_k_before:filter_k_after, :]
+    occ = occ[:, filter_k_before:filter_k_after, :]
+    weight = weight[filter_k_before:filter_k_after]
+    kpoints = kpoints[filter_k_before:filter_k_after, :]
     return BandStructure(eigen, occ, weight), natms, kpoints
 

@@ -7,7 +7,7 @@ from numpy import cos, sin
 from mushroom._core.constants import PI
 from mushroom._core.logger import create_logger
 
-_logger = create_logger("crystutils")
+_logger = create_logger("cryutil")
 del create_logger
 
 def get_latt_vecs_from_latt_consts(a: float, b: float, c: float,

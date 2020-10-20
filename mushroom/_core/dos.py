@@ -6,7 +6,7 @@ from mushroom._core.unit import EnergyUnit
 from mushroom._core.logger import create_logger
 from mushroom._core.data import print_2d_data
 
-_logger = create_logger(__name__)
+_logger = create_logger("dos")
 del create_logger
 
 KEYS_DOS_PROJ = ("atms", "prjs", "pdos")

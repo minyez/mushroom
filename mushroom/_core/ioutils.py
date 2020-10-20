@@ -7,6 +7,16 @@ from collections import OrderedDict
 from collections.abc import Iterable
 from sys import stdout
 
+from mushroom._core.logger import create_logger
+
+lower_greeks = ["alpha", "beta", "gamma", "theta", "omega"]
+upper_greeks = list(x.capitalize() for x in lower_greeks)
+greeks = lower_greeks + upper_greeks
+greeks_latex = list("\\" + x for x in greeks)
+
+_logger = create_logger("ioutil")
+del create_logger
+
 
 def get_dirpath(filePath):
     """get the name of directory with filePath

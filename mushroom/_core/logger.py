@@ -24,9 +24,9 @@ LOGFILE = "mushroom.log"
 
 ROOT_HAND = logging.FileHandler(LOGFILE, mode='a')
 STREAM_HAND = logging.StreamHandler()
-ROOT_FORM = logging.Formatter(fmt='%(asctime)s - %(name)s:%(levelname)8s - %(message)s',
+ROOT_FORM = logging.Formatter(fmt='%(asctime)s - %(name)7s:%(levelname)8s - %(message)s',
                               datefmt='%Y-%m-%d %H:%M:%S')
-STREAM_FORM = logging.Formatter(fmt='%(name)s:%(levelname)8s - %(message)s')
+STREAM_FORM = logging.Formatter(fmt='%(name)7s:%(levelname)8s - %(message)s')
 
 ROOT_HAND.setFormatter(ROOT_FORM)
 ROOT_HAND.setLevel(LOG_LEVEL)

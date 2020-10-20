@@ -9,21 +9,38 @@ Therefore, platform-related functions are generally discarded. (minyez)
 """
 import sys
 import time
+from re import sub
 from io import TextIOWrapper, StringIO
 from collections.abc import Iterable
 from copy import deepcopy
 from numpy import shape, absolute, loadtxt
 
 from mushroom._core.data import Data
+from mushroom._core.ioutils import greeks
 
 from mushroom._core.logger import create_logger
-_logger = create_logger(__name__)
+_logger = create_logger("grace")
 del create_logger
 
+GREEK_PATTERN = {}
+for g in greeks:
+    k = r"\\{}".format(g)
+    GREEK_PATTERN[k] = r"\\x%s\\f{}" % g[0]
+
 # pylint: disable=bad-whitespace
-def encode_str(string):
-    """encode a string to grace format"""
-    raise NotImplementedError
+def encode_string(string):
+    r"""encode a string to grace format.
+
+    Args:
+        string (str): the string to encode. Supported markup:
+            Greek letters: \alpha, \Beta, \gamma
+            super- or subscript: ^{sup}, _{sub}
+            italic: //
+    """
+    # greek letter
+    for pat, agrstr in GREEK_PATTERN.items():
+        string = sub(pat, agrstr, string)
+    return string
 
 def decode_agr(agr):
     """decode grace format string to a normal string"""
@@ -1136,7 +1153,7 @@ class _Tick(_BaseOutput):
         if self.__getattribute__("spec_type") == "both":
             for i, (label, m) in enumerate(zip(self.spec_labels, self.spec_majors)):
                 if m == "major":
-                    slist.append("ticklabel {:d}, \"{:s}\"".format(i, label))
+                    slist.append("ticklabel {:d}, \"{:s}\"".format(i, encode_string(label)))
         return slist
 
 class Tick(_Tick):
@@ -1257,7 +1274,7 @@ class Label(_Label):
         self.label = label
         if label is None:
             self.label = ""
-        self.label = str(self.label)
+        self.label = self.label
         _Label.__init__(self, layout=layout, place_position=Position.get(position),
                         char_size=charsize, font=font, color=Color.get(color), place=place)
 
@@ -1277,7 +1294,7 @@ class Label(_Label):
 
     def export(self):
         _logger.debug("exporting label: %s", self.label)
-        slist = [self._marker + " \"{:s}\"".format(self.label),]
+        slist = [self._marker + " \"{:s}\"".format(encode_string(self.label)),]
         slist += _BaseOutput.export(self)
         return slist
 
@@ -1724,14 +1741,14 @@ class DrawString(_DrawString):
         s (str) : content of string
         xy (2-member list) : location of string
     """
-    def __init__(self, s, xy, ig=None, color=None, just=None, charsize=None,
+    def __init__(self, s: str, xy, ig=None, color=None, just=None, charsize=None,
                  rot=None, font=None, loctype=None, **kwargs):
         if ig is not None:
             ig = "g" + str(ig)
         _DrawString.__init__(self, loctype=loctype, color=Color.get(color), string_comment=ig,
                              just=Justf.get(just), rot=rot, char_size=charsize, font=font,
                              string_location=xy)
-        self.__setattr__("def", s)
+        self.__setattr__("def", encode_string(s))
         _raise_unknown_attr(self, *kwargs)
 
     def export(self):
