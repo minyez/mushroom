@@ -17,7 +17,8 @@ Any suggestions concerning code style, feature, etc, are totally welcome.
 - NumPy
 - Spglib
 - PyCIFRW (for reading cif)
-- Bash >= 4.4 (for scripts)
+- BeautifulSoup4 (for scrapper and XML parser)
+- Bash >= 4.4 (for using workflow scripts)
 
 Run `pip install -r requirements.txt` to install dependencies.
 If you use `conda`, try

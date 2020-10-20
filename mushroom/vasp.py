@@ -3,6 +3,7 @@
 from os.path import realpath
 from io import StringIO
 import numpy as np
+from bs4 import BeautifulSoup
 
 from mushroom._core.logger import create_logger
 from mushroom._core.dos import DensityOfStates
@@ -145,4 +146,40 @@ def read_procar(path="PROCAR"):
         path (str) : path to the PROCAR file
     """
     return BandStructure(**_dict_read_procar(path=path))
+
+def read_xml(*datakey, path="vasprun.xml"):
+    """read vasprun.xml to extract data.
+
+    The reason to use positional arguments to specify the data to extract
+    is to avoid processing uncessary data for large XML file.
+
+    Args:
+        path (str) : path to the vasp xml file. Default to vasprun.xml
+        arguments: key/identifier of data to extract.
+            Currently supported:
+                kpoints: kpoints in reciprocal vector coordinates
+    Returns:
+        dict
+    """
+    objects = {}
+    avail_keys = {
+        "kpoints": __read_xml_kpoints,
+        }
+    if not datakey:
+        _logger.warning("no identifier specified in XML")
+        return objects
+    with open(path, 'rb') as h:
+        xml = BeautifulSoup(h.read(), 'xml')
+    for key in datakey:
+        try:
+            objects[key] = avail_keys.get(key)(xml)
+        except KeyError:
+            raise ValueError("datakey {} is not supported for vasp xml parser".format(key))
+    return objects
+
+def __read_xml_kpoints(xml: BeautifulSoup):
+    """get the kpoints from xml"""
+    kpts = "".join(k.string for k in xml.find(name="varray", attrs={"name": "kpointlist"}))
+    kpts = np.loadtxt(StringIO(kpts))
+    return kpts
 
