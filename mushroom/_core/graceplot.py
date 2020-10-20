@@ -1200,22 +1200,19 @@ class Tick(_Tick):
         """
         if not isinstance(locs, Iterable):
             raise TypeError("locs should be Iterable, but got ", type(locs))
-        # return immediately with empty tick locations
-        if not locs:
-            return
         self.__setattr__("spec_type", "ticks")
         spec_ticks = locs
-        if labels:
+        if labels is not None:
             if len(labels) != len(locs):
                 raise ValueError("labels should have the same length as locs")
+            self.spec_labels.extend(str(l) for l in labels)
             self.__setattr__("spec_type", "both")
-        spec_major = ["major" for _ in labels]
+        spec_major = ["major" for _ in locs]
         if use_minor:
             for i in use_minor:
                 spec_major[i] = "minor"
         self.spec_ticks.extend(spec_ticks)
         self.spec_majors.extend(spec_major)
-        self.spec_labels.extend(str(l) for l in labels)
 
 
 class _Bar(_BaseOutput):
@@ -1896,6 +1893,9 @@ class Graph(_Graph):
         self._frame = Frame()
         self._datasets = []
         self._objects = []
+
+    def __len__(self):
+        return len(self._datasets)
 
     def get_objects(self):
         """get the drawing objects of graph"""

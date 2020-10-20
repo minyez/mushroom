@@ -1,0 +1,16 @@
+{
+  "EIGENVAL_1": {
+    "nbands": 72,
+    "natms": 12,
+    "nkpts": 4,
+    "nelect": 112.0,
+    "nspins": 1
+  },
+  "EIGENVAL_2": {
+    "nbands": 220,
+    "natms": 42,
+    "nkpts": 18,
+    "nelect": 290.0,
+    "nspins": 2
+  }
+}

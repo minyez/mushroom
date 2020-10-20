@@ -351,8 +351,8 @@ class Cell(LengthUnit):
 
     @property
     def center(self):
-        '''Calculate the center of all atoms in the cell
-        '''
+        """Calculate the center of all atoms in the cell
+        """
         assert self.coord_sys == "D"
         _posSum = np.zeros(3, dtype=self._dtype)
         _n = 0

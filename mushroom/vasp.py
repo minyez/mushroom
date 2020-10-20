@@ -183,3 +183,55 @@ def __read_xml_kpoints(xml: BeautifulSoup):
     kpts = np.loadtxt(StringIO(kpts))
     return kpts
 
+def _dict_read_eigen(path="EIGENVAL") -> dict:
+    """read band structure from EIGENVAL
+
+    Args:
+        path (str) : path to EIGENVAL
+
+    Returns:
+        dict
+    """
+    def __read_kpt_data(dls, nspins):
+        # remove band index
+        s = StringIO("\n".join(" ".join(x.split()[1:]) for x in dls))
+        data = np.loadtxt(s).transpose()
+        return data[:nspins, :], data[nspins:, :]
+
+    with open(path, 'r') as h:
+        lines = h.readlines()
+    natms, _, _, nspins = map(int, lines[0].split())
+    nelect, nkpts, nbands = map(int, lines[5].split())
+    nelect = float(nelect)
+    del lines[:6]
+    # now the first line is an empty line before the first kpoint
+    eigen = np.zeros((nspins, nkpts, nbands))
+    occ = np.zeros((nspins, nkpts, nbands))
+    kptw = np.zeros((nkpts, 4))
+
+    for ik in range(nkpts):
+        start = ik * (nbands+2) + 1
+        kptw[ik, :] = np.array(lines[start].split())
+        eigen[:, ik, :], occ[:, ik, :] = \
+            __read_kpt_data(lines[start+1:start+1+nbands], nspins=nspins)
+    d = {"eigen": eigen,
+         "occ": occ,
+         "weight": kptw[:, 3],
+         "kpoints": kptw[:, :3],
+         "natms": natms,}
+    return d
+
+def read_eigen(path="EIGENVAL"):
+    """read band structure from EIGENVAL
+
+    Args:
+        path (str) : path to EIGENVAL
+
+    Returns:
+        BandStructure, int, 2d-array
+    """
+    d = _dict_read_eigen(path=path)
+    eigen, occ, weight, kpoints, natms = \
+        map(d.get, ["eigen", "occ", "weight", "kpoints", "natms"])
+    return BandStructure(eigen, occ, weight), natms, kpoints
+

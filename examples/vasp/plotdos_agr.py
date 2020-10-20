@@ -10,7 +10,7 @@ dirname = pathlib.Path(__file__).parent
 path = dirname / "DOSCAR"
 
 dos = read_doscar(path)
-egrid, tdos = dos._get_dos(transpose=True)
+egrid, tdos = dos.get_dos(transpose=True)
 p.plot(egrid, tdos, symbol="none")
 
 p.tight_graph()
