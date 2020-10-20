@@ -317,22 +317,21 @@ def get_str_indices(container, string):
     """Return the indices of ``string`` in a list or tuple``container``
 
     Args:
-        container (list or tuple): container of strings
+        container (Iterable): container of strings
         string (str): the string to locate
 
     Returns:
         list
     """
-    assert isinstance(container, (list, tuple))
-    ind = []
-    for i, s in enumerate(container):
-        if string == s:
-            ind.append(i)
-    return ind
+    if not isinstance(container, Iterable):
+        raise ValueError("expected Iterable, but got", type(container))
+    if not isinstance(string, str):
+        raise ValueError("expected str, but got", type(string))
+    return [i for i, s in enumerate(container) if s == string]
 
 
 def get_str_indices_by_iden(container, iden=None):
-    """Return the indices of identified strings in a list or tuple``container``.
+    """Return the indices of identified strings in a list or tuple ``container``.
 
     The strings are identified by ``iden``, either a str, int, or a Iterable of these types.
     If ``iden`` is int or corresponding Iterable, the value greater or equal to the

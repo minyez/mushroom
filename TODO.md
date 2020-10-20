@@ -48,7 +48,7 @@ Require `pymatgen`
 
 #### hybrid functional
 
-- [ ] 截断和 kmesh 收敛测试
+- [x] 截断和 kmesh 收敛测试
 - [ ] SCF 和 DOS
 - [x] 能带
 

@@ -1,8 +1,8 @@
 {
     "shape": [1, 2, 3, 4, 5],
-    "atoms": ["Si", "Si", "Si", "Si"],
-    "projs": ["s", "p", "d", "f", "g"],
-    "pwave": 
+    "atms": ["Si", "Si", "Si", "Si"],
+    "prjs": ["s", "p", "d", "f", "g"],
+    "pwav": 
     [
         [
             [

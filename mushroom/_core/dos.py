@@ -102,7 +102,7 @@ class DensityOfStates(EnergyUnit):
     @atms.setter
     def atms(self, new):
         if self._pdos is None:
-            raise BandStructureError("no projected dos found")
+            raise DosError("no projected dos found")
         if len(new) != self._natms:
             raise ValueError("Inconsistent atms input. Should be {:d}-long".format(self._natms))
         self._atms = new
@@ -118,7 +118,7 @@ class DensityOfStates(EnergyUnit):
     @prjs.setter
     def prjs(self, new):
         if self._pdos is None:
-            raise BandStructureError("no projected dos found")
+            raise DosError("no projected dos found")
         if len(new) != self._nprjs:
             raise ValueError("Inconsistent prjs input. Should be {:d}-long".format(self._nprjs))
         self._prjs = new
@@ -228,4 +228,36 @@ class DensityOfStates(EnergyUnit):
         data = self.get_dos(ispin=ispin, atms=atms,
                             prjs=prjs, transpose=transpose)
         return print_2d_data(data, transpose=transpose, form=form, sep=sep)
+
+def split_ap(ap: str):
+    """split an atom-projector string into lists containing corresponding identifiers
+
+    An atom-projector string is a string with the format as
+
+        atom:projector:bands
+
+    each could be:
+
+        - atom: "S", "Fe", 0, 1, "B,N", "0,1,2"
+        - projector: "s", "p,d", "px", "dxy,dz2", 0.
+
+    Returns:
+        list, list
+    """
+    if " " in ap:
+        raise ValueError("whitespace is not allowed in atom-projector string, got", ap)
+    def _conv_comma(s):
+        l = []
+        for x in s.split(","):
+            try:
+                l.append(int(x))
+            except ValueError:
+                l.append(x)
+        return l
+    try:
+        a, p = apb.split(":")
+    except ValueError:
+        raise ValueError("should contain two colons")
+
+    return _conv_comma(a), _conv_comma(p)
 

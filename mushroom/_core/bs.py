@@ -2,6 +2,7 @@
 """Module that defines class and utilities for band structure
 """
 import re
+from collections.abc import Iterable
 from numbers import Real
 
 import numpy as np
@@ -138,44 +139,36 @@ class BandStructure(EnergyUnit):
         Returns:
             list
         '''
-        if bands:
-            b = []
-            for ib in bands:
-                if isinstance(ib, int):
-                    if abs(ib) < self._nbands:
-                        b.append(ib)
-                elif isinstance(ib, str):
-                    i = self._convert_band_str(ib)
-                    if i is not None:
-                        b.append(i)
-        else:
-            b = list(range(self._nbands))
+        b = []
+        for ib in bands:
+            b.append(self._convert_band_iden(ib))
         return b
 
-    def _convert_band_str(self, band_str):
+    def _convert_band_iden(self, band_iden):
         """convert a string of band identifier, like "vbm", "cbm-2", "vbm+3"
         to the correpsonding band index.
 
         Args:
-            band_str (str)
+            band_str (int, str)
 
         Returns:
             int
         """
-        assert isinstance(band_str, str)
-        if BAND_STR_PATTERN.match(band_str):
-            ref = {"v": self.ivbm[-1], "c": self.icbm[-1]}[band_str[0]]
-            if len(band_str) == 3:
+        if isinstance(band_iden, int):
+            return band_iden
+        if BAND_STR_PATTERN.match(band_iden):
+            ref = {"v": self.ivbm[-1], "c": self.icbm[-1]}[band_iden[0]]
+            if len(band_iden) == 3:
                 return ref
-            n = int(re.split(r"[-+]", band_str)[-1])
-            if band_str[3] == '-':
+            n = int(re.split(r"[-+]", band_iden)[-1])
+            if band_iden[3] == '-':
                 ib = ref - n
             else:
                 ib = ref + n
             # check if the band index is valid
             if 0 <= ib < self.nbands:
                 return ib
-        return None
+        raise ValueError("unrecognized band identifier", band_iden)
 
     @property
     def unit(self):
@@ -279,6 +272,7 @@ class BandStructure(EnergyUnit):
         if len(new) != self._natms:
             raise ValueError("Inconsistent atms input. Should be {:d}-long".format(self._natms))
         self._atms = new
+
     @property
     def natms(self):
         """number of atoms"""
@@ -295,6 +289,7 @@ class BandStructure(EnergyUnit):
         if len(new) != self._nprjs:
             raise ValueError("Inconsistent prjs input. Should be {:d}-long".format(self._nprjs))
         self._prjs = new
+
     @property
     def nprjs(self):
         """number of projectors"""
@@ -541,10 +536,10 @@ class BandStructure(EnergyUnit):
         return tuple(zip(vb, cb))
 
     def kavg_gap(self):
-        '''direct band gap averaged over kpoints
+        """direct band gap averaged over kpoints
 
         float, shape (nspins,)
-        '''
+        """
         return np.dot(self.direct_gap(), self._weight) / np.sum(self._weight)
 
     # * Projection related functions
@@ -568,8 +563,12 @@ class BandStructure(EnergyUnit):
         Note:
             Spin-polarization is not considered in retriving projection coefficients.
         '''
-        vb_coefs = self.sum_atm_prj_comp(atm_vbm, prj_vbm, fail_one=True)
-        cb_coefs = self.sum_atm_prj_comp(atm_cbm, prj_cbm, fail_one=True)
+        try:
+            vb_coefs = self.get_pwav(atm_vbm, prj_vbm)
+            cb_coefs = self.get_pwav(atm_cbm, prj_cbm)
+        except BandStructureError:
+            info = "unable to compute effective gap, since no partial wave is parsed. try kavg_gap"
+            raise BandStructureError(info)
         if ivb is None or not ivb in range(self.nbands):
             vb_coef = vb_coefs[:, :, np.max(self.ivbm)]
         else:
@@ -584,47 +583,77 @@ class BandStructure(EnergyUnit):
             return np.infty
         return 1.0/inv
 
-    def sum_atm_prj_comp(self, atm=None, prj=None, fail_one=True):
-        """Sum the partial wave for projectors `proj` on atoms `atom`
+    def get_eigen(self, indices=None):
+        """get eigenvalues of particular bands
 
         Args:
-            atom (int, str, Iterable)
-            proj (int, str, Iterable)
-            fail_one (bool): control the return when no projection is available. 
-                if set True, return np.ones with correct shape, otherwise np.zeros
+            indices (int, str, or their Iterable): indices of band.
+                None to include all bands.
 
         Returns:
-            (nspins, nkpts, nbands)
+            (nspins, nkpts, nb) with nb = len(indices)
+        """
+        if indices is None:
+            indices = range(self.nbands)
+        else:
+            indices = self._get_band_indices(indices)
+        return self._eigen[:, :, indices]
+
+
+    def get_pwav(self, atm=None, prj=None, indices=None):
+        """get particular partial wave for projectors `proj` on atoms `atom`
+
+        Args:
+            atm (int, str, or their Iterable)
+            prj (int, str, or their Iterable)
+            indices (int, str, or their Iterable): indices of band.
+                None to include all bands.
+
+        Returns:
+            (nspins, nkpts, nb) with nb = len(indices)
         """
         if not self.has_proj:
-            func = {True: np.ones, False: np.zeros}
-            try:
-                return func[fail_one]((self.nspins, self.nkpts, self.nbands))
-            except KeyError:
-                raise TypeError("fail_one should be bool type.")
+            raise BandStructureError("partial wave is not parsed")
         if atm is None:
-            at_ids = list(range(self.natms))
+            atm_ids = list(range(self.natms))
         else:
-            at_ids = self._get_atom_indices(atm)
+            atm_ids = self._get_atom_indices(atm)
         if prj is None:
-            pr_ids = list(range(self.nprjs))
+            prj_ids = list(range(self.nprjs))
         else:
-            pr_ids = self._get_proj_indices(prj)
-        coeff = np.zeros((self.nspins, self.nkpts, self.nbands))
-        for a in at_ids:
-            for p in pr_ids:
-                coeff += self.pwav[:, :, :, a, p]
+            prj_ids = self._get_proj_indices(prj)
+        if indices is None:
+            indices = range(self.nbands)
+        else:
+            indices = self._get_band_indices(indices)
+        nb = len(indices)
+        if nb == 0:
+            raise ValueError("no bands is specified")
+        _logger.debug("pwave shape %r", self._pwav.shape)
+        _logger.debug("extracting pwave for bands %r, atms %r prjs %r",
+                      indices, atm_ids, prj_ids)
+        coeff = np.take(self._pwav, indices=prj_ids, axis=4)
+        coeff = np.take(coeff, indices=atm_ids, axis=3)
+        coeff = np.sum(coeff[:, :, indices, :, :], axis=(-1, -2))
+        if nb == 1:
+            coeff = coeff.reshape((self.nspins, self.nkpts, 1))
+        _logger.debug("extracted coeff shape %r", coeff.shape)
         return coeff
 
+    def _get_band_indices(self, ib):
+        if isinstance(ib, Iterable):
+            return list(map(self._convert_band_iden, ib))
+        return [self._convert_band_iden(ib),]
+
     def _get_atom_indices(self, atm):
-        if self.has_proj:
-            return get_str_indices_by_iden(self._atms, atm)
-        return []
+        if self._atms is None and not isinstance(atm, int):
+            raise ValueError("atms not parsed. accept integer only")
+        return get_str_indices_by_iden(self._atms, atm)
 
     def _get_proj_indices(self, prj):
-        if self.has_proj:
-            return get_str_indices_by_iden(self._projs, prj)
-        return []
+        if self._prjs is None and not isinstance(prj, int):
+            raise ValueError("prjs not parsed. accept integer only")
+        return get_str_indices_by_iden(self._prjs, prj)
 
     #def get_dos(self, emin=None, emax=None, nedos=3000, smearing="Gaussian", sigma=0.05):
     #    """Generate a Dos object on a energy grid by smearing the band structure
@@ -750,4 +779,37 @@ def random_band_structure(nspins=1, nkpts=1, nbands=2, natms=1, nprjs=1,
                     pwav[ispin, ik, ib, :, :] /= np.sum(pwav[ispin, ik, ib, :, :])
     return BandStructure(eigen, occ, weight=weight, efermi=efermi,
                          pwav=pwav, atms=atms, prjs=prjs)
+
+def split_apb(apb: str):
+    """split an atom-projector-band string into lists containing corresponding identifiers
+
+    An atom-projector-bands string is a string with the format as
+
+        atom:projector:bands
+
+    each could be:
+
+        - atom: "S", "Fe", 0, 1, "B,N", "0,1,2"
+        - projector: "s", "p,d", "px", "dxy,dz2", 0.
+        - band: 0, "vbm", "cbm+1", "0,cbm,vbm-1"
+
+    Returns:
+        list, list, list
+    """
+    if " " in apb:
+        raise ValueError("whitespace is not allowed in atom-projector-band string, got", apb)
+    def _conv_comma(s):
+        l = []
+        for x in s.split(","):
+            try:
+                l.append(int(x))
+            except ValueError:
+                l.append(x)
+        return l
+    try:
+        a, p, b = apb.split(":")
+    except ValueError:
+        raise ValueError("should contain two colons")
+
+    return _conv_comma(a), _conv_comma(p), _conv_comma(b)
 

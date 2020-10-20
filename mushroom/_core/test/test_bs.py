@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-# coding = utf-8
+# -*- coding: utf-8 -*-
+"""test bandstructure functionality"""
+# pylint: disable=C0115,C0116
 import json
 import os
-#import re
 import unittest as ut
 
 import numpy as np
@@ -104,18 +105,24 @@ class test_BS_projection(ut.TestCase):
             with open(path, 'r') as f:
                 j = json.load(f)
             shape = j.pop("shape")
-            self.assertTupleEqual(np.shape(j["pwave"]), tuple(shape))
+            self.assertTupleEqual(np.shape(j["pwav"]), tuple(shape))
             # as occ is randomized, there are cases that warnings infinity CBM
             # it is totally okay.
+            nsp, nkp, nb = shape[:3]
             eigen = np.random.random(shape[:3])
             occ = np.random.choice([0.0, 1.0], shape[:3])
             weight = np.random.random(shape[1])
-            bs = BS(eigen, occ, weight, pwav=j["pwave"], atms=j["atoms"], prjs=j["projs"])
-            self.assertListEqual(bs.atms, j["atoms"])
-            self.assertListEqual(bs.prjs, j["projs"])
+            bs = BS(eigen, occ, weight, pwav=j["pwav"], atms=j["atms"], prjs=j["prjs"])
+            self.assertListEqual(bs.atms, j["atms"])
+            self.assertListEqual(bs.prjs, j["prjs"])
             self.assertTrue(bs.has_proj)
-            bs.effective_gap()
-            #bs.get_dos()
+            self.assertTupleEqual((nsp, nkp, nb), bs.get_pwav(0, 0).shape)
+            self.assertTupleEqual((nsp, nkp, nb), bs.get_eigen().shape)
+            self.assertTupleEqual((nsp, nkp, 1), bs.get_pwav(0, 0, 0).shape)
+            self.assertTupleEqual((nsp, nkp, 1), bs.get_eigen(0).shape)
+            if nb >= 2:
+                self.assertTupleEqual((nsp, nkp, 2), bs.get_eigen([0, 1]).shape)
+                self.assertTupleEqual((nsp, nkp, 2), bs.get_pwav(0, 0, (0, 1)).shape)
             good += 1
         print("Processed {} good band structure projections".format(good))
 
