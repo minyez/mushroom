@@ -1,5 +1,8 @@
 PROJ = mushroom
-VERSION = 0.0.1
+# get version from __init__ file
+VERSION = $(shell \
+		  awk '/__version__/ {printf("%s", $$3)}' $(PROJ)/__init__.py | sed -e 's/"//g' \
+		  )
 BUILDTIME = $(shell date +'%Y-%m-%d %H:%M:%S')
 MESSAGE_FILE = mcm.info
 DIST_TARBALL = dist/$(PROJ)-$(VERSION).tar.gz
@@ -7,7 +10,7 @@ SED = gsed
 
 include .objects
 
-.PHONY: default dist clean pytest test commit amend
+.PHONY: default dist clean pytest test commit amend version
 
 default: pytest
 
