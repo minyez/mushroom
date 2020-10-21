@@ -68,10 +68,10 @@ function run_vasp_dft_banddos_calc () {
     cp CHGCAR CHGCAR.scf
 
     __run_single dos
-    raise_chgwav_change CHGCAR CHGCAR.scf
+    warning_chgwav_change CHGCAR CHGCAR.scf
 
     __run_single band
-    raise_chgwav_change CHGCAR CHGCAR.scf
+    warning_chgwav_change CHGCAR CHGCAR.scf
     cd ..
   fi
 }

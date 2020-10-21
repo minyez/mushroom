@@ -2119,9 +2119,9 @@ class Graph(_Graph):
     def set_legend(self, **kwargs):
         """set up the legend. For arguments, see Legend
 
-        Particularly, a string can be parsed to loc, e.g. 'upper left',
+        Particularly, a string can be parsed to ``loc``, e.g. 'upper left',
         'lower right'. Available token:
-            lower, middle, upper;
+            lower/bottom, middle, upper/top;
             left, center, right;
         """
         x = None
@@ -2156,6 +2156,7 @@ class Graph(_Graph):
                 raise ValueError("invalid location token for legend: {}".format(kwargs["loc"]))
             kwargs["loc"] = loc
         except KeyError:
+            # location of legend is specified
             pass
 
         self._legend.set(**kwargs)
@@ -2414,6 +2415,9 @@ class Plot:
                                             **kwargs)
         self._use_qtgrace = qtgrace
 
+    def __len__(self):
+        return len(self._graphs)
+
     def __str__(self):
         """print the whole agr file"""
         slist = [*self._head,]
@@ -2561,6 +2565,38 @@ class Plot:
         raise NotImplementedError
 
     # Templates
+    @classmethod
+    def subplots(cls, *args, **kwargs):
+        """emulate matplotlib.pyplot.subplots
+
+        ArgsL
+            args: can be one string/int, or two int
+            keyword arguments: see Plot class
+        """
+        if not args:
+            rows = 1
+            cols = 1
+        elif len(args) == 1:
+            s = int(args[0])
+            if 10 < s < 100:
+                cols = s % 10
+                rows = s // 10
+            elif 0 < s < 10:
+                rows = s
+                cols = 1
+            else:
+                raise ValueError("identifier is not supported: {}".format(s))
+        elif len(args) == 2:
+            rows, cols = args
+        else:
+            raise ValueError("identifier is not supported: {}".format(args))
+        p = cls(rows=rows, cols=cols, **kwargs)
+        if len(p) == 1:
+            g = p[0]
+        else:
+            g = p._graphs
+        return p, g
+
     # TODO write more and concrete templates
     @classmethod
     def bandstructure(cls):

@@ -46,7 +46,8 @@ class DensityOfStates(EnergyUnit):
     """
     _dtype = 'float64'
 
-    def __init__(self, egrid, tdos, efermi=0.0, unit='ev', pdos=None, atms=None, prjs=None):
+    def __init__(self, egrid, tdos, efermi=None, pdos=None, atms=None, prjs=None,
+                 unit='ev', nelect=None):
         try:
             shape_e = np.shape(egrid)
             shape_tdos = np.shape(tdos)
@@ -59,7 +60,12 @@ class DensityOfStates(EnergyUnit):
                 
         EnergyUnit.__init__(self, eunit=unit)
         self._egrid = np.array(egrid, dtype=self._dtype)
-        self._efermi = efermi
+        if efermi is not None:
+            self._efermi = efermi
+        elif nelect is None:
+            self._efermi = 0.0
+        else:
+            raise NotImplementedError("decide efermi by electron number is not supported yet")
         self._nspins, self._nedos = shape_tdos
         self._tdos = np.array(tdos, dtype=self._dtype)
 

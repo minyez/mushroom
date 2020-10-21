@@ -64,11 +64,11 @@ def _dict_read_doscar(path="DOSCAR", ncl=False):
     return {"egrid": egrid,
             "tdos": tdos,
             "efermi": efermi,
-            "unit": 'ev',
             "pdos": pdos,
             }
 
-def read_doscar(path="DOSCAR", reset_fermi=True, ncl=False):
+
+def read_doscar(path="DOSCAR", reset_fermi=False, ncl=False):
     """read DOSCAR file and returns a DensitofStates object
     
     Args:
@@ -83,7 +83,7 @@ def read_doscar(path="DOSCAR", reset_fermi=True, ncl=False):
     d = _dict_read_doscar(path=path, ncl=ncl)
     if reset_fermi:
         d["efermi"] = None
-    return DensityOfStates(**d)
+    return DensityOfStates(**d, unit='ev')
 
 # pylint: disable=R0914
 def _dict_read_procar(path="PROCAR"):

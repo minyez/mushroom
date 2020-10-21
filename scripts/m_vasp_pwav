@@ -18,6 +18,8 @@ from mushroom._core.data import export_2d_data
 from mushroom.vasp import read_procar
 
 _logger = create_logger("mv_pwav")
+del create_logger
+colors = ["red", "blue", "orange"]
 
 def _parser():
     """the parser"""
@@ -40,51 +42,59 @@ def _parser():
                    help="spin to draw")
     return p.parse_args()
 
-# TODO refactor this long main stream
-# pylint: disable=R0914
+def plot_pwav(graph, x, bs, apbs, spin, scale, pwav_file='pwav.dat'):
+    """
+    Args:
+        graph (Graph)
+        x (1d array)
+        bs (BandStructure)
+        spin (int)
+        scale (float)
+        pwav_file (str)
+    """
+    pwav_dat = open(pwav_file, 'w')
+    for i, apb in enumerate(apbs.split()):
+        atms, prjs, bands = split_apb(apb)
+        pwav = bs.get_pwav(atms, prjs, bands)[spin, :, :]
+        eigen = bs.get_eigen(bands)[spin, :, :] - bs.efermi
+        graph.plot(x, eigen.transpose(), size=pwav.transpose()*scale,
+                   datatype="xysize", color=colors[i],
+                   label="-".join(str(x) for x in apb.split(":")[:2]), ls="none")
+        print("#atom-projector-band:{}".format(apb), file=pwav_dat)
+        print("\n".join(export_2d_data(pwav)), file=pwav_dat, end="\n\n")
+    pwav_dat.close()
+
 def m_v_pwav():
     """main stream"""
     args = _parser()
     # usually three are enough
-    colors = ["red", "blue", "orange"]
 
     c = Cell.read(args.poscar)
     bs, kpts = read_procar(args.procar, filter_k_before=args.removek)
     bs.atms = c.atms
     kp = KPath(kpts, c.b)
-    isp = args.spin
-    if isp >= bs.nspins:
-        raise ValueError("ispin {} >= nspins = {}".format(isp, bs.nspins))
+    if args.spin >= bs.nspins:
+        raise ValueError("ispin {} >= nspins = {}".format(args.spin, bs.nspins))
     p = Plot(1, 1)
     # set limits
     p[0].set_ylim(ymin=-6, ymax=6)
     p[0].set_xlim(0.0, kp.x[-1] + 0.001)
     # draw bands
-    p[0].plot(kp.x, bs.eigen[isp, :, :].transpose() - bs.efermi, color="k", symbol="none")
+    p[0].plot(kp.x, bs.eigen[args.spin, :, :].transpose() - bs.efermi, color="k", symbol="none")
     p[0].x.set_major(grid=True, color="grey", lw=3, ls="dashed")
     if args.ksymbols is not None:
         p[0].x.set_spec(kp.special_x, labels=args.ksymbols.split())
     p[0].y.set_major(major=3)
     p[0].y.set_label("Energy (eV)")
-    # draw partial wave with ellipse
     # 36.0 is a base factor
     scale = (kp.x[-1] - kp.x[0]) / len(kp.x) * 36.0 * args.scale
     _logger.info("scale set to %r", scale)
-
-    if args.apb is not None:
-        pwav_dat = open("pwav.dat", 'w')
-        for i, apb in enumerate(args.apb.split()):
-            label = "-".join(str(x) for x in apb.split(":")[:2])
-            atms, prjs, bands = split_apb(apb)
-            pwav = bs.get_pwav(atms, prjs, bands)[isp, :, :]
-            print("#atom-projector-band:{}".format(apb), file=pwav_dat)
-            print("\n".join(export_2d_data(pwav)), file=pwav_dat, end="\n\n")
-            eigen = bs.get_eigen(bands)[isp, :, :] - bs.efermi
-            p[0].plot(kp.x, eigen.transpose(), size=pwav.transpose()*scale,
-                      datatype="xysize", color=colors[i], label=label, ls="none")
-        pwav_dat.close()
     # draw zero line
     p[0].axhline(0.0, ls="dashed")
+
+    if args.apb is not None:
+        plot_pwav(p[0], kp.x, bs, args.apb, args.spin, scale)
+
     p.write(file=args.output)
 
 
