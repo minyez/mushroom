@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 """density of states object"""
+from collections.abc import Iterable
 import numpy as np
 
 from mushroom._core.unit import EnergyUnit
 from mushroom._core.logger import create_logger
 from mushroom._core.data import export_2d_data
+from mushroom._core.ioutils import get_str_indices_by_iden
 
 _logger = create_logger("dos")
 del create_logger
@@ -17,7 +19,7 @@ atms: a list of strings
 prjs: a list of strings
 
 pdos: array-like, floats as elements. 
-The shape should be (nedos, nspins, natms, nprjs)
+The shape should be (nspins, nedos, natms, nprjs)
 """
 
 class DosError(Exception):
@@ -176,45 +178,83 @@ class DensityOfStates(EnergyUnit):
         """array, shape (nedos,). energy grid points"""
         return self._egrid
 
-    def get_dos(self, ispin=None, atms=None, prjs=None, transpose=False):
-        """get the dos data
+    def has_proj(self):
+        """if the projected dos has been parsed"""
+        return self._pdos is not None
+
+    def get_pdos(self, ispin=None, atm=None, prj=None):
+        """get the partial dos
+
+        Args:
+            ispin (int) : 0 for spin-up and 1 for spin-down.
+                Total dos will be returned otherwise or nspins=1
+            atm (int, str, Iterable) : atomic identifier, either index or symbol
+            prj (int, str, Iterable) : projector identifier, either index or name
+        """
+        if not self.has_proj():
+            raise DosError("projected dos is not parsed")
+        if atm is None:
+            atm_ids = list(range(self.natms))
+        else:
+            atm_ids = self._get_atm_indices(atm)
+        if prj is None:
+            prj_ids = list(range(self.nprjs))
+        else:
+            prj_ids = self._get_prj_indices(prj)
+        _logger.debug("pdos shape %r", self._pdos.shape)
+        _logger.debug("extracting pdos for atms %r prjs %r",
+                      atm_ids, prj_ids)
+        if self.nspins == 2 and ispin in [0, 1]:
+            coeff = self._pdos[ispin, :, :, :]
+        else:
+            coeff = self._pdos.sum(axis=0)
+        coeff = np.take(coeff, indices=prj_ids, axis=2)
+        coeff = np.take(coeff, indices=atm_ids, axis=1)
+        coeff = np.sum(coeff, axis=(1, 2))
+        return coeff
+
+    def _get_atm_indices(self, atm):
+        if self._atms is None:
+            if isinstance(atm, int):
+                return [atm,]
+            if isinstance(atm, Iterable):
+                has_str = any(isinstance(a, str) for a in atm)
+                if not has_str:
+                    return atm
+            raise ValueError("parse atms first for atom string")
+        return get_str_indices_by_iden(self._atms, atm)
+
+    def _get_prj_indices(self, prj):
+        if self._prjs is None:
+            if isinstance(prj, int):
+                return [prj,]
+            if isinstance(prj, Iterable):
+                has_str = any(isinstance(p, str) for p in prj)
+                if not has_str:
+                    return prj
+            raise ValueError("parse prjs first for projector string")
+        return get_str_indices_by_iden(self._prjs, prj)
+
+    def get_dos(self, ispin=None):
+        """get the total dos data
 
         Args:
             ispin (int) : 0 for spin-up and 1 for spin-down.
                 Total dos will be returned otherwise or nspins=1
             transpose (bool) : True for array (egrid, dos1, dos2)
                 False for (xa, xb, xc).
-            atms (list) : str, atomic symbols, e.g. "Na", or int index
-            prjs (list) : str, name of projectors, e.g., "s", "px", or int index
 
         Returns:
-            array. Default structure is
-
-                (e1, tdos1, pdosa1, pdosb1, ...)
-                (e2, tdos2, pdosa2, pdosb2, ...)
-                (e3, tdos3, pdosa3, pdosb3, ...)
-                
-            i.e., data goes fastest. If transpose is switched on, the output is
-
-                (e1, e2, e3, ...)
-                (tdos1, tdos2, tdos3, ...)
-                (pdosa1, pdosa2, pdosa3, ...)
-                (pdosb1, pdosb2, pdosb3, ...)
-
-            i.e., abscissa goes fastest
+            array.
         """
-        if atms or prjs:
-            raise NotImplementedError("pdos export is not supported yet!")
         if self.nspins == 2 and ispin in [0, 1]:
-            d = np.column_stack([self._egrid, self._tdos[ispin, :]])
+            d = self._tdos[ispin, :]
         else:
-            d = np.column_stack([self._egrid, self._tdos.sum(axis=0)])
-        if transpose:
-            d = d.transpose()
+            d = self._tdos.sum(axis=0)
         return d
 
-    def export_dos(self, ispin=None, atms=None, prjs=None, transpose=False, form=None, sep=None):
-        """export the dos data.
+    def export_dos(self, ispin=None, transpose=False, form=None, sep=None):
+        """export the total dos data to a list of strings
 
         The data are separated by `sep`
 
@@ -222,11 +262,27 @@ class DensityOfStates(EnergyUnit):
             ispin, atms, prjs, transpose: see `get_dos` method
             form (str or list/tuple): format string
             sep (str):
+
+        Returns:
+            list of string. each string is one line as
+
+            Default structure is
+
+                "e1[sep]tdosup1[sep]tdosdn1[sep]"
+                "e2[sep]tdosup2[sep]tdosdn2[sep]"
+                "e3[sep]tdosup3[sep]tdosdn3[sep]"
+                
+            i.e., data goes fastest. If transpose is switched on, the output is
+
+                "e1[sep]e2[sep]e3[sep]..."
+                "tdosup1[sep]tdosup2[sep]tdosup3[sep]..."
+                "tdosdn1[sep]tdosdn2[sep]tdosdn3[sep]..."
+
+            i.e., abscissa goes fastest
         """
-        if separator is None:
-            separator = ' '
-        data = self.get_dos(ispin=ispin, atms=atms,
-                            prjs=prjs, transpose=transpose)
+        if sep is None:
+            sep = ' '
+        data = np.column_stack([self._egrid, self.get_dos(ispin=ispin)])
         return export_2d_data(data, transpose=transpose, form=form, sep=sep)
 
 def split_ap(ap: str):
@@ -247,6 +303,8 @@ def split_ap(ap: str):
     if " " in ap:
         raise ValueError("whitespace is not allowed in atom-projector string, got", ap)
     def _conv_comma(s):
+        if not s:
+            return None
         l = []
         for x in s.split(","):
             try:
@@ -255,7 +313,7 @@ def split_ap(ap: str):
                 l.append(x)
         return l
     try:
-        a, p = apb.split(":")
+        a, p = ap.split(":")
     except ValueError:
         raise ValueError("should contain two colons")
 

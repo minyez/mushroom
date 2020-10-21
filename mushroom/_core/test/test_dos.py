@@ -13,7 +13,7 @@ goodDos = [
     [1.0, 2.0, 3.0, 1.0, 0.0, 0.0, 0.0, 1.0, 2.0],
     [1.0, 2.0, 1.0, 2.0, 0.0, 0.0, 0.0, 2.0, 4.0],
 ]
-badDos1 = [1.0, 2.0, 3.0, 4.0],
+badDos1 = [1.0, 2.0, 3.0, 4.0]
 badDos2 = [
     [3.0, 4.0],
     [1.0, 2.0],
@@ -25,6 +25,7 @@ nspins, nedos = np.shape(goodDos)
 
 
 class test_dos_initialize(ut.TestCase):
+    """DOS initialization"""
 
     def test_raise_for_inconsistent_egrid_dos(self):
         """exceptions"""
@@ -50,7 +51,7 @@ class test_dos_initialize(ut.TestCase):
         self.assertEqual(0, dos.natms)
         self.assertEqual(None, dos.prjs)
         self.assertEqual(0, dos.nprjs)
-        self.assertFalse(None, dos.has_pdos())
+        self.assertFalse(dos.has_pdos())
 
     #def test_sum_proj(self):
     #    dos = Dos(goodEgrid, goodDos, efermi=0.0, unit="ev")

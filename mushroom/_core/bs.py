@@ -256,7 +256,6 @@ class BandStructure(EnergyUnit):
         self._pwav = np.array(pwav, dtype=self._dtype)
         _logger.info("Read partial wave")
 
-    @property
     def has_proj(self):
         """Bool"""
         return self._pwav is not None
@@ -613,16 +612,16 @@ class BandStructure(EnergyUnit):
         Returns:
             (nspins, nkpts, nb) with nb = len(indices)
         """
-        if not self.has_proj:
+        if not self.has_proj():
             raise BandStructureError("partial wave is not parsed")
         if atm is None:
             atm_ids = list(range(self.natms))
         else:
-            atm_ids = self._get_atom_indices(atm)
+            atm_ids = self._get_atm_indices(atm)
         if prj is None:
             prj_ids = list(range(self.nprjs))
         else:
-            prj_ids = self._get_proj_indices(prj)
+            prj_ids = self._get_prj_indices(prj)
         if indices is None:
             indices = range(self.nbands)
         else:
@@ -630,8 +629,8 @@ class BandStructure(EnergyUnit):
         nb = len(indices)
         if nb == 0:
             raise ValueError("no bands is specified")
-        _logger.debug("pwave shape %r", self._pwav.shape)
-        _logger.debug("extracting pwave for bands %r, atms %r prjs %r",
+        _logger.debug("pwav shape %r", self._pwav.shape)
+        _logger.debug("extracting pwav for bands %r, atms %r prjs %r",
                       indices, atm_ids, prj_ids)
         coeff = np.take(self._pwav, indices=prj_ids, axis=4)
         coeff = np.take(coeff, indices=atm_ids, axis=3)
@@ -646,7 +645,7 @@ class BandStructure(EnergyUnit):
             return list(map(self._convert_band_iden, ib))
         return [self._convert_band_iden(ib),]
 
-    def _get_atom_indices(self, atm):
+    def _get_atm_indices(self, atm):
         if self._atms is None:
             if isinstance(atm, int):
                 return [atm,]
@@ -657,7 +656,7 @@ class BandStructure(EnergyUnit):
             raise ValueError("parse atms first for atom string")
         return get_str_indices_by_iden(self._atms, atm)
 
-    def _get_proj_indices(self, prj):
+    def _get_prj_indices(self, prj):
         if self._prjs is None:
             if isinstance(prj, int):
                 return [prj,]
@@ -710,7 +709,7 @@ class BandStructure(EnergyUnit):
     #    egrid = np.linspace(emin - abs(emin) * 0.15,
     #                        emax + abs(emax) * 0.15, nedos)
     #    totalDos = np.zeros((nedos, self.nspins), dtype=self._dtype)
-    #    if self.has_proj:
+    #    if self.has_proj():
     #        projected = {"atoms": self._atms, "projs": self._projs}
     #        pDos = np.zeros((nedos, self.nspins, self.natoms,
     #                         self.nprojs), dtype=self._dtype)
@@ -722,7 +721,7 @@ class BandStructure(EnergyUnit):
     #        # shape of d: (nspins, nkpts, nbands)
     #        d = sm(self._eigen, egrid[i], sigma)
     #        totalDos[i, :] += np.sum(d, axis=(1, 2))
-    #        if self.has_proj:
+    #        if self.has_proj():
     #            p = np.tile(d, (self.natoms, self.nprojs, 1, 1, 1))
     #            for _j in range(2):
     #                p = np.moveaxis(p, 0, -1)
@@ -812,9 +811,9 @@ def split_apb(apb: str):
     if " " in apb:
         raise ValueError("whitespace is not allowed in atom-projector-band string, got", apb)
     def _conv_comma(s):
-        l = []
         if not s:
             return None
+        l = []
         for x in s.split(","):
             try:
                 l.append(int(x))

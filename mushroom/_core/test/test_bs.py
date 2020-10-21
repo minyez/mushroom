@@ -71,7 +71,7 @@ class test_BS_no_projection(ut.TestCase):
         self.assertTrue(bs.atms is None)
         self.assertTrue(bs.prjs is None)
         self.assertTrue(bs.pwav is None)
-        self.assertFalse(bs.has_proj)
+        self.assertFalse(bs.has_proj())
         # unit conversion
         self.assertTrue(np.array_equal(bs.eigen, goodEigen))
         self.assertEqual(efermi, bs.efermi)
@@ -115,7 +115,7 @@ class test_BS_projection(ut.TestCase):
             bs = BS(eigen, occ, weight, pwav=j["pwav"], atms=j["atms"], prjs=j["prjs"])
             self.assertListEqual(bs.atms, j["atms"])
             self.assertListEqual(bs.prjs, j["prjs"])
-            self.assertTrue(bs.has_proj)
+            self.assertTrue(bs.has_proj())
             self.assertTupleEqual((nsp, nkp, nb), bs.get_pwav(0, 0).shape)
             self.assertTupleEqual((nsp, nkp, nb), bs.get_eigen().shape)
             self.assertTupleEqual((nsp, nkp, 1), bs.get_pwav(0, 0, 0).shape)
