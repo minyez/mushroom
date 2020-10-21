@@ -1590,14 +1590,17 @@ class Dataset(_Dataset):
                  prepend=None, append=None, offset=None,
                  errorbar=None, ebpos=None, ebc=None, ebp=None, ebsize=None, eblw=None,
                  ebls=None, ebrlw=None, ebrls=None, ebrc=None, ebrcl=None,
-                 **errs):
+                 **extras):
         # pop comment and legend out to avoid duplicate arguments
         if label is None:
             label = ""
         if comment is None:
             comment = ""
-        self.data = Data(*xyz, datatype=datatype,
-                         label=label, comment=comment, **errs)
+        if datatype is not None:
+            self.data = Data(*xyz, datatype=datatype, label=label, comment=comment, **extras)
+        else:
+            self.data = Data(*xyz, label=label, comment=comment, **extras)
+
         _Dataset.__init__(self, index, type=self.data.datatype, comment=comment, legend=label)
         if sc is None:
             sc = color

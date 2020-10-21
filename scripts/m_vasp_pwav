@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 """draw projected band structure (or partial wave) from vasp output and export to an XmGrace plot.
 
+The value of partial wave is proportional to the diameter of the circle
+
 For atom-projector-band (apb) string, see ``mushroom._core.bs.split_apb``
 """
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
@@ -66,19 +68,19 @@ def m_v_pwav():
     # draw partial wave with ellipse
     scale = args.scale
     if scale is None:
-        scale = 2.5
-    scale *= (kp.x[-1] - kp.x[0]) / len(kp.x)
+        scale = 1.
+    # 20.0 is a base scale factor
+    scale *= (kp.x[-1] - kp.x[0]) / len(kp.x) * 20.0
     _logger.info("scale set to %r", scale)
 
     if args.apb is not None:
         for i, apb in enumerate(args.apb.split()):
+            label = "-".join(str(x) for x in apb.split(":")[:2])
             atms, prjs, bands = split_apb(apb)
-            pwav = np.sqrt(bs.get_pwav(atms, prjs, bands)[isp, :, :])
+            pwav = bs.get_pwav(atms, prjs, bands)[isp, :, :] * scale
             eigen = bs.get_eigen(bands)[isp, :, :] - bs.efermi
-            nb = len(bands)
-            for ib in range(nb):
-                for x, y, w in zip(kp.x, eigen[:, ib], pwav[:, ib]):
-                    p[0].circle((x, y), width=w*scale, color=colors[i], loctype="world")
+            p[0].plot(kp.x, eigen.transpose(), size=pwav.transpose(),
+                      datatype="xysize", color=colors[i], label=label)
 
     # draw zero line
     p[0].axhline(0.0, ls="dashed")

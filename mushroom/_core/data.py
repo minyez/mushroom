@@ -402,21 +402,24 @@ class Data:
             t = {2: 'xy', 3: 'xyz'}[nd]
             for dt, (n, ec) in cls.DATATYPES.items():
                 if n == nd and dt.startswith(t):
+                    _logger.debug("check for datatype %s", dt)
                     find_all = all([extras.get(required_e, None) for required_e in ec])
                     if find_all:
                         t = dt
                         extra_cols = ec
+                        _logger.debug("detected datatype %s", dt)
                         return t, extra_cols
             raise ValueError("cannot determine the datatype")
         # check consistency
-        if datatype.lower in cls.available_types:
-            t = datatype.lower
+        t = datatype.lower()
+        if t in cls.available_types:
             required_n, extra_cols = cls.DATATYPES[t]
             if required_n != nd:
                 raise ValueError("Inconsistent xyz data and specified datatype ", datatype)
             find_all = all([required_e in extras for required_e in extra_cols])
             if not find_all:
                 raise ValueError("Inconsistent extra data and specified datatype ", datatype)
+            _logger.debug("confirmed datatype %s", t)
         else:
             raise ValueError("Unsupported datatype", datatype)
         # some error is parsed
