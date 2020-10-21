@@ -9,7 +9,7 @@ Therefore, platform-related functions are generally discarded. (minyez)
 """
 import sys
 import time
-from re import sub
+from re import sub, findall
 from io import TextIOWrapper, StringIO
 from collections.abc import Iterable
 from copy import deepcopy
@@ -22,10 +22,10 @@ from mushroom._core.logger import create_logger
 _logger = create_logger("grace")
 del create_logger
 
-GREEK_PATTERN = {}
-for _g in greeks:
-    _k = r"\\{}".format(_g)
-    GREEK_PATTERN[_k] = r"\\x%s\\f{}" % _g[0]
+GREEK_PATTERN = dict((r"\\{}".format(_g), r"\\x%s\\f{}" % _g[0]) for _g in greeks)
+SPECIAL_CHAR_PATTERN = {
+    r"\\AA": r"\\cE\\C",
+    }
 
 # pylint: disable=bad-whitespace
 def encode_string(string):
@@ -34,12 +34,24 @@ def encode_string(string):
     Args:
         string (str): the string to encode. Supported markup:
             Greek letters: \alpha, \Beta, \gamma
-            super- or subscript: ^{sup}, _{sub}
-            italic: //
+            special characters: Angstrom \AA
+            (TODO) super- or subscript: ^{sup}, _{sub}
+            italic: / ... /.
     """
     # greek letter
     for pat, agrstr in GREEK_PATTERN.items():
         string = sub(pat, agrstr, string)
+    for pat, agrstr in SPECIAL_CHAR_PATTERN.items():
+        string = sub(pat, agrstr, string)
+    # italic
+    has_italic = len(findall(r"/", string))
+    if has_italic > 1:
+        if has_italic % 2 == 0:
+            for _ in range(has_italic // 2):
+                string = sub(r"/", r"\\f{Times-Italic}", string, count=1)
+                string = sub(r"/", r"\\f{}", string, count=1)
+        else:
+            _logger.warning("unpaired italic marker")
     return string
 
 def decode_agr(agr):
@@ -1544,7 +1556,7 @@ class _Dataset(_BaseOutput, _Affix):
 
     Args:
         index (int) : index of the dataset
-        *xyz : input data
+        *xy : input data
         datatype (str) :
         legend (str) :
         comment (str) :
@@ -1565,7 +1577,7 @@ class Dataset(_Dataset):
     
     Args:
         index
-        xyz (arraylike)
+        xy (arraylike)
         label (str)
         datatype (str)
         color (str) : global color control
@@ -1581,7 +1593,7 @@ class Dataset(_Dataset):
         lc (str/int) : line color
         keyword arguments (arraylike): error data
     """
-    def __init__(self, index, *xyz, label=None, color=None, datatype=None, comment=None,
+    def __init__(self, index, *xy, label=None, color=None, datatype=None, comment=None,
                  symbol=None, ssize=None, sc=None, sp=None, sfc=None, sfp=None,
                  slw=None, sls=None, char=None, charfont=None, skip=None,
                  line=None, lw=None, lc=None, ls=None, lp=None,
@@ -1596,10 +1608,7 @@ class Dataset(_Dataset):
             label = ""
         if comment is None:
             comment = ""
-        if datatype is not None:
-            self.data = Data(*xyz, datatype=datatype, label=label, comment=comment, **extras)
-        else:
-            self.data = Data(*xyz, label=label, comment=comment, **extras)
+        self.data = Data(*xy, datatype=datatype, label=label, comment=comment, **extras)
 
         _Dataset.__init__(self, index, type=self.data.datatype, comment=comment, legend=label)
         if sc is None:
@@ -2088,7 +2097,7 @@ class Graph(_Graph):
         """set x axis"""
         self.set_axis(axis='alty', **kwargs)
 
-    def plot(self, *xyz, **kwargs):
+    def plot(self, *xy, **kwargs):
         """plot a dataset
         
         multiple y can be parsed along with one x.
@@ -2097,8 +2106,8 @@ class Graph(_Graph):
         only for the first set
         """
         # check if a band structure like `y` data is parsed
-        if len(xyz) == 2 and len(shape(xyz[1])) == 2:
-            x, ys = xyz
+        if len(xy) == 2 and len(shape(xy[1])) == 2:
+            x, ys = xy
             n = self.ndata
             # check error in keyword arguments as well
             extras = {}
@@ -2113,7 +2122,7 @@ class Graph(_Graph):
                 ds.append(Dataset(n+i+1, x, y, **kwargs, **extra))
             self._datasets.extend(ds)
         else: 
-            ds = Dataset(self.ndata, *xyz, **kwargs)
+            ds = Dataset(self.ndata, *xy, **kwargs)
             self._datasets.append(ds)
 
     def set_legend(self, **kwargs):
@@ -2384,9 +2393,11 @@ class Plot:
         lw (number) : default linewidth
         ls (str/int) : default line style
         color (str/int) : default color
+        bc (str/int) : background color
+        background (str/int) : switch of background fill
         qtgrace (bool) : if true, QtGrace comments will be added 
     """
-    def __init__(self, rows=1, cols=1, hgap=0.02, vgap=0.02,
+    def __init__(self, rows=1, cols=1, hgap=0.02, vgap=0.02, bc=0, background=None,
                  lw=None, ls=None, color=None, pattern=None, font=None,
                  charsize=None, symbolsize=None, sformat=None,
                  width_ratios=None, heigh_ratios=None,
@@ -2398,9 +2409,9 @@ class Plot:
                       "reference date 0",
                       "date wrap off",
                       "date wrap year 1950",
-                      "background color 0",
                       ]
-        self._page = Page()
+        self._background_color = Color.get(bc)
+        self._page = Page(bgfill=Switch.get(background))
         self._regions = [_Region(i) for i in range(5)]
         self._font = Font()
         self._cm = plot_colormap
@@ -2420,7 +2431,7 @@ class Plot:
 
     def __str__(self):
         """print the whole agr file"""
-        slist = [*self._head,]
+        slist = self._head + ["background color {:d}".format(self._background_color),]
         headers = [self._page, self._font, self._cm,
                    self._default, self._timestamp, *self._regions]
         for h in headers:
@@ -2462,15 +2473,15 @@ class Plot:
         except IndexError:
             raise IndexError(f"G.{i} does not exist")
 
-    def plot(self, *xyz, **kwargs):
+    def plot(self, *xy, **kwargs):
         """plot a data set to the first graph
 
         Args:
-            positional *xyz (arraylike): x, y data. Error should be parsed to keyword arguments
+            positional *xy (arraylike): x, y data. Error should be parsed to keyword arguments
             igraph (int) : index of graph to plot
             keyword arguments will parsed to Graph object
         """
-        self._graphs[0].plot(*xyz, **kwargs)
+        self._graphs[0].plot(*xy, **kwargs)
 
     def title(self, title=None, ig=0, **kwargs):
         """set the title of graph `igraph`"""

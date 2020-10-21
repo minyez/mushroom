@@ -13,6 +13,17 @@ class test_string_encoder(ut.TestCase):
         """encoding greek"""
         self.assertEqual(encode_string(r"\Gamma \beta"), r"\xG\f{} \xb\f{}")
 
+    def test_special(self):
+        """encoding special characters"""
+        self.assertEqual(encode_string(r"\AA \BB"), r"\cE\C \BB")
+
+    def test_italic(self):
+        """encoding special characters"""
+        self.assertEqual(encode_string(r"/this is italic/, this not"), 
+                         r"\f{Times-Italic}this is italic\f{}, this not")
+        self.assertEqual(encode_string(r"/italic here/, /also here/"), 
+                         r"\f{Times-Italic}italic here\f{}, \f{Times-Italic}also here\f{}")
+
 class test_ColorMap(ut.TestCase):
     """test colormap utilites"""
 
@@ -105,6 +116,7 @@ class test_Graph(ut.TestCase):
         y = [1.0, 2.0, 3.0]
         g.plot(x, y, label="y=x+1", symbol="o", color="red")
         self.assertEqual(g[0]._symbol.type, Symbol.get("o"))
+        # both symbol and line are colored
         self.assertEqual(g[0]._symbol.color, Color.get("red"))
         self.assertEqual(g[0]._line.color, Color.get("red"))
         
