@@ -39,14 +39,16 @@ function __setup_incars () {
   # parallel setup
   kpar=$(largest_div_below_sqrt "$np")
   npar=$((np / kpar))
-  for d in INCAR.pbe INCAR.coarse INCAR.hf; do
-    incar_change_tag "NPAR" "$npar" "$1/$d"
-    incar_change_tag "KPAR" "$kpar" "$1/$d"
-  done
+  if (( np != 1 )); then
+    for d in INCAR.pbe INCAR.coarse INCAR.hf; do
+      incar_change_tag "NPAR" "$npar" "$1/$d"
+      incar_change_tag "KPAR" "$kpar" "$1/$d"
+    done
+  fi
 
   if [ -f CHGCAR.hf ]; then
     for d in INCAR.pbe INCAR.coarse INCAR.hf; do
-      incar_change_tag "ICHARG" "11" "$d" "$1/$d"
+      incar_change_tag "ICHARG" "11" "$1/$d"
     done
   fi
 }

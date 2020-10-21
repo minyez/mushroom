@@ -270,6 +270,7 @@ function poscar_latt_vec () {
 }
 
 function incar_change_tag () {
+  # change one tag of INCAR
   case $# in
     2 ) tag="$1"; value="$2"; incar="INCAR"; unset incarout;;
     3 ) tag="$1"; value="$2"; incar="$3"; unset incarout;;
@@ -290,6 +291,29 @@ function incar_change_tag () {
     else
       cp "$incar" "$incarout"
       echo "$tag = $value" >> "$incarout"
+    fi
+  fi
+}
+
+function incar_delete_tag () {
+  # delete tag in INCAR
+  case $# in
+    1 ) tag="$1"; incar="INCAR"; unset incarout;;
+    2 ) tag="$1"; incar="$3"; unset incarout;;
+    3 ) tag="$1"; incar="$3"; incarout="$4";;
+    * ) echo "Error! specify tag and value"; exit 1;;
+  esac
+  if grep "$tag =" "$incar"; then
+    if [[ -z ${incarout+1} ]]; then
+      sed -i "/$tag = /d" "$incar"
+    else
+      sed "/$tag = /d" "$incar" > "$incarout"
+    fi
+  else
+    # tag to delete is not found.
+    # directly copy the original INCAR to new place
+    if [[ -n ${incarout+1} ]]; then
+      cp "$incar" "$incarout"
     fi
   fi
 }
