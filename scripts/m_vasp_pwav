@@ -10,7 +10,7 @@ For atom-projector-band (apb) string, see ``mushroom._core.bs.split_apb``
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 from mushroom._core.logger import create_logger
-from mushroom._core.graceplot import Plot
+from mushroom._core.graceplot import Plot, prefer_gracecolors
 from mushroom._core.cell import Cell
 from mushroom._core.bs import split_apb
 from mushroom._core.kpoints import KPath
@@ -19,7 +19,6 @@ from mushroom.vasp import read_procar
 
 _logger = create_logger("mv_pwav")
 del create_logger
-colors = ["red", "blue", "orange"]
 
 def _parser():
     """the parser"""
@@ -42,7 +41,7 @@ def _parser():
                    help="spin to draw")
     return p.parse_args()
 
-def plot_pwav(graph, x, bs, apbs, spin, scale, pwav_file='pwav.dat'):
+def plot_pwav(graph, x, bs, apbs, spin, scale, colors=None):
     """
     Args:
         graph (Graph)
@@ -52,13 +51,15 @@ def plot_pwav(graph, x, bs, apbs, spin, scale, pwav_file='pwav.dat'):
         scale (float)
         pwav_file (str)
     """
-    pwav_dat = open(pwav_file, 'w')
+    if colors is None:
+        colors = prefer_gracecolors
+    pwav_dat = open('pwav.dat', 'w')
     for i, apb in enumerate(apbs.split()):
         atms, prjs, bands = split_apb(apb)
         pwav = bs.get_pwav(atms, prjs, bands)[spin, :, :]
         eigen = bs.get_eigen(bands)[spin, :, :] - bs.efermi
         graph.plot(x, eigen.transpose(), size=pwav.transpose()*scale,
-                   datatype="xysize", color=colors[i],
+                   datatype="xysize", color=colors[i%len(colors)],
                    label="-".join(str(x) for x in apb.split(":")[:2]), ls="none")
         print("#atom-projector-band:{}".format(apb), file=pwav_dat)
         print("\n".join(export_2d_data(pwav)), file=pwav_dat, end="\n\n")

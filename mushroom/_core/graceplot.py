@@ -122,33 +122,34 @@ class _ColorMap(_MapOutput):
         (  0, 139,   0, "green4"),
         ]
 
-    # add user defined color_map
-    try:
-        from mushroom.__config__ import color_map
-        for c in color_map:
-            _valid_rgb(*c)
-            _colors.append(c)
-        del color_map
-    except (TypeError, ValueError):
-        _logger.warning("user color_map is not loaded correctly")
-    except ImportError:
-        pass
+    def __init__(self, load_custom: bool = True):
+        # add user defined color_map
+        # user is not allowed to overwrite color
+        _colors = deepcopy(_ColorMap._colors)
+        if load_custom:
+            try:
+                from mushroom.__config__ import color_map
+                for c in color_map:
+                    _valid_rgb(*c)
+                    _colors.append(c)
+                del color_map
+            except (TypeError, ValueError):
+                _logger.warning("user color_map is not loaded correctly")
+            except ImportError:
+                pass
+        # check validity of pre-defined colormap
+        # check if predefined rgb are valid, and there is no duplicate names
+        _color_names = [i[3] for i in _colors]
+        for color in _colors:
+            _valid_rgb(*color)
+        if len(_color_names) != len(set(_color_names)):
+            raise ValueError('found duplicate color names:', _color_names)
 
-    # check validity of pre-defined colormap
-    # check if predefined rgb are valid, and there is no duplicate names
-    _color_names = [i[3] for i in _colors]
-    for color in _colors:
-        _valid_rgb(*color)
-    if len(_color_names) != len(set(_color_names)):
-        raise ValueError('found duplicate color names')
-
-    _map = {}
-    for i, color in enumerate(_colors):
-        _map[i] = color
-
-    def __init__(self):
-        _MapOutput.__init__(self, 'color', _ColorMap._map, _ColorMap._format)
-        self._cn = _ColorMap._color_names
+        _map = {}
+        for i, color in enumerate(_colors):
+            _map[i] = color
+        _MapOutput.__init__(self, 'color', _map, _ColorMap._format)
+        self._cn = _color_names
 
     def __getitem__(self, i):
         return self._map[i][3]
@@ -185,6 +186,11 @@ class _ColorMap(_MapOutput):
                 return color
             raise ValueError("color {:d} is not defined in the color map".format(color))
         raise TypeError("color input is not valid, use str or int", color)
+
+    @property
+    def names(self):
+        """color names"""
+        return self._cn
 
     def add(self, r, g, b, name=None):
         """Add a new color with its RGB value
@@ -226,6 +232,21 @@ class _ColorMap(_MapOutput):
         return name in self._cn
 
 plot_colormap = _ColorMap()
+
+try:
+    from mushroom.__init__ import prefer_gracecolors
+    if not isinstance(prefer_gracecolors, Iterable):
+        _logger.warning("expect prefer_gracecolors Iterable, got %s",
+                        type(prefer_gracecolors))
+        raise ImportError
+    if len(prefer_gracecolors) < 1:
+        _logger.warning("empty prefer_gracecolors. use default")
+        raise ImportError
+    all_defined = all(gc in plot_colormap.names for gc in prefer_gracecolors)
+    if not all_defined:
+        raise ValueError("some custom colors are not defined")
+except ImportError:
+    prefer_plotcolors = ["red", "blue", "orange", "green4"]
 
 
 def _get_int_const(name, pair, marker):

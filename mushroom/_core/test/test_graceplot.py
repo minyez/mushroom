@@ -29,7 +29,7 @@ class test_ColorMap(ut.TestCase):
 
     def test_output(self):
         """test if the grace output of default colormap is as expected"""
-        c = _ColorMap()
+        c = _ColorMap(load_custom=False)
         self.maxDiff = None
         s = """map color 0 to (255, 255, 255), "white"
 map color 1 to (0, 0, 0), "black"
@@ -52,7 +52,7 @@ map color 15 to (0, 139, 0), "green4"
 
     def test_add_color(self):
         """add new color to color map"""
-        c = _ColorMap()
+        c = _ColorMap(load_custom=False)
         n = c.n
         c.add(10, 10, 10, None)
         self.assertEqual(n + 1, c.n)
