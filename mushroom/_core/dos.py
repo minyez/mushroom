@@ -4,7 +4,7 @@ import numpy as np
 
 from mushroom._core.unit import EnergyUnit
 from mushroom._core.logger import create_logger
-from mushroom._core.data import print_2d_data
+from mushroom._core.data import export_2d_data
 
 _logger = create_logger("dos")
 del create_logger
@@ -227,7 +227,7 @@ class DensityOfStates(EnergyUnit):
             separator = ' '
         data = self.get_dos(ispin=ispin, atms=atms,
                             prjs=prjs, transpose=transpose)
-        return print_2d_data(data, transpose=transpose, form=form, sep=sep)
+        return export_2d_data(data, transpose=transpose, form=form, sep=sep)
 
 def split_ap(ap: str):
     """split an atom-projector string into lists containing corresponding identifiers

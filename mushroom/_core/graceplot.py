@@ -2109,7 +2109,7 @@ class Graph(_Graph):
             ds = [Dataset(n, x, ys[0], **extras_first, **kwargs),]
             kwargs.pop("label", None)
             for i, y in enumerate(ys[1:]):
-                extra = {k: v[i] for k, v in extras.items()}
+                extra = {k: v[i+1] for k, v in extras.items()}
                 ds.append(Dataset(n+i+1, x, y, **kwargs, **extra))
             self._datasets.extend(ds)
         else: 

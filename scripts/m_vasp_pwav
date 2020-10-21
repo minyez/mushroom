@@ -2,18 +2,19 @@
 # -*- coding: utf-8 -*-
 """draw projected band structure (or partial wave) from vasp output and export to an XmGrace plot.
 
-The value of partial wave is proportional to the diameter of the circle
+In the plot, the value of partial wave is proportional to the diameter of the circle.
+The summed partial wave for atom and projector is stored in ``pwav.dat``
 
 For atom-projector-band (apb) string, see ``mushroom._core.bs.split_apb``
 """
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
-import numpy as np
 
 from mushroom._core.logger import create_logger
 from mushroom._core.graceplot import Plot
 from mushroom._core.cell import Cell
 from mushroom._core.bs import split_apb
 from mushroom._core.kpoints import KPath
+from mushroom._core.data import export_2d_data
 from mushroom.vasp import read_procar
 
 _logger = create_logger("mv_pwav")
@@ -33,7 +34,7 @@ def _parser():
                    help="number of kpoints at first to remove")
     p.add_argument("--apb", type=str, default=None,
                    help="atom-projector-band (apb) string, separated by whitespace")
-    p.add_argument("-s", dest="scale", type=float, default=None,
+    p.add_argument("-s", dest="scale", type=float, default=1.0,
                    help="scale for the area of partial wave")
     p.add_argument("--spin", type=int, default=0, choices=[0, 1],
                    help="spin to draw")
@@ -66,22 +67,22 @@ def m_v_pwav():
     p[0].y.set_major(major=3)
     p[0].y.set_label("Energy (eV)")
     # draw partial wave with ellipse
-    scale = args.scale
-    if scale is None:
-        scale = 1.
-    # 20.0 is a base scale factor
-    scale *= (kp.x[-1] - kp.x[0]) / len(kp.x) * 20.0
+    # 36.0 is a base factor
+    scale = (kp.x[-1] - kp.x[0]) / len(kp.x) * 36.0 * args.scale
     _logger.info("scale set to %r", scale)
 
     if args.apb is not None:
+        pwav_dat = open("pwav.dat", 'w')
         for i, apb in enumerate(args.apb.split()):
             label = "-".join(str(x) for x in apb.split(":")[:2])
             atms, prjs, bands = split_apb(apb)
-            pwav = bs.get_pwav(atms, prjs, bands)[isp, :, :] * scale
+            pwav = bs.get_pwav(atms, prjs, bands)[isp, :, :]
+            print("#atom-projector-band:{}".format(apb), file=pwav_dat)
+            print("\n".join(export_2d_data(pwav)), file=pwav_dat, end="\n\n")
             eigen = bs.get_eigen(bands)[isp, :, :] - bs.efermi
-            p[0].plot(kp.x, eigen.transpose(), size=pwav.transpose(),
-                      datatype="xysize", color=colors[i], label=label)
-
+            p[0].plot(kp.x, eigen.transpose(), size=pwav.transpose()*scale,
+                      datatype="xysize", color=colors[i], label=label, ls="none")
+        pwav_dat.close()
     # draw zero line
     p[0].axhline(0.0, ls="dashed")
     p.write(file=args.output)

@@ -126,6 +126,28 @@ class test_BS_projection(ut.TestCase):
             good += 1
         print("Processed {} good band structure projections".format(good))
 
+    # pylint: disable=R0914
+    def test_get_pwav(self):
+        nsp, nkp, nb, natm, nprj = 1, 4, 5, 6, 9
+        eigen = np.ones((nsp, nkp, nb))
+        occ = np.ones((nsp, nkp, nb))
+        weight = np.ones(nkp)
+        atms = np.random.choice(["Si", "O", "C"], natm)
+        prjs = np.random.choice(["s", "p", "f"], nprj)
+        pwav = np.ones((nsp, nkp, nb, natm, nprj))
+        bs = BS(eigen, occ, weight, pwav=pwav, atms=atms, prjs=prjs)
+        self.assertTrue(np.array_equal(bs.get_pwav(0, 0), np.ones((nsp, nkp, nb))))
+        self.assertTrue(np.array_equal(bs.get_pwav(0, 0, 0), np.ones((nsp, nkp, 1))))
+        self.assertTrue(np.array_equal(bs.get_pwav([0, 1], [0, 1], 0), 4 * np.ones((nsp, nkp, 1))))
+        for at, nat in zip(*np.unique(atms, return_counts=True)):
+            self.assertTrue(np.array_equal(bs.get_pwav(at, 0), nat * np.ones((nsp, nkp, nb))))
+            self.assertTrue(np.array_equal(bs.get_pwav(at, [0, 1]),
+                                           2 * nat * np.ones((nsp, nkp, nb))))
+        for pt, npt in zip(*np.unique(prjs, return_counts=True)):
+            self.assertTrue(np.array_equal(bs.get_pwav(0, pt), npt * np.ones((nsp, nkp, nb))))
+            self.assertTrue(np.array_equal(bs.get_pwav([0, 1], pt),
+                                           2 * npt * np.ones((nsp, nkp, nb))))
+
 
 class test_BS_randomize(ut.TestCase):
     """Test if the random band structure behaves as expected

@@ -287,7 +287,7 @@ class Data:
                 raise ValueError(msg, form, len(data_cols))
 
         data_all = self._get(data_cols, transpose=transpose)
-        return print_2d_data(data_all, transpose=transpose, form=form, sep=sep)
+        return export_2d_data(data_all, transpose=transpose, form=form, sep=sep)
 
     def get_data(self, transpose=False):
         """get all data values
@@ -425,7 +425,7 @@ class Data:
         # some error is parsed
         return t, extra_cols
 
-def print_2d_data(data, form: str = None, transpose: bool = False, sep: str = None) -> List[str]:
+def export_2d_data(data, form: str = None, transpose: bool = False, sep: str = None) -> List[str]:
     """print the 2-dimension data into list of strings
 
     Args:

@@ -241,13 +241,13 @@ class BandStructure(EnergyUnit):
             raise BandStructureError("invalid shape of pwav")
 
         self._natms, self._nprjs = shape[3:]
-        if atms:
+        if atms is not None:
             natms = len(atms)
             if natms != self._natms:
                 raise BandStructureError("inconsistent atms input {}".format(atms))
             self._atms = atms
             _logger.info("Read atoms of partial wave, dimension = %s", natms)
-        if prjs:
+        if prjs is not None:
             nprjs = len(prjs)
             if nprjs != self._nprjs:
                 raise BandStructureError("inconsistent prjs input {}".format(prjs))
@@ -647,13 +647,25 @@ class BandStructure(EnergyUnit):
         return [self._convert_band_iden(ib),]
 
     def _get_atom_indices(self, atm):
-        if self._atms is None and not isinstance(atm, int):
-            raise ValueError("atms not parsed. accept integer only")
+        if self._atms is None:
+            if isinstance(atm, int):
+                return [atm,]
+            if isinstance(atm, Iterable):
+                has_str = any(isinstance(a, str) for a in atm)
+                if not has_str:
+                    return atm
+            raise ValueError("parse atms first for atom string")
         return get_str_indices_by_iden(self._atms, atm)
 
     def _get_proj_indices(self, prj):
-        if self._prjs is None and not isinstance(prj, int):
-            raise ValueError("prjs not parsed. accept integer only")
+        if self._prjs is None:
+            if isinstance(prj, int):
+                return [prj,]
+            if isinstance(prj, Iterable):
+                has_str = any(isinstance(p, str) for p in prj)
+                if not has_str:
+                    return prj
+            raise ValueError("parse prjs first for projector string")
         return get_str_indices_by_iden(self._prjs, prj)
 
     #def get_dos(self, emin=None, emax=None, nedos=3000, smearing="Gaussian", sigma=0.05):
@@ -801,6 +813,8 @@ def split_apb(apb: str):
         raise ValueError("whitespace is not allowed in atom-projector-band string, got", apb)
     def _conv_comma(s):
         l = []
+        if not s:
+            return None
         for x in s.split(","):
             try:
                 l.append(int(x))
