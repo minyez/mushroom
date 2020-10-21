@@ -55,7 +55,7 @@ def m_v_pwav():
     p = Plot(1, 1)
     # set limits
     p[0].set_ylim(ymin=-6, ymax=6)
-    p[0].set_xlim(0.0, kp.x[-1] + 0.0001)
+    p[0].set_xlim(0.0, kp.x[-1] + 0.001)
     # draw bands
     p[0].plot(kp.x, bs.eigen[isp, :, :].transpose() - bs.efermi, color="k", symbol="none")
     p[0].x.set_major(grid=True, color="grey", lw=3, ls="dashed")
@@ -82,7 +82,7 @@ def m_v_pwav():
 
     # draw zero line
     p[0].axhline(0.0, ls="dashed")
-    p.export(file=args.output)
+    p.write(file=args.output)
 
 
 if __name__ == "__main__":

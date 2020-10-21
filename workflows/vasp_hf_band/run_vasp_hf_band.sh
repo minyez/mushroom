@@ -29,11 +29,12 @@ function __setup_incars () {
     INCAR.pbe > "$1/INCAR.pbe"
   sed "s/_encut_/$encut/g;s/_ediff_/$ediff/g;s/_prec_/$prec/g;s/_hfscreen_/$hfscreen/g;" \
     INCAR.hf > "$1/INCAR.hf"
-  sed "s/PRECFOCK = Normal/PRECFOCK = Fast/g" "$workdir/INCAR.hf" > "$workdir/INCAR.coarse"
+  #sed "s/PRECFOCK = Normal/PRECFOCK = Fast/g" "$workdir/INCAR.hf" > "$workdir/INCAR.coarse"
+  incar_change_tag "PRECFOCK" "Fast" "$workdir/INCAR.hf" "$workdir/INCAR.coarse"
   if (( "$lthomas" == 1 )); then
-    s="AEXX = 1.0 ; AGGAC = 1.0 ; ALDAC = 1.0 ; LTHOMAS = T"
-    echo "$s" >> "$1/INCAR.coarse"
-    echo "$s" >> "$1/INCAR.hf"
+    s="AEXX = 1.0\nAGGAC = 1.0\nALDAC = 1.0\nLTHOMAS = T"
+    echo -e "$s" >> "$1/INCAR.coarse"
+    echo -e "$s" >> "$1/INCAR.hf"
   fi
   # parallel setup
   kpar=$(largest_div_below_sqrt "$np")
@@ -45,7 +46,7 @@ function __setup_incars () {
 
   if [ -f CHGCAR.hf ]; then
     for d in INCAR.pbe INCAR.coarse INCAR.hf; do
-      echo "ICHARG = 11" >> "$1/$d"
+      incar_change_tag "ICHARG" "11" "$d" "$1/$d"
     done
   fi
 }

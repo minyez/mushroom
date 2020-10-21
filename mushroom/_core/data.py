@@ -156,9 +156,9 @@ class Data:
 
     Public methods:
         get
-        get_error
+        get_extra
         export
-        export_error
+        export_extra
 
     Private methods:
 
@@ -167,11 +167,12 @@ class Data:
             key is the acronym of the data type
             value a list, optional arguments for left-and-right errors
     """
-    ERROR_ARGS = ['dx', 'dxl', 'dy', 'dyl']
+    extra_data = ['dx', 'dxl', 'dy', 'dyl', 'size']
     DATATYPES = {
         'xy': (2, []),
         'bar': (2, []),
         'xyz': (3, []),
+        'xysize': (2, ['size']),
         'xydx': (2, ['dx']),
         'xydy': (2, ['dy']),
         'bardy': (2, ['dy']),
@@ -184,8 +185,8 @@ class Data:
     available_types = tuple(DATATYPES.keys())
 
     def __init__(self, *xyz, datatype: str = None, label: str = None, comment: str = None,
-                 **errors):
-        datatype, self._error_cols = Data._check_data_type(*xyz, datatype=datatype, **errors)
+                 **extras):
+        datatype, self._extra_cols = Data._check_data_type(*xyz, datatype=datatype, **extras)
         if datatype == "xyz":
             self.x, self.y, self.z = xyz
             self.x = np.array(self.x)
@@ -197,8 +198,8 @@ class Data:
             self.x = np.array(self.x)
             self.y = np.array(self.y)
             self._data_cols = ['x', 'y']
-        for opt in self._error_cols:
-            self.__setattr__(opt, errors[opt])
+        for opt in self._extra_cols:
+            self.__setattr__(opt, extras[opt])
         self.label = label
         self.comment = comment
         self.datatype = datatype
@@ -304,7 +305,7 @@ class Data:
         """
         return self._get(self._data_cols, transpose=transpose)
 
-    def get_error(self, transpose=False):
+    def get_extra(self, transpose=False):
         """get all error value
        
         Default as 
@@ -318,10 +319,10 @@ class Data:
                 yel1, yel2, yel3, ...
                 ...
         """
-        return self._get(self._error_cols, transpose=transpose)
+        return self._get(self._extra_cols, transpose=transpose)
 
     def get(self, transpose=False):
-        """get all data and error value
+        """get all data and extra value
 
         Default as
                 (x1, y1, z1, xel1, xer1, yel1, yer1, ...),
@@ -335,7 +336,7 @@ class Data:
                 xel1, xel2, xel3, ...
                 ...
         """
-        return self._get(self._data_cols + self._error_cols, transpose=transpose)
+        return self._get(self._data_cols + self._extra_cols, transpose=transpose)
 
     def export_data(self, form=None, transpose=False, sep=None) -> List[str]:
         """Export the data as a list of strings
@@ -350,10 +351,10 @@ class Data:
         """
         return self._export(self._data_cols, form=form, transpose=transpose, sep=sep)
 
-    def export_error(self, form=None, transpose=False, sep=None) -> List[str]:
-        """Export the error as a list of strings
+    def export_extra(self, form=None, transpose=False, sep=None) -> List[str]:
+        """Export extra data as a list of strings
 
-        See get_error for the meaning of transpose
+        See get_extra for the meaning of transpose
 
         Args:
             sep(str)
@@ -361,10 +362,10 @@ class Data:
                 if a str is parsed, this format apply to all data columns
                 if Iterable, each form will be parsed respectively.
         """
-        return self._export(self._error_cols, form=form, transpose=transpose, sep=sep)
+        return self._export(self._extra_cols, form=form, transpose=transpose, sep=sep)
 
     def export(self, form=None, transpose=False, sep=None) -> List[str]:
-        """Export both data and error as a list of strings
+        """Export both data and extras as a list of strings
         
         See get_all for the meaning of transpose
 
@@ -374,24 +375,25 @@ class Data:
                 if a str is parsed, this format apply to all data columns
                 if Iterable, each form will be parsed respectively.
         """
-        return self._export(self._data_cols + self._error_cols,
+        return self._export(self._data_cols + self._extra_cols,
                             form=form, transpose=transpose, sep=sep)
 
     @classmethod
-    def _check_data_type(cls, *xyz, datatype=None, **errors):
+    def _check_data_type(cls, *xyz, datatype=None, **extras):
         """confirm the data type of input. Valid types are declared in Data.DATATYPES
     
         Args:
             *xyz (array-like):
             datatype (str) : data type of . None for automatic detect
-            errors for parsing error
+            extras for parsing extra data such as error
                 d(x,y,z) (float) : error. when the according l exists, it becomes the upper error
                 d(x,y,z)l (float) : lower error
+                size (float) : size of marker
 
         Returns:
             str, list
         """
-        err_cols = []
+        extra_cols = []
         nd = len(xyz)
         if nd <= 1:
             raise ValueError("no enough parsed data")
@@ -400,25 +402,25 @@ class Data:
             t = {2: 'xy', 3: 'xyz'}[nd]
             for dt, (n, ec) in cls.DATATYPES.items():
                 if n == nd and dt.startswith(t):
-                    find_all = all([errors.get(required_e, None) for required_e in ec])
+                    find_all = all([extras.get(required_e, None) for required_e in ec])
                     if find_all:
                         t = dt
-                        err_cols = ec
-                        return t, err_cols
+                        extra_cols = ec
+                        return t, extra_cols
             raise ValueError("cannot determine the datatype")
         # check consistency
         if datatype.lower in cls.available_types:
             t = datatype.lower
-            required_n, err_cols = cls.DATATYPES[t]
+            required_n, extra_cols = cls.DATATYPES[t]
             if required_n != nd:
                 raise ValueError("Inconsistent xyz data and specified datatype ", datatype)
-            find_all = all([required_e in errors for required_e in err_cols])
+            find_all = all([required_e in extras for required_e in extra_cols])
             if not find_all:
-                raise ValueError("Inconsistent error and specified datatype ", datatype)
+                raise ValueError("Inconsistent extra data and specified datatype ", datatype)
         else:
             raise ValueError("Unsupported datatype", datatype)
         # some error is parsed
-        return t, err_cols
+        return t, extra_cols
 
 def print_2d_data(data, form: str = None, transpose: bool = False, sep: str = None) -> List[str]:
     """print the 2-dimension data into list of strings

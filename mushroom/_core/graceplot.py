@@ -2095,11 +2095,19 @@ class Graph(_Graph):
         """
         # check if a band structure like `y` data is parsed
         if len(xyz) == 2 and len(shape(xyz[1])) == 2:
+            x, ys = xyz
             n = self.ndata
-            ds = [Dataset(n, xyz[0], xyz[1][0], **kwargs),]
+            # check error in keyword arguments as well
+            extras = {}
+            for t in Data.extra_data:
+                if t in kwargs:
+                    extras[t] = kwargs.pop(t)
+            extras_first = {k: v[0] for k, v in extras.items()}
+            ds = [Dataset(n, x, ys[0], **extras_first, **kwargs),]
             kwargs.pop("label", None)
-            for i, y in enumerate(xyz[1][1:]):
-                ds.append(Dataset(n+i+1, xyz[0], y, **kwargs))
+            for i, y in enumerate(ys[1:]):
+                extra = {k: v[i] for k, v in extras.items()}
+                ds.append(Dataset(n+i+1, x, y, **kwargs, **extra))
             self._datasets.extend(ds)
         else: 
             ds = Dataset(self.ndata, *xyz, **kwargs)
@@ -2447,15 +2455,15 @@ class Plot:
         except IndexError:
             raise IndexError(f"G.{i} does not exist")
 
-    def plot(self, *xyz, ig: int = 0, **kwargs):
-        """plot a data set to graph `igraph`
+    def plot(self, *xyz, **kwargs):
+        """plot a data set to the first graph
 
         Args:
             positional *xyz (arraylike): x, y data. Error should be parsed to keyword arguments
             igraph (int) : index of graph to plot
             keyword arguments will parsed to Graph object
         """
-        self._graphs[ig].plot(*xyz, **kwargs)
+        self._graphs[0].plot(*xyz, **kwargs)
 
     def title(self, title=None, ig=0, **kwargs):
         """set the title of graph `igraph`"""
@@ -2517,8 +2525,8 @@ class Plot:
         for g in self._graphs:
             g.set_ylim(ymin=ymin, ymax=ymax)
 
-    def export(self, file=sys.stdout, mode='w'):
-        """Export grace plot file to `fn`
+    def write(self, file=sys.stdout, mode='w'):
+        """write grace plot file to `fn`
 
         Args:
             file (str or file handle)

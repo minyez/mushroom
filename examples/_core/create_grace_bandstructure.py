@@ -8,4 +8,4 @@ p = Plot()
 x = np.linspace(-np.pi, np.pi, 50)
 y = [np.sin(x), 2*np.sin(x)]
 p.plot(x, y)
-p.export(file="band.agr")
+p.write(file="band.agr")

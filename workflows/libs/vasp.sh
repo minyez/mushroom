@@ -228,7 +228,7 @@ function xml_kpts () {
   # print kpoint list from vasprun.xml
   # $1 : path of vasprun.xml file
   vaspxml=$1
-  if [ ! -f "$vaspxml" ]; then
+  if [[ ! -f "$vaspxml" ]]; then
     exit 1
   fi
   lnkpt=$(grep -n -m 1 "<varray name=\"kpointlist\" >" "$vaspxml" | tail -1 | awk '{print $1}')
@@ -271,15 +271,25 @@ function poscar_latt_vec () {
 
 function incar_change_tag () {
   case $# in
-    2 ) tag="$1"; value="$2"; incar="INCAR";;
-    3 ) tag="$1"; value="$2"; incar="$3";;
+    2 ) tag="$1"; value="$2"; incar="INCAR"; unset incarout;;
+    3 ) tag="$1"; value="$2"; incar="$3"; unset incarout;;
+    4 ) tag="$1"; value="$2"; incar="$3"; incarout="$4";;
     * ) echo "Error! specify tag and value"; exit 1;;
   esac
   if grep "$tag =" "$incar"; then
     n=$(grep -n "$tag = " "test.dat" | awk '{print $1}')
     n="${n%%:*}"
-    sed -i -e "/$tag = /a $tag = $value" -e "${n}d" "$incar"
+    if [[ -z ${incarout+1} ]]; then
+      sed -i -e "/$tag = /a $tag = $value" -e "${n}d" "$incar"
+    else
+      sed -e "/$tag = /a $tag = $value" -e "${n}d" "$incar" > "$incarout"
+    fi
   else
-    echo "$tag = $value" >> "$incar"
+    if [[ -z ${incarout+1} ]]; then
+      echo "$tag = $value" >> "$incar"
+    else
+      cp "$incar" "$incarout"
+      echo "$tag = $value" >> "$incarout"
+    fi
   fi
 }

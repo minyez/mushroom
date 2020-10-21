@@ -31,4 +31,4 @@ p[0].x.set_spec(kp.special_x)
 
 p[0].tight_graph(xscale=1.0)
 p[1].tight_graph()
-p.export(file="data_new.agr")
+p.write(file="data_new.agr")

@@ -44,7 +44,7 @@ def m_v_band():
     p[0].y.set_label("Energy (eV)")
     # draw zero line
     p[0].axhline(0.0, ls="dashed")
-    p.export(file=args.output)
+    p.write(file=args.output)
 
 
 if __name__ == "__main__":

@@ -17,5 +17,5 @@ p[0].x.set_spec(locs, labels)
 p[0].x.set_major(grid="on", ls="dotted", color="grey", lw=3)
 p.tight_graph(xscale=1.0)
 p[0].axhline(0.0, lw=1, color="k", ls="dotted")
-p.export("redraw.agr")
+p.write("redraw.agr")
 

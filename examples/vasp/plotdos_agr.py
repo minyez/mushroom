@@ -14,4 +14,4 @@ egrid, tdos = dos.get_dos(transpose=True)
 p.plot(egrid, tdos, symbol="none")
 
 p.tight_graph()
-p.export(file="data_new.agr")
+p.write(file="data_new.agr")
