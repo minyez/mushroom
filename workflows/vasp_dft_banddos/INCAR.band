@@ -1,0 +1,14 @@
+band calculation
+
+LORBIT = 11
+ICHARG = 11
+
+LREAL = .FALSE.
+EDIFF = _ediff_
+ENCUT = _encut_
+ISMEAR = 0
+SIGMA = 0.05
+PREC = _prec_
+ISPIN = _ispin_
+LMAXMIX = 6
+

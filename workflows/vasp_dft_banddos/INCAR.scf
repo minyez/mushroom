@@ -1,0 +1,10 @@
+DFT SCF
+
+LREAL = .FALSE.
+EDIFF = _ediff_
+ENCUT = _encut_
+ISMEAR = 0
+SIGMA = _sigma_
+PREC = _prec_
+ISPIN = _ispin_
+LMAXMIX = 6

@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
 # common functions to be used in vasp workflows
-function raise_chgcar_change () {
-  # raise when two CHGCAR files are different, used for sanity check of band calculation
+function raise_chgwav_change () {
+  # raise when two CHGCAR/WAVECAR files are different, used for sanity check of band calculation
   # $1 $2 : paths of CHGCAR files
-  chg1=$1
-  chg2=$2
-  if [[ -n $(diff -q "$chg1" "$chg2") ]]; then
-    echo "Unexpected CHGCAR change during band calculation."; exit 1
+  chgwav1=$1
+  chgwav2=$2
+  if [[ -n $(diff -q "$chgwav1" "$chgwav2") ]]; then
+    echo "Unexpected CHGCAR/WAVECAR change during band calculation."; exit 1
   fi
 }
 
@@ -162,18 +162,18 @@ function run_hf_3steps_fixchg () {
   cp INCAR.pbe INCAR
   $vaspcmd > out.pbe 2>&1
   # raise if charge has changed
-  raise_chgcar_change "$scfchg" "CHGCAR"
+  raise_chgwav_change "$scfchg" "CHGCAR"
   backup_results pbe
   # step 2: coarse hf calculation with fixed charge
   cp "$scfchg" CHGCAR
   cp INCAR.coarse INCAR
   $vaspcmd > out.coarse 2>&1
-  raise_chgcar_change "$scfchg" "CHGCAR"
+  raise_chgwav_change "$scfchg" "CHGCAR"
   backup_results coarse
   # step 3: accurate hf calculation
   cp INCAR.hf INCAR
   $vaspcmd > out.hf 2>&1
-  raise_chgcar_change "$scfchg" "CHGCAR"
+  raise_chgwav_change "$scfchg" "CHGCAR"
   backup_results hf
 }
 
