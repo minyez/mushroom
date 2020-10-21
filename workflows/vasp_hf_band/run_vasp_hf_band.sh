@@ -30,7 +30,7 @@ function __setup_incars () {
   sed "s/_encut_/$encut/g;s/_ediff_/$ediff/g;s/_prec_/$prec/g;s/_hfscreen_/$hfscreen/g;" \
     INCAR.hf > "$1/INCAR.hf"
   #sed "s/PRECFOCK = Normal/PRECFOCK = Fast/g" "$workdir/INCAR.hf" > "$workdir/INCAR.coarse"
-  incar_change_tag "PRECFOCK" "Fast" "$workdir/INCAR.hf" "$workdir/INCAR.coarse"
+  incar_change_tag "PRECFOCK" "Fast" "$1/INCAR.hf" "$1/INCAR.coarse"
   if (( "$lthomas" == 1 )); then
     s="AEXX = 1.0\nAGGAC = 1.0\nALDAC = 1.0\nLTHOMAS = T"
     echo -e "$s" >> "$1/INCAR.coarse"
@@ -119,8 +119,8 @@ function run_vasp_hf_band () {
     run_vasp_hf_band_calc
   else
     case ${opts[0]} in
-      "calc" | "-r" ) run_vasp_hf_band ;;
-      "dry" | "-d" ) run_vasp_hf_band dry ;;
+      "calc" | "-r" ) run_vasp_hf_band_calc ;;
+      "dry" | "-d" ) run_vasp_hf_band_calc dry ;;
       "help" | "-h" ) run_vasp_hf_band_help "$0" ;;
       "data" ) run_vasp_hf_band_data ;;
       "clean" ) run_vasp_hf_band_clean ;;

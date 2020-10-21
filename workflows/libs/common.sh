@@ -126,7 +126,7 @@ function largest_div_below_sqrt () {
   # get the largest divider of integer n below its square root
   num=$1
   sqr=$(echo "$num" | awk '{printf("%d", sqrt($1))}')
-  for i in $(seq "$sqr" 1); do
+  for i in $(seq "$sqr" -1 1); do
     if (( num%i == 0 )); then
       echo "$i"
       break

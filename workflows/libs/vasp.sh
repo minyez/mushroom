@@ -277,7 +277,7 @@ function incar_change_tag () {
     * ) echo "Error! specify tag and value"; exit 1;;
   esac
   if grep "$tag =" "$incar"; then
-    n=$(grep -n "$tag = " "test.dat" | awk '{print $1}')
+    n=$(grep -n "$tag = " "$incar" | awk '{print $1}')
     n="${n%%:*}"
     if [[ -z ${incarout+1} ]]; then
       sed -i -e "/$tag = /a $tag = $value" -e "${n}d" "$incar"
