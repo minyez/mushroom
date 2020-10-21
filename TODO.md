@@ -24,6 +24,7 @@
 
 - [ ] type hints
 - [ ] map `p`, `d`, `f` to corresponding projector lists
+- [x] class for grace plot
 
 ### VASP
 
@@ -47,11 +48,16 @@ Require `pymatgen`
 
 ### VASP
 
+#### semilocal functional
+
+- [x] Band and DOS
+- [ ] 截断和 kmesh 收敛测试
+
 #### hybrid functional
 
 - [x] 截断和 kmesh 收敛测试
 - [ ] SCF 和 DOS
-- [x] 能带
+- [x] Band
 
 #### GW
 

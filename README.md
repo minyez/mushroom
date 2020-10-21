@@ -32,10 +32,11 @@ Note that in this case you may need to set your virtual environment `myenv` firs
 ## Installation
 
 Assume that mushroom is cloned to `path/to/mushroom`.
-To use mushroom python package
+To use mushroom python package and scripts in `scripts`
 
 ```bash
 export PYTHONPATH="path/to/mushroom:$PYTHONPATH"
+export PATH="path/to/mushroom/scripts:$PATH"
 ```
 
 You may test the Python pacakge by running `pytest`
@@ -47,16 +48,14 @@ pytest
 or just
 
 ```bash
-make test
-```
-
-To use shell scripts, add `scripts` directory to environment variable `PATH`, namely
-
-```bash
-export PATH="path/to/mushroom/scripts:$PATH"
+make pytest
 ```
 
 ## Usage
 
-See documentaion for usage.
+See documentaion in `doc` for usage.
+
+## Examples
+
+See `examples`.
 
