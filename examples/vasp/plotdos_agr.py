@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """example to draw DOS"""
 import pathlib
-from mushroom._core.graceplot import Plot
+from mushroom.graceplot import Plot
 from mushroom.vasp import read_doscar
 
 p = Plot()
@@ -10,8 +10,8 @@ dirname = pathlib.Path(__file__).parent
 path = dirname / "DOSCAR"
 
 dos = read_doscar(path)
-egrid, tdos = dos.get_dos(transpose=True)
-p.plot(egrid, tdos, symbol="none")
+tdos = dos.get_dos()
+p.plot(dos.egrid, tdos, symbol="none")
 
 p.tight_graph()
 p.write(file="data_new.agr")

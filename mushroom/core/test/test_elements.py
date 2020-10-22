@@ -4,7 +4,7 @@
 import unittest as ut
 from collections import OrderedDict
 
-from mushroom._core.elements import ATOMIC_WEIGHT, ELEMENT_SYMBOLS
+from mushroom.core.elements import ATOMIC_WEIGHT, ELEMENT_SYMBOLS
 
 
 class test_elem_symbols(ut.TestCase):

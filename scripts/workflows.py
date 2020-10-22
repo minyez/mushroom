@@ -11,8 +11,8 @@ from pathlib import Path
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from typing import List
 
-from mushroom._core.logger import create_logger
-from mushroom._core.hpc import get_scheduler_head
+from mushroom.core.logger import create_logger
+from mushroom.core.hpc import get_scheduler_head
 
 DIR_WORKFLOWS = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'workflows'))
 PATH_WORKFLOWS = Path(DIR_WORKFLOWS)

@@ -4,8 +4,8 @@ import re
 from typing import List
 import numpy as np
 
-from mushroom._core.ioutils import trim_after
-from mushroom._core.logger import create_logger
+from mushroom.core.ioutils import trim_after
+from mushroom.core.logger import create_logger
 
 _logger = create_logger("data")
 del create_logger

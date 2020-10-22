@@ -5,7 +5,7 @@
 import unittest as ut
 import numpy as np
 
-from mushroom._core.data import (conv_estimate_number,
+from mushroom.core.data import (conv_estimate_number,
                                  get_divisors,
                                  get_mutual_primes,
                                  closest_frac,

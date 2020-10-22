@@ -8,11 +8,11 @@ import unittest as ut
 
 import numpy as np
 
-from mushroom._core.bs import BandStructure as BS
-from mushroom._core.bs import BandStructureError as BSE
-from mushroom._core.bs import random_band_structure
-from mushroom._core.constants import EV2RY
-from mushroom._core.ioutils import get_matched_files
+from mushroom.core.bs import BandStructure as BS
+from mushroom.core.bs import BandStructureError as BSE
+from mushroom.core.bs import random_band_structure
+from mushroom.core.constants import EV2RY
+from mushroom.core.ioutils import get_matched_files
 
 # pylint: disable=bad-whitespace
 goodEigen = [

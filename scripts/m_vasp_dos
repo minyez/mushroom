@@ -5,7 +5,7 @@
 TODO: plot spin-up and spin-down
 """
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
-from mushroom._core.graceplot import Plot
+from mushroom.graceplot import Plot
 from mushroom.vasp import read_doscar
 
 def _parser():

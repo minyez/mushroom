@@ -7,7 +7,7 @@ Use `--show` for curating available samples.
 """
 import pathlib
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
-from mushroom._core.cell import Cell
+from mushroom.core.cell import Cell
 
 cell_db = pathlib.Path(__file__).parent.parent / "db" / "cell"
 

@@ -3,10 +3,10 @@
 from collections.abc import Iterable
 import numpy as np
 
-from mushroom._core.unit import EnergyUnit
-from mushroom._core.logger import create_logger
-from mushroom._core.data import export_2d_data
-from mushroom._core.ioutils import get_str_indices_by_iden
+from mushroom.core.unit import EnergyUnit
+from mushroom.core.logger import create_logger
+from mushroom.core.data import export_2d_data
+from mushroom.core.ioutils import get_str_indices_by_iden
 
 _logger = create_logger("dos")
 del create_logger

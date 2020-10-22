@@ -3,7 +3,7 @@
 """utilities related to k-mesh"""
 import numpy as np
 
-from mushroom._core.logger import create_logger
+from mushroom.core.logger import create_logger
 
 _logger = create_logger("kpoints")
 del create_logger

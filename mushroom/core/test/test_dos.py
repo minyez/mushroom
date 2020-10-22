@@ -4,8 +4,8 @@
 import unittest as ut
 import numpy as np
 
-from mushroom._core.constants import EV2RY
-from mushroom._core.dos import DensityOfStates, DosError
+from mushroom.core.constants import EV2RY
+from mushroom.core.dos import DensityOfStates, DosError
 
 goodEgrid = [-4, -3, -2, -1, 0, 1, 2, 3, 4]
 badEgrid = [-4, -3, -2, -1, 0, 1]

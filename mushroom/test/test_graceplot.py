@@ -2,10 +2,10 @@
 """Test graceplot"""
 import unittest as ut
 
-from mushroom._core.graceplot import (_ColorMap, Color, Font, Symbol,
-                                      Graph, View,
-                                      Plot,
-                                      encode_string)
+from mushroom.graceplot import (_ColorMap, Color, Font, Symbol,
+                                 Graph, View,
+                                 Plot,
+                                 encode_string)
 
 class test_string_encoder(ut.TestCase):
     """test encoder to get grace-favored text string"""

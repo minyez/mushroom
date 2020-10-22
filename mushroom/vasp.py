@@ -5,10 +5,10 @@ from io import StringIO
 import numpy as np
 from bs4 import BeautifulSoup
 
-from mushroom._core.logger import create_logger
-from mushroom._core.ioutils import conv_string
-from mushroom._core.dos import DensityOfStates
-from mushroom._core.bs import BandStructure
+from mushroom.core.logger import create_logger
+from mushroom.core.ioutils import conv_string
+from mushroom.core.dos import DensityOfStates
+from mushroom.core.bs import BandStructure
 
 _logger = create_logger("vasp")
 del create_logger

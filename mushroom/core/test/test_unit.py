@@ -3,8 +3,8 @@
 
 import unittest as ut
 
-from mushroom._core.constants import ANG2AU, EV2RY
-from mushroom._core.unit import EnergyUnit, LengthUnit, UnitError
+from mushroom.core.constants import ANG2AU, EV2RY
+from mushroom.core.unit import EnergyUnit, LengthUnit, UnitError
 
 
 class test_energy_unit(ut.TestCase):

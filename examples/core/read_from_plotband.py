@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """Read data from agr file, and create a new agr plot by Plot object
 """
-from mushroom._core.graceplot import Plot, extract_data_from_agr
+from mushroom.graceplot import Plot, extract_data_from_agr
 
 p = Plot()
 

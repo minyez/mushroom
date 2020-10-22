@@ -8,7 +8,7 @@ from collections.abc import Iterable
 from sys import stdout
 from typing import List
 
-from mushroom._core.logger import create_logger
+from mushroom.core.logger import create_logger
 
 lower_greeks = ["alpha", "beta", "gamma", "theta", "omega"]
 upper_greeks = list(x.capitalize() for x in lower_greeks)

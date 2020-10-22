@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 """example to draw band structure along with DOS"""
 import pathlib
-from mushroom._core.graceplot import Plot
-from mushroom._core.cell import Cell
-from mushroom._core.kpoints import KPath
+from mushroom.graceplot import Plot
+from mushroom.core.cell import Cell
+from mushroom.core.kpoints import KPath
 from mushroom.vasp import read_doscar, read_eigen
 
 p = Plot.band_dos()
@@ -14,8 +14,8 @@ c = Cell.read("POSCAR")
 # get dos from DOSCAR
 path = dirname / "DOSCAR"
 dos = read_doscar(path)
-egrid, tdos = dos.get_dos(transpose=True)
-p[1].plot(tdos, egrid, symbol="none")
+tdos = dos.get_dos()
+p[1].plot(tdos, dos.egrid, symbol="none")
 
 # get band energies from EIGENVAL
 path = dirname / "EIGENVAL"

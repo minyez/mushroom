@@ -5,16 +5,16 @@
 In the plot, the value of partial wave is proportional to the diameter of the circle.
 The summed partial wave for atom and projector is stored in ``pwav.dat``
 
-For atom-projector-band (apb) string, see ``mushroom._core.bs.split_apb``
+For atom-projector-band (apb) string, see ``mushroom.core.bs.split_apb``
 """
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
-from mushroom._core.logger import create_logger
-from mushroom._core.graceplot import Plot, prefer_gracecolors
-from mushroom._core.cell import Cell
-from mushroom._core.bs import split_apb
-from mushroom._core.kpoints import KPath
-from mushroom._core.data import export_2d_data
+from mushroom.core.logger import create_logger
+from mushroom.core.cell import Cell
+from mushroom.core.bs import split_apb
+from mushroom.core.kpoints import KPath
+from mushroom.core.data import export_2d_data
+from mushroom.graceplot import Plot, prefer_gracecolors
 from mushroom.vasp import read_procar
 
 _logger = create_logger("mv_pwav")

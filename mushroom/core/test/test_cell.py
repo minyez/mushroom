@@ -9,9 +9,9 @@ import unittest as ut
 
 import numpy as np
 
-from mushroom._core.cell import (Cell, CellError)
-from mushroom._core.constants import ANG2AU, AU2ANG, PI
-from mushroom._core.ioutils import get_dirpath
+from mushroom.core.cell import (Cell, CellError)
+from mushroom.core.constants import ANG2AU, AU2ANG, PI
+from mushroom.core.ioutils import get_dirpath
 
 
 class simple_cubic_lattice(ut.TestCase):

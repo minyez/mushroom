@@ -7,9 +7,9 @@ from numbers import Real
 
 import numpy as np
 
-from mushroom._core.logger import create_logger
-from mushroom._core.unit import EnergyUnit
-from mushroom._core.ioutils import get_str_indices_by_iden
+from mushroom.core.logger import create_logger
+from mushroom.core.unit import EnergyUnit
+from mushroom.core.ioutils import get_str_indices_by_iden
 
 # eigen, occ (array): shape (nspins, nkpt, nbands)
 DIM_EIGEN_OCC = 3

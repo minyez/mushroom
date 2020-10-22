@@ -3,7 +3,7 @@
 """test kpoints related functionality"""
 import unittest as ut
 
-from mushroom._core.kpoints import find_k_segments, KPath
+from mushroom.core.kpoints import find_k_segments, KPath
 
 class test_kpath(ut.TestCase):
     """test the kpath generation"""

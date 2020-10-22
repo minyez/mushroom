@@ -4,9 +4,9 @@ import os
 import re
 import CifFile
 
-from mushroom._core.crystutils import get_latt_vecs_from_latt_consts, get_all_atoms_from_sym_ops
-from mushroom._core.data import conv_estimate_number, closest_frac
-from mushroom._core.logger import create_logger
+from mushroom.core.crystutils import get_latt_vecs_from_latt_consts, get_all_atoms_from_sym_ops
+from mushroom.core.data import conv_estimate_number, closest_frac
+from mushroom.core.logger import create_logger
 
 _logger = create_logger("cif")
 del create_logger

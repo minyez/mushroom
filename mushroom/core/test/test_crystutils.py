@@ -2,7 +2,7 @@
 
 import unittest as ut
 
-from mushroom._core.crystutils import (atms_from_sym_nat, axis_list,
+from mushroom.core.crystutils import (atms_from_sym_nat, axis_list,
                                        periodic_duplicates_in_cell, sym_nat_from_atms)
 
 class test_cell_utils(ut.TestCase):

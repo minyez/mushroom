@@ -15,10 +15,10 @@ from collections.abc import Iterable
 from copy import deepcopy
 from numpy import shape, absolute, loadtxt
 
-from mushroom._core.data import Data
-from mushroom._core.ioutils import greeks
+from mushroom.core.data import Data
+from mushroom.core.ioutils import greeks
+from mushroom.core.logger import create_logger
 
-from mushroom._core.logger import create_logger
 _logger = create_logger("grace")
 del create_logger
 

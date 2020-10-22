@@ -30,21 +30,21 @@ try:
 except ImportError:
     spglib = None
 
-from mushroom._core.constants import PI
-from mushroom._core.cif import Cif
-from mushroom._core.elements import NUCLEAR_CHARGE
-from mushroom._core.unit import LengthUnit
-from mushroom._core.crystutils import (get_latt_consts_from_latt_vecs,
-                                       periodic_duplicates_in_cell,
-                                       select_dyn_flag_from_axis,
-                                       atms_from_sym_nat,
-                                       sym_nat_from_atms,
-                                       axis_list)
-from mushroom._core.ioutils import (grep, get_str_indices,
-                                    trim_comment,
-                                    get_file_ext,
-                                    print_file_or_iowrapper)
-from mushroom._core.logger import create_logger
+from mushroom.core.constants import PI
+from mushroom.core.cif import Cif
+from mushroom.core.elements import NUCLEAR_CHARGE
+from mushroom.core.unit import LengthUnit
+from mushroom.core.crystutils import (get_latt_consts_from_latt_vecs,
+                                      periodic_duplicates_in_cell,
+                                      select_dyn_flag_from_axis,
+                                      atms_from_sym_nat,
+                                      sym_nat_from_atms,
+                                      axis_list)
+from mushroom.core.ioutils import (grep, get_str_indices,
+                                   trim_comment,
+                                   get_file_ext,
+                                   print_file_or_iowrapper)
+from mushroom.core.logger import create_logger
 
 
 class CellError(Exception):
@@ -70,7 +70,7 @@ class Cell(LengthUnit):
 
     Examples:
     >>> Cell([[5.0, 0.0, 0.0], [0.0, 5.0, 0.0], [0.0, 0.0, 5.0]], ["C"], [[0.0, 0.0, 0.0]])
-    <mushroom._core.cell.Cell>
+    <mushroom.core.cell.Cell>
     """
 
     _err = CellError
