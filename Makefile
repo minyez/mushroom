@@ -25,7 +25,7 @@ pytest:
 
 test: pytest
 	$(MAKE) $(DIST_TARBALL)
-	scripts/dist_rsync.py --rc
+	scripts/dist_rsync.py
 
 commit: pytest
 	git commit -F $(MESSAGE_FILE)
@@ -36,7 +36,7 @@ amend: pytest
 
 dist: $(DIST_TARBALL)
 	@git push
-	scripts/dist_rsync.py --rc
+	scripts/dist_rsync.py
 
 $(DIST_TARBALL): $(DIST_FILES)
 	mkdir -p dist/$(PROJ)
@@ -53,3 +53,5 @@ $(DIST_TARBALL): $(DIST_FILES)
 		-zcvf $(PROJ)-$(VERSION).tar.gz $(PROJ)
 	rm -rf dist/$(PROJ)
 
+distrc:
+	scripts/dist_rsync.py --rc

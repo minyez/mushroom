@@ -40,7 +40,7 @@ from mushroom._core.crystutils import (get_latt_consts_from_latt_vecs,
                                        atms_from_sym_nat,
                                        sym_nat_from_atms,
                                        axis_list)
-from mushroom._core.ioutils import (get_str_indices,
+from mushroom._core.ioutils import (grep, get_str_indices,
                                     trim_comment,
                                     get_file_ext,
                                     print_file_or_iowrapper)
@@ -53,6 +53,7 @@ class CellError(Exception):
 
 _logger = create_logger("cell")
 del create_logger
+
 
 class Cell(LengthUnit):
     """Cell structure class
@@ -927,7 +928,13 @@ class Cell(LengthUnit):
             nats = [int(x) for x in _line.split()]
             if symbols is None:
                 _logger.warning("No atom information in POSCAR: %s", pvasp)
-                symbols = ["Unk{}".format(i) for i, _ in enumerate(nats)]
+                potcar_info = grep("VRHFIN", os.path.join(os.path.dirname(pvasp), "POTCAR"))
+                if potcar_info is not None:
+                    symbols = [x.split("=")[1].split(":")[0] for x in potcar_info]
+                    _logger.info("got symbols from POTCAR in same directory")
+                    _logger.info(">> %r", symbols)
+                else:
+                    symbols = ["Unk{}".format(i) for i, _ in enumerate(nats)]
             atms = atms_from_sym_nat(symbols, nats)
 
             # Next 2 or 1 line(s), depend on whether 'selective dynamics line' is typed

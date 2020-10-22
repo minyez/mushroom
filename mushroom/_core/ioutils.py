@@ -6,6 +6,7 @@ from io import TextIOWrapper
 from collections import OrderedDict
 from collections.abc import Iterable
 from sys import stdout
+from typing import List
 
 from mushroom._core.logger import create_logger
 
@@ -16,6 +17,53 @@ greeks_latex = list("\\" + x for x in greeks)
 
 _logger = create_logger("ioutil")
 del create_logger
+
+
+def grep(pattern, filename, is_binary: bool = False, error_not_found: bool = False,
+         return_group: bool = False, return_linenum: bool = False) -> List:
+    """emulate command line grep with re package
+
+    Args:
+        pattern (regex) : pattern to match in the line
+        filename (str, or file handler) : file to search
+        is_binary (bool)
+        error_not_found (bool)
+        return_group (bool)
+        return_linenum (bool)
+
+    Returns
+        one list if return_linenum is False, re.Match object if return_group is True
+            otherwise the string of the matched line
+        otherwise another list of integers will be returned as well
+    """
+    if isinstance(filename, str):
+        if not os.path.isfile(filename):
+            if error_not_found:
+                raise FileNotFoundError("{} is not a file".format(filename))
+            return None
+        mode = 'r' + 'b' * int(is_binary)
+        f = open(filename, mode=mode)
+    elif not isinstance(filename, TextIOWrapper):
+        raise TypeError("expect str or TextIOWrapper, got", type(filename))
+
+    line_nums = []
+    matched = []
+    for i, l in enumerate(f.readlines()):
+        m = re.search(pattern, l)
+        if m is not None:
+            line_nums.append(i)
+            if return_group:
+                matched.append(m)
+            else:
+                matched.append(l)
+    if isinstance(filename, str):
+        f.close()
+
+    if matched == []:
+        return None
+    if return_linenum:
+        return matched, line_nums
+    return matched
 
 
 def get_dirpath(filePath):
