@@ -16,22 +16,22 @@ except ImportError:
 
 try:
     from mushroom.__config__ import stream_level
-    STREAM_LEVEL = get_logging_level(stream_level)
+    _STREAM_LEVEL = get_logging_level(stream_level)
 except ImportError:
-    STREAM_LEVEL = logging.INFO
+    _STREAM_LEVEL = logging.INFO
 
 LOGFILE = "mushroom.log"
 
-ROOT_HAND = logging.FileHandler(LOGFILE, mode='a')
-STREAM_HAND = logging.StreamHandler()
-ROOT_FORM = logging.Formatter(fmt='%(asctime)s - %(name)7s:%(levelname)8s - %(message)s',
-                              datefmt='%Y-%m-%d %H:%M:%S')
-STREAM_FORM = logging.Formatter(fmt='%(name)7s:%(levelname)8s - %(message)s')
+_ROOT_HAND = logging.FileHandler(LOGFILE, mode='a')
+_STREAM_HAND = logging.StreamHandler()
+_ROOT_FORM = logging.Formatter(fmt='%(asctime)s - %(name)7s:%(levelname)8s - %(message)s',
+                               datefmt='%Y-%m-%d %H:%M:%S')
+_STREAM_FORM = logging.Formatter(fmt='%(name)7s:%(levelname)8s - %(message)s')
 
-ROOT_HAND.setFormatter(ROOT_FORM)
-ROOT_HAND.setLevel(LOG_LEVEL)
-STREAM_HAND.setFormatter(STREAM_FORM)
-STREAM_HAND.setLevel(STREAM_LEVEL)
+_ROOT_HAND.setFormatter(_ROOT_FORM)
+_ROOT_HAND.setLevel(LOG_LEVEL)
+_STREAM_HAND.setFormatter(_STREAM_FORM)
+_STREAM_HAND.setLevel(_STREAM_LEVEL)
 
 
 def create_logger(name: str, level: str = None,
@@ -40,6 +40,7 @@ def create_logger(name: str, level: str = None,
     
     Args:
         name (str) : the name of logger. 
+        level (str or int) : level of logger
         f_handler (bool) : if write to the file handler (file "mushroom.log").
         s_handler (bool) : if write to the stream handler (stdout)
     """
@@ -49,8 +50,8 @@ def create_logger(name: str, level: str = None,
     else:
         logger.setLevel(LOG_LEVEL)
     if f_handler:
-        logger.addHandler(ROOT_HAND)
+        logger.addHandler(_ROOT_HAND)
     if s_handler:
-        logger.addHandler(STREAM_HAND)
+        logger.addHandler(_STREAM_HAND)
     return logger
 

@@ -36,8 +36,10 @@ def m_v_band():
     kp = KPath(kpts, c.b)
     p[0].plot(kp.x, bs.eigen[0, :, :].transpose() - bs.efermi, color="k", symbol="none")
     p[0].x.set_major(grid=True, color="grey", lw=3, ls="dashed")
+    ksymbols = None
     if args.ksymbols is not None:
-        p[0].x.set_spec(kp.special_x, labels=args.ksymbols.split())
+        ksymbols = args.ksymbols.split()
+    p[0].x.set_spec(kp.special_x, labels=ksymbols)
     p[0].set_ylim(ymin=-6, ymax=6)
     p[0].set_xlim(0.0, kp.x[-1] + 0.0001)
     p[0].y.set_major(major=4)

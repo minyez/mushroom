@@ -894,7 +894,7 @@ class Cell(LengthUnit):
         atms, posi = cif.get_all_atoms()
         return cls(latt, atms, posi, **kw)
 
-    # pylint: disable=R0914,R0915
+    # pylint: disable=R0912,R0914,R0915
     @classmethod
     def read_vasp(cls, pvasp="./POSCAR"):
         """Create Cell instance by reading from vasp POSCAR file

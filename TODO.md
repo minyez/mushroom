@@ -25,7 +25,24 @@
 - [ ] type hints
 - [ ] map `p`, `d`, `f` to corresponding projector lists
 
+### Wannier90
+
 ### VASP
+
+- [x] DOSCAR reader
+- [x] POSCAR reader/exporter (alias to `Cell.read_vasp`)
+- [x] PROCAR reader
+- [x] EIGENVAL reader
+- [ ] KPOINTS reader/exporter
+- [ ] LOCPOT reader
+- [ ] POTCAR searcher
+- [ ] WAVECAR reader
+- [ ] CHGCAR reader
+
+XML reader for
+
+- [x] kpoint list
+- [ ] geometry at specific ion step 
 
 ### ABINIT
 
@@ -37,11 +54,19 @@
 
 #### SpringerMaterials
 
-- [ ] `Cif` 类在读取 SpringerMaterials 上下载的 cif 文件时报错.
+`Cif` 类在读取 SpringerMaterials, ICSD 上下载的部分 cif 文件时报错. 包括
+
+- [ ] Cu2O 52043
 
 #### MaterialsProject
 
 Require `pymatgen`
+
+## Visualization
+
+### XmGrace
+
+- [x] base class to manipulate grace objects
 
 ## 工作流 workflows
 
@@ -75,4 +100,8 @@ Require `pymatgen`
 ### GPAW
 
 ## 数据库 db
+
+### cell
+
+### kpath
 

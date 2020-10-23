@@ -29,6 +29,13 @@ function __setup_inputs () {
     INCAR.dos > "$1/INCAR.dos"
   sed "s/_encut_/$encut/g;s/_ediff_/$ediff/g;s/_prec_/$prec/g;s/_ispin_/$ispin/g" \
     INCAR.band > "$1/INCAR.band"
+  # add NPAR and KPAR
+  kpar=$(largest_div_below_sqrt "$np")
+  npar=$(( np / kpar ))
+  for d in INCAR.scf INCAR.dos INCAR.band; do
+    incar_add_npar_kpar "$npar" "$kpar" "$1/$d"
+  done
+
   cp KPOINTS.scf "$1/KPOINTS.scf"
   cp KPOINTS.dos "$1/KPOINTS.dos"
   cp KPOINTS.band "$1/KPOINTS.band"

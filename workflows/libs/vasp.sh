@@ -269,6 +269,16 @@ function poscar_latt_vec () {
   echo ""
 }
 
+function poscar_scale () {
+  # get scale factor of POSCAR structure
+  case $# in
+    0 ) poscar="POSCAR";;
+    * ) poscar="$1";;
+  esac
+  awk 'FNR==2 {printf("%f ", $0)}' "$poscar"
+  echo ""
+}
+
 function incar_change_tag () {
   # change one tag of INCAR
   case $# in
@@ -317,3 +327,17 @@ function incar_delete_tag () {
     fi
   fi
 }
+
+function incar_add_npar_kpar () {
+  case $# in
+    2 ) npar="$1"; kpar="$2"; incar="INCAR" ;;
+    * ) npar="$1"; kpar="$2"; incar="$3" ;;
+  esac
+  if (( npar != 1 )); then
+    incar_change_tag "NPAR" "$npar" "$incar"
+  fi
+  if (( kpar != 1 )); then
+    incar_change_tag "KPAR" "$kpar" "$incar"
+  fi
+}
+

@@ -8,8 +8,11 @@ Use `--show` for curating available samples.
 import pathlib
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from mushroom.core.cell import Cell
+from mushroom.core.logger import create_logger
 
 cell_db = pathlib.Path(__file__).parent.parent / "db" / "cell"
+_logger = create_logger("buildc", f_handler=False)
+del create_logger
 
 def curate_samples():
     """curate avail samples"""

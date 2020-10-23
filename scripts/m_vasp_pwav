@@ -84,8 +84,10 @@ def m_v_pwav():
     # draw bands
     p[0].plot(kp.x, bs.eigen[args.spin, :, :].transpose() - bs.efermi, color="k", symbol="none")
     p[0].x.set_major(grid=True, color="grey", lw=3, ls="dashed")
+    ksymbols = None
     if args.ksymbols is not None:
-        p[0].x.set_spec(kp.special_x, labels=args.ksymbols.split())
+        ksymbols = args.ksymbols.split()
+    p[0].x.set_spec(kp.special_x, labels=ksymbols)
     p[0].y.set_major(major=3)
     p[0].y.set_label("Energy (eV)")
     # 36.0 is a base factor

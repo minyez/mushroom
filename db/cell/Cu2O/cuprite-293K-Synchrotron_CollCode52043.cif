@@ -1,0 +1,121 @@
+
+#(C) 2020 by FIZ Karlsruhe - Leibniz Institute for Information Infrastructure.  All rights reserved.
+data_52043-ICSD
+_database_code_ICSD 52043
+_audit_creation_date 2003-04-01
+_audit_update_record 2014-08-01
+_chemical_name_common 'Copper(I) oxide'
+_chemical_formula_structural 'Cu2 O'
+_chemical_formula_sum 'Cu2 O1'
+_chemical_name_structure_type Cu2O
+_exptl_crystal_density_diffrn 6.11
+_citation_title
+
+;
+Accurate structure analysis with synchrotron radiation. The electron density
+in Al2 O3 and Cu2 O
+;
+loop_
+_citation_id
+_citation_journal_full
+_citation_year
+_citation_journal_volume
+_citation_page_first
+_citation_page_last
+_citation_journal_id_ASTM
+primary 'Acta Crystallographica, Section A: Foundations of Crystallography' 1990
+46 271 284 ACACEQ
+loop_
+_citation_author_citation_id
+_citation_author_name
+primary 'Kirfel, A.'
+primary 'Eichhorn, K.D.'
+_cell_length_a 4.2685(5)
+_cell_length_b 4.2685
+_cell_length_c 4.2685
+_cell_angle_alpha 90.
+_cell_angle_beta 90.
+_cell_angle_gamma 90.
+_cell_volume 77.77
+_cell_formula_units_Z 2
+_space_group_name_H-M_alt 'P n -3 m S'
+_space_group_IT_number 224
+loop_
+_space_group_symop_id
+_space_group_symop_operation_xyz
+1 'y+1/2, x+1/2, -z+1/2'
+2 'z+1/2, x+1/2, -y+1/2'
+3 'z+1/2, y+1/2, -x+1/2'
+4 'y+1/2, z+1/2, -x+1/2'
+5 'x+1/2, z+1/2, -y+1/2'
+6 'x+1/2, y+1/2, -z+1/2'
+7 'y+1/2, -x+1/2, z+1/2'
+8 'z+1/2, -x+1/2, y+1/2'
+9 'z+1/2, -y+1/2, x+1/2'
+10 'y+1/2, -z+1/2, x+1/2'
+11 'x+1/2, -z+1/2, y+1/2'
+12 'x+1/2, -y+1/2, z+1/2'
+13 '-y+1/2, x+1/2, z+1/2'
+14 '-z+1/2, x+1/2, y+1/2'
+15 '-z+1/2, y+1/2, x+1/2'
+16 '-y+1/2, z+1/2, x+1/2'
+17 '-x+1/2, z+1/2, y+1/2'
+18 '-x+1/2, y+1/2, z+1/2'
+19 '-y+1/2, -x+1/2, -z+1/2'
+20 '-z+1/2, -x+1/2, -y+1/2'
+21 '-z+1/2, -y+1/2, -x+1/2'
+22 '-y+1/2, -z+1/2, -x+1/2'
+23 '-x+1/2, -z+1/2, -y+1/2'
+24 '-x+1/2, -y+1/2, -z+1/2'
+25 '-y, -x, z'
+26 '-z, -x, y'
+27 '-z, -y, x'
+28 '-y, -z, x'
+29 '-x, -z, y'
+30 '-x, -y, z'
+31 '-y, x, -z'
+32 '-z, x, -y'
+33 '-z, y, -x'
+34 '-y, z, -x'
+35 '-x, z, -y'
+36 '-x, y, -z'
+37 'y, -x, -z'
+38 'z, -x, -y'
+39 'z, -y, -x'
+40 'y, -z, -x'
+41 'x, -z, -y'
+42 'x, -y, -z'
+43 'y, x, z'
+44 'z, x, y'
+45 'z, y, x'
+46 'y, z, x'
+47 'x, z, y'
+48 'x, y, z'
+loop_
+_atom_type_symbol
+_atom_type_oxidation_number
+O2- -2
+Cu1+ 1
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_symmetry_multiplicity
+_atom_site_Wyckoff_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_B_iso_or_equiv
+_atom_site_occupancy
+O1 O2- 2 a 0 0 0 0.01879(7) 1.
+Cu1 Cu1+ 4 b 0.25 0.25 0.25 . 1.
+loop_
+_atom_site_aniso_label
+_atom_site_aniso_type_symbol
+_atom_site_aniso_U_11
+_atom_site_aniso_U_22
+_atom_site_aniso_U_33
+_atom_site_aniso_U_12
+_atom_site_aniso_U_13
+_atom_site_aniso_U_23
+Cu1 Cu1+ 0.01917(6) 0.01917 0.01917 -0.00083 -0.00083 -0.00083
+#End of TTdata_52043-ICSD

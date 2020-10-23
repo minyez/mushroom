@@ -9,6 +9,7 @@ from mushroom.core.logger import create_logger
 from mushroom.core.ioutils import conv_string
 from mushroom.core.dos import DensityOfStates
 from mushroom.core.bs import BandStructure
+from mushroom.core.cell import Cell
 
 _logger = create_logger("vasp")
 del create_logger
@@ -255,4 +256,6 @@ def read_eigen(path="EIGENVAL", filter_k_before=0, filter_k_after=None):
     weight = weight[filter_k_before:filter_k_after]
     kpoints = kpoints[filter_k_before:filter_k_after, :]
     return BandStructure(eigen, occ, weight), natms, kpoints
+
+read_poscar = Cell.read_vasp
 

@@ -37,20 +37,21 @@ function run_vasp_gw_conv_calc () {
   reqs=(INCAR.scf INCAR.diag INCAR.gw POSCAR POTCAR KPOINTS.scf KPOINTS.gw)
   raise_missing_prereq "${reqs[@]}"
 
-  if [ ! -f results.txt ]; then
-    echo "ENCUT  ENCUTGW  NBANDS   time" > results.txt
-  fi
-  comment_datetime >> results.txt
-  
   for encut in "${encuts[@]}"; do
     # estimate number of bands from volumel
+    scale=$(poscar_scale "POSCAR")
     vol=$(triple_prod "$(poscar_latt_vec "POSCAR")")
+    vol=$(echo "$vol $scale" | awk '{printf("%f\n", $1 * $2**3)}')
     nbandsmax=$(estimate_npw "$encut" "$vol")
     #nbandsmax=$(echo "$encut 750 1139" | awk '{printf("%d",0.5 + ($1/$2)**1.5 * $3)}')
     for encutgwratio in "${encutgwratios[@]}"; do
       encutgw=$(echo "$encut $encutgwratio" | awk '{printf("%d", 0.5 + $1*$2)}')
       for nbandsratio in "${nbandsratios[@]}"; do
         nbands=$(echo "$nbandsmax $nbandsratio $np" | awk '{printf("%d",($1*$2) - ($1*$2) % $3)}')
+        # skip zero bands
+        if (( nbands == 0 )); then
+          continue
+        fi
         workdir="encut_${encut}_encutgw_${encutgw}_nbands_${nbands}"
         if [ -d "$workdir" ]; then
           continue
