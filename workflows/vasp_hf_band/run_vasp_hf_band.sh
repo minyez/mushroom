@@ -112,6 +112,11 @@ EOF
 }
 
 function run_vasp_hf_band_data () {
+  # plot partial wave to agr
+  # TODO counting remove k
+  #if [[ -n "$ksymbols:" ]]; then
+  #  m_vasp_pwav -p PROCAR.hf --removek 36 --sym "$ksymbols"
+  #fi
   return
 }
 

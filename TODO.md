@@ -20,11 +20,10 @@
 
 原则是尽可能减少子 package 的数量. 主要的考虑因素不是模块的长度, 而是模块的功能一致, 集成度和自洽.
 
-### 核心库 `_core`
+### 核心库 `core`
 
 - [ ] type hints
 - [ ] map `p`, `d`, `f` to corresponding projector lists
-- [x] class for grace plot
 
 ### VASP
 

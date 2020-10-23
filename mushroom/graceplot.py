@@ -234,7 +234,7 @@ class _ColorMap(_MapOutput):
 plot_colormap = _ColorMap()
 
 try:
-    from mushroom.__init__ import prefer_gracecolors
+    from mushroom.__config__ import prefer_gracecolors
     if not isinstance(prefer_gracecolors, Iterable):
         _logger.warning("expect prefer_gracecolors Iterable, got %s",
                         type(prefer_gracecolors))
@@ -246,7 +246,7 @@ try:
     if not all_defined:
         raise ValueError("some custom colors are not defined")
 except ImportError:
-    prefer_plotcolors = ["red", "blue", "orange", "green4"]
+    prefer_gracecolors = ["red", "blue", "orange", "green4"]
 
 
 def _get_int_const(name, pair, marker):
@@ -757,7 +757,7 @@ class _Box(_BaseOutput):
     _marker = 'box'
     _attrs = {
         'color': (int, Color.BLACK, '{:d}'),
-        'pattern': (int, Pattern.SOLID, '{:d}'),
+        'pattern': (int, Pattern.NONE, '{:d}'),
         'linewidth': (float, 1.0, '{:3.1f}'),
         'linestyle': (int, LineStyle.SOLID, '{:d}'),
         'fill_color': (int, Color.BLACK, '{:d}'),
@@ -2422,7 +2422,7 @@ class Plot:
                  lw=None, ls=None, color=None, pattern=None, font=None,
                  charsize=None, symbolsize=None, sformat=None,
                  width_ratios=None, heigh_ratios=None,
-                 qtgrace=False, **kwargs):
+                 qtgrace=False, description=None, **kwargs):
         self._comment_head = ["# Grace project file", "#"]
         # header that seldom needs to change
         self._head = ["version 50122",
@@ -2431,6 +2431,7 @@ class Plot:
                       "date wrap off",
                       "date wrap year 1950",
                       ]
+        self.description = description
         self._background_color = Color.get(bc)
         self._page = Page(bgfill=Switch.get(background))
         self._regions = [_Region(i) for i in range(5)]
@@ -2453,6 +2454,8 @@ class Plot:
     def __str__(self):
         """print the whole agr file"""
         slist = self._head + ["background color {:d}".format(self._background_color),]
+        if self.description is not None:
+            slist.append("description \"{}\"".format(self.description))
         headers = [self._page, self._font, self._cm,
                    self._default, self._timestamp, *self._regions]
         for h in headers:
