@@ -3,9 +3,9 @@
 import unittest as ut
 
 from mushroom.graceplot import (_ColorMap, Color, Font, Symbol,
-                                 Graph, View,
-                                 Plot,
-                                 encode_string)
+                                Graph, View, World,
+                                Plot,
+                                encode_string)
 
 class test_string_encoder(ut.TestCase):
     """test encoder to get grace-favored text string"""
@@ -87,7 +87,7 @@ map font 13 to "ZapfDingbats", \"ZapfDingbats\"
 class test_View(ut.TestCase):
     """test the view object"""
 
-    def test_set_view(self):
+    def test_set_get(self):
         """test set view functionality"""
         v = View()
         new = [0.1, 0.1, 1.0, 1.0]
@@ -100,8 +100,36 @@ class test_View(ut.TestCase):
         self.assertListEqual(new1, v1.get_view())
         self.assertListEqual(new, v.get_view())
 
+class test_World(ut.TestCase):
+    """test the world object"""
+
+    def test_set_get(self):
+        """test set view functionality"""
+        w = World()
+        new = [1., 2., 3.0, 4.0]
+        w.set_world(new)
+        self.assertListEqual(new, w.get_world())
+
+        w1 = World()
+        new1 = [2., 2., 5., 8.0]
+        w1.set_world(new1)
+        self.assertListEqual(new1, w1.get_world())
+        self.assertListEqual(new, w.get_world())
+
 class test_Graph(ut.TestCase):
     """test graph operations"""
+
+    def test_graph_properties(self):
+        """test graph properties"""
+        g = Graph(index=0)
+        g.set_title(title="Hello world!")
+        self.assertEqual(g.title, "Hello world!")
+        g.title = "Hello again"
+        self.assertEqual(g.title, "Hello again")
+        g.set_subtitle(subtitle="Hello world!")
+        self.assertEqual(g.subtitle, "Hello world!")
+        g.subtitle = "Hello again"
+        self.assertEqual(g.subtitle, "Hello again")
 
     def test_change_view(self):
         """test if view changing is working"""
@@ -127,6 +155,11 @@ class test_Axis(ut.TestCase):
 
 class test_Plot(ut.TestCase):
     """test Plot functionality"""
+
+    def test_init_properties(self):
+        """default properties"""
+        p = Plot(1, 1, description="Hello World")
+        self.assertEqual("Hello World", p.description)
 
     def test_set_default(self):
         """default properties"""

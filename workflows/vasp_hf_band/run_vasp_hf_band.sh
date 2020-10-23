@@ -86,6 +86,7 @@ function run_vasp_hf_band_calc () {
   # Step 2 get KPOINTS for scf calculation
   cp ../KPOINTS.scf KPOINTS
   $vaspcmd > .out 2>&1
+  cp IBZKPT KPOINTS.scf_ibzkpt
   kpts_scf=$(xml_kpts_weigh vasprun.xml)
   nkpt_scf=$(echo "$kpts_scf" | wc -l)
   nkpt=$(( nkpt_path+nkpt_scf ))
@@ -113,11 +114,9 @@ EOF
 
 function run_vasp_hf_band_data () {
   # plot partial wave to agr
-  # TODO counting remove k
-  #if [[ -n "$ksymbols:" ]]; then
-  #  m_vasp_pwav -p PROCAR.hf --removek 36 --sym "$ksymbols"
-  #fi
-  return
+  cd "$workdir" || exit 1
+  removek=$(awk 'FNR == 2' KPOINTS.scf_ibzkpt)
+  m_vasp_pwav -p PROCAR.hf -o ../plotpwav.agr --removek "$removek" "$@"
 }
 
 function run_vasp_hf_band () {
@@ -129,7 +128,7 @@ function run_vasp_hf_band () {
       "calc" | "-r" ) run_vasp_hf_band_calc ;;
       "dry" | "-d" ) run_vasp_hf_band_calc dry ;;
       "help" | "-h" ) run_vasp_hf_band_help "$0" ;;
-      "data" ) run_vasp_hf_band_data ;;
+      "data" ) run_vasp_hf_band_data "${opts[@]:1}";;
       "clean" ) run_vasp_hf_band_clean ;;
       * ) echo "Error: unknown option " "${opts[0]}"; \
         run_vasp_hf_band_help "$0"; exit 1 ;;

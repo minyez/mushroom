@@ -653,6 +653,10 @@ class Title(_Title):
         self._set(title_comment=title, size=fontsize, color=Color.get(color), font=font)
         _raise_unknown_attr(self, *kwargs)
 
+    @property
+    def title(self):
+        return self.title_comment
+
 class _SubTitle(_TitleLike):
     """title of graph"""
     _marker = 'subtitle'
@@ -669,6 +673,11 @@ class SubTitle(_SubTitle):
     def set(self, subtitle=None, font=None, fontsize=None, color=None, **kwargs):
         self._set(subtitle_comment=subtitle, size=fontsize, color=Color.get(color), font=font)
         _raise_unknown_attr(self, *kwargs)
+
+    @property
+    def subtitle(self):
+        return self.subtitle_comment
+
 
 def _set_loclike_attr(marker, form, *args, sep=', '):
     f = [form,] * len(args)
@@ -2217,11 +2226,25 @@ class Graph(_Graph):
             self._title.__setattr__('title_comment', title)
         self._title._set(**kwargs)
 
+    @property
+    def title(self):
+        return self._title.title
+    @title.setter
+    def title(self, new: str):
+        self.set_title(title=new)
+
     def set_subtitle(self, subtitle=None, **kwargs):
         """set the subtitle string or its attributes"""
         if subtitle:
             self._subtitle.__setattr__('subtitle_comment', subtitle)
         self._subtitle._set(**kwargs)
+
+    @property
+    def subtitle(self):
+        return self._subtitle.subtitle
+    @subtitle.setter
+    def subtitle(self, new: str):
+        self.set_subtitle(subtitle=new)
 
     def text(self, s, xy, loctype=None, color=None,
              just=None, charsize=None,rot=None, font=None, **kwargs):

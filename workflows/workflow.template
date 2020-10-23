@@ -41,7 +41,8 @@ function run_template_calc () {
 }
 
 function run_template_data () {
-  return 0
+  # test argument parsing
+  echo "$#"
 }
 
 function run_template_clean () {
@@ -71,6 +72,6 @@ run_template "$@"
 '
 }
 
-mkdir "$1"
+mkdir "$1" || exit 1
 template | sed "s/run_template/run_$1/g" > "$1/run_$1.sh"
 

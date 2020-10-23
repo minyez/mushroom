@@ -7,6 +7,7 @@ The summed partial wave for atom and projector is stored in ``pwav.dat``
 
 For atom-projector-band (apb) string, see ``mushroom.core.bs.split_apb``
 """
+from sys import argv
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 from mushroom.core.logger import create_logger
@@ -76,7 +77,7 @@ def m_v_pwav():
     kp = KPath(kpts, c.b)
     if args.spin >= bs.nspins:
         raise ValueError("ispin {} >= nspins = {}".format(args.spin, bs.nspins))
-    p = Plot(1, 1)
+    p = Plot(1, 1, description=" ".join(argv))
     # set limits
     p[0].set_ylim(ymin=-6, ymax=6)
     p[0].set_xlim(0.0, kp.x[-1] + 0.001)
