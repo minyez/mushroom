@@ -176,6 +176,12 @@ class test_Plot(ut.TestCase):
             self.assertListEqual(g._world.world_location,
                                  [1.0, 3.0, 2.0, 4.0])
 
+    def test_add_graph(self):
+        """graph addition"""
+        p = Plot(2, 2)
+        ax = p.add_graph()
+        self.assertEqual(len(ax), 2*2+1)
+
     def test_regular_graphs(self):
         """generate regular graph alignment"""
         p = Plot(1, 1)

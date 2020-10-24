@@ -2520,6 +2520,19 @@ class Plot:
         except IndexError:
             raise IndexError(f"G.{i} does not exist")
 
+    def add_graph(self, xmin=None, xmax=None, ymin=None, ymax=None):
+        """add a new graph
+
+        the location and size of graph is determined by x/ymin/max.
+        
+        Returns:
+            list of graphs after addition of new graph
+        """
+        g = Graph(index=len(self))
+        self._graphs.append(g)
+        g.set_view(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
+        return self._graphs
+
     def plot(self, *xy, **kwargs):
         """plot a data set to the first graph
 

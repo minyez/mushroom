@@ -15,7 +15,7 @@ Things you may need to adapt
 - `INCAR.pbe` : input for PBE preconverge SCF
 - `INCAR.hf` : input for HF SCF loop
 
-Thins usually not necessary to change
+Things usually not necessary to change
 - `run_vasp_hf_conv.sh` : flow control script 
 - `common.sh` : infrastructure functions for common use
 - `vasp.sh` : VASP infrastructure functions

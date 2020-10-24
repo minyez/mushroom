@@ -1,0 +1,11 @@
+PBE preconvergence
+
+LORBIT = 11
+LREAL = .FALSE.
+EDIFF = _ediff_
+ENCUT = _encut_
+ISMEAR = 0
+SIGMA = 0.05
+PREC = _prec_
+ISPIN = 1
+LMAXMIX = 6

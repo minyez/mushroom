@@ -11,9 +11,10 @@ vaspcmd="mpirun -np $np $vaspexe"
 function run_vasp_hf_band_help () {
   cat << EOF
 Usage:
-  $1
+  $1 [calc | -r]
   $1 data
-  $1 dry
+  $1 plot
+  $1 dry | -d
   $1 clean
   $1 help | -h
 EOF
@@ -113,10 +114,18 @@ EOF
 }
 
 function run_vasp_hf_band_data () {
+  echo "not implemented"
+  exit 1
+}
+
+function run_vasp_hf_band_plot () {
   # plot partial wave to agr
   cd "$workdir" || exit 1
   removek=$(awk 'FNR == 2' KPOINTS.scf_ibzkpt)
+  echo "plotting at directory $workdir with:"
+  echo "    m_vasp_pwav -p PROCAR.hf -o ../plotpwav.agr --removek $removek" "$@"
   m_vasp_pwav -p PROCAR.hf -o ../plotpwav.agr --removek "$removek" "$@"
+  echo "Graceplot written to plotpwav.agr"
 }
 
 function run_vasp_hf_band () {
@@ -128,6 +137,7 @@ function run_vasp_hf_band () {
       "calc" | "-r" ) run_vasp_hf_band_calc ;;
       "dry" | "-d" ) run_vasp_hf_band_calc dry ;;
       "help" | "-h" ) run_vasp_hf_band_help "$0" ;;
+      "plot" ) run_vasp_hf_band_plot "${opts[@]:1}";;
       "data" ) run_vasp_hf_band_data "${opts[@]:1}";;
       "clean" ) run_vasp_hf_band_clean ;;
       * ) echo "Error: unknown option " "${opts[0]}"; \

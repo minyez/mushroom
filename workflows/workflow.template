@@ -27,7 +27,7 @@ EOF
 
 function run_template_calc () {
   reqs=()
-  raise_missing_prereqs "${reqs[@]}"
+  raise_missing_prereq "${reqs[@]}"
   dry=0
   if (( $# == 1 )); then
     dry=1
@@ -41,6 +41,11 @@ function run_template_calc () {
 }
 
 function run_template_data () {
+  # test argument parsing
+  echo "$#"
+}
+
+function run_template_plot () {
   # test argument parsing
   echo "$#"
 }
@@ -60,6 +65,7 @@ function run_template () {
       "calc" | "-r" ) run_template_calc ;;
       "dry" | "-d" ) run_template_calc "dry" ;;
       "data" ) run_template_data "${opts[@]:1}" ;;
+      "plot" | "-p" ) run_template_plot "${opts[@]:1}" ;;
       "clean" ) run_template_clean ;;
       *) echo "Error: unknown options " "${opts[0]}"; \
         run_template_help "$0"; return 1 ;;
@@ -72,6 +78,31 @@ run_template "$@"
 '
 }
 
+function readme () {
+  echo '# template
+
+## Description
+
+Workflow script
+
+Note:
+- check the `variables.sh` file for controlling parameters.
+
+## Files
+
+Things you may need to adapat
+- `variables.sh` : variables to set by user
+
+Things usually not necessary to change
+- `run_template.sh` : flow control file
+
+## TODO
+
+## References
+'
+}
+
 mkdir "$1" || exit 1
 template | sed "s/run_template/run_$1/g" > "$1/run_$1.sh"
+readme | sed "s/template/$1/g" > "$1/README.md"
 
