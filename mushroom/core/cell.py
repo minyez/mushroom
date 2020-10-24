@@ -29,7 +29,10 @@ try:
     import spglib
 except ImportError:
     spglib = None
-
+try:
+    from mushroom.__config__ import symprec
+except ImportError:
+    symprec = 1.0E-5
 from mushroom.core.constants import PI
 from mushroom.core.cif import Cif
 from mushroom.core.elements import NUCLEAR_CHARGE
@@ -75,7 +78,7 @@ class Cell(LengthUnit):
 
     _err = CellError
     _dtype = 'float64'
-    avail_exporters = ['vasp', 'abi']
+    avail_exporters = ['vasp', 'abi', 'json']
 
     def __init__(self, latt, atms, posi, unit='ang', sanitize=True, **kwargs):
 
@@ -100,6 +103,7 @@ class Cell(LengthUnit):
         self.exporters = {
             'vasp': self.export_vasp,
             'abi': self.export_abi,
+            'json': self.export_json,
             }
 
     def __len__(self):
@@ -157,8 +161,8 @@ class Cell(LengthUnit):
         return _d
 
     def get_reference(self) -> str:
-        '''Return the reference of the structure
-        '''
+        """Return the reference of the structure
+        """
         return self._reference
 
     def _check_input_consistency(self):
@@ -311,8 +315,8 @@ class Cell(LengthUnit):
 
     # * Cell manipulation
     def scale(self, scale: float):
-        '''Scale the lattice, i.e. increase the lattice by ``scale`` time
-        '''
+        """Scale the lattice, i.e. increase the lattice by ``scale`` time
+        """
         try:
             assert isinstance(scale, Real)
             assert scale > 0.0
@@ -383,16 +387,35 @@ class Cell(LengthUnit):
             sc.coord_sys = "C"
         return sc
 
-    def primitize(self, standardized: bool = False):
-        """get the primitized cell
-        
-        Args:
-            standardized (bool)
-        """
+    def __spglib_convert(self, funcname, **kwargs):
         if spglib is None:
             raise ImportError("need spglib to primitize cell")
-        print(standardized)
-        raise NotImplementedError
+        was_c = self.coord_sys == "C"
+        if was_c:
+            self.coord_sys = "D"
+        converted = spglib.__getattribute__(funcname)(self.get_spglib_input(),
+                                                      symprec=symprec, **kwargs)
+        if was_c:
+            self.coord_sys = "C"
+        if converted is None:
+            return converted 
+        latt, posi, indice = converted
+        atms = [self.type_mapping[i] for i in indice]
+        return type(self)(latt, atms, posi, unit=self.unit, coord_sys="D",
+                          reference=self.get_reference(), comment=self.comment)
+
+    def primitize(self):
+        """get the primitized cell
+        """
+        return self.__spglib_convert("find_primitive")
+
+    def standardize(self, to_primitive: bool = False):
+        """standardize a crystal structure
+        
+        Args:
+            to_primitive (bool)
+        """
+        return self.__spglib_convert("standardize_cell", to_primitive=to_primitive)
 
     # TODO move atom
     def __move(self, ia):
@@ -535,8 +558,8 @@ class Cell(LengthUnit):
 
     @property
     def type_mapping(self):
-        '''Map index (int) to atom type (str)
-        '''
+        """Map index (int) to atom type (str)
+        """
         _ats = self.atom_types
         _dict = {}
         for i, _at in enumerate(_ats):
@@ -713,6 +736,7 @@ class Cell(LengthUnit):
     # * Exporter implementations
     def export(self, output_format: str, filename=None, scale: float=1.0):
         """Export cell to file in the format `output_format`
+
         Args:
             output_format (str)
             filename (str or file handler) : Set None to stdout
@@ -796,7 +820,29 @@ class Cell(LengthUnit):
 
     def export_json(self, scale=1.0):
         """Export in JSON format"""
-        raise NotImplementedError
+        latt = self._latt * scale
+        posi = self._posi * {"C": scale, "D": 1.0}[self.coord_sys]
+        d = {
+            "latt": latt.tolist(),
+            "posi": posi.tolist(),
+            "atms": self.atms,
+            "unit": self.unit,
+            "coord_sys": self.coord_sys,
+            }
+        return json.dumps(d)
+
+    def print(self, output_format: str, scale: float = 1.0):
+        """Return cell as a string to in the format `output_format`
+
+        Args:
+            output_format (str)
+        """
+        o = output_format.lower()
+        e = self.exporters.get(o, None)
+        if e is None:
+            raise ValueError("Unsupported export:", output_format)
+        return e(scale=scale)
+
 
     # * Reader implementations
     @classmethod
@@ -825,14 +871,14 @@ class Cell(LengthUnit):
 
     @classmethod
     def read_json(cls, pjson):
-        '''Initialize a ``Cell`` instance from a JSON file
+        """Initialize a ``Cell`` instance from a JSON file
 
         If "factory" key does not exist, it will search for the postional arguments,
         i.e. "latt", "atoms" and "pos" keys. Raise when any of them does not exist.
 
         Args:
             pjson (str): the path of JSON file
-        '''
+        """
         if pjson is None or not os.path.isfile(pjson):
             raise CellError("JSON file not found: {}".format(pjson))
         with open(pjson, 'r') as h:
@@ -871,8 +917,7 @@ class Cell(LengthUnit):
                         pargs.append(js.pop(x))
                     return m(*pargs, **js)
                 except KeyError:
-                    raise CellError(
-                        "Required key not found in JSON: {}".format(x))
+                    raise CellError("Required key not found in JSON: {}".format(x))
             raise CellError("Factory method unavailable: {}".format(fac))
 
         for arg in ["latt", "atms", "posi"]:

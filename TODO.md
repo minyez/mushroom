@@ -56,7 +56,7 @@ XML reader for
 
 `Cif` 类在读取 SpringerMaterials, ICSD 上下载的部分 cif 文件时报错. 包括
 
-- [ ] Cu2O 52043
+- [x] Cu2O 52043
 
 #### MaterialsProject
 

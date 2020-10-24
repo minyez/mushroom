@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+# pylint: disable=C0115,C0116
 """test cell functionality"""
 import os
 import tempfile
@@ -8,9 +9,13 @@ import json
 import unittest as ut
 
 import numpy as np
+try:
+    import spglib
+except ImportError:
+    spglib = None
 
 from mushroom.core.cell import (Cell, CellError)
-from mushroom.core.constants import ANG2AU, AU2ANG, PI
+from mushroom.core.constants import ANG2AU, PI
 from mushroom.core.ioutils import get_dirpath
 
 
@@ -167,10 +172,12 @@ class cell_factory_method(ut.TestCase):
     def test_typical_sysmtes(self):
         # both conventional and primitive
         for p in [True, False]:
-            Cell.diamond("C", primitive=p)
+            c = Cell.diamond("C", primitive=p)
+            self.assertEqual(8-6*int(p), c.natm)
             Cell.anatase("Ti", "O", primitive=p)
             Cell.rutile("Ti", "O", primitive=p)
-            Cell.zincblende("Zn", "O", primitive=p)
+            c = Cell.zincblende("Zn", "O", primitive=p)
+            self.assertEqual(8-6*int(p), c.natm)
         # primitive only
         Cell.perovskite("Ca", "Ti", "O")
         Cell.wurtzite("Zn", "O")
@@ -517,6 +524,16 @@ class cell_export(ut.TestCase):
 
     def test_vasp_export(self):
         """test VASP POSCAR export"""
+
+
+class test_spglib_convert(ut.TestCase):
+    
+    def test_primitize(self):
+        if spglib is None:
+            return
+        c = Cell.diamond("C")
+        cprim = c.primitize()
+        self.assertEqual(2, cprim.natm)
 
 
 if __name__ == "__main__":

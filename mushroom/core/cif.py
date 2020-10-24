@@ -34,7 +34,7 @@ class Cif:
         """initialize the positions and symbols of all inequivalent atoms"""
         posi_ineq = []
         atms_ineq = []
-        natomsPerInequiv = []
+        natoms_per_ineq = []
         for l in self._blk.GetLoop("_atom_site_fract_x"):
             posOne = []
             for a in ["_atom_site_fract_x", "_atom_site_fract_y", "_atom_site_fract_z"]:
@@ -48,20 +48,27 @@ class Cif:
                 _logger.debug("cloest fraction: %s", p)
                 posOne.append(p)
             posi_ineq.append(posOne)
-            natomsPerInequiv.append(int(l._atom_site_symmetry_multiplicity))
+            natoms_per_ineq.append(int(l._atom_site_symmetry_multiplicity))
             # remove chemical valence
             atms_ineq.append(re.sub(r"[\d]+[+-]?", "", l._atom_site_type_symbol))
         self.posi_ineq = posi_ineq
         self.atms_ineq = atms_ineq
-        self.natm_ineq = natomsPerInequiv
+        self.natm_ineq = natoms_per_ineq
 
     def __init_symmetry_operations(self):
         """get all symmetry operations"""
         self.operations = {}
         rots = []
         trans = []
-        for l in self._blk.GetLoop("_symmetry_equiv_pos_site_id"):
-            r, t = Cif.decode_equiv_pos_string(l._symmetry_equiv_pos_as_xyz)
+        try:
+            symmetry_key = "_symmetry_equiv_pos_as_xyz" 
+            symmetry_loop = self._blk.GetLoop(symmetry_key)
+        except KeyError:
+            symmetry_key = "_space_group_symop_operation_xyz"
+            symmetry_loop = self._blk.GetLoop(symmetry_key)
+
+        for l in symmetry_loop:
+            r, t = Cif.decode_equiv_pos_string(l.__getattribute__(symmetry_key))
             rots.append(r)
             trans.append(t)
         self.operations["rotations"] = tuple(rots)
@@ -73,9 +80,15 @@ class Cif:
         Returns
             3 str, systematic name, mineral name and structure type
         """
-        try:
-            sys = self._blk.GetItemValue("_chemical_name_systematic")
-        except KeyError:
+        sys = None
+        sys_keys = ["_chemical_name_systematic", "_chemical_name_common", "_chemical_formula_sum"]
+        for k in sys_keys:
+            try:
+                sys = self._blk.GetItemValue(k)
+                continue
+            except KeyError:
+                pass
+        if sys is None:
             sys = "NA"
         try:
             mine = self._blk.GetItemValue("_chemical_name_mineral")
@@ -83,7 +96,7 @@ class Cif:
             mine = "NA"
         try:
             struct = self._blk.GetItemValue("_chemical_name_structure_type")
-        except (KeyError, ValueError):
+        except KeyError:
             struct = "NA"
         return sys, mine, struct
 
@@ -140,7 +153,10 @@ class Cif:
         """
         if self.ref is None:
             try:
-                ref = "".join(self._blk.GetItemValue("_publ_section_title").split("\n"))
+                ref = map(lambda x: self._blk.GetItemValue(x)[0], ["_citation_journal_full",
+                                                                   "_citation_journal_volume",
+                                                                   "_citation_page_first"])
+                ref = "{} vol {}, pp {}".format(*ref)
             except KeyError:
                 ref = ""
             self.ref = ref
