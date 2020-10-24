@@ -4,7 +4,7 @@ import os
 import re
 from io import TextIOWrapper
 from collections import OrderedDict
-from collections.abc import Iterable
+from collections.abc import Iterable, Callable
 from sys import stdout
 from typing import List
 
@@ -469,3 +469,49 @@ def print_file_or_iowrapper(s, f=None, mode='w'):
 #            / np.sqrt(2.0 * PI)
 #        )
 #
+
+def split_comma(s, convert: Callable = None) -> List:
+    """"split a comma-separated string (without whitespace)
+
+    Args:
+        s (str)
+        convert (callable) : type to convert.
+            If set, will attempt to convert each splitted string to type `convert`.
+            If failed, it will be returned as str.
+    """
+    container = []
+    if convert is None:
+        return s.split(',')
+    for x in s.split(','):
+        try:
+            container.append(convert(x))
+        except ValueError:
+            if convert is int and "~" in x:
+                container.extend(decode_int_range(x))
+            else:
+                container.append(x)
+    return container
+
+def decode_int_range(s):
+    """decode a int range of a string into a list of string
+
+    Both endpoints are included.
+
+    Args:
+        s (str)
+    """
+    int_range = re.compile(r"([\w]+)?([+-]?[\d]+)~([+-]?[\d]+)")
+    decoded = []
+    m = int_range.match(s)
+    if m:
+        prefix, start, end = map(m.group, [1, 2, 3])
+        gen = range(int(start), int(end)+1)
+        if prefix:
+            decoded.extend("{:s}{:+d}".format(prefix, i) for i in gen)
+        else:
+            decoded.extend(list(gen))
+    else:
+        decoded.append(s)
+    return decoded
+
+

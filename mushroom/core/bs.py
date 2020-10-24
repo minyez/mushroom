@@ -9,7 +9,7 @@ import numpy as np
 
 from mushroom.core.logger import create_logger
 from mushroom.core.unit import EnergyUnit
-from mushroom.core.ioutils import get_str_indices_by_iden
+from mushroom.core.ioutils import get_str_indices_by_iden, split_comma
 
 # eigen, occ (array): shape (nspins, nkpt, nbands)
 DIM_EIGEN_OCC = 3
@@ -810,20 +810,12 @@ def split_apb(apb: str):
     """
     if " " in apb:
         raise ValueError("whitespace is not allowed in atom-projector-band string, got", apb)
-    def _conv_comma(s):
-        if not s:
-            return None
-        l = []
-        for x in s.split(","):
-            try:
-                l.append(int(x))
-            except ValueError:
-                l.append(x)
-        return l
     try:
         a, p, b = apb.split(":")
     except ValueError:
         raise ValueError("should contain two colons")
 
-    return _conv_comma(a), _conv_comma(p), _conv_comma(b)
+    a, p, b = map(lambda x: split_comma(x, int), [a, p, b])
+
+    return a, p, b
 

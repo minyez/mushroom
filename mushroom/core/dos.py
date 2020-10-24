@@ -6,7 +6,8 @@ import numpy as np
 from mushroom.core.unit import EnergyUnit
 from mushroom.core.logger import create_logger
 from mushroom.core.data import export_2d_data
-from mushroom.core.ioutils import get_str_indices_by_iden
+from mushroom.core.ioutils import (get_str_indices_by_iden,
+                                   split_comma)
 
 _logger = create_logger("dos")
 del create_logger
@@ -308,20 +309,10 @@ def split_ap(ap: str):
     """
     if " " in ap:
         raise ValueError("whitespace is not allowed in atom-projector string, got", ap)
-    def _conv_comma(s):
-        if not s:
-            return None
-        l = []
-        for x in s.split(","):
-            try:
-                l.append(int(x))
-            except ValueError:
-                l.append(x)
-        return l
     try:
         a, p = ap.split(":")
     except ValueError:
         raise ValueError("should contain two colons")
 
-    return _conv_comma(a), _conv_comma(p)
+    return split_comma(a, int), split_comma(p, int)
 
