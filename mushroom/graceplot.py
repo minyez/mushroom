@@ -9,14 +9,17 @@ Therefore, platform-related functions are generally discarded. (minyez)
 """
 import sys
 import time
+import subprocess
 from re import sub, findall
 from io import TextIOWrapper, StringIO
+from shutil import which
 from collections.abc import Iterable
 from copy import deepcopy
 from numpy import shape, absolute, loadtxt
 
 from mushroom.core.data import Data
-from mushroom.core.ioutils import greeks
+from mushroom.core.ioutils import (greeks,
+                                   get_file_ext, get_filename_wo_ext)
 from mushroom.core.logger import create_logger
 
 _logger = create_logger("grace")
@@ -1164,13 +1167,13 @@ class _Tick(_BaseOutput):
         'tick_position': (bool, Position.IN, "{:s}"),
         'default': (int, 6, "{:d}"),
         'major': (float, 1., "{:3.1f}"),
-        'major_size': (float, 0.5, "{:8f}"),
+        'major_size': (float, 1.0, "{:8f}"),
         'major_color': (float, 1., "{:3.1f}"),
         'major_linewidth': (float, 1.5, "{:3.1f}"),
         'major_linestyle': (int, LineStyle.SOLID, "{:d}"),
         'major_grid_switch': (bool, Switch.OFF, "{:s}"),
         'minor_color': (float, 1., "{:3.1f}"),
-        'minor_size': (float, 1., "{:8f}"),
+        'minor_size': (float, 0.5, "{:8f}"),
         'minor_ticks': (int, 1, "{:d}"),
         'minor_grid_switch': (bool, Switch.OFF, "{:s}"),
         'minor_linewidth': (float, 1.5, "{:3.1f}"),
@@ -2630,10 +2633,34 @@ class Plot:
             g.tight_graph(nxticks=nxticks, nyticks=nyticks,
                           xscale=xscale, yscale=yscale)
 
-    def savefig(self, figname, dpi=300):
-        """save as figure file to `figname`
+    def savefig(self, figname, device: str = None):
+        """export to a figure file `figname` by the gracebat engine
+
+        This method is adapted from PyGrace.grace
+
+        Args:
+            figname (str)
+            device (str)
         """
-        raise NotImplementedError
+        ext2device = {
+            "eps": "EPS",
+            "png": "PNG",
+            "svg":"SVG",
+            "jpg":"JPEG",
+            "jpeg":"JPEG",
+            }
+        ext = get_file_ext(figname)
+        fn = get_filename_wo_ext(figname)
+        if device is None:
+            device = ext2device.get(ext, None)
+            if device is None:
+                raise ValueError("Unsupported device for extension {}".format(ext))
+        else:
+            device = device.upper()
+            if device not in ext2device.values():
+                raise ValueError("Unsupported device {}".format(device))
+        _logger.info("save figure to %s", figname)
+        run_gracebat(str(self), figname, device)
 
     # Templates
     @classmethod
@@ -2732,4 +2759,42 @@ def extract_data_from_agr(pagr):
             s = StringIO("".join(lines[start:end]))
             data.append(loadtxt(s, unpack=True))
     return types, data
+
+
+def run_gracebat(agr, figname, device):
+    """run a gracebat command for figure exporting
+
+    Args:
+        agr (str) : contents of grace file
+    """
+    exe = which("gracebat")
+    if exe is None:
+        raise FileNotFoundError("gracebat is not found in PATH")
+    cmds = [exe, "-hardcopy",
+            "-hdevice", device,
+            "-printfile", figname,
+            "-pipe"]
+    p = subprocess.Popen(cmds, text=True, stdin=subprocess.PIPE)
+    p.stdin.write(agr)
+
+#def run_eps2eps(filename, outeps=None):
+#    """run eps2eps to clean up eps/ps file"""
+#    exe = which("eps2eps")
+#    if exe is None:
+#        raise FileNotFoundError("eps2eps is not found in PATH")
+#    if outeps is None:
+#        outeps = filename + "_cleaned"
+#    cmds = [exe, filename, outeps]
+#    subprocess.check_call(cmds)
+#
+#def run_convert(src, dst, remove_src=False, **kwargs):
+#    exe = which("convert")
+#    if exe is None:
+#        raise FileNotFoundError("convert is not found in PATH")
+#    cmds = [exe, src, dst]
+#    if kwargs:
+#        cmds.extend(map(str, ["-"+k, v]) for k, v in kwargs.items())
+#    subprocess.check_call(cmds)
+#    if remove_src:
+#        remove(src)
 

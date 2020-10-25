@@ -8,6 +8,8 @@ from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from mushroom.graceplot import Plot
 from mushroom.core.cell import Cell
 from mushroom.core.kpoints import KPath
+from mushroom.core.ioutils import get_filename_wo_ext
+
 from mushroom.vasp import read_eigen
 
 def _parser():
@@ -23,6 +25,8 @@ def _parser():
                    help="path of agr file to export")
     p.add_argument("--removek", type=int, default=0,
                    help="number of kpoints at first to remove")
+    p.add_argument("--savefig", dest="fig_ext", type=str, default=None,
+                   help="figure extension to convert")
     return p.parse_args()
 
 def m_v_band():
@@ -47,6 +51,8 @@ def m_v_band():
     # draw zero line
     p[0].axhline(0.0, ls="dashed")
     p.write(file=args.output)
+    if args.fig_ext is not None:
+        p.savefig(get_filename_wo_ext(args.output) + "." + args.fig_ext)
 
 
 if __name__ == "__main__":

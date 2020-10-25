@@ -2,6 +2,7 @@
 """this module defines some common used utilities"""
 import os
 import re
+#import pathlib
 from io import TextIOWrapper
 from collections import OrderedDict
 from collections.abc import Iterable, Callable
@@ -91,7 +92,7 @@ def get_file_ext(path: str) -> str:
     an empty string will be returned.
 
     Args:
-        filePath (str): the path of the file
+        path (str): the path of the file
     """
     if os.path.isdir(path):
         return None
@@ -514,4 +515,26 @@ def decode_int_range(s):
         decoded.append(s)
     return decoded
 
-
+#def rename(src, dst):
+#    """rename file ``src`` to ``dst``
+#    
+#    Args:
+#        src (str)
+#        dst (str)
+#    """
+#    psrc = pathlib.Path(src).expanduser().resolve()
+#    if not psrc.exists():
+#        raise FileNotFoundError("source file {} is not found".format(src))
+#    pdst = pathlib.Path(dst).expanduser().resolve()
+#    psrc.rename(pdst)
+#
+#def remove(src):
+#    """remove file ``src``
+#    
+#    Args:
+#        src (str)
+#    """
+#    psrc = pathlib.Path(src).expanduser().resolve()
+#    if psrc.isfile():
+#        psrc.unlink()
+#
