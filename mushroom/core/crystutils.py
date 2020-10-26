@@ -14,7 +14,7 @@ def get_latt_vecs_from_latt_consts(a: float, b: float, c: float,
                                    alpha: float = 90.,
                                    beta: float = 90.,
                                    gamma: float = 90.,
-                                   decimals: int = 7) -> List[List[float]]:
+                                   decimals: int = 6) -> List[List[float]]:
     """Convert lattice constants to lattice vectors in right-hand system
 
     Note that by now a1 is forced along x axis, a1, a2 is forced on the xOy plane, i.e.
@@ -72,8 +72,8 @@ def get_latt_consts_from_latt_vecs(latt):
     return (*alen, *angle)
 
 
-def get_all_atoms_from_sym_ops(ineq_atms: Iterable[str], ineq_posi, symops,
-                               left_mult=True, iden_thres=1e-5):
+def get_all_atoms_from_symops(ineq_atms: Iterable[str], ineq_posi, symops: dict,
+                              left_mult: bool = True, iden_thres: float = 1e-5):
     """Get atomic symbols and positions of all atoms in the cell
     by performing symmetry operations on inequivalent atoms
 
@@ -88,14 +88,20 @@ def get_all_atoms_from_sym_ops(ineq_atms: Iterable[str], ineq_posi, symops,
     TODO:
         use Cartisian to determine identical atoms
     """
-    assert len(ineq_atms) == len(ineq_posi)
-    assert isinstance(symops, dict)
+    if len(ineq_atms) != len(ineq_posi):
+        raise ValueError("inequivalent atoms and positions are inconsistent")
+    if not isinstance(symops, dict):
+        raise ValueError("symops must be a dictionary")
+
     posi = []
     atms = []
     _logger.debug("ineq_atms: %r", ineq_atms)
     _logger.debug("ineq_posi: %r", ineq_posi)
-    _logger.debug("# of symops: %r", len(symops["translations"]))
-    rots, trans = symops["rotations"], symops["translations"]
+    try:
+        _logger.debug("# of symops: %r", len(symops["translations"]))
+        rots, trans = symops["rotations"], symops["translations"]
+    except KeyError:
+        raise KeyError("symops must contain keys `rotations` and `translations`")
     for r, t in zip(rots, trans):
         if not left_mult:
             r = np.transpose(r)

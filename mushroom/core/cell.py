@@ -1,21 +1,6 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=bad-whitespace,too-many-lines
-"""Module that defines classes for crystal cell manipulation
-
-The ``cell`` class and its subclasses accept the following kwargs when being instantialized:
-
-    - coord_sys (str): Coordinate system for the internal positions,
-      either "D" (Direct, default) or "C" (Cartesian)
-    - all_relax (bool) : default selective dynamics option for atoms.
-      Set True (default) to allow all DOFs to relax
-    - select_dyn (dict) : a dictionary with key-value pair as ``int: [bool, bool, bool]``, 
-      which controls the selective dynamic option for atom with the particular index 
-      (starting from 0). Default is an empty ``dict``
-    - comment (str): message about the cell, e.g. theory level, experimental conditions
-    - reference (str): the reference where the lattice structure is derived.
-
-When other keyword are parsed, they will be filtered out and no exception will be raised
-"""
+"""Module that defines classes for crystal cell manipulation"""
 import json
 import string
 import os
@@ -67,9 +52,17 @@ class Cell(LengthUnit):
         corresponding to the member in pos
         pos (array-like) : The internal coordinates of atoms
         unit (str): the unit, in lower case, either "ang" (default) or "au".
+        coord_sys (str): Coordinate system for the internal positions,
+            either "D" (Direct, default) or "C" (Cartesian)
+        all_relax (bool) : default selective dynamics option for atoms.
+            Set True (default) to allow all DOFs to relax
+        select_dyn (dict) : a dictionary with key-value pair as ``int: [bool, bool, bool]``, 
+            which controls the selective dynamic option for atom with the particular index 
+            (starting from 0). Default is an empty ``dict``
+        comment (str): message about the cell, e.g. theory level, experimental conditions
+        reference (str): the reference where the lattice structure is derived.
 
-    Note:
-        see ``cell`` module docstring for acceptable kwargs for ``Cell`` and its subclasses
+When other keyword are parsed, they will be filtered out and no exception will be raised
 
     Examples:
     >>> Cell([[5.0, 0.0, 0.0], [0.0, 5.0, 0.0], [0.0, 0.0, 5.0]], ["C"], [[0.0, 0.0, 0.0]])
@@ -80,13 +73,23 @@ class Cell(LengthUnit):
     _dtype = 'float64'
     avail_exporters = ['vasp', 'abi', 'json']
 
-    def __init__(self, latt, atms, posi, unit='ang', sanitize=True, **kwargs):
+    def __init__(self, latt, atms, posi, unit: str = 'ang', sanitize: bool = True,
+                 coord_sys: str = 'D', select_dyn: dict = None, all_relax: bool = True,
+                 reference=None, comment=None, **kwargs):
 
         self.comment = "Default Cell class"
+        if comment is not None:
+            self.comment = "{}".format(comment)
+
         self._reference = ''
-        self._all_relax = True
+        if reference is not None:
+            self._reference = "{}".format(reference)
+
+        self._all_relax = all_relax
         self._select_dyn = {}
-        self._coord_sys = 'D'
+        if select_dyn is not None:
+            self._select_dyn = select_dyn
+        self._coord_sys = coord_sys
 
         try:
             self._latt = np.array(latt, dtype=self._dtype)
@@ -96,7 +99,12 @@ class Cell(LengthUnit):
                 "Fail to create latt and posi array. Please check.")
         LengthUnit.__init__(self, lunit=unit)
         self._atms = [a.capitalize() for a in atms]
-        self._parse_cellkw(**kwargs)
+        if 'coord_sys' in kwargs:
+            self._coord_sys = kwargs['coord_sys'].upper()
+        if "all_relax" in kwargs:
+            self._all_relax = kwargs["all_relax"]
+        if "select_dyn" in kwargs:
+            self._select_dyn = kwargs["select_dyn"]
         self._check_input_consistency()
         if sanitize:
             self._sanitize_atoms()
@@ -123,18 +131,6 @@ class Cell(LengthUnit):
     def __repr__(self):
         return self.__str__()
 
-    def _parse_cellkw(self, **kwargs):
-        if 'coord_sys' in kwargs:
-            self._coord_sys = kwargs['coord_sys'].upper()
-        if "all_relax" in kwargs:
-            self._all_relax = kwargs["all_relax"]
-        if "select_dyn" in kwargs:
-            self._select_dyn = kwargs["select_dyn"]
-        if "reference" in kwargs:
-            self._reference = "{}".format(kwargs["reference"])
-        if "comment" in kwargs:
-            self.comment = "{}".format(kwargs["comment"])
-
     def get_cell(self):
         '''Purge out the cell, atoms and pos.
 
@@ -150,7 +146,7 @@ class Cell(LengthUnit):
         Returns :
             dictionary that can be parsed to ``create_from_cell`` class method.
         '''
-        _d = {
+        d = {
             "unit": self._lunit,
             "coord_sys": self._coord_sys,
             "comment": self.comment,
@@ -158,7 +154,7 @@ class Cell(LengthUnit):
             "all_relax": self._all_relax,
             "select_dyn": self._select_dyn
         }
-        return _d
+        return d
 
     def get_reference(self) -> str:
         """Return the reference of the structure
@@ -347,6 +343,14 @@ class Cell(LengthUnit):
         self.move_atoms_to_first_lattice()
         if sanitize:
             self._sanitize_atoms()
+
+    def get_sym_nat(self):
+        """get the symbols and number of atoms of each atom type
+
+        Args:
+            list of str, list of int
+        """
+        return sym_nat_from_atms(self._atms)
 
 # pylint: disable=R0914
     def get_supercell(self, n1: int = 1, n2: int = 1, n3: int = 1):
@@ -591,7 +595,7 @@ class Cell(LengthUnit):
         return len(self._atms)
 
     @property
-    def use_select_dyn(self):
+    def use_select_dyn(self) -> bool:
         """Bool. If use selective dynamics
         """
         if self._all_relax and not bool(self._select_dyn):

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Test graceplot"""
 import unittest as ut
+import tempfile
 
 from mushroom.graceplot import (_ColorMap, Color, Font, Symbol,
                                 Graph, View, World,
@@ -189,6 +190,16 @@ class test_Plot(ut.TestCase):
         p = Plot(3, 4, hgap=[0.01, 0.0, 0.02], vgap=[0.02, 0.0],
                  width_ratios="3:2:1:4", heigh_ratios="1:3:2")
         self.assertEqual(len(p._graphs), 3*4)
+
+    def test_write(self):
+        """writing to agr"""
+        p = Plot(1, 1)
+        p.plot([0, 1, 2], [3, 2, 1])
+        self.assertEqual(len(p), 1)
+        tf = tempfile.NamedTemporaryFile()
+        with open(tf.name, 'w') as h:
+            p.write(file=h)
+        tf.close()
 
 
 if __name__ == "__main__":

@@ -19,7 +19,7 @@ from numpy import shape, absolute, loadtxt
 
 from mushroom.core.data import Data
 from mushroom.core.ioutils import (greeks,
-                                   get_file_ext, get_filename_wo_ext)
+                                   get_file_ext)
 from mushroom.core.logger import create_logger
 
 _logger = create_logger("grace")
@@ -28,6 +28,18 @@ del create_logger
 GREEK_PATTERN = dict((r"\\{}".format(_g), r"\\x%s\\f{}" % _g[0]) for _g in greeks)
 SPECIAL_CHAR_PATTERN = {
     r"\\AA": r"\\cE\\C",
+    }
+
+has_gracebat = which("gracebat")
+del which
+ext2device = {
+    "ps": "PostScript",
+    "eps": "EPS",
+    "pnm": "PNM",
+    "png": "PNG",
+    "svg": "SVG",
+    "jpg": "JPEG",
+    "jpeg":"JPEG",
     }
 
 # pylint: disable=bad-whitespace
@@ -404,16 +416,34 @@ class LineStyle:
         return _get_int_const(cls.__name__, cls.pair, marker)
 
 
-class Justf:
+class Just:
     """Justification of text"""
     LEFT = 0
-    CENTER = 1
-    RIGHT = 2
+    CENTER = 2
+    RIGHT = 1
+    LEFT_BOTTOM = 4
+    LEFT_MIDDLE = 12
+    LEFT_TOP = 8
+    CENTER_BOTTOM = 6
+    CENTER_MIDDLE = 14
+    CENTER_TOP = 10
+    RIGHT_BOTTOM = 5
+    RIGHT_MIDDLE = 13
+    RIGHT_TOP = 9
 
     pair = {
         "left" : LEFT,
         "center": CENTER,
         "right": RIGHT,
+        "lb": LEFT_BOTTOM,
+        "lm": LEFT_MIDDLE,
+        "lt": LEFT_TOP,
+        "cb": CENTER_BOTTOM,
+        "cm": CENTER_MIDDLE,
+        "ct": CENTER_TOP,
+        "rb": RIGHT_BOTTOM,
+        "rm": RIGHT_MIDDLE,
+        "rt": RIGHT_TOP,
         }
     @classmethod
     def get(cls, marker):
@@ -1772,7 +1802,7 @@ class _DrawString(_BaseOutput):
         "color": (int, Color.BLACK, '{:d}'),
         "rot": (int, 0, '{:d}'),
         "font": (int, 0, '{:d}'),
-        "just": (int, Justf.LEFT, '{:d}'),
+        "just": (int, Just.LEFT, '{:d}'),
         "char_size": (float, 1.0, '{:.8f}'),
         "def": (str, "", '\"{:s}\"'),
         }
@@ -1791,7 +1821,7 @@ class DrawString(_DrawString):
         if ig is not None:
             ig = "g" + str(ig)
         _DrawString.__init__(self, loctype=loctype, color=Color.get(color), string_comment=ig,
-                             just=Justf.get(just), rot=rot, char_size=charsize, font=font,
+                             just=Just.get(just), rot=rot, char_size=charsize, font=font,
                              string_location=xy)
         self.__setattr__("def", encode_string(s))
         _raise_unknown_attr(self, *kwargs)
@@ -2180,14 +2210,14 @@ class Graph(_Graph):
                 xmin, ymin, xmax, ymax = self._view.get_view()
 
             if loc_token.endswith("left"):
-                x = 0.8 * xmin + 0.2 * xmax
+                x = 0.95 * xmin + 0.05 * xmax
             elif loc_token.endswith("right"):
-                x = 0.3 * xmin + 0.7 * xmax
+                x = 0.35 * xmin + 0.65 * xmax
             elif loc_token.endswith("center"):
                 x = 0.6 * xmin + 0.4 * xmax
 
             if loc_token.startswith("lower") or loc_token.startswith("bottom"):
-                y = 0.9 * ymin + 0.1 * ymax
+                y = 0.8 * ymin + 0.2 * ymax
             elif loc_token.startswith("upper") or loc_token.startswith("top"):
                 y = 0.1 * ymin + 0.9 * ymax
             elif loc_token.startswith("middle"):
@@ -2642,23 +2672,12 @@ class Plot:
             figname (str)
             device (str)
         """
-        ext2device = {
-            "eps": "EPS",
-            "png": "PNG",
-            "svg":"SVG",
-            "jpg":"JPEG",
-            "jpeg":"JPEG",
-            }
         ext = get_file_ext(figname)
-        fn = get_filename_wo_ext(figname)
         if device is None:
-            device = ext2device.get(ext, None)
-            if device is None:
-                raise ValueError("Unsupported device for extension {}".format(ext))
-        else:
-            device = device.upper()
-            if device not in ext2device.values():
-                raise ValueError("Unsupported device {}".format(device))
+            try:
+                device = ext2device.get(ext.lower())
+            except KeyError:
+                raise ValueError("No detected device for extension {}".format(ext))
         _logger.info("save figure to %s", figname)
         run_gracebat(str(self), figname, device)
 
@@ -2767,15 +2786,14 @@ def run_gracebat(agr, figname, device):
     Args:
         agr (str) : contents of grace file
     """
-    exe = which("gracebat")
-    if exe is None:
+    if has_gracebat is None:
         raise FileNotFoundError("gracebat is not found in PATH")
-    cmds = [exe, "-hardcopy",
+    cmds = [has_gracebat, "-hardcopy",
             "-hdevice", device,
             "-printfile", figname,
             "-pipe"]
-    p = subprocess.Popen(cmds, text=True, stdin=subprocess.PIPE)
-    p.stdin.write(agr)
+    p = subprocess.Popen(cmds, stdin=subprocess.PIPE)
+    p.stdin.write(agr.encode())
 
 #def run_eps2eps(filename, outeps=None):
 #    """run eps2eps to clean up eps/ps file"""

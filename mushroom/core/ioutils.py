@@ -2,7 +2,6 @@
 """this module defines some common used utilities"""
 import os
 import re
-#import pathlib
 from io import TextIOWrapper
 from collections import OrderedDict
 from collections.abc import Iterable, Callable
@@ -515,26 +514,35 @@ def decode_int_range(s):
         decoded.append(s)
     return decoded
 
-#def rename(src, dst):
-#    """rename file ``src`` to ``dst``
-#    
-#    Args:
-#        src (str)
-#        dst (str)
-#    """
-#    psrc = pathlib.Path(src).expanduser().resolve()
-#    if not psrc.exists():
-#        raise FileNotFoundError("source file {} is not found".format(src))
-#    pdst = pathlib.Path(dst).expanduser().resolve()
-#    psrc.rename(pdst)
-#
-#def remove(src):
-#    """remove file ``src``
-#    
-#    Args:
-#        src (str)
-#    """
-#    psrc = pathlib.Path(src).expanduser().resolve()
-#    if psrc.isfile():
-#        psrc.unlink()
-#
+
+def fortran_write(fortran_format: str, *args, file=stdout):
+    """write out arguments in a Fortran format (without parentheses)
+
+    Args:
+        fortran_format (str)
+        file (file-like object)
+    """
+    python_format = fortran_format
+    try:
+        print(python_format.format(*args), file=file)
+    except ValueError:
+        info = "unbalanced Fortran format string ({}) and number of arguments {}".format\
+               (fortran_format, len(args))
+        raise ValueError(info)
+    raise NotImplementedError
+
+
+def fortran_read(fstring: str, fortran_format: str):
+    """read in data according to Fortran format string (without parentheses)
+
+    This emulation is implemented by using ``re``
+
+    Args:
+        fstring (str) : string to decode as Fortran
+        fortran_format (str): Fortran format string
+    
+    Returns:
+        list
+    """
+    raise NotImplementedError
+

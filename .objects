@@ -9,4 +9,5 @@ DIST_FILES = mushroom \
 			TODO.md \
 			CHANGELOG.md \
 			README.md \
-			Makefile
+			Makefile \
+			.objects

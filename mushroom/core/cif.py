@@ -4,7 +4,7 @@ import os
 import re
 import CifFile
 
-from mushroom.core.crystutils import get_latt_vecs_from_latt_consts, get_all_atoms_from_sym_ops
+from mushroom.core.crystutils import get_latt_vecs_from_latt_consts, get_all_atoms_from_symops
 from mushroom.core.data import conv_estimate_number, closest_frac
 from mushroom.core.logger import create_logger
 
@@ -130,7 +130,7 @@ class Cif:
             shape (n,) and (n,3) with n the total number of atoms
         """
         if self.atms is None or self.posi is None:
-            atms, posi = get_all_atoms_from_sym_ops(
+            atms, posi = get_all_atoms_from_symops(
                 self.atms_ineq, self.posi_ineq, self.operations)
             # consistency check
             _logger.debug("natoms of each inequiv type: %r", self.natm_ineq)
