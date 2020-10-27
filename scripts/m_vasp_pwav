@@ -55,7 +55,7 @@ def plot_pwav(graph, x, bs, apbs, spin, scale, colors=None):
         bs (BandStructure)
         spin (int)
         scale (float)
-        pwav_file (str)
+        colors (list)
     """
     if colors is None:
         colors = prefer_gracecolors
@@ -110,7 +110,7 @@ def m_v_pwav():
     ax.axhline(0.0, ls="dashed")
 
     if args.apb is not None:
-        plot_pwav(p[0], kp.x, bs, args.apb, args.spin, scale)
+        plot_pwav(ax, kp.x, bs, args.apb, args.spin, scale)
 
     p.write(file=args.output)
     if args.fig_ext is not None:

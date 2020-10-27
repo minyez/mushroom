@@ -20,11 +20,11 @@ def _parser():
                    help="energy range, e.g. 'm8~5' for -8.0 to 5.0")
     p.add_argument("--savefig", dest="fig_ext", type=str, default=None,
                    help="figure extension to convert")
-    return p.parse_args()
+    return p
 
 def m_vasp_dos():
     """main stream"""
-    args = _parser()
+    args = _parser().parse_args()
     dos = read_doscar(args.doscar, read_pdos=False)
     p, ax = Plot.subplots()
     ax.plot(dos.egrid - dos.efermi, dos.get_dos(), color="k", symbol="none", label="Total")
@@ -41,9 +41,10 @@ def m_vasp_dos():
     ax.set_legend(loc="upper left")
     ax.y.set_ticklabel(switch="off")
     ax.x.set_label("Energy ({})".format(dos.unit))
-    ax.y.set_label("Density of states [arb. units]")
+    ax.y.set_label("Density of states [arb. units]", charsize=2.)
     ax.axvline(0.0, ls="dashed", lw=3, color="grey")
     p.write(file=args.output)
+
     if args.fig_ext is not None:
         p.savefig(get_filename_wo_ext(args.output) + "." + args.fig_ext)
 

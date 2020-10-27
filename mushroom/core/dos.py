@@ -200,6 +200,9 @@ class DensityOfStates(EnergyUnit):
                 Total dos will be returned otherwise or nspins=1
             atm (int, str, Iterable) : atomic identifier, either index or symbol
             prj (int, str, Iterable) : projector identifier, either index or name
+
+        Returns:
+            1-d array
         """
         if not self.has_proj():
             raise DosError("projected dos is not parsed")

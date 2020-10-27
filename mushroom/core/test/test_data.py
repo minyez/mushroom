@@ -48,28 +48,28 @@ class test_Data(ut.TestCase):
         y = np.array((3.0, 4.0, 5.0))
         xy = np.array([x, y])
         data = Data(x, y)
-        self.assertTrue(np.all(xy == data.get(True)))
-        self.assertTrue(np.all(np.transpose(xy) == np.array(data.get())))
+        self.assertTrue(np.all(xy == data.get()))
+        self.assertTrue(np.all(np.transpose(xy) == np.array(data.get(True))))
 
     def test_export(self):
         """test data export"""
         x = (1.0, 2.0, 3.0)
         y = (3.0, 4.0, 5.0)
         data = Data(x, y)
-        s_normal = ["1.0 3.0",
+        s_transp = ["1.0 3.0",
                     "2.0 4.0",
                     "3.0 5.0"]
-        s_transp = ["1.0 2.0 3.0",
+        s_normal = ["1.0 2.0 3.0",
                     "3.0 4.0 5.0"]
-        s_normal_51f = ["  1.0   3.0",
+        s_transp_51f = ["  1.0   3.0",
                         "  2.0   4.0",
                         "  3.0   5.0"]
-        s_transp_51f = ["  1.0   2.0   3.0",
+        s_normal_51f = ["  1.0   2.0   3.0",
                         "  3.0   4.0   5.0"]
-        s_normal_51f_42f = ["  1.0 3.00",
+        s_transp_51f_42f = ["  1.0 3.00",
                             "  2.0 4.00",
                             "  3.0 5.00"]
-        s_transp_51f_42f = ["  1.0   2.0   3.0",
+        s_normal_51f_42f = ["  1.0   2.0   3.0",
                             "3.00 4.00 5.00"]
         self.assertListEqual(s_normal, data.export(form="{:3.1f}"))
         self.assertListEqual(s_transp, data.export(form="{:3.1f}", transpose=True))

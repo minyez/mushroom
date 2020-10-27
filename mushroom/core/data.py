@@ -250,7 +250,7 @@ class Data:
                 y1, y2, y3...
                 z1, z2, z3...
         """
-        d = np.column_stack([self.__getattribute__(arg) for arg in data_cols])
+        d = np.stack([self.__getattribute__(arg) for arg in data_cols])
         if transpose:
             d = d.transpose()
         return d * scale
@@ -286,7 +286,7 @@ class Data:
                 msg = "format string does not conform data columns"
                 raise ValueError(msg, form, len(data_cols))
 
-        data_all = self._get(data_cols, transpose=transpose)
+        data_all = self._get(data_cols)
         return export_2d_data(data_all, transpose=transpose, form=form, sep=sep)
 
     def get_data(self, transpose=False):
@@ -429,11 +429,9 @@ def export_2d_data(data, form: str = None, transpose: bool = False, sep: str = N
     """print the 2-dimension data into list of strings
 
     Args:
-        data (2d array)
+        data (2d array): each row has the same format
         form (str or tuple/list): format string of each type of data.
-        transpose (bool) : control the application of format `form` when it is iterable.
-            Set False for column-wise, i.e. data[:][i] in same format form[i],
-            True for row-wise, i.e. data[i][:] in same format form[i]
+        transpose (bool) : if set True, the same column will be printed as one line
         sep (str)
 
     """
@@ -447,16 +445,18 @@ def export_2d_data(data, form: str = None, transpose: bool = False, sep: str = N
 
     if sep is None:
         sep = " "
+    if transpose:
+        data = np.transpose(data)
     for i, array in enumerate(data):
         if isinstance(form, str):
             s = sep.join([form.format(x) for x in array])
         elif isinstance(form, (list, tuple)):
             if transpose:
-                # array = (x1, x2, x3)
-                s = sep.join([form[i].format(x) for x in array])
-            else:
                 # array = (x1, y1, z1)
                 s = sep.join([f.format(x) for f, x in zip(form, array)])
+            else:
+                # array = (x1, x2, x3)
+                s = sep.join([form[i].format(x) for x in array])
         else:
             raise ValueError("invalid format string {:s}".format(form))
         slist.append(s)
