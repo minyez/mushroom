@@ -2033,18 +2033,30 @@ class Graph(_Graph):
             v = max(ds.max() for ds in self._datasets)
         return v
 
-    def tight_graph(self, nxticks=5, nyticks=5, xscale=1.1, yscale=1.1):
-        """make the graph looks tight by adopting x/y min/max as axis extremes"""
-        self.set_lim(xmin=self.xmin()-absolute(self.xmin())*(xscale-1.0),
-                     xmax=self.xmax()+absolute(self.xmax())*(xscale-1.0),
-                     ymin=self.min()-absolute(self.min())*(yscale-1.0),
-                     ymax=self.max()+absolute(self.max())*(yscale-1.0))
+    def tight_graph(self, nxticks: int = 5, nyticks: int = 5,
+                    xscale: float = 1.1, yscale: float = 1.1):
+        """make the graph looks tight by adopting x/y min/max as axis extremes
+
+        Args:
+            nxticks, nyticks (int)
+            xscale, yscale (float): if set None, the corresponding axis will not be scaled
+        """
+        xmin = None
+        xmax = None
+        ymin = None
+        ymax = None
+        if xscale is not None:
+            xmin = self.xmin()-absolute(self.xmin())*(xscale-1.0)
+            xmax = self.xmax()+absolute(self.xmax())*(xscale-1.0)
+        if yscale is not None:
+            ymin = self.min()-absolute(self.min())*(yscale-1.0)
+            ymax = self.max()+absolute(self.max())*(yscale-1.0)
+
+        self.set_lim(xmin=xmin, xmax=xmax,
+                     ymin=ymin, ymax=ymax)
         xmin, ymin, xmax, ymax = self.get_limit()
-        # TODO optimize major tick determination
-        if not self._if_xtick_set:
-            self._xaxis.set_major(major=(xmax-xmin)/nxticks)
-        if not self._if_ytick_set:
-            self._yaxis.set_major(major=(ymax-ymin)/nyticks)
+        self._xaxis.set_major(major=(xmax-xmin)/nxticks)
+        self._yaxis.set_major(major=(ymax-ymin)/nyticks)
         
     def export(self):
         """export the header of graph, including `with g` part and data header"""

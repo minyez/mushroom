@@ -467,7 +467,34 @@ def split_comma(s, convert: Callable = None) -> List:
                 container.append(x)
     return container
 
-def decode_int_range(s):
+def decode_float_ends(s: str, m_minus=True) -> List:
+    """split and convert a string standing for two ends of a float range to two numbers
+
+
+    Args:
+        s (str) : string like '8.5:10.2', '-10.2:8', 'm9~'
+        m_minus (bool) : m before the number will be converted to minus.
+            useful when parsing range from command line arguments.
+            If set False, ValueError will be raised if m is matched
+
+    Returns:
+    """
+    start = None
+    end = None
+    float_ends = re.compile(r"(m)?([+-]?[.\d]+)?~(m)?([+-]?[.\d]+)?")
+    matched = float_ends.fullmatch(s)
+    if matched:
+        is_start_minus, start, is_end_minus, end = map(matched.group, range(1, 5))
+        if not m_minus and (is_start_minus or is_start_minus):
+            raise ValueError("m mark is not turned on. Use m_minus=True")
+        if start is not None:
+            start = float(start) * {None: 1.}.get(is_start_minus, -1.)
+        if end is not None:
+            end = float(end) * {None: 1.}.get(is_end_minus, -1.)
+        return start, end
+    raise ValueError("invalid float ends string {}".format(s))
+
+def decode_int_range(s: str) -> List:
     """decode a int range of a string into a list of string
 
     Both endpoints are included.
@@ -477,9 +504,9 @@ def decode_int_range(s):
     """
     int_range = re.compile(r"([\w]+)?([+-]?[\d]+)~([+-]?[\d]+)")
     decoded = []
-    m = int_range.match(s)
+    m = int_range.fullmatch(s)
     if m:
-        prefix, start, end = map(m.group, [1, 2, 3])
+        prefix, start, end = map(m.group, range(1, 4))
         gen = range(int(start), int(end)+1)
         if prefix:
             decoded.extend("{:s}{:+d}".format(prefix, i) for i in gen)

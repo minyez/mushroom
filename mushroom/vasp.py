@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 """utilities of vasp"""
-from os.path import realpath
 from io import StringIO
+from os.path import realpath
+from typing import Tuple
+
 import numpy as np
 from bs4 import BeautifulSoup
 
@@ -14,11 +16,14 @@ from mushroom.core.cell import Cell
 _logger = create_logger("vasp")
 del create_logger
 
-def _dict_read_doscar(path="DOSCAR", ncl=False):
+# pylint: disable=R0914
+def _dict_read_doscar(path: str = "DOSCAR",
+                      read_pdos: bool = True, ncl: bool = False) -> dict:
     """read DOSCAR file and returns a dict
     
     Args:
         path (str) : path to DOSCAR file. default to "DOSCAR"
+        read_pdos (bool) : if read projected densit of states
         ncl (bool) : DOS file from non-collinear calculation
 
     Returns:
@@ -55,7 +60,7 @@ def _dict_read_doscar(path="DOSCAR", ncl=False):
     tdos = [x[1:1+nspins] for x in lines[6:6+nedos]]
     tdos = np.array(tdos).transpose()
     pdos = None
-    if len(lines) > nedos + 7:
+    if read_pdos and len(lines) > nedos + 7:
         nprjs = (len(lines[nedos+7]) - 1) // nspins
         pdos = np.zeros((nspins, nedos, natms, nprjs))
         for ia in range(natms):
@@ -69,11 +74,13 @@ def _dict_read_doscar(path="DOSCAR", ncl=False):
             }
 
 
-def read_doscar(path="DOSCAR", reset_fermi=False, ncl=False):
-    """read DOSCAR file and returns a DensitofStates object
+def read_doscar(path: str = "DOSCAR", read_pdos: bool = True,
+                reset_fermi: bool = False, ncl: bool = False) -> DensityOfStates:
+    """read DOSCAR file and returns a DensityOfStates object
     
     Args:
         path (str) : path to DOSCAR file. default to "DOSCAR"
+        read_pdos (bool) : if read projected densit of states
         reset_fermi (bool) : unset Fermi energy obtained from DOSCAR
             this is useful when one wants a dos with it VBM as energy zero
         ncl (bool) : DOS file from non-collinear calculation
@@ -81,13 +88,13 @@ def read_doscar(path="DOSCAR", reset_fermi=False, ncl=False):
     Returns:
         a DensityOfStates object
     """
-    d = _dict_read_doscar(path=path, ncl=ncl)
+    d = _dict_read_doscar(path=path, ncl=ncl, read_pdos=read_pdos)
     if reset_fermi:
         d["efermi"] = None
     return DensityOfStates(**d, unit='ev')
 
 # pylint: disable=R0914
-def _dict_read_procar(path="PROCAR"):
+def _dict_read_procar(path: str = "PROCAR") -> dict:
     """read PROCAR file
 
     Args:
@@ -141,7 +148,9 @@ def _dict_read_procar(path="PROCAR"):
             "prjs": prjs,
             }
 
-def read_procar(path="PROCAR", filter_k_before=0, filter_k_after=None):
+# pylint: disable=R0914
+def read_procar(path: str = "PROCAR", filter_k_before: int = 0,
+                filter_k_after: int = None) -> Tuple[BandStructure, np.ndarray]:
     """read PROCAR and return a BandStructure object
 
     Args:
@@ -161,7 +170,7 @@ def read_procar(path="PROCAR", filter_k_before=0, filter_k_after=None):
     pwav = pwav[:, filter_k_before:filter_k_after, :, :, :]
     return BandStructure(eigen, occ, weight, unit='ev', pwav=pwav, prjs=prjs), kpoints
 
-def read_xml(*datakey, path="vasprun.xml"):
+def read_xml(*datakey, path: str = "vasprun.xml") -> dict:
     """read vasprun.xml to extract data.
 
     The reason to use positional arguments to specify the data to extract

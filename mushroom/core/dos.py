@@ -103,6 +103,7 @@ class DensityOfStates(EnergyUnit):
                 raise DosError("inconsistent prjs input {}".format(prjs))
             self._prjs = prjs
         self._pdos = np.array(pdos, dtype=self._dtype)
+        _logger.info("Read projected density of states")
 
     @property
     def atms(self):
@@ -115,6 +116,7 @@ class DensityOfStates(EnergyUnit):
         if len(new) != self._natms:
             raise ValueError("Inconsistent atms input. Should be {:d}-long".format(self._natms))
         self._atms = new
+
     @property
     def natms(self):
         """int. number of atoms"""
@@ -131,6 +133,7 @@ class DensityOfStates(EnergyUnit):
         if len(new) != self._nprjs:
             raise ValueError("Inconsistent prjs input. Should be {:d}-long".format(self._nprjs))
         self._prjs = new
+
     @property
     def nprjs(self):
         """int. number of projectors"""
@@ -186,7 +189,7 @@ class DensityOfStates(EnergyUnit):
         return self._egrid
 
     def has_proj(self):
-        """if the projected dos has been parsed"""
+        """if the projected dos has been parsed. anonym to has_pdos"""
         return self._pdos is not None
 
     def get_pdos(self, ispin=None, atm=None, prj=None):

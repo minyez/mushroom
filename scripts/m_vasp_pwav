@@ -15,6 +15,7 @@ from mushroom.core.cell import Cell
 from mushroom.core.bs import split_apb
 from mushroom.core.kpoints import KPath
 from mushroom.core.data import export_2d_data
+from mushroom.core.ioutils import decode_float_ends, get_filename_wo_ext
 from mushroom.graceplot import Plot, prefer_gracecolors
 from mushroom.vasp import read_procar
 
@@ -40,6 +41,10 @@ def _parser():
                    help="scale for the area of partial wave")
     p.add_argument("--spin", type=int, default=0, choices=[0, 1],
                    help="spin to draw")
+    p.add_argument("--savefig", dest="fig_ext", type=str, default=None,
+                   help="figure extension to convert")
+    p.add_argument("-e", dest="energy_range", type=str, default=None,
+                   help="energy range, e.g. 'm8~5' for -8.0 to 5.0")
     return p.parse_args()
 
 def plot_pwav(graph, x, bs, apbs, spin, scale, colors=None):
@@ -77,29 +82,39 @@ def m_v_pwav():
     kp = KPath(kpts, c.b)
     if args.spin >= bs.nspins:
         raise ValueError("ispin {} >= nspins = {}".format(args.spin, bs.nspins))
-    p = Plot(1, 1, description=" ".join(argv))
+    p, ax = Plot.subplots(1, 1, description=" ".join(argv))
     # set limits
-    p[0].set_ylim(ymin=-6, ymax=6)
-    p[0].set_xlim(0.0, kp.x[-1] + 0.001)
+    if args.energy_range is not None:
+        try:
+            emin, emax = decode_float_ends(args.energy_range)
+            ax.set_ylim(ymin=emin, ymax=emax)
+            ax.tight_graph(yscale=None)
+        except ValueError:
+            raise ValueError("invalid energy range", args.energy_range)
+    else:
+        ax.tight_graph(yscale=1.2)
+    ax.set_xlim(0.0, kp.x[-1] + 0.001)
     # draw bands
-    p[0].plot(kp.x, bs.eigen[args.spin, :, :].transpose() - bs.efermi, color="k", symbol="none")
-    p[0].x.set_major(grid=True, color="grey", lw=3, ls="dashed")
+    ax.plot(kp.x, bs.eigen[args.spin, :, :].transpose() - bs.efermi, color="k", symbol="none")
+    ax.x.set_major(grid=True, color="grey", lw=3, ls="dashed")
     ksymbols = None
     if args.ksymbols is not None:
         ksymbols = args.ksymbols.split()
-    p[0].x.set_spec(kp.special_x, labels=ksymbols)
-    p[0].y.set_major(major=3)
-    p[0].y.set_label("Energy (eV)")
+    ax.x.set_spec(kp.special_x, labels=ksymbols)
+    ax.y.set_major(major=3)
+    ax.y.set_label("Energy (eV)")
     # 36.0 is a base factor
     scale = (kp.x[-1] - kp.x[0]) / len(kp.x) * 36.0 * args.scale
     _logger.info("scale set to %r", scale)
     # draw zero line
-    p[0].axhline(0.0, ls="dashed")
+    ax.axhline(0.0, ls="dashed")
 
     if args.apb is not None:
         plot_pwav(p[0], kp.x, bs, args.apb, args.spin, scale)
 
     p.write(file=args.output)
+    if args.fig_ext is not None:
+        p.savefig(get_filename_wo_ext(args.output) + "." + args.fig_ext)
 
 
 if __name__ == "__main__":

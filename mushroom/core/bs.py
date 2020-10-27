@@ -399,82 +399,80 @@ class BandStructure(EnergyUnit):
             raise err
 
     def is_metal(self):
-        '''bool.
-
-        True if the bandstructure belongs to a metal, False otherwise
-        '''
+        """bool. True if the bandstructure belongs to a metal, False otherwise
+        """
         return self.__lazy_bandedge_return("_is_metal")
 
     @property
     def ivbm_sp_kp(self):
-        '''indices of valence band maximum at each spin-kpt channel
+        """indices of valence band maximum at each spin-kpt channel
 
         int, shape (nspins, nkpts)
-        '''
+        """
         return self.__lazy_bandedge_return("_ivbm_sp_kp")
 
     @property
     def icbm_sp_kp(self):
-        '''indices of conduction band minimum at each spin-kpt channel
+        """indices of conduction band minimum at each spin-kpt channel
 
         int, shape (nspins, nkpts)
-        '''
+        """
         return self.__lazy_bandedge_return("_icbm_sp_kp")
 
     @property
     def ivbm_sp(self):
-        '''indices of valence band maximum per spin
+        """indices of valence band maximum per spin
 
         int, shape (nspins, 2), ikpt, iband
-        '''
+        """
         return self.__lazy_bandedge_return("_ivbm_sp")
 
     @property
     def icbm_sp(self):
-        '''indices of conduction band minimum per spin
+        """indices of conduction band minimum per spin
 
         int, shape (nspins, 2), ikpt, iband
-        '''
+        """
         return self.__lazy_bandedge_return("_icbm_sp")
 
     @property
     def ivbm(self):
-        '''index of valence band maximum
+        """index of valence band maximum
 
         int, shape (3,), ispin, ikpt, iband
-        '''
+        """
         return self.__lazy_bandedge_return("_ivbm")
 
     @property
     def icbm(self):
-        '''index of conduction band minimum
+        """index of conduction band minimum
 
         int, shape (3,), ispin, ikpt, iband
-        '''
+        """
         return self.__lazy_bandedge_return("_icbm")
 
     @property
     def vbm_sp_kp(self):
-        '''valiues of valence band maximum at each spin-kpt channel
+        """valiues of valence band maximum at each spin-kpt channel
 
         float, shape (nspins, nkpts)
-        '''
+        """
         return self.__lazy_bandedge_return("_vbm_sp_kp")
 
     @property
     def cbm_sp_kp(self):
-        '''values of conduction band minimum at each spin-kpt channel
+        """values of conduction band minimum at each spin-kpt channel
 
         float, shape (nspins, nkpts)
-        '''
+        """
         return self.__lazy_bandedge_return("_cbm_sp_kp")
 
     @property
     def vbm_sp(self):
-        '''valiues of valence band maximum per spin
+        """valiues of valence band maximum per spin
 
         float, shape (nspins,)
-        '''
+        """
         return self.__lazy_bandedge_return("_vbm_sp")
 
     @property
@@ -495,41 +493,41 @@ class BandStructure(EnergyUnit):
 
     @property
     def cbm(self):
-        '''value of conduction band minimum
+        """value of conduction band minimum
 
         float
-        '''
+        """
         return self.__lazy_bandedge_return("_cbm")
 
     @property
     def band_width(self):
-        '''the lower and upper bound of a band
+        """the lower and upper bound of a band
 
         float, shape (nspins, nbands, 2)
-        '''
+        """
         return self.__lazy_bandedge_return("_band_width")
 
     def direct_gap(self):
-        '''Direct gap between VBM and CBM of each spin-kpt channel
+        """Direct gap between VBM and CBM of each spin-kpt channel
 
         float, shape (nspins, nkpts)
-        '''
+        """
         return self.cbm_sp_kp - self.vbm_sp_kp
 
     def fund_gap(self):
-        '''Fundamental gap for each spin channel.
+        """Fundamental gap for each spin channel.
 
         float, shape (nspins,)
         If it is metal, it is equivalent to the negative value of bandwidth
         of the unfilled band.
-        '''
+        """
         return self.cbm_sp - self.vbm_sp
 
     def fund_trans(self):
-        '''Transition responsible for the fundamental gap
+        """Transition responsible for the fundamental gap
 
         int, shape (nspins, 2)
-        '''
+        """
         vb = np.argmax(self.vbm_sp_kp, axis=1)
         cb = np.argmin(self.vbm_sp_kp, axis=1)
         return tuple(zip(vb, cb))
@@ -598,8 +596,6 @@ class BandStructure(EnergyUnit):
             indices = self._get_band_indices(indices)
         return self._eigen[:, :, indices]
 
-
-    # TODO!!! problem when parsing string of proj. int is okay
     def get_pwav(self, atm=None, prj=None, indices=None):
         """get particular partial wave for projectors `proj` on atoms `atom`
 

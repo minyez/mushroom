@@ -7,6 +7,7 @@ TODO: plot spin-up and spin-down
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from mushroom.graceplot import Plot
 from mushroom.vasp import read_doscar
+from mushroom.core.ioutils import decode_float_ends, get_filename_wo_ext
 
 def _parser():
     """the parser"""
@@ -15,17 +16,27 @@ def _parser():
                    help="DOSCAR file to read")
     p.add_argument("-o", dest="output", type=str, default="plotdos.agr",
                    help="path of agr file to export")
+    p.add_argument("-e", dest="energy_range", type=str, default=None,
+                   help="energy range, e.g. 'm8~5' for -8.0 to 5.0")
+    p.add_argument("--savefig", dest="fig_ext", type=str, default=None,
+                   help="figure extension to convert")
     return p.parse_args()
 
 def m_vasp_dos():
     """main stream"""
     args = _parser()
-    dos = read_doscar(args.doscar)
+    dos = read_doscar(args.doscar, read_pdos=False)
     p, ax = Plot.subplots()
     ax.plot(dos.egrid - dos.efermi, dos.get_dos(), color="k", symbol="none", label="Total")
-    ax.tight_graph(nyticks=5, yscale=1.2)
-    ax.set_xlim(xmin=-6, xmax=6)
-    ax.x.set_major(major=3)
+    if args.energy_range is not None:
+        try:
+            emin, emax = decode_float_ends(args.energy_range)
+            ax.set_xlim(xmin=emin, xmax=emax)
+            ax.tight_graph(yscale=1.2, xscale=None)
+        except ValueError:
+            raise ValueError("invalid energy range", args.energy_range)
+    else:
+        ax.tight_graph(yscale=1.2)
     ax.set_ylim(ymin=0.0)
     ax.set_legend(loc="upper left")
     ax.y.set_ticklabel(switch="off")
@@ -33,6 +44,8 @@ def m_vasp_dos():
     ax.y.set_label("Density of states [arb. units]")
     ax.axvline(0.0, ls="dashed", lw=3, color="grey")
     p.write(file=args.output)
+    if args.fig_ext is not None:
+        p.savefig(get_filename_wo_ext(args.output) + "." + args.fig_ext)
 
 
 if __name__ == "__main__":
