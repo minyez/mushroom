@@ -430,31 +430,6 @@ def print_file_or_iowrapper(s, f=None, mode='w'):
     if isinstance(f, str):
         h.close()
 
-# ====================== PERFORM CALCULATION ======================
-# def common_run_calc_cmd(calc_cmd, fout=None, ferr=None):
-#     '''
-#     Run the calculation command by threading a subprocess calling calc_cmd
-#     '''
-
-#     if fout is None:
-#         ofile = sp.PIPE
-#     else:
-#         ofile = open(fout, 'w')
-
-#     if ferr is None:
-#         efile = sp.PIPE
-#     else:
-#         efile = open(ferr, 'w')
-
-#     p = sp.Popen(calc_cmd, stdout=ofile, stderr=efile, shell=True)
-#     p.wait()
-
-#     if not fout is None:
-#         ofile.close()
-#     if not ferr is None:
-#         efile.close()
-
-
 #class Smearing:
 #    """class with different smearing schemes implemented as static method
 #    """
@@ -468,7 +443,7 @@ def print_file_or_iowrapper(s, f=None, mode='w'):
 #            / sigma
 #            / np.sqrt(2.0 * PI)
 #        )
-#
+
 
 def split_comma(s, convert: Callable = None) -> List:
     """"split a comma-separated string (without whitespace)

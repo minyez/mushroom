@@ -23,6 +23,10 @@
 ### 核心库 `core`
 
 - [ ] type hints
+- band structure analysis `bs`
+  - [ ] `BandStructure` object
+- density of states analysis `dos`
+  - [ ] `DensityOfStates` object
 - [ ] map `p`, `d`, `f` to corresponding projector lists
 
 ### Wannier90

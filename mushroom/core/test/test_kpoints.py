@@ -2,8 +2,9 @@
 # -*- coding: utf-8 -*-
 """test kpoints related functionality"""
 import unittest as ut
+import numpy as np
 
-from mushroom.core.kpoints import find_k_segments, KPath
+from mushroom.core.kpoints import find_k_segments, KPath, MPGrid
 
 class test_kpath(ut.TestCase):
     """test the kpath generation"""
@@ -62,6 +63,28 @@ class test_kpath(ut.TestCase):
             kp = KPath(kpts)
             self.assertEqual(len(spec_x), len(kp.special_x))
             self.assertListEqual(spec_x, list(kp.special_x))
+
+
+class test_mpgrid(ut.TestCase):
+    """test the Monkhorst-Pack grid generation"""
+
+    def test_gamma(self):
+        """Gamma only"""
+        mp = MPGrid(1, 1, 1)
+        self.assertTrue(np.array_equal(mp.mesh(), [[0., 0., 0.]]))
+        self.assertTrue(np.array_equal(mp.mesh([1, 1, 1]), [[0.5, 0.5, 0.5]]))
+
+    def test_mp_wo_shift(self):
+        """Gamma only"""
+        mp = MPGrid(1, 2, 4)
+        self.assertTrue(np.array_equal(mp.mesh(), np.array([[0., 0., -0.25],
+                                                            [0., 0., 0.],
+                                                            [0., 0., 0.25],
+                                                            [0., 0., 0.5],
+                                                            [0., 0.5, -0.25],
+                                                            [0., 0.5, 0.],
+                                                            [0., 0.5, 0.25],
+                                                            [0., 0.5, 0.5]])))
 
 if __name__ == "__main__":
     ut.main()
