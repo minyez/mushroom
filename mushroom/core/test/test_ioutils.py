@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """test io utitlies"""
+from io import StringIO
 import unittest as ut
-from mushroom.core.ioutils import split_comma, decode_int_range, decode_float_ends
+
+from mushroom.core.ioutils import split_comma, decode_int_range, decode_float_ends, grep
 
 # pylint: disable=C0116
 class test_string_decoding(ut.TestCase):
@@ -31,5 +33,35 @@ class test_string_decoding(ut.TestCase):
         self.assertListEqual(split_comma("a-2~1,9", int),
                              ["a-2", "a-1", "a+0", "a+1", 9])
 
+class test_grep(ut.TestCase):
+    """test grep emulation"""
+    def test_raise(self):
+        """raise for bad filename and wrong type"""
+        self.assertRaises(FileNotFoundError, grep, "test", "this_is_a_fake_file.extext",
+                          error_not_found=True)
+        self.assertRaises(TypeError, grep, "test", 1, error_not_found=True)
+
+    def test_return_text(self):
+        """match text"""
+        s = StringIO("unittest\nutut\nut")
+        self.assertListEqual(["utut\n", "ut",], grep("ut", s))
+        s = ["unittest\n", "utut\n", "ut"]
+        self.assertListEqual(["utut\n", "ut",], grep("ut", s))
+
+    def test_return_lineum(self):
+        """match text"""
+        s = StringIO("unittest\nutut\nut")
+        matched, index = grep("ut", s, return_linenum=True)
+        self.assertListEqual(["utut\n", "ut",], matched)
+        self.assertListEqual([1, 2], index)
+
+    def test_group(self):
+        """match text"""
+        s = StringIO("unittest\nutut\nut")
+        matched, index = grep("ut", s, return_group=True, return_linenum=True)
+        self.assertListEqual(["ut", "ut",], [g.group() for g in matched])
+        self.assertListEqual([1, 2], index)
+
 if __name__ == "__main__":
     ut.main()
+

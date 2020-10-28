@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """database related"""
 import pathlib
+from re import search
 from os import makedirs
 from collections.abc import Iterable
 from mushroom.core.logger import create_logger
@@ -59,6 +60,20 @@ class _DBBase:
         else:
             _logger.warning("Entry %s is found at %s. Skip", entry, str(entry_path))
 
+    def filter(self, regex):
+        """filter the database entries
+
+        Args:
+            regex (str): regular expression to filter
+
+        Returns:
+            tuple
+        """
+        filtered = []
+        for i, e in enumerate(self.get_avail_entries()):
+            if search(regex, e) is not None:
+                filtered.append((i, e))
+        return filtered
 
     def get_entry(self, entry):
         """get the file path to the database entry

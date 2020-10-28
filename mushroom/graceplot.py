@@ -2172,17 +2172,16 @@ class Graph(_Graph):
         """set x axis"""
         self.set_axis(axis='alty', **kwargs)
 
-    def plot(self, *xy, **kwargs):
-        """plot a dataset
+    def plot(self, x, ys, **kwargs):
+        """plot a dataset with abscissa ``x`` and data ``ys``
         
-        multiple y can be parsed along with one x.
+        As the name indicates, multiple y can be parsed along with one x.
         In this case, the keyword arguments except `label`
         will be parsed for each y. `label` will be parsed
         only for the first set
         """
-        # check if a band structure like `y` data is parsed
-        if len(xy) == 2 and len(shape(xy[1])) == 2:
-            x, ys = xy
+        # check if multiple y data are parsed
+        if len(shape(ys)) == 2:
             n = self.ndata
             # check error in keyword arguments as well
             extras = {}
@@ -2197,8 +2196,12 @@ class Graph(_Graph):
                 ds.append(Dataset(n+i+1, x, y, **kwargs, **extra))
             self._datasets.extend(ds)
         else: 
-            ds = Dataset(self.ndata, *xy, **kwargs)
+            ds = Dataset(self.ndata, x, ys, **kwargs)
             self._datasets.append(ds)
+
+    def bar(self, bins, y, **kwargs):
+        """convenience method for bar plot"""
+        raise NotImplementedError
 
     def set_legend(self, **kwargs):
         """set up the legend. For arguments, see Legend
@@ -2578,7 +2581,7 @@ class Plot:
         g.set_view(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
         return self._graphs
 
-    def plot(self, *xy, **kwargs):
+    def plot(self, x, y, **kwargs):
         """plot a data set to the first graph
 
         Args:
@@ -2586,7 +2589,7 @@ class Plot:
             igraph (int) : index of graph to plot
             keyword arguments will parsed to Graph object
         """
-        self._graphs[0].plot(*xy, **kwargs)
+        self._graphs[0].plot(x, y, **kwargs)
 
     def title(self, title=None, ig=0, **kwargs):
         """set the title of graph `igraph`"""

@@ -2,7 +2,7 @@
 """this module defines some common used utilities"""
 import os
 import re
-from io import TextIOWrapper
+from io import TextIOWrapper, StringIO
 from collections import OrderedDict
 from collections.abc import Iterable, Callable
 from sys import stdout
@@ -25,7 +25,9 @@ def grep(pattern, filename, is_binary: bool = False, error_not_found: bool = Fal
 
     Args:
         pattern (regex) : pattern to match in the line
-        filename (str, or file handler) : file to search
+        filename (str, file-like, Iterable of str) :
+            str: filename to search
+            file-like: handle of file
         is_binary (bool)
         error_not_found (bool)
         return_group (bool)
@@ -42,22 +44,24 @@ def grep(pattern, filename, is_binary: bool = False, error_not_found: bool = Fal
                 raise FileNotFoundError("{} is not a file".format(filename))
             return None
         mode = 'r' + 'b' * int(is_binary)
-        f = open(filename, mode=mode)
-    elif not isinstance(filename, TextIOWrapper):
-        raise TypeError("expect str or TextIOWrapper, got", type(filename))
+        container = open(filename, mode=mode).readlines()
+    elif isinstance(filename, (TextIOWrapper, StringIO)):
+        container = filename.readlines()
+    elif isinstance(filename, Iterable):
+        container = filename
+    else:
+        raise TypeError("expect str, file-like object or Iterable, got", type(filename))
 
     line_nums = []
     matched = []
-    for i, l in enumerate(f.readlines()):
+    for i, l in enumerate(container):
+        print(l)
         m = re.search(pattern, l)
         if m is not None:
             line_nums.append(i)
-            if return_group:
-                matched.append(m)
-            else:
-                matched.append(l)
+            matched.append({True: m, False: l}[return_group])
     if isinstance(filename, str):
-        f.close()
+        container.close()
 
     if matched == []:
         return None
@@ -285,8 +289,7 @@ def find_vol_dirs(path=".", voldir_pat=None, separator="_", index=1):
 
 
 def conv_string(string, conv2, *indices, sep=None, strips=None):
-    """
-    Split the string and convert substrings to a specified type.
+    """Split the string and convert substrings to a specified type.
 
     Args:
         string (str): the string from which to convert value

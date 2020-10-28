@@ -17,6 +17,8 @@ def _parser():
                         default=Cell.avail_exporters[0], help="output format")
     igrp = parser.add_mutually_exclusive_group()
     igrp.add_argument('-I', dest='input_file', type=str, default=None, help="input file")
+    igrp.add_argument('--filter', type=str, default=None,
+                      help="search and print out cells with file names matching the regex")
     igrp.add_argument('-s', dest='sample', default=None, 
                       help="extract predefined sample. int or str. see --show")
     igrp.add_argument('--show', action="store_true",
@@ -37,6 +39,7 @@ def build_cell():
     if args.input_file and args.add_sample:
         c = Cell.read(args.input_file, form=args.input_format)
         cdb.add_entry(args.add_sample, c.export(args.output_format))
+        return
     if args.sample is not None:
         c = Cell.read(cdb.get_entry(args.sample))
         c.export(args.output_format, filename=args.output_file)
@@ -45,8 +48,12 @@ def build_cell():
         for i, s in enumerate(cdb.get_avail_entries()):
             print("{:>3d} : {:s}".format(i, s))
         return
+    if args.filter is not None:
+        for i, s in cdb.filter(args.filter):
+            print("{:>3d} : {:s}".format(i, s))
+        return
 
-    raise ValueError("specify -I / -s / --show")
+    raise ValueError("specify -I / --filter / -s / --show")
 
 
 if __name__ == "__main__":
