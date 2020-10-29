@@ -280,7 +280,6 @@ def _get_int_const(name, pair, marker):
     Returns:
         int
     """
-
     if marker is None:
         return None
     if isinstance(marker, str):
@@ -291,6 +290,12 @@ def _get_int_const(name, pair, marker):
     if isinstance(marker, int):
         return marker
     raise TypeError("should be str or int")
+
+class _IntMap:
+    pair = {None: None}
+    @classmethod
+    def get(cls, marker):
+        return _get_int_const(cls.__name__, cls.pair, marker)
 
 
 class Color:
@@ -340,7 +345,7 @@ class Color:
         raise ValueError
 
 
-class Pattern:
+class Pattern(_IntMap):
     """Pattern"""
     NONE = 0
     SOLID = 1
@@ -348,9 +353,6 @@ class Pattern:
         "none" : NONE,
         "solid": SOLID,
         }
-    @classmethod
-    def get(cls, marker):
-        return _get_int_const(cls.__name__, cls.pair, marker)
 
 
 class Font(_MapOutput):
@@ -390,7 +392,7 @@ class Font(_MapOutput):
         return "\n".join(self.export())
 
 
-class LineStyle:
+class LineStyle(_IntMap):
     """line style
     
     Args:
@@ -411,12 +413,49 @@ class LineStyle:
         "dotdashed": DOTDASHED, ".-": DOTDASHED,
         }
 
-    @classmethod
-    def get(cls, marker):
-        return _get_int_const(cls.__name__, cls.pair, marker)
+
+class LineType(_IntMap):
+    """type of data line
+    """
+    NONE = 0
+    STRAIGHT = 1
+    LEFT_STAIRS = 2
+    RIGHT_STAIRS = 3
+    SEGMENTS = 4
+    THREE_SEGMENTS = 5
+    INCREASE_X_ONLY = 6
+    DECREASE_X_ONLY = 7
+    pair = {
+        "none": NONE,
+        "straight": STRAIGHT,
+        "left stairs": LEFT_STAIRS, "stair": LEFT_STAIRS,
+        "right stairs": RIGHT_STAIRS, "rstair": RIGHT_STAIRS,
+        "segments": SEGMENTS, "seg": SEGMENTS,
+        "three segments": THREE_SEGMENTS, "3-seg": THREE_SEGMENTS,
+        "increase x only": INCREASE_X_ONLY, "inx": INCREASE_X_ONLY,
+        "decrease x only": DECREASE_X_ONLY, "dex": DECREASE_X_ONLY,
+        }
 
 
-class Just:
+class BaseLineType(_IntMap):
+    """type of data baseline"""
+    ZERO = 0
+    SET_MIN = 1
+    SET_MAX = 2
+    GRAPH_MIN = 3
+    GRAPH_MAX = 4
+    SET_AVERAGE = 5
+    pair = {
+        "none": ZERO, "zero": ZERO,
+        "setmin": SET_MIN, "smin": SET_MIN,
+        "setmax": SET_MAX, "smax": SET_MAX,
+        "graphmin": GRAPH_MIN, "gmin": GRAPH_MIN,
+        "graphmax": GRAPH_MAX, "gmax": GRAPH_MAX,
+        "setaverage": SET_AVERAGE, "average": SET_AVERAGE,
+        }
+
+
+class Just(_IntMap):
     """Justification of text"""
     LEFT = 0
     CENTER = 2
@@ -445,9 +484,6 @@ class Just:
         "rm": RIGHT_MIDDLE,
         "rt": RIGHT_TOP,
         }
-    @classmethod
-    def get(cls, marker):
-        return _get_int_const(cls.__name__, cls.pair, marker)
 
 
 class Switch:
@@ -463,7 +499,6 @@ class Switch:
             return {True: cls.ON, False: cls.OFF}[marker]
         return _get_int_const(cls.__name__, cls.pair, marker)
 
-
     @classmethod
     def get_str(cls, i):
         """get the corresponding attribute string"""
@@ -472,7 +507,7 @@ class Switch:
         return d.get(i)
 
 
-class Position:
+class Position(_IntMap):
     """Class for position contorl"""
     IN = -1
     BOTH = 0
@@ -484,9 +519,6 @@ class Position:
         "out": OUT,
         "auto": AUTO,
         }
-    @classmethod
-    def get(cls, marker):
-        return _get_int_const(cls.__name__, cls.pair, marker)
 
     @classmethod
     def get_str(cls, i):
@@ -774,7 +806,7 @@ class _Line(_BaseOutput):
     """Line object of dataset"""
     _marker = 'line'
     _attrs = {
-        'type': (int, 1, "{:d}"),
+        'type': (int, LineType.STRAIGHT, "{:d}"),
         'linestyle': (int, LineStyle.SOLID, "{:d}"),
         'linewidth': (float, 1.5, "{:3.1f}"),
         'color': (int, Color.BLACK, "{:d}"),
@@ -785,12 +817,13 @@ class Line(_Line):
     """User interface of line object"""
     def __init__(self, lt=None, color=None, pattern=None, width=None, style=None, **kwargs):
         _raise_unknown_attr(self, *kwargs)
-        _Line.__init__(self, type=lt, color=Color.get(color), pattern=Pattern.get(pattern),
-                       linewidth=width, linestyle=LineStyle.get(style))
+        _Line.__init__(self, type=LineType.get(lt), color=Color.get(color),
+                       pattern=Pattern.get(pattern), linewidth=width,
+                       linestyle=LineStyle.get(style))
 
     def set(self, lt=None, color=None, pattern=None, width=None, style=None, **kwargs):
         _raise_unknown_attr(self, *kwargs)
-        self._set(type=lt, color=Color.get(color), pattern=Pattern.get(pattern),
+        self._set(type=LineType.get(lt), color=Color.get(color), pattern=Pattern.get(pattern),
                   linewidth=width, linestyle=LineStyle.get(style))
 
 
@@ -869,7 +902,7 @@ class Legend(_Legend):
         self.box.set(**kwargs)
 
 
-class _Frame(_BaseOutput):
+class _Frame(_BaseOutput, _IntMap):
     """frame"""
     CLOSED = 0
     HALFOPEN = 1
@@ -897,9 +930,6 @@ class _Frame(_BaseOutput):
         'background_pattern': (int, 0, "{:d}"),
         }
 
-    @classmethod
-    def get(cls, marker):
-        return _get_int_const(cls.__name__, cls.pair, marker)
 
 class Frame(_Frame):
     """User interface of frame"""
@@ -924,19 +954,19 @@ class _BaseLine(_BaseOutput):
     """baseline of dataset"""
     _marker = 'baseline'
     _attrs = {
-        'type': (int, 0, '{:d}'),
+        'type': (int, BaseLineType.ZERO, '{:d}'),
         'baseline_switch': (bool, Switch.OFF, '{:s}'),
         }
 
 class BaseLine(_BaseLine):
-    """User interface of baseline"""
+    """User interface of data baseline"""
     def __init__(self, lt=None, switch=None, **kwargs):
         _raise_unknown_attr(self, *kwargs)
-        _BaseLine.__init__(self, type=lt, baseline_switch=Switch.get(switch))
+        _BaseLine.__init__(self, type=BaseLineType.get(lt), baseline_switch=Switch.get(switch))
     
     def set(self, lt=None, switch=None, **kwargs):
         _raise_unknown_attr(self, *kwargs)
-        self._set(type=lt, baseline_switch=Switch.get(switch))
+        self._set(type=BaseLineType.get(lt), baseline_switch=Switch.get(switch))
 
 
 class _DropLine(_BaseOutput):
@@ -957,8 +987,8 @@ class DropLine(_DropLine):
         self._set(dropline_switch=Switch.get(switch))
 
 
-class _Fill(_BaseOutput):
-    """Fill of dataset"""
+class _Fill(_BaseOutput, _IntMap):
+    """Fill of dataset dropline"""
     NONE = 0
     SOLID = 1
     OPAQUE = 2
@@ -976,12 +1006,9 @@ class _Fill(_BaseOutput):
         'pattern': (int, Pattern.SOLID, '{:d}'),
         }
 
-    @classmethod
-    def get(cls, marker):
-        return _get_int_const(cls.__name__, cls.pair, marker)
 
 class Fill(_Fill):
-    """User interface of fill"""
+    """User interface of dropline fill"""
     def __init__(self, ft=None, rule=None, color=None, pattern=None, **kwargs):
         _raise_unknown_attr(self, *kwargs)
         _Fill.__init__(self, type=_Fill.get(ft), rule=rule, color=Color.get(color),
@@ -1060,7 +1087,7 @@ class Annotation(_Annotation):
                   append=append, prepend=prepend, offset=offset)
 
 
-class _Symbol(_BaseOutput):
+class _Symbol(_BaseOutput, _IntMap):
     """Symbols of marker
 
     Args:
@@ -1115,9 +1142,6 @@ class _Symbol(_BaseOutput):
         "skip": (int, 0, "{:d}"),
         }
 
-    @classmethod
-    def get(cls, marker):
-        return _get_int_const(cls.__name__, cls.pair, marker)
 
 class Symbol(_Symbol):
     """user interface of symbol"""
@@ -1504,17 +1528,10 @@ class Axis(_Axis):
         blw (number)
         mjls (str/int) : major tick line style
     """
-
-    ## pylint: disable=W0613
-    #def __new__(cls, axis, **kwargs):
-    #    inst = _Axis.__new__(cls)
-    #    cls.created[axis].append(inst)
-    #    return inst
-
     def __init__(self, axis, switch=None, at=None, offset=None,
                  bar=None, bc=None, bls=None, blw=None,
                  major=None, mjc=None, mjs=None, mjlw=None, mjls=None, mjg=None,
-                 minor=None, mic=None, mis=None, mit=None,
+                 mic=None, mis=None, mit=None,
                  milw=None, mils=None, mig=None,
                  label=None, layout=None, position=None, lsize=None,
                  lfont=None, lc=None, lplace=None,
@@ -1615,15 +1632,7 @@ class Axes(_Axes):
 
 
 class _Dataset(_BaseOutput, _Affix):
-    """Object of grace dataset
-
-    Args:
-        index (int) : index of the dataset
-        *xy : input data
-        datatype (str) :
-        legend (str) :
-        comment (str) :
-    """
+    """Object of grace dataset"""
     _marker = 's'
     _attrs = {
         'hidden': (str, False, '{:s}'),
@@ -1694,6 +1703,8 @@ class Dataset(_Dataset):
                                   af=af, append=append, prepend=prepend, prec=prec, offset=offset)
         if ebc is None:
             ebc = color
+        if ebrc is None:
+            ebrc = color
         self._errorbar = Errorbar(switch=errorbar, position=ebpos, color=ebc, pattern=ebp,
                                   size=ebsize, lw=eblw, ls=ebls, rlw=ebrlw, rls=ebrls, rc=ebrc,
                                   rcl=ebrcl)
@@ -1770,7 +1781,7 @@ class Dataset(_Dataset):
         return slist
 
 
-class Arrow:
+class Arrow(_IntMap):
     """type of line arrow"""
     NONE = 0
     START = 1
@@ -1786,9 +1797,6 @@ class Arrow:
         "filled": FILLED,
         "opaque": OPAQUE,
         }
-    @classmethod
-    def get(cls, marker):
-        return _get_int_const(cls.__name__, cls.pair, marker)
     
 
 class _DrawString(_BaseOutput):
