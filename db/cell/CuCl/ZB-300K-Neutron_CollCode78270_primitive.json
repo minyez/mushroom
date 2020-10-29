@@ -1,0 +1,8 @@
+{
+  "factory": "zincblende",
+  "primitive": true,
+  "atom1": "Cu", 
+  "atom2": "Cl", 
+  "a": 5.420,
+  "unit": "ang"
+}

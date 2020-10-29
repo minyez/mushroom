@@ -37,7 +37,7 @@ def _parser():
     g = p.add_mutually_exclusive_group()
     g.add_argument("-f", dest="wf", type=str, default=None,
                    help="the name/index of workflow to add")
-    g.add_argument("-s", dest='search', type=str, default=None,
+    g.add_argument("--filter", dest='search', type=str, default=None,
                    help="search available workflows with regex")
     g.add_argument("--init-links", dest='init_links', action="store_true",
                    help="initialize all links of dependency scripts")

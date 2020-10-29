@@ -2,7 +2,6 @@ DIST_FILES = mushroom \
 			examples \
 			doc \
 			db \
-			workflows \
 			scripts \
 			requirements.txt \
 			LICENSE \

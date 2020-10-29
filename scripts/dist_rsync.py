@@ -69,12 +69,12 @@ def _parser():
     p.add_argument("-v", dest="verbose", action="store_true", help="verbose mode for debug")
     p.add_argument("--rc", dest="sync_rc", action="store_true",
                    help="sync home rcfile instead of mushroom package")
-    return p.parse_args()
+    return p
 
 
 def dist_rsync():
     """the main flow"""
-    args = _parser()
+    args = _parser().parse_args()
     tarball = args.tarball
     if not tarball:
         tarball = pathlib.Path(__file__).parent / ".." / "dist" / f"mushroom-{__version__}.tar.gz"
@@ -99,3 +99,4 @@ def dist_rsync():
 
 if __name__ == "__main__":
     dist_rsync()
+

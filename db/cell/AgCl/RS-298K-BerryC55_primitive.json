@@ -1,0 +1,9 @@
+{
+  "factory": "rocksalt",
+  "reference": "BerryC55 - Phys. Rev. 97: 676 (1955)",
+  "primitive": true,
+  "atom1": "Ag", 
+  "atom2": "Cl", 
+  "a": 5.55023,
+  "unit": "ang"
+}

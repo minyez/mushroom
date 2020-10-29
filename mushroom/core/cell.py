@@ -869,6 +869,8 @@ When other keyword are parsed, they will be filtered out and no exception will b
                 if path.endswith('POSCAR'):
                     form = 'vasp'
                 _logger.info("Detected format %s", form)
+            if form is None:
+                raise ValueError("failt to get format from extension of file {}".format(path))
             return readers.get(form)(path)
         except KeyError:
             raise CellError("Unsupported reader format: {}".format(form))
@@ -900,6 +902,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
             "bravais_cF": (cls.bravais_cF, ("atom", "a")),
             "perovskite": (cls.perovskite, ("atom1", "atom2", "atom3", "a")),
             "zincblende": (cls.zincblende, ("atom1", "atom2", "a")),
+            "rocksalt": (cls.rocksalt, ("atom1", "atom2", "a")),
             "diamond": (cls.diamond, ("atom", "a")),
             "wurtzite": (cls.wurtzite, ("atom1", "atom2", "a")),
             "rutile": (cls.rutile, ("atom1", "atom2", "a", "c", "u")),
