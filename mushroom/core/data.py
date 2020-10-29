@@ -394,21 +394,29 @@ class Data:
             str, list
         """
         extra_cols = []
-        nd = len(xyz)
+        # check data size
+        try:
+            np.array(xyz, dtype='float')
+        except ValueError:
+            raise ValueError("inconsistent size of xyz data")
+        nd, ndp = np.array(xyz).shape
         if nd <= 1:
             raise ValueError("no enough parsed data")
         # automatic detect
         if datatype is None:
             t = {2: 'xy', 3: 'xyz'}[nd]
             for dt, (n, ec) in cls.DATATYPES.items():
-                if n == nd and dt.startswith(t):
+                if n == nd and dt.startswith(t) and len(ec) == len(extras):
                     _logger.debug("check for datatype %s", dt)
-                    find_all = all([extras.get(required_e, None) for required_e in ec])
+                    edata = [extras.get(required_e, None) for required_e in ec]
+                    find_all = all(edata)
                     if find_all:
-                        t = dt
+                        size_consistent = all(map(lambda x: len(x) == ndp, edata))
+                        if not size_consistent:
+                            raise ValueError("size of extra data are inconsistent with xy")
                         extra_cols = ec
                         _logger.debug("detected datatype %s", dt)
-                        return t, extra_cols
+                        return dt, extra_cols
             raise ValueError("cannot determine the datatype")
         # check consistency
         t = datatype.lower()

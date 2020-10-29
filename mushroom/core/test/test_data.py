@@ -6,10 +6,10 @@ import unittest as ut
 import numpy as np
 
 from mushroom.core.data import (conv_estimate_number,
-                                 get_divisors,
-                                 get_mutual_primes,
-                                 closest_frac,
-                                 Data)
+                                get_divisors,
+                                get_mutual_primes,
+                                closest_frac,
+                                Data)
 
 class test_number_conversion(ut.TestCase):
     """test number conversion"""
@@ -42,6 +42,13 @@ class test_fraction(ut.TestCase):
 
 class test_Data(ut.TestCase):
     """Test Data object"""
+    def test_raise(self):
+        x = [1, 2]
+        y = [3, 4]
+        e = [0.1, 0.2, 0.3]
+        self.assertRaises(ValueError, Data, x, y + [5,])
+        self.assertRaises(ValueError, Data, x, y, dx=e)
+
     def test_get(self):
         """test data extraction"""
         x = np.array((1.0, 2.0, 3.0))

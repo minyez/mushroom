@@ -24,7 +24,7 @@ dist/
 .vscode/
 .pytest_cache/
 .cache/
-.coverage
+*coverage*
 
 # workflow database
 db/workflow/vasp_*/vasp.sh

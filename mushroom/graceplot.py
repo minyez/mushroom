@@ -349,9 +349,11 @@ class Pattern(_IntMap):
     """Pattern"""
     NONE = 0
     SOLID = 1
+    EMPTY = 8
     pair = {
         "none" : NONE,
         "solid": SOLID,
+        "empty": EMPTY,
         }
 
 
@@ -990,12 +992,12 @@ class DropLine(_DropLine):
 class _Fill(_BaseOutput, _IntMap):
     """Fill of dataset dropline"""
     NONE = 0
-    SOLID = 1
-    OPAQUE = 2
+    POLYGON = 1
+    BASELINE = 2
     pair = {
         "none": NONE,
-        "solid": SOLID,
-        "opaque": OPAQUE,
+        "polygon": POLYGON, "poly": POLYGON, "p": POLYGON,
+        "baseline": BASELINE, "b": BASELINE,
         }
 
     _marker = 'fill'
@@ -1027,7 +1029,7 @@ class _Default(_BaseOutput):
         "linewidth": (float, 1.5, "{:3.1f}"),
         "linestyle": (int, LineStyle.SOLID, "{:d}"),
         "color": (int, Color.BLACK, "{:d}"),
-        "pattern": (int, 1, "{:d}"),
+        "pattern": (int, Pattern.SOLID, "{:d}"),
         "font": (int, 0, "{:d}"),
         "char_size": (float, 1.5, "{:8f}"),
         "symbol_size": (float, 1., "{:8f}"),
@@ -1052,16 +1054,32 @@ class Default(_Default):
                   font=font, char_size=charsize, symbol_size=symbolsize,
                   sformat=sformat)
 
+class AnnotationType(_IntMap):
+    """type of annotation value"""
+    NONE = 0
+    X = 1
+    Y = 2
+    XY = 3
+    STRING = 4
+    Z = 5
+    pair = {
+        "none": NONE,
+        "x": X,
+        "y": Y,
+        "xy": XY,
+        "string": STRING, "s": STRING,
+        "z": Z,
+        }
 
 class _Annotation(_BaseOutput):
     """dataset annotation"""
     _marker = "avalue"
     _attrs = {
         "avalue_switch": (bool, Switch.OFF, "{:s}"),
-        "type": (int, 2, "{:d}"),
+        "type": (int, AnnotationType.Y, "{:d}"),
         "char_size": (float, 1., "{:8f}"),
         "font": (int, 0, "{:d}"),
-        "color": (int, 1, "{:d}"),
+        "color": (int, Color.BLACK, "{:d}"),
         "rot": (int, 0, "{:d}"),
         "format": (str, "general", "{:s}"),
         "prec": (int, 3, "{:d}"),
@@ -1071,18 +1089,19 @@ class _Annotation(_BaseOutput):
         }
 
 class Annotation(_Annotation):
-    """user interface of data annotation"""
+    """user interface of data annotation value"""
     def __init__(self, switch=None, at=None, rot=None, color=None, prec=None, font=None,
                  charsize=None, offset=None, append=None, prepend=None, af=None, **kwargs):
         _raise_unknown_attr(self, *kwargs)
-        _Annotation.__init__(self, avalue_switch=Switch.get(switch), type=at, char_size=charsize,
+        _Annotation.__init__(self, avalue_switch=Switch.get(switch), type=AnnotationType.get(at),
+                             char_size=charsize,
                              font=font, color=Color.get(color), rot=rot, format=af, prec=prec,
                              append=append, prepend=prepend, offset=offset)
 
     def set(self, switch=None, at=None, rot=None, color=None, prec=None, font=None,
             charsize=None, offset=None, append=None, prepend=None, af=None, **kwargs):
         _raise_unknown_attr(self, *kwargs)
-        self._set(avalue_switch=Switch.get(switch), type=at, char_size=charsize,
+        self._set(avalue_switch=Switch.get(switch), type=AnnotationType.get(at), char_size=charsize,
                   font=font, color=Color.get(color), rot=rot, format=af, prec=prec,
                   append=append, prepend=prepend, offset=offset)
 
@@ -2587,7 +2606,7 @@ class Plot:
         g = Graph(index=len(self))
         self._graphs.append(g)
         g.set_view(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
-        return self._graphs
+        return g
 
     def plot(self, x, y, **kwargs):
         """plot a data set to the first graph

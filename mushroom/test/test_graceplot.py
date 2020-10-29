@@ -2,6 +2,7 @@
 """Test graceplot"""
 import unittest as ut
 import tempfile
+from itertools import product
 
 from mushroom.graceplot import (_ColorMap, Color, Font, Symbol,
                                 Graph, View, World,
@@ -119,6 +120,10 @@ class test_World(ut.TestCase):
 
 class test_Graph(ut.TestCase):
     """test graph operations"""
+    def test_set(self):
+        """set graph attributes"""
+        g = Graph(index=0)
+        g.set(hidden=False)
 
     def test_graph_properties(self):
         """test graph properties"""
@@ -138,6 +143,16 @@ class test_Graph(ut.TestCase):
         g.set_view(0.0, 0.0, 1.0, 0.5)
         self.assertListEqual(g._view.view_location, [0.0, 0.0, 1.0, 0.5])
 
+    def test_set_legend(self):
+        """test legend setup"""
+        g = Graph(index=0)
+        g.plot([0,], [0,], label="origin")
+        g.set_legend(switch="off", color="red")
+        horis = ["left", "center", "right"]
+        verts = ["upper", "middle", "lower", "bottom"]
+        for hori, vert in product(horis, verts):
+            g.set_legend(loc="{} {}".format(vert, hori))
+
     def test_plot(self):
         """test plotting data"""
         g = Graph(index=1)
@@ -149,6 +164,36 @@ class test_Graph(ut.TestCase):
         self.assertEqual(g[0]._symbol.color, Color.get("red"))
         self.assertEqual(g[0]._line.color, Color.get("red"))
         
+    def test_multiple_plot(self):
+        """test plotting xy data"""
+        g = Graph(index=1)
+        x = [0.0, 1.0, 2.0]
+        y = [[1.0, 2.0, 3.0], [2.0, 3.0, 4.0], [3.0, 4.0, 5.0]]
+        g.plot(x, y, symbol="o", color="red")
+        self.assertEqual(len(y), len(g))
+
+    def test_extremes(self):
+        """test x/ymin/max of graphs"""
+        g = Graph(index=1)
+        g.plot([1,], [2,])
+        g.plot([-1,], [3,])
+        g.plot([2.3,], [-1.2,])
+        self.assertEqual(g.xmin(), -1)
+        self.assertEqual(g.xmax(), 2.3)
+        self.assertEqual(g.min(), -1.2)
+        self.assertEqual(g.max(), 3)
+
+    def test_drawing(self):
+        """test draing objects"""
+        g = Graph(index=1)
+        g.axvline(0.0)
+        # percentage
+        g.axvline(0.5, loctype="view", ymin="10", ymax="80")
+        g.axhline(0.0)
+        # percentage
+        g.axhline(0.5, loctype="view", xmin="10", xmax="80")
+
+
 
 class test_Axis(ut.TestCase):
     """test Axix functionality"""
@@ -180,8 +225,8 @@ class test_Plot(ut.TestCase):
     def test_add_graph(self):
         """graph addition"""
         p = Plot(2, 2)
-        ax = p.add_graph()
-        self.assertEqual(len(ax), 2*2+1)
+        p.add_graph()
+        self.assertEqual(len(p), 2*2+1)
 
     def test_regular_graphs(self):
         """generate regular graph alignment"""
@@ -190,6 +235,15 @@ class test_Plot(ut.TestCase):
         p = Plot(3, 4, hgap=[0.01, 0.0, 0.02], vgap=[0.02, 0.0],
                  width_ratios="3:2:1:4", heigh_ratios="1:3:2")
         self.assertEqual(len(p._graphs), 3*4)
+
+    def test_subplots(self):
+        """test subplots generation"""
+        p, _ = Plot.subplots()
+        self.assertEqual(len(p), 1)
+        p, _ = Plot.subplots(3)
+        self.assertEqual(len(p), 3)
+        p, _ = Plot.subplots(32)
+        self.assertEqual(len(p), 6)
 
     def test_write(self):
         """writing to agr"""
