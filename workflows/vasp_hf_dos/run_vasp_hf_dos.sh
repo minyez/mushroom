@@ -82,7 +82,7 @@ function run_vasp_hf_dos_calc () {
     cp KPOINTS.dos KPOINTS.scf
     incar_change_tag "ISMEAR" -5 "INCAR.hf"
     incar_change_tag "NEDOS" 1200 "INCAR.hf"
-    run_hf_3steps_fixchg "$vaspcmd" "CHGCAR.hf"
+    run_hf_4steps_fixchg_dos "$vaspcmd" "CHGCAR.hf"
   fi
   cd ..
 }

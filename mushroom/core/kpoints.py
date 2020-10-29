@@ -107,7 +107,7 @@ class MPGrid:
 
     def get_ibzkpt(self, space_group: Union[int, str]):
         """get the irreducible kpoints
-        
+
         Args:
             space_group (int or str)
         """
@@ -164,7 +164,7 @@ def find_k_segments(kpts):
 def uniform_kmesh(nk1: int, nk2: int, nk3: int,
                   gamma: bool, shift: Iterable):
     """generate a uniform or homogeneous kpoint mesh
-    
+
     Args:
         nk1, nk2, nk3 (int): the number of division on each reciprocal vector
         gamma (bool)

@@ -181,6 +181,42 @@ function run_hf_3steps_fixchg () {
   backup_results hf
 }
 
+function run_hf_4steps_fixchg_dos () {
+  vaspcmd=$1
+  scfchg=$2
+  cp -f "$scfchg" CHGCAR
+  # step 1: PBE SCF for preconvergence
+  cp KPOINTS.scf KPOINTS
+  cp INCAR.pbe INCAR
+  incar_change_tag "ICHARG" 11
+  $vaspcmd > out.pbe 2>&1
+  warning_chgwav_change "$scfchg" "CHGCAR"
+  backup_results pbe
+  # step 2: coarse hf calculation with fixed charge
+  cp INCAR.coarse INCAR
+  incar_change_tag "ISTART" 1
+  incar_change_tag "ICHARG" 11
+  $vaspcmd > out.coarse 2>&1
+  warning_chgwav_change "$scfchg" "CHGCAR"
+  backup_results coarse
+  # step 3: preconverging hf calculation with Gaussian smearing
+  cp INCAR.hf INCAR
+  incar_change_tag "ISTART" 1
+  incar_change_tag "ISMEAR" 0
+  incar_change_tag "ICHARG" 11
+  $vaspcmd > out.hf 2>&1
+  warning_chgwav_change "$scfchg" "CHGCAR"
+  backup_results hf
+  # step 4: hf calculation with damped (IALGO=53) and Bloechls tetrahedron
+  cp INCAR.hf INCAR
+  incar_change_tag "ISTART" 1
+  incar_change_tag "ISMEAR" -5
+  incar_change_tag "ICHARG" 11
+  incar_change_tag "ALGO" "Damped"
+  $vaspcmd > out.hf_damped 2>&1
+  warning_chgwav_change "$scfchg" "CHGCAR"
+  backup_results hf_damped
+}
 function run_gw_3steps () {
   # run the three step GW calculations
   # $1: vasp command, e.g. mpirun -np 4 vasp

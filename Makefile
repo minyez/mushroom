@@ -10,7 +10,7 @@ SED = gsed
 
 include .objects
 
-.PHONY: default dist clean pytest test commit amend version
+.PHONY: default push clean remote pytest test commit amend version
 
 default: pytest
 
@@ -23,8 +23,9 @@ pytest:
 	$(MAKE) clean
 	@echo "Run pytest"; pytest --cov=./
 
-test: pytest
-	$(MAKE) $(DIST_TARBALL)
+test: pytest remote
+
+remote: $(DIST_TARBALL)
 	scripts/dist_rsync.py
 
 commit: pytest
@@ -34,9 +35,8 @@ commit: pytest
 amend: pytest
 	git commit --amend
 
-dist: $(DIST_TARBALL)
-	@git push
-	scripts/dist_rsync.py
+push:
+	@git push origin master
 
 $(DIST_TARBALL): $(DIST_FILES)
 	mkdir -p dist/$(PROJ)
