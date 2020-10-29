@@ -2593,7 +2593,7 @@ class Plot:
         try:
             return self._graphs[i]
         except IndexError:
-            raise IndexError(f"G.{i} does not exist")
+            raise IndexError("G.{:d} does not exist".format(i))
 
     def add_graph(self, xmin=None, xmax=None, ymin=None, ymax=None):
         """add a new graph

@@ -10,13 +10,14 @@ class test_struct(ut.TestCase):
     """test struct file processing"""
     def test_read(self):
         """read from test struct files"""
-        p = pathlib.Path(__file__).parent
-        with open(p / "data" / "struct.json", 'r') as fp:
+        dir_struct = pathlib.Path(__file__).parent / "data"
+        index_json = dir_struct / "struct.json"
+        with index_json.open('r') as fp:
             verifies = json.load(fp)
-        dir_struct = p / "data"
         for f, verify in verifies.items():
             print("Testing {}".format(f))
-            w2k.Struct.read(dir_struct / f)
+            fpath = dir_struct / f
+            w2k.Struct.read(str(fpath))
             #for k, v in verify.items():
             #    self.assertEqual(dos.__getattribute__(k), v)
 

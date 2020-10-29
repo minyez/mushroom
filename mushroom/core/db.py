@@ -63,7 +63,7 @@ class _DBBase:
         entry_path = self._db_path / entry
         if not entry_path.exists() or rewrite:
             makedirs(entry_path.parent, exist_ok=True)
-            with open(entry_path, 'w') as h:
+            with entry_path.open('w') as h:
                 print(str(data_object), file=h)
             self._available_entries = None
         else:

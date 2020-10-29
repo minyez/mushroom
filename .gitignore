@@ -17,6 +17,9 @@ build/
 dist/
 *.egg-info
 
+# pyenv
+.python-version
+
 # example temporary files
 
 #editor and cache

@@ -5,7 +5,6 @@
 import os
 import tempfile
 import json
-
 import unittest as ut
 
 import numpy as np

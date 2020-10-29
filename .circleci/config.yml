@@ -9,6 +9,7 @@ workflows:
   test:
     jobs:
       - test-py371
+      - test-py35
       #- shellcheck/check
 jobs:
   test-py371: &test-template
@@ -38,3 +39,22 @@ jobs:
             export PYTHONPATH="~/mushroom:$PYTHONPATH"
             pytest --cov=./
             codecov
+  test-py35: &test-template
+    working_directory: ~/mushroom
+    docker:
+      - image: circleci/python:3.5 # every job must define an image for the docker executor and subsequent jobs may define a different image.
+        environment:
+          PIPENV_VENV_IN_PROJECT: false
+    steps:
+      - checkout
+      - run: sudo chown -R circleci:circleci /usr/local/bin
+      - run: sudo chown -R circleci:circleci /usr/local/lib/python3.5/site-packages
+      - run:
+          name: Install dependencies
+          command: |
+            pip install -r requirements.txt
+            pip install pytest
+      - run:
+          command: |
+            export PYTHONPATH="~/mushroom:$PYTHONPATH"
+            pytest
