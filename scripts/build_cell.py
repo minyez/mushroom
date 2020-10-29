@@ -5,7 +5,6 @@
 Use `-s` for creating from predefined sample, stored in `db/cell`.
 Use `--show` for curating available samples.
 """
-from io import StringIO
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from mushroom.core.db import DBCell
 from mushroom.core.cell import Cell
@@ -41,7 +40,7 @@ def build_cell():
         cdb.add_entry(args.add_sample, c.export(args.output_format))
         return
     if args.sample is not None:
-        c = Cell.read(cdb.get_entry(args.sample))
+        c = Cell.read(cdb.get_entry_path(args.sample))
         c.export(args.output_format, filename=args.output_file)
         return
     if args.show:

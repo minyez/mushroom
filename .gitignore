@@ -26,10 +26,10 @@ dist/
 .cache/
 .coverage
 
-# workflows
-workflows/vasp_*/vasp.sh
-workflows/*/common.sh
-!workflows/libs/*.sh
+# workflow database
+db/workflow/vasp_*/vasp.sh
+db/workflow/*/common.sh
+!db/workflow/libs/*.sh
 
 # test scripts with underscore prefix
 scripts/_*.py
