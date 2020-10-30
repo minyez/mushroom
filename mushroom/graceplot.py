@@ -514,8 +514,8 @@ class Switch:
         return d.get(i)
 
 
-class Position(_IntMap):
-    """Class for position contorl"""
+class Pointing(_IntMap):
+    """Class for pointing control"""
     IN = -1
     BOTH = 0
     OUT = 1
@@ -531,6 +531,25 @@ class Position(_IntMap):
     def get_str(cls, i):
         """get the correspond attribute string"""
         d = {cls.IN: "in", cls.BOTH: "both", cls.OUT: "out", cls.AUTO: "auto"}
+        return d.get(i)
+
+class Place(_IntMap):
+    """Class for place contorl"""
+    BOTH = 0
+    NORMAL = 1
+    OPPO = 2
+    pair = {
+        "both": BOTH,
+        "normal": NORMAL,
+        "n": NORMAL,
+        "opposite": OPPO,
+        "oppo": OPPO,
+        }
+
+    @classmethod
+    def get_str(cls, i):
+        """get the correspond attribute string"""
+        d = {cls.NORMAL: "normal", cls.BOTH: "both", cls.OPPO: "opposite"}
         return d.get(i)
 
 
@@ -627,8 +646,10 @@ class _BaseOutput:
                 if attr.endswith("_switch"):
                     temps = attr.replace("_switch", "") + " " + Switch.get_str(attrv)
                 # for inout attribute 
-                elif attr.endswith("_position"):
-                    temps = attr.replace("_position", "") + " " + Position.get_str(attrv)
+                elif attr.endswith("_pointing"):
+                    temps = attr.replace("_pointing", "") + " " + Pointing.get_str(attrv)
+                elif attr.endswith("_place"):
+                    temps = attr.replace("_place", "") + " " + Place.get_str(attrv)
                 # for 2-float location attribute
                 elif attr.endswith("_location"):
                     temps = attr.replace("_location", "") + " " + f.format(*attrv)
@@ -877,7 +898,7 @@ class _Legend(_BaseOutput):
         'vgap': (int, 1, '{:d}'),
         'hgap': (int, 1, '{:d}'),
         'invert': (str, False, '{:s}'),
-        'char_size': (float, 1.2, '{:8f}'),
+        'char_size': (float, 1.6, '{:8f}'),
         }
 
 # pylint: disable=too-many-locals
@@ -1242,7 +1263,7 @@ class _Tick(_BaseOutput):
     _marker = 'tick'
     _attrs = {
         'tick_switch': (bool, Switch.ON, "{:s}"),
-        'tick_position': (bool, Position.IN, "{:s}"),
+        'tick_pointing': (bool, Pointing.IN, "{:s}"),
         'default': (int, 6, "{:d}"),
         'major': (float, 1., "{:3.1f}"),
         'major_size': (float, 1.0, "{:8f}"),
@@ -1257,7 +1278,7 @@ class _Tick(_BaseOutput):
         'minor_linewidth': (float, 1.5, "{:3.1f}"),
         'minor_linestyle': (int, LineStyle.SOLID, "{:d}"),
         'place_rounded': (str, True, "{:s}"),
-        'place_position': (bool, Position.BOTH, "{:s}"),
+        'place_place': (bool, Place.BOTH, "{:s}"),
         'spec_type': (str, None, "{:s}"),
         }
 
@@ -1326,7 +1347,7 @@ class Tick(_Tick):
 
     def set_place(self, rounded=None, place=None, **kwargs):
         _raise_unknown_attr(self, *kwargs)
-        self._set(place_rounded=rounded, place_position=Position.get(place))
+        self._set(place_rounded=rounded, place_place=Place.get(place))
 
     def set_spec(self, locs, labels=None, use_minor=None):
         """set custom specific ticks on axis.
@@ -1382,27 +1403,28 @@ class _Label(_BaseOutput):
     _marker = 'label'
     _attrs = {
         'layout': (str, 'para', '{:s}'),
-        'place_position': (bool, Position.AUTO, '{:s}'),
-        'char_size': (float, 1.5, "{:8f}"),
+        'place': (str, "auto", '{:s}'),
+        'place_location': (bool, [0.0, 0.0], '{:8f}, {:8f}'),
+        'char_size': (float, 1.8, "{:8f}"),
         'font': (int, 0, "{:d}"),
         'color': (int, Color.BLACK, "{:d}"),
-        'place': (str, "normal", "{:s}"),
+        'place_place': (bool, Place.NORMAL, "{:s}"),
         }
 
 class Label(_Label):
     """user interface of axis label"""
-    def __init__(self, label=None, layout=None, position=None, charsize=None,
-                 font=None, color=None, place=None, **kwargs):
+    def __init__(self, label=None, layout=None, place=None, offset=None, charsize=None,
+                 font=None, color=None, **kwargs):
         _raise_unknown_attr(self, *kwargs)
         self.label = label
         if label is None:
             self.label = ""
         self.label = self.label
-        _Label.__init__(self, layout=layout, place_position=Position.get(position),
-                        char_size=charsize, font=font, color=Color.get(color), place=place)
+        _Label.__init__(self, layout=layout, place=place, place_location=offset,
+                        char_size=charsize, font=font, color=Color.get(color))
 
-    def set(self, s=None, layout=None, position=None, charsize=None, font=None,
-            color=None, place=None, **kwargs):
+    def set(self, s=None, layout=None, place=None, charsize=None, font=None,
+            color=None, offset=None, **kwargs):
         """set the label to s
 
         Args:
@@ -1411,9 +1433,8 @@ class Label(_Label):
         _raise_unknown_attr(self, *kwargs)
         if s:
             self.label = str(s)
-        self._set(layout=layout, color=Color.get(color),
-                  place_position=Position.get(position), char_size=charsize,
-                  font=font, place=place)
+        self._set(layout=layout, color=Color.get(color), place_location=offset,
+                  place=place, char_size=charsize, font=font)
 
     def export(self):
         _logger.debug("exporting label: %s", self.label)
@@ -1489,7 +1510,7 @@ class _Errorbar(_BaseOutput):
     _marker = 'errorbar'
     _attrs = {
         'errorbar_switch': (bool, Switch.ON, '{:s}'),
-        'place_position': (bool, Position.BOTH, '{:s}'),
+        'place_place': (bool, Place.BOTH, '{:s}'),
         'color': (int, Color.BLACK, '{:d}'),
         'pattern': (int, 1, '{:d}'),
         'size': (float, 1.0, '{:8f}'),
@@ -1503,21 +1524,21 @@ class _Errorbar(_BaseOutput):
 
 class Errorbar(_Errorbar):
     """User interface of dataset errorbar appearance"""
-    def __init__(self, switch=None, position=None, color=None, pattern=None, size=None,
+    def __init__(self, switch=None, place=None, color=None, pattern=None, size=None,
                  lw=None, ls=None, rlw=None, rls=None, rc=None, rcl=None, **kwargs):
         _raise_unknown_attr(self, *kwargs)
         _Errorbar.__init__(self, errorbar_switch=Switch.get(switch),
-                           place_position=Position.get(position), color=Color.get(color),
+                           place_place=Place.get(place), color=Color.get(color),
                            pattern=Pattern.get(pattern), size=size, linewidth=lw,
                            linestyle=LineStyle.get(ls), riser_linewidth=rlw,
                            riser_linestyle=LineStyle.get(rls), riser_clip_switch=Switch.get(rc),
                            riser_clip_length=rcl)
 
-    def set(self, switch=None, position=None, color=None, pattern=None, size=None,
+    def set(self, switch=None, place=None, color=None, pattern=None, size=None,
             lw=None, ls=None, rlw=None, rls=None, rc=None, rcl=None, **kwargs):
         _raise_unknown_attr(self, *kwargs)
         self._set(errorbar_switch=Switch.get(switch),
-                  place_position=Position.get(position), color=Color.get(color),
+                  place_place=Place.get(place), color=Color.get(color),
                   pattern=Pattern.get(pattern), size=size, linewidth=lw,
                   linestyle=LineStyle.get(ls), riser_linewidth=rlw,
                   riser_linestyle=LineStyle.get(rls), riser_clip_switch=Switch.get(rc),
@@ -1557,8 +1578,8 @@ class Axis(_Axis):
                  major=None, mjc=None, mjs=None, mjlw=None, mjls=None, mjg=None,
                  mic=None, mis=None, mit=None,
                  milw=None, mils=None, mig=None,
-                 label=None, layout=None, position=None, lsize=None,
-                 lfont=None, lc=None, lplace=None,
+                 label=None, layout=None, lplace=None, loffset=None, lsize=None,
+                 lfont=None, lc=None,
                  ticklabel=None, tlf=None, formula=None, append=None, prepend=None,
                  angle=None, tlfont=None, tlc=None, skip=None, stagger=None,
                  tlplace=None, tloffset=None, tlo_switch=None, tlsize=None,
@@ -1569,8 +1590,8 @@ class Axis(_Axis):
         self._bar = Bar(switch=bar, color=bc, ls=bls, lw=blw)
         self._tick = Tick(major=major, mjc=mjc, mjs=mjs, mjlw=mjlw, mjls=mjls, mjg=mjg,
                           mic=mic, mis=mis, mit=mit, milw=milw, mils=mils, mig=mig)
-        self._label = Label(label=label, layout=layout, position=position, charsize=lsize,
-                            font=lfont, color=lc, place=lplace)
+        self._label = Label(label=label, layout=layout, place=lplace, charsize=lsize,
+                            font=lfont, color=lc, offset=loffset)
         self._ticklabel = TickLabel(switch=ticklabel, tlf=tlf, formula=formula, append=append,
                                     prepend=prepend, angle=angle, font=tlfont, color=tlc,
                                     skip=skip, stagger=stagger, offset=tloffset, charsize=tlsize,
@@ -1729,7 +1750,7 @@ class Dataset(_Dataset):
             ebc = color
         if ebrc is None:
             ebrc = color
-        self._errorbar = Errorbar(switch=errorbar, position=ebpos, color=ebc, pattern=ebp,
+        self._errorbar = Errorbar(switch=errorbar, place=ebpos, color=ebc, pattern=ebp,
                                   size=ebsize, lw=eblw, ls=ebls, rlw=ebrlw, rls=ebrls, rc=ebrc,
                                   rcl=ebrcl)
     
@@ -2554,26 +2575,50 @@ class Plot:
     def __len__(self):
         return len(self._graphs)
 
-    def __str__(self):
-        """print the whole agr file"""
+    def _header_lines(self, add_at=True):
+        """return the header"""
         slist = self._head + ["background color {:d}".format(self._background_color),]
         if self.description is not None:
             slist.append("description \"{}\"".format(self.description))
-        headers = [self._page, self._font, self._cm,
-                   self._default, self._timestamp, *self._regions]
+        headers = [self._page, self._font, self._cm, self._default, self._timestamp,
+                   *self._regions,] + self._graphs
         for h in headers:
             slist += h.export()
-        for g in self._graphs:
-            slist += g.export()
+        # drawing objects
         for g in self._graphs:
             for o in g.get_objects():
                 slist += o.export()
         # add @ to each header line
-        slist = self._comment_head + ["@" + v for v in slist]
-        # export all data
+        if add_at:
+            slist = self._comment_head + ["@" + v for v in slist]
+        else:
+            slist += self._comment_head
+        return slist
+
+    def __str__(self):
+        """print the whole agr file"""
+        slist = self._header_lines(add_at=True)
+        # all datasets
         for g in self._graphs:
             slist += g.export_data()
         return "\n".join(slist)
+
+    def write_par(self, file=sys.stdout):
+        """write grace plot parameters to `file`
+
+        Args:
+            file (str or file handle)
+        """
+        s = "\n".join(self._header_lines(add_at=False))
+        if isinstance(file, str):
+            fp = open(file, 'w')
+            print(s, file=fp)
+            fp.close()
+            return
+        if isinstance(file, TextIOWrapper):
+            print(s, file=file)
+            return
+        raise TypeError("should be str or TextIOWrapper type")
 
     def set_default(self, **kwargs):
         """set default format"""
