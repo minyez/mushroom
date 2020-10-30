@@ -77,7 +77,8 @@ def dist_rsync():
     args = _parser().parse_args()
     tarball = args.tarball
     if not tarball:
-        tarball = pathlib.Path(__file__).parent / ".." / "dist" / f"mushroom-{__version__}.tar.gz"
+        tarball = pathlib.Path(__file__).parent \
+                  / ".." / "dist" / "mushroom-{}.tar.gz".format(__version__)
     else:
         tarball = pathlib.Path(tarball)
     if not tarball.is_file or not tarball.name.endswith(".tar.gz"):

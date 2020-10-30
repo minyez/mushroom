@@ -22,6 +22,11 @@ from mushroom.core.ioutils import (greeks,
                                    get_file_ext)
 from mushroom.core.logger import create_logger
 
+__all__ = [
+        "Plot",
+        "extract_data_from_agr",
+        ]
+
 _logger = create_logger("grace")
 del create_logger
 
@@ -2721,7 +2726,7 @@ class Plot:
             except KeyError:
                 raise ValueError("No detected device for extension {}".format(ext))
         _logger.info("save figure to %s", figname)
-        run_gracebat(str(self), figname, device)
+        _run_gracebat(str(self), figname, device)
 
     # Templates
     @classmethod
@@ -2822,7 +2827,7 @@ def extract_data_from_agr(pagr):
     return types, data
 
 
-def run_gracebat(agr, figname, device):
+def _run_gracebat(agr, figname, device):
     """run a gracebat command for figure exporting
 
     Args:

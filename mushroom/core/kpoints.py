@@ -3,7 +3,6 @@
 """utilities related to k-mesh"""
 from itertools import product
 from collections.abc import Iterable
-from typing import Union
 import numpy as np
 try:
     import spglib
@@ -11,6 +10,11 @@ except ImportError:
     spglib = None
 
 from mushroom.core.logger import create_logger
+
+__all__ = [
+        "KPath",
+        "MPGrid",
+        ]
 
 _logger = create_logger("kpoints")
 del create_logger
@@ -79,42 +83,66 @@ class KPath:
 
 
 class MPGrid:
-    """Monkhorst-Pack kpoint mesh"""
+    """Monkhorst-Pack kpoint mesh
+
+    If shift is not parsed, the grids always have Gamma in it.
+
+    Args:
+        nk1, nk2, nk3 (int)
+        spgcell (tuple): lattice vectors, internal positions, atom indices
+        shift (ndarry)
+        sort (bool)
+    """
     _dtype = 'float64'
-    def __init__(self, nk1: int, nk2: int, nk3: int, gamma=True, shift=None, sort=False):
-        self._grids = [nk1, nk2, nk3]
+    def __init__(self, nk1: int, nk2: int, nk3: int, spgcell=None,
+                 shift=None, sort: bool = False):
+        self._kdivs = np.array([nk1, nk2, nk3])
         if shift is None:
             self._shift = np.zeros(3)
         else:
             self._shift = np.array(shift, dtype=self._dtype)
-        self._mesh = uniform_kmesh(nk1, nk2, nk3, gamma=gamma, shift=self._shift)
-        if sort:
-            raise NotImplementedError
+        self._require_sort = sort
+        self._spgcell = spgcell
 
-    def mesh(self, shift=None):
+    @property
+    def kdivs(self):
+        """division along three reciprocal vectors"""
+        return self._kdivs
+
+    @property
+    def grids(self):
+        """array, grids of kmesh 
+
+        Args:
+            shift (Iterable) : half unit of shift along each vector
+
+        Returns:
+            ndarry, all member are integer if shift is zero
+        """
+        return uniform_int_kmesh(self._kdivs[0], self._kdivs[1], self._kdivs[2],
+                                 shift=self._shift)
+
+    @property
+    def kpts(self):
         """array, reciprocal coordinates of mesh points
 
         Args:
-            shift (Iterable) : half unit of shift along each vector"""
-        if shift is not None:
-            return self._mesh + np.divide(shift, self._grids) * 0.5
-        return self._mesh
+            shift (Iterable) : half unit of shift along each vector
+        """
+        return np.divide(self.grids, self._kdivs)
 
     @property
     def nkpts(self):
         """int, number of mesh points"""
-        return len(self._mesh)
+        return len(self.kpts)
 
-    def get_ibzkpt(self, space_group: Union[int, str]):
-        """get the irreducible kpoints
-
-        Args:
-            space_group (int or str)
-        """
-        #if spglib is None:
-        #    raise ImportError("need spglib to compute irreducible kpoints")
-        #print(space_group)
-        raise NotImplementedError
+    @property
+    def ir_grids(self):
+        """get the irreducible grid points"""
+        if self._spgcell is None:
+            raise ValueError("need cell to compute irreducible kpoints")
+        return spglib.get_ir_reciprocal_mesh(self._kdivs, self._spgcell,
+                                             is_shift=self._shift)
 
 
 def find_k_segments(kpts):
@@ -161,24 +189,24 @@ def find_k_segments(kpts):
         ksegs.append((st, ed-1))
     return ksegs
 
-def uniform_kmesh(nk1: int, nk2: int, nk3: int,
-                  gamma: bool, shift: Iterable):
+def uniform_int_kmesh(nk1: int, nk2: int, nk3: int,
+                      shift: Iterable):
     """generate a uniform or homogeneous kpoint mesh
 
     Args:
         nk1, nk2, nk3 (int): the number of division on each reciprocal vector
-        gamma (bool)
         shift (Iterable): containing 3 integers
+
+    Returns:
+        ndarray
     """
     divisions = np.array([nk1, nk2, nk3])
     ikmesh = [[ik1, ik2, ik3] for ik1, ik2, ik3 in product(*map(range, divisions))]
     ikmesh = np.array(ikmesh)
     centering = (divisions - 1) // 2
     ikmesh = ikmesh - centering
-    if not gamma:
-        shift = np.array(shift) + 0.5 * (divisions % 2 - 1)
     try:
-        return (ikmesh + shift) / divisions
+        return ikmesh + 0.5 * np.array(shift)
     except ValueError:
-        raise ValueError("expecte Iterable for shift, got", type(shift))
+        raise ValueError("expected Iterable for shift, got %s" % type(shift))
     

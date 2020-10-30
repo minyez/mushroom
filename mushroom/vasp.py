@@ -16,6 +16,14 @@ from mushroom.core.cell import Cell
 _logger = create_logger("vasp")
 del create_logger
 
+__all__ = [
+        "read_eigen",
+        "read_procar",
+        "read_doscar",
+        "read_poscar",
+        "read_xml",
+        ]
+
 # pylint: disable=R0914
 def _dict_read_doscar(path: str = "DOSCAR",
                       read_pdos: bool = True, ncl: bool = False) -> dict:

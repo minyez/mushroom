@@ -7,6 +7,10 @@ from mushroom.core.crystutils import (get_latt_vecs_from_latt_consts,
                                       get_all_atoms_from_symops)
 from mushroom.core.logger import create_logger
 
+__all__ = [
+        "Struct",
+        ]
+
 _logger = create_logger("wien2k")
 del create_logger
 
@@ -16,7 +20,7 @@ rzero_default_elements = {}
 rmt_default = 1.8
 rmt_default_elements = {}
 
-def get_default_rzero(element):
+def _get_default_rzero(element):
     """get the default R0 for element ``element``
 
     Args:
@@ -31,7 +35,7 @@ def get_default_rzero(element):
         return rzero_default
     return rzero
 
-def get_default_rmt(element):
+def _get_default_rmt(element):
     """get the default RMT for element ``element``
 
     Args:
@@ -150,7 +154,7 @@ class Struct:
         self._rzeros = []
         if rzeros is None:
             for _, atm in enumerate(self._atms_ineq):
-                self._rzeros.append(get_default_rzero(atm))
+                self._rzeros.append(_get_default_rzero(atm))
             return
         if isinstance(rzeros, float):
             for _, _ in enumerate(self._atms_ineq):
@@ -166,7 +170,7 @@ class Struct:
         self._rmts = []
         if rmts is None:
             for _, atm in enumerate(self._atms_ineq):
-                self._rmts.append(get_default_rmt(atm))
+                self._rmts.append(_get_default_rmt(atm))
             return
         if isinstance(rmts, float):
             for _, _ in enumerate(self._atms_ineq):

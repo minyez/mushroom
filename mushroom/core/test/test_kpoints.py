@@ -71,20 +71,30 @@ class test_mpgrid(ut.TestCase):
     def test_gamma(self):
         """Gamma only"""
         mp = MPGrid(1, 1, 1)
-        self.assertTrue(np.array_equal(mp.mesh(), [[0., 0., 0.]]))
-        self.assertTrue(np.array_equal(mp.mesh([1, 1, 1]), [[0.5, 0.5, 0.5]]))
+        self.assertTrue(np.array_equal(mp.kpts, [[0., 0., 0.]]))
+        mp = MPGrid(1, 1, 1, shift=[1, 1, 1])
+        self.assertTrue(np.array_equal(mp.kpts, [[0.5, 0.5, 0.5]]))
 
     def test_mp_wo_shift(self):
-        """Gamma only"""
+        """grids without shift"""
         mp = MPGrid(1, 2, 4)
-        self.assertTrue(np.array_equal(mp.mesh(), np.array([[0., 0., -0.25],
-                                                            [0., 0., 0.],
-                                                            [0., 0., 0.25],
-                                                            [0., 0., 0.5],
-                                                            [0., 0.5, -0.25],
-                                                            [0., 0.5, 0.],
-                                                            [0., 0.5, 0.25],
-                                                            [0., 0.5, 0.5]])))
+        self.assertTrue(np.array_equal(mp.kpts, np.array([[0., 0., -0.25],
+                                                          [0., 0., 0.],
+                                                          [0., 0., 0.25],
+                                                          [0., 0., 0.5],
+                                                          [0., 0.5, -0.25],
+                                                          [0., 0.5, 0.],
+                                                          [0., 0.5, 0.25],
+                                                          [0., 0.5, 0.5]])))
+        self.assertTrue(np.array_equal(mp.grids, np.array([[0, 0., -1],
+                                                           [0, 0, 0],
+                                                           [0, 0, 1],
+                                                           [0, 0, 2],
+                                                           [0, 1, -1],
+                                                           [0, 1, 0],
+                                                           [0, 1, 1],
+                                                           [0, 1, 2]])))
+
 
 if __name__ == "__main__":
     ut.main()

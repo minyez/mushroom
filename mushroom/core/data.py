@@ -7,6 +7,14 @@ import numpy as np
 from mushroom.core.ioutils import trim_after
 from mushroom.core.logger import create_logger
 
+__all__ = [
+        "Data",
+        "export_2d_data",
+        "conv_estimate_number",
+        "closest_frac",
+        "fraction",
+        ]
+
 _logger = create_logger("data")
 del create_logger
 

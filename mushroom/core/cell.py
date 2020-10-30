@@ -34,6 +34,10 @@ from mushroom.core.ioutils import (grep, get_str_indices,
                                    print_file_or_iowrapper)
 from mushroom.core.logger import create_logger
 
+__all__ = [
+        "CellError",
+        "Cell",
+        ]
 
 class CellError(Exception):
     """Exception in cell module

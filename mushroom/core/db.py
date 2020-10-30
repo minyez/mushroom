@@ -7,6 +7,11 @@ from shutil import copy
 from collections.abc import Iterable
 from mushroom.core.logger import create_logger
 
+__all__ = [
+        "DBCell",
+        "DBWorkflow",
+        ]
+
 _logger = create_logger("db")
 del create_logger
 

@@ -9,6 +9,11 @@ from mushroom.core.data import export_2d_data
 from mushroom.core.ioutils import (get_str_indices_by_iden,
                                    split_comma)
 
+__all__ = [
+        "DensityOfStates",
+        "split_ap",
+        ]
+
 _logger = create_logger("dos")
 del create_logger
 
