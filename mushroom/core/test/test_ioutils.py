@@ -2,9 +2,13 @@
 # -*- coding: utf-8 -*-
 """test io utitlies"""
 from io import StringIO
+import os
 import unittest as ut
 
-from mushroom.core.ioutils import split_comma, decode_int_range, decode_float_ends, grep
+from mushroom.core.ioutils import (split_comma, decode_int_range, decode_float_ends, grep,
+                                   get_dirpath, get_file_ext, get_filename_wo_ext,
+                                   get_cwd_name, get_matched_files, trim_after, trim_comment,
+                                   trim_before, trim_both_sides)
 
 # pylint: disable=C0116
 class test_string_decoding(ut.TestCase):
@@ -61,6 +65,28 @@ class test_grep(ut.TestCase):
         matched, index = grep("ut", s, return_group=True, return_linenum=True)
         self.assertListEqual(["ut", "ut",], [g.group() for g in matched])
         self.assertListEqual([1, 2], index)
+
+
+class test_file_path(ut.TestCase):
+    """test of utilities related to file and path"""
+    def test_dirpath(self):
+        """get dirpath"""
+        self.assertEqual("test", os.path.basename(get_dirpath(__file__)))
+        self.assertEqual("/home/user/abc", get_dirpath("/home/user/abc/efg"))
+        self.assertEqual("/bin", get_dirpath("/bin"))
+        
+    def test_file_ext(self):
+        """get file extension"""
+        self.assertEqual("py", get_file_ext(__file__))
+        self.assertEqual("txt", get_file_ext("/home/user/abc.txt"))
+
+    def test_filename_wo_ext(self):
+        """get file extension"""
+        self.assertEqual("test_ioutils", get_filename_wo_ext(__file__))
+        self.assertEqual("abc", get_filename_wo_ext("/home/user/abc.txt"))
+    
+#   get_cwd_name, get_matched_files, trim_after, trim_comment,
+#   trim_before, trim_both_sides
 
 if __name__ == "__main__":
     ut.main()

@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 """classes that manipulate WIEN2k inputs and outputs"""
+from copy import deepcopy
+
 import numpy as np
+
 from mushroom.core.cell import Cell
 from mushroom.core.ioutils import get_cwd_name
 from mushroom.core.crystutils import (get_latt_vecs_from_latt_consts,
@@ -63,7 +66,7 @@ def _read_atm_block(lines):
     Returns:
         atm, pos, rzero, rmt
     """
-    pos = []
+    posi = []
     # swicth the first-atom line and mult line for convenience
     lines[0], lines[1] = lines[1], lines[0]
     mult = int(lines[0].split()[1])
@@ -72,18 +75,18 @@ def _read_atm_block(lines):
     for i in range(mult):
         l = lines[i + 1]
         p = list(map(float, [l[12:22], l[25:35], l[38:48]]))
-        pos.append(p)
+        posi.append(p)
     # the line including atomic symbol, NPT, R0, RMT and Z
     l = lines[mult + 1]
 
-    at = l[:11].replace(" ", "")
-    atm = []
+    at = l[:2].strip()
+    atom = []
     for _ in range(mult):
-        atm.append(at)
+        atom.append(at)
     npt = int(l[15:20])
     rzero = float(l[25:36])
     rmt = float(l[40:53])
-    return atm, pos, npt, rzero, rmt
+    return atom, posi, npt, rzero, rmt
 
 
 def _read_symops(lines):
@@ -110,21 +113,33 @@ def _read_symops(lines):
 
 class Struct:
     """object for generating struct files"""
-    def __init__(self, latt, atms_ineq, posi_ineq,
+    def __init__(self, latt, atms_ineq, posi_ineq, kind="P",
                  npts=None, rzeros=None, rmts=None, symops=None,
                  reference=None, comment=None):
-        self._symops = symops
+        self.symops = symops
+        self.kind = kind
+        self.atms_ineq = deepcopy(atms_ineq)
+        self.posi_ineq = deepcopy(posi_ineq)
         if symops is None:
-            self._symops = {"rotations": [np.diag(3),],
-                            "translations": [np.zero(3),]}
-        atms, posi = get_all_atoms_from_symops(atms_ineq, posi_ineq, self._symops)
+            self.symops = {"rotations": [np.diag(3),],
+                           "translations": [np.zero(3),]}
+        # TODO not very robust way to use lattice kind keyword
+        if kind == "F":
+            atms_ineq = [*atms_ineq,] * 4
+            posi_ineq = np.stack([*posi_ineq,
+                                  *np.add(posi_ineq, [0.0, 0.5, 0.5]),
+                                  *np.add(posi_ineq, [0.5, 0.0, 0.5]),
+                                  *np.add(posi_ineq, [0.5, 0.5, 0.0]),
+                                  ])
+            posi_ineq = np.mod(posi_ineq, 1.0)
+        # get_all_atoms_from_symops will handle the duplicate atoms in
+        # above kind detection
+        atms, posi = get_all_atoms_from_symops(atms_ineq, posi_ineq, self.symops)
         self.cell = Cell(latt, atms, posi, unit="au", coord_sys="D",
                          reference=reference, comment=comment)
-        self._atms_ineq = atms_ineq
-        self._posi_ineq = posi_ineq
-        self._npts = None
-        self._rzeros = None
-        self._rmts = None
+        self.npts = None
+        self.rzeros = None
+        self.rmts = None
         self.__init_npts(npts)
         self.__init_rzeros(rzeros)
         self.__init_rmts(rmts)
@@ -135,52 +150,67 @@ class Struct:
         return self.cell.get_reference()
     
     def __init_npts(self, npts):
-        self._npts = []
+        self.npts = []
         if npts is None:
-            for _, _ in enumerate(self._atms_ineq):
-                self._npts.append(npt_default)
+            for _, _ in enumerate(self.atms_ineq):
+                self.npts.append(npt_default)
             return
         if isinstance(npts, int):
-            for _, _ in enumerate(self._atms_ineq):
-                self._npts.append(npts)
+            for _, _ in enumerate(self.atms_ineq):
+                self.npts.append(npts)
             return
         if isinstance(npts, dict):
-            for _, atm in enumerate(self._atms_ineq):
-                self._npts.append(npts.get(atm))
+            for _, atm in enumerate(self.atms_ineq):
+                self.npts.append(npts.get(atm))
             return
-        self._npts = npts
+        self.npts = npts
 
     def __init_rzeros(self, rzeros):
-        self._rzeros = []
+        self.rzeros = []
         if rzeros is None:
-            for _, atm in enumerate(self._atms_ineq):
-                self._rzeros.append(_get_default_rzero(atm))
+            for _, atm in enumerate(self.atms_ineq):
+                self.rzeros.append(_get_default_rzero(atm))
             return
         if isinstance(rzeros, float):
-            for _, _ in enumerate(self._atms_ineq):
-                self._rzeros.append(rzeros)
+            for _, _ in enumerate(self.atms_ineq):
+                self.rzeros.append(rzeros)
             return
         if isinstance(rzeros, dict):
-            for _, atm in enumerate(self._atms_ineq):
-                self._rzeros.append(rzeros.get(atm))
+            for _, atm in enumerate(self.atms_ineq):
+                self.rzeros.append(rzeros.get(atm))
             return
-        self._rzeros = rzeros
+        self.rzeros = rzeros
 
     def __init_rmts(self, rmts):
-        self._rmts = []
+        self.rmts = []
         if rmts is None:
-            for _, atm in enumerate(self._atms_ineq):
-                self._rmts.append(_get_default_rmt(atm))
+            for _, atm in enumerate(self.atms_ineq):
+                self.rmts.append(_get_default_rmt(atm))
             return
         if isinstance(rmts, float):
-            for _, _ in enumerate(self._atms_ineq):
-                self._rmts.append(rmts)
+            for _, _ in enumerate(self.atms_ineq):
+                self.rmts.append(rmts)
             return
         if isinstance(rmts, dict):
-            for _, atm in enumerate(self._atms_ineq):
-                self._rmts.append(rmts.get(atm))
+            for _, atm in enumerate(self.atms_ineq):
+                self.rmts.append(rmts.get(atm))
             return
-        self._rmts = rmts
+        self.rmts = rmts
+
+    @property
+    def natm(self):
+        """number of atoms in the cell"""
+        return self.cell.natm
+
+    @property
+    def latt(self):
+        """lattice vector of the cell"""
+        return self.cell.latt
+
+    @property
+    def natm_ineq(self):
+        """number of inequivalent"""
+        return len(self.atms_ineq)
 
     def __str__(self):
         s = ""
@@ -200,7 +230,7 @@ class Struct:
             lines = h.readlines()
 
         natm_ineq = int(lines[1].split()[2])
-        latttype = lines[1][:4].strip()
+        kind = lines[1][:4].strip()
         latt_consts = map(lambda i: float(lines[3][10*i:10*i+10]), range(6))
         mode = lines[2][13:].strip()
         latt = get_latt_vecs_from_latt_consts(*latt_consts)
@@ -239,6 +269,6 @@ class Struct:
             rmts[atm[0]] = rmt
         symops = _read_symops(lines[symops_startline:])
         return cls(latt, atms_ineq, posi_ineq, npts=npts, symops=symops, rmts=rmts,
-                   rzeros=rzeros, comment=lines[0].strip())
+                   kind=kind, rzeros=rzeros, comment=lines[0].strip())
     
 

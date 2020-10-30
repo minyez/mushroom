@@ -70,21 +70,22 @@ def grep(pattern, filename, is_binary: bool = False, error_not_found: bool = Fal
     return matched
 
 
-def get_dirpath(filePath):
-    """get the name of directory with filePath
+def get_dirpath(path):
+    """get the absolute path of directory
 
     Args:
-        filePath (str): the string of the path of file
+        path (str): the string of the path of file
 
     Returns:
         str: the absolute path of parent directory, if filepath represents a file,
             otherwise the path of the directory
     """
 
-    _path = os.path.abspath(filePath)
-    if os.path.isdir(_path):
-        _path = _path + "/"
-    return os.path.dirname(_path)
+    p = os.path.abspath(path)
+    if os.path.isdir(p):
+        p += "/"
+    print(p)
+    return os.path.dirname(p)
 
 
 def get_file_ext(path: str) -> str:
