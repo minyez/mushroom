@@ -13,7 +13,7 @@ Any suggestions concerning code style, feature, etc, are totally welcome.
 
 ## Dependencies
 
-- Python >= 3.5
+- Python >= 3.7
 - NumPy
 - Spglib
 - PyCIFRW (for reading cif)

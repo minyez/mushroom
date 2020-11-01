@@ -9,7 +9,7 @@ workflows:
   test:
     jobs:
       - test-py371
-      - test-py35
+      #- test-py35
       #- shellcheck/check
 jobs:
   test-py371: &test-template

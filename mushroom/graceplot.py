@@ -648,8 +648,8 @@ class _BaseOutput:
                 # for inout attribute 
                 elif attr.endswith("_pointing"):
                     temps = attr.replace("_pointing", "") + " " + Pointing.get_str(attrv)
-                elif attr.endswith("_place"):
-                    temps = attr.replace("_place", "") + " " + Placement.get_str(attrv)
+                elif attr.endswith("_placement"):
+                    temps = attr.replace("_placement", "") + " " + Placement.get_str(attrv)
                 # for 2-float location attribute
                 elif attr.endswith("_location"):
                     temps = attr.replace("_location", "") + " " + f.format(*attrv)
