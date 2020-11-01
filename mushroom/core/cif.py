@@ -159,7 +159,7 @@ class Cif:
                 ref = "{} vol {}, pp {}".format(*ref)
             except KeyError:
                 ref = ""
-            self.ref = ref
+            self.ref = ref.replace('\n', ' ')
         return self.ref
 
     @staticmethod

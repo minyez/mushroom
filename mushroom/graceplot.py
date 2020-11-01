@@ -533,7 +533,7 @@ class Pointing(_IntMap):
         d = {cls.IN: "in", cls.BOTH: "both", cls.OUT: "out", cls.AUTO: "auto"}
         return d.get(i)
 
-class Place(_IntMap):
+class Placement(_IntMap):
     """Class for place contorl"""
     BOTH = 0
     NORMAL = 1
@@ -649,7 +649,7 @@ class _BaseOutput:
                 elif attr.endswith("_pointing"):
                     temps = attr.replace("_pointing", "") + " " + Pointing.get_str(attrv)
                 elif attr.endswith("_place"):
-                    temps = attr.replace("_place", "") + " " + Place.get_str(attrv)
+                    temps = attr.replace("_place", "") + " " + Placement.get_str(attrv)
                 # for 2-float location attribute
                 elif attr.endswith("_location"):
                     temps = attr.replace("_location", "") + " " + f.format(*attrv)
@@ -1278,7 +1278,7 @@ class _Tick(_BaseOutput):
         'minor_linewidth': (float, 1.5, "{:3.1f}"),
         'minor_linestyle': (int, LineStyle.SOLID, "{:d}"),
         'place_rounded': (str, True, "{:s}"),
-        'place_place': (bool, Place.BOTH, "{:s}"),
+        'place_placement': (bool, Placement.BOTH, "{:s}"),
         'spec_type': (str, None, "{:s}"),
         }
 
@@ -1302,19 +1302,19 @@ class _Tick(_BaseOutput):
 
 class Tick(_Tick):
     """User interface of axis tick"""
-    def __init__(self, major=None, mjc=None, mjs=None, mjlw=None, mjls=None, mjg=None,
-                 mic=None, mis=None, mit=None,
+    def __init__(self, switch=None, pointing=None, major=None, mjc=None, mjs=None,
+                 mjlw=None, mjls=None, mjg=None, mic=None, mis=None, mit=None,
                  milw=None, mils=None, mig=None, **kwargs):
         _raise_unknown_attr(self, *kwargs)
-        _Tick.__init__(self, major=major, major_color=Color.get(mjc), major_size=mjs,
-                       major_grid_switch=Switch.get(mjg), major_linewidth=mjlw,
-                       major_linestyle=LineStyle.get(mjls),
+        _Tick.__init__(self, tick_switch=Switch.get(switch), tick_pointing=Pointing.get(pointing),
+                       major_color=Color.get(mjc), major_size=mjs, major_grid_switch=Switch.get(mjg),
+                       major=major, major_linewidth=mjlw, major_linestyle=LineStyle.get(mjls),
                        minor_color=Color.get(mic), minor_size=mis, minor_ticks=mit,
                        minor_grid_switch=Switch.get(mig), minor_linewidth=milw,
                        minor_linestyle=LineStyle.get(mils))
 
-    def set(self, major=None, mjc=None, mjs=None, mjlw=None, mjls=None, mjg=None,
-            mic=None, mis=None, mit=None, milw=None, mils=None,
+    def set(self, switch=None, pointing=None, major=None, mjc=None, mjs=None, mjlw=None,
+            mjls=None, mjg=None, mic=None, mis=None, mit=None, milw=None, mils=None,
             mig=None, **kwargs):
         """setup axis ticks
         Args:
@@ -1323,12 +1323,21 @@ class Tick(_Tick):
             mjs, mis (str or int) : tick style of major and minor ticks
         """
         _raise_unknown_attr(self, *kwargs)
-        self._set(major=major, major_color=Color.get(mjc), major_size=mjs,
+        self._set(tick_switch=Switch.get(switch), tick_pointing=Pointing.get(pointing),
+                  major=major, major_color=Color.get(mjc), major_size=mjs,
                   major_grid_switch=Switch.get(mjg), major_linewidth=mjlw,
                   major_linestyle=LineStyle.get(mjls),
                   minor_color=Color.get(mic), minor_size=mis, minor_ticks=mit,
                   minor_grid_switch=Switch.get(mig), minor_linewidth=milw,
                   minor_linestyle=LineStyle.get(mils))
+
+    def set_major(self, major=None, color=None, size=None,
+                  lw=None, ls=None, grid=None, **kwargs):
+        _raise_unknown_attr(self, *kwargs)
+        self._set(major=major, major_color=Color.get(color), major_size=size,
+                  major_grid_switch=Switch.get(grid),
+                  major_linewidth=lw, major_linestyle=LineStyle.get(ls))
+
 
     def set_major(self, major=None, color=None, size=None,
                   lw=None, ls=None, grid=None, **kwargs):
@@ -1347,7 +1356,7 @@ class Tick(_Tick):
 
     def set_place(self, rounded=None, place=None, **kwargs):
         _raise_unknown_attr(self, *kwargs)
-        self._set(place_rounded=rounded, place_place=Place.get(place))
+        self._set(place_rounded=rounded, place_placement=Placement.get(place))
 
     def set_spec(self, locs, labels=None, use_minor=None):
         """set custom specific ticks on axis.
@@ -1408,7 +1417,7 @@ class _Label(_BaseOutput):
         'char_size': (float, 1.8, "{:8f}"),
         'font': (int, 0, "{:d}"),
         'color': (int, Color.BLACK, "{:d}"),
-        'place_place': (bool, Place.NORMAL, "{:s}"),
+        'place_placement': (bool, Placement.NORMAL, "{:s}"),
         }
 
 class Label(_Label):
@@ -1510,9 +1519,9 @@ class _Errorbar(_BaseOutput):
     _marker = 'errorbar'
     _attrs = {
         'errorbar_switch': (bool, Switch.ON, '{:s}'),
-        'place_place': (bool, Place.BOTH, '{:s}'),
+        'place_placement': (bool, Placement.BOTH, '{:s}'),
         'color': (int, Color.BLACK, '{:d}'),
-        'pattern': (int, 1, '{:d}'),
+        'pattern': (int, Pattern.SOLID, '{:d}'),
         'size': (float, 1.0, '{:8f}'),
         'linewidth': (float, 1.5, '{:3.1f}'),
         'linestyle': (int, LineStyle.SOLID, '{:d}'),
@@ -1528,7 +1537,7 @@ class Errorbar(_Errorbar):
                  lw=None, ls=None, rlw=None, rls=None, rc=None, rcl=None, **kwargs):
         _raise_unknown_attr(self, *kwargs)
         _Errorbar.__init__(self, errorbar_switch=Switch.get(switch),
-                           place_place=Place.get(place), color=Color.get(color),
+                           place_placement=Placement.get(place), color=Color.get(color),
                            pattern=Pattern.get(pattern), size=size, linewidth=lw,
                            linestyle=LineStyle.get(ls), riser_linewidth=rlw,
                            riser_linestyle=LineStyle.get(rls), riser_clip_switch=Switch.get(rc),
@@ -1538,7 +1547,7 @@ class Errorbar(_Errorbar):
             lw=None, ls=None, rlw=None, rls=None, rc=None, rcl=None, **kwargs):
         _raise_unknown_attr(self, *kwargs)
         self._set(errorbar_switch=Switch.get(switch),
-                  place_place=Place.get(place), color=Color.get(color),
+                  place_placement=Placement.get(place), color=Color.get(color),
                   pattern=Pattern.get(pattern), size=size, linewidth=lw,
                   linestyle=LineStyle.get(ls), riser_linewidth=rlw,
                   riser_linestyle=LineStyle.get(rls), riser_clip_switch=Switch.get(rc),

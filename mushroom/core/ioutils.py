@@ -24,7 +24,7 @@ def grep(pattern, filename, is_binary: bool = False, error_not_found: bool = Fal
     """emulate command line grep with re package
 
     Args:
-        pattern (regex) : pattern to match in the line
+        pattern (str or re.Pattern object) : pattern to match in the line
         filename (str, file-like, Iterable of str) :
             str: filename to search
             file-like: handle of file
@@ -38,33 +38,33 @@ def grep(pattern, filename, is_binary: bool = False, error_not_found: bool = Fal
             otherwise the string of the matched line
         otherwise another list of integers will be returned as well
     """
+    if not isinstance(pattern, re.Pattern):
+        pattern = re.compile(pattern)
     if isinstance(filename, str):
         if not os.path.isfile(filename):
             if error_not_found:
                 raise FileNotFoundError("{} is not a file".format(filename))
             return None
         mode = 'r' + 'b' * int(is_binary)
-        container = open(filename, mode=mode).readlines()
+        f = open(filename, mode=mode)
+        container = f.readlines()
     elif isinstance(filename, (TextIOWrapper, StringIO)):
         container = filename.readlines()
     elif isinstance(filename, Iterable):
         container = filename
     else:
         raise TypeError("expect str, file-like object or Iterable, got", type(filename))
-
     line_nums = []
     matched = []
     for i, l in enumerate(container):
-        print(l)
-        m = re.search(pattern, l)
+        m = pattern.search(l)
         if m is not None:
+            _logger.debug("grep matched %s", m.group())
             line_nums.append(i)
             matched.append({True: m, False: l}[return_group])
     if isinstance(filename, str):
-        container.close()
+        f.close()
 
-    if matched == []:
-        return None
     if return_linenum:
         return matched, line_nums
     return matched

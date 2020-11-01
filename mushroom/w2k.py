@@ -1,14 +1,17 @@
 # -*- coding: utf-8 -*-
 """classes that manipulate WIEN2k inputs and outputs"""
+from io import StringIO
 from copy import deepcopy
+import re
 
 import numpy as np
 
 from mushroom.core.cell import Cell
-from mushroom.core.ioutils import get_cwd_name
+from mushroom.core.ioutils import get_cwd_name, grep
 from mushroom.core.crystutils import (get_latt_vecs_from_latt_consts,
                                       get_all_atoms_from_symops)
 from mushroom.core.logger import create_logger
+from mushroom.core.bs import BandStructure
 
 __all__ = [
         "Struct",
@@ -123,7 +126,7 @@ class Struct:
         if symops is None:
             self.symops = {"rotations": [np.diag(3),],
                            "translations": [np.zero(3),]}
-        # TODO not very robust way to use lattice kind keyword
+        # TODO if better way to handle lattype?
         if kind == "F":
             atms_ineq = [*atms_ineq,] * 4
             posi_ineq = np.stack([*posi_ineq,
@@ -132,6 +135,16 @@ class Struct:
                                   *np.add(posi_ineq, [0.5, 0.5, 0.0]),
                                   ])
             posi_ineq = np.mod(posi_ineq, 1.0)
+        elif kind == "I":
+            atms_ineq = [*atms_ineq,] * 2
+            posi_ineq = np.stack([*posi_ineq,
+                                  *np.add(posi_ineq, [0.5, 0.5, 0.5]),
+                                  ])
+            posi_ineq = np.mod(posi_ineq, 1.0)
+        elif kind in ["P", "H", "R"]:
+            pass
+        else:
+            raise ValueError("Unsupported lattice type {}".format(kind))
         # get_all_atoms_from_symops will handle the duplicate atoms in
         # above kind detection
         atms, posi = get_all_atoms_from_symops(atms_ineq, posi_ineq, self.symops)
@@ -203,6 +216,16 @@ class Struct:
         return self.cell.natm
 
     @property
+    def atms(self):
+        """all atoms in the cell"""
+        return self.cell.atms
+
+    @property
+    def posi(self):
+        """positions of all atoms in direct coordinates"""
+        return self.cell.posi
+
+    @property
     def latt(self):
         """lattice vector of the cell"""
         return self.cell.latt
@@ -270,5 +293,55 @@ class Struct:
         symops = _read_symops(lines[symops_startline:])
         return cls(latt, atms_ineq, posi_ineq, npts=npts, symops=symops, rmts=rmts,
                    kind=kind, rzeros=rzeros, comment=lines[0].strip())
+
+    def export(self, scale: float = 1.0) -> str:
+        """export the cell and atomic setup in the wien2k format"""
+        raise NotImplementedError
+
+# pylint: disable=C0301
+_energy_kpt_line = re.compile(r"([ -]\d\.\d{12}E[+-]\d{2})([ -]\d\.\d{12}E[+-]\d{2})([ -]\d\.\d{12}E[+-]\d{2})\s*(\d+)\s*(\d+)\s*(\d+)\s*(\d+\.\d+)")
+
+def read_energy(penergy: str, penergy_dn: str = None):
+    """get a BandStructure instance from the wien2k energy file
+
+    Args:
+        penergy (str) : path to the energy file.
+            if penergy_dn is also parsed, penergy is treated as the spin-up eigenvalues
     
+        penergy_dn (str) : path to the eneryg file for spin-down channel
+
+    Notes:
+        since in occupation numbers are not available in the energy file,
+        one need explictly parse the fermi enery
+
+    Returns:
+        kpoints, weights, BandStructure
+    """
+    def _read_one_energy_file(fp, ln_kpts, nb):
+        eigen = []
+        lines = fp.readlines()
+        for ln in ln_kpts:
+            s = StringIO("".join(lines[ln+1:ln+1+nb]))
+            eigen.append(np.loadtxt(s, usecols=[1,]))
+        return np.array(eigen)
+    kpt_lines, linenums = grep(_energy_kpt_line, penergy, error_not_found=True,
+                               return_linenum=True, return_group=True)
+    natm_ineq = linenums[0] // 2
+    kpts = []
+    nbands = []
+    weights = []
+    for mg in kpt_lines:
+        kpts.append(list(map(float, [mg.group(1), mg.group(2), mg.group(3)])))
+        nbands.append(int(mg.group(6)))
+        weights.append(float(mg.group(7)))
+    weights = np.array(weights) / sum(weights)
+    nbands_min = min(nbands)
+    eigen = []
+    with open(penergy, 'r') as h:
+        eigen.append(_read_one_energy_file(h, linenums, nbands_min))
+    if penergy_dn is not None:
+        _, linenums = grep(_energy_kpt_line, penergy_dn, error_not_found=True,
+                           return_linenum=True)
+        eigen.append(_read_one_energy_file(h, linenums, nbands_min))
+    return natm_ineq, kpts, BandStructure(eigen, weight=weights, unit='ry')
 

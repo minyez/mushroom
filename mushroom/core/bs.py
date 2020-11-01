@@ -43,7 +43,7 @@ class BandStructureError(Exception):
 class BandStructure(EnergyUnit):
     """Base class for analyzing band structure data.
 
-    The eigenvalues and occupations should be parsed in a shape of 
+    The eigenvalues should be parsed in a shape of 
     (nspins, nkpts, nbands).
     The dimensions are automatically checked.
     Exception will be raised if their shapes are inconsistent.
@@ -54,9 +54,9 @@ class BandStructure(EnergyUnit):
 
     Args:
         eigen (array-like) : the energy (eigenvalues) of all bands to be considered
-        occ (array-like) : the occupation numbers of all bands
 
     Optional args:
+        occ (array-like) : the occupation numbers of all bands
         weight (array-like) : the weights of each kpoint, 1-d array,
             either int or float. default to 1.0
         unit ('ev','ry','au'): the unit of the eigenvalues
@@ -68,18 +68,16 @@ class BandStructure(EnergyUnit):
     Attributes:
     """
     _dtype = "float64"
-
-    def __init__(self, eigen, occ, weight=None, unit='ev', efermi=None,
+    # pylint: disable=R0912,R0915
+    def __init__(self, eigen, occ=None, weight=None, unit='ev', efermi=None,
                  pwav=None, atms=None, prjs=None):
         shape_e = np.shape(eigen)
-        shape_o = np.shape(occ)
-        consist = [len(shape_e) == DIM_EIGEN_OCC,
-                   shape_e == shape_o, shape_e[0] <= 2]
-        if not all(consist):
-            info = "Bad eigen and occ shapes: {}, {}".format(
-                *map(np.shape, (eigen, occ)))
-            _logger.error(info)
-            raise BandStructureError
+        if occ is not None:
+            consist = [len(shape_e) == DIM_EIGEN_OCC, shape_e[0] <= 2]
+            if not all(consist):
+                info = "Bad eigen shape"
+                _logger.error(info)
+                raise BandStructureError
         self._nspins, self._nkpts, self._nbands = shape_e
         # if weight is manually parsed
         if weight is not None:
@@ -93,30 +91,43 @@ class BandStructure(EnergyUnit):
 
         try:
             self._eigen = np.array(eigen, dtype=self._dtype)
-            self._occ = np.array(occ, dtype=self._dtype)
             self._weight = np.array(weight, dtype=self._dtype)
         except TypeError:
-            _logger.error("failt to convert eigen/occ/weight to ndarray")
+            _logger.error("failt to convert eigen/weight to ndarray")
             raise BandStructureError
 
         EnergyUnit.__init__(self, eunit=unit)
         self._emulti = {1: 2, 2: 1}[self._nspins]
-        # channel: ispin, ikpt
-        self._nelect_sp_kp = np.sum(self._occ, axis=2) * self._emulti
         # One may parse the kpoints with all zero weight for band calculation
         # In this case, reassign with unit weight
         if np.isclose(np.sum(self._weight), 0.0):
             self._weight[:] = 1.0
-        self._nelect_sp = np.dot(self._nelect_sp_kp, self._weight) / np.sum(self._weight)
-        self._nelect = np.sum(self._nelect_sp)
-
+        # set occupation numbers
+        self._occ = None
+        self._efermi = None
+        # channel: ispin, ikpt
+        self._is_metal = None
+        self._nelect_sp_kp = None
+        self._vbm_sp_kp = None
+        self._cbm_sp_kp = None
+        self._vbm_sp = None
+        self._cbm_sp = None
+        self._vbm = None
+        self._cbm = None
+        self._ivbm_sp_kp = None
+        self._icbm_sp_kp = None
+        self._ivbm_sp = None
+        self._icbm_sp = None
+        self._ivbm = None
+        self._icbm = None
+        self._nelect_sp = None
+        self._nelect = None
         self._has_infty_cbm = False
-        if efermi is not None:
-            assert isinstance(efermi, Real)
-            self._efermi = efermi
-        else:
-            self.compute_band_edges()
-            self._efermi = self.vbm
+        self._vbm = None
+        self._cbm = None
+        self._band_width = None
+        if occ is not None:
+            self.set_occupations(occ, efermi)
 
         _logger.info("Read bandstructure. Dimensions")
         _logger.info(">> nspins = %d", self._nspins)
@@ -130,6 +141,30 @@ class BandStructure(EnergyUnit):
         self._nprjs = 0
         if pwav is not None:
             self.parse_proj(pwav=pwav, atms=atms, prjs=prjs)
+
+    def set_occupations(self, occ, efermi=None):
+        """set occupation numbers
+
+        Args:
+            occ (ndarray): occupation numbers, (nspins, nkpts, nbands)
+        """
+        if self._occ is not None:
+            raise AttributeError("occupations are already set")
+        try:
+            shape_o = np.shape(occ)
+        except ValueError:
+            raise ValueError("can not retrive the shape of input occupations")
+        shape_e = (self._nspins, self._nkpts, self._nbands)
+        if shape_e != shape_o:
+            info = "inconsistent eigen/occ shapes: {}, {}".format(shape_e, shape_o)
+            _logger.error(info)
+            raise BandStructureError
+        self._occ = np.array(occ, dtype=self._dtype)
+        self._nelect_sp_kp = np.sum(self._occ, axis=2) * self._emulti
+        self._nelect_sp = np.dot(self._nelect_sp_kp, self._weight) / np.sum(self._weight)
+        self._nelect = np.sum(self._nelect_sp)
+        if isinstance(efermi, Real):
+            self._efermi = efermi
 
     def get_band_indices(self, *bands):
         '''Filter the band indices in ``bands``. 
@@ -188,7 +223,8 @@ class BandStructure(EnergyUnit):
                    self._cbm_sp, self._cbm_sp_kp,
                   ]
         if coef != 1:
-            self._efermi *= coef
+            if self._efermi is not None:
+                self._efermi *= coef
             self._vbm *= coef
             self._cbm *= coef
             for item in to_conv:
@@ -212,7 +248,15 @@ class BandStructure(EnergyUnit):
 
     @property
     def efermi(self):
-        '''float. The energy of Fermi level.'''
+        '''float. The energy of Fermi level.
+
+        If fermi energy was not manually set and occ is available, it will be computed
+        as the valence band maximum of first spin channel.
+
+        None, if neither occupation nor explicit fermi energy was parsed
+        '''
+        if self._efermi is None:
+            self._efermi = self.vbm
         return self._efermi
 
     @property
@@ -309,6 +353,7 @@ class BandStructure(EnergyUnit):
         """
         return self._pwav
 
+    # pylint: disable=R0912,R0915
     def compute_band_edges(self, reload=False):
         '''compute the band edges on each spin-kpt channel
 
@@ -322,10 +367,11 @@ class BandStructure(EnergyUnit):
         Args:
             reload (bool) : redo the calculation of band edges
         '''
+        if self._occ is None:
+            raise BandStructureError("need occupation number before computing band edges!")
         is_occ = self._occ > THRES_OCC
-        try:
-            self.__getattribute__("_vbm")
-        except AttributeError:
+        vbm = self.__getattribute__("_vbm")
+        if vbm is None:
             pass
         else:
             if not reload:
@@ -361,10 +407,10 @@ class BandStructure(EnergyUnit):
                     self._cbm_sp_kp[i, j] = np.infty
                 else:
                     self._cbm_sp_kp[i, j] = self.eigen[i, j, vb+1]
-        self._bandWidth = np.zeros(
+        self._band_width = np.zeros(
             (self.nspins, self.nbands, 2), dtype=self._dtype)
-        self._bandWidth[:, :, 0] = np.min(self._eigen, axis=1)
-        self._bandWidth[:, :, 1] = np.max(self._eigen, axis=1)
+        self._band_width[:, :, 0] = np.min(self._eigen, axis=1)
+        self._band_width[:, :, 1] = np.max(self._eigen, axis=1)
         # VB indices
         self._ivbm_sp = np.array(((0, 0),)*self.nspins)
         self._vbm_sp = np.max(self._vbm_sp_kp, axis=1)
@@ -388,20 +434,22 @@ class BandStructure(EnergyUnit):
         self._icbm[1:3] = self._icbm_sp[self._icbm[0], :]
         self._cbm = self._cbm_sp[self._icbm[0]]
 
-    def __lazy_bandedge_return(self, attr):
+    def __lazy_bandedge_return(self, attr=None):
         """lazy return of attribute related to band edges
 
         Args:
             attr (str): name of attribute
         """
-        try:
-            self.__getattribute__(attr)
-        except AttributeError:
+        if attr is None:
             self.compute_band_edges()
-        try:
-            return self.__getattribute__(attr)
-        except AttributeError as err:
-            raise err
+            return None
+        v = self.__getattribute__(attr)
+        if v is None:
+            self.compute_band_edges()
+        v = self.__getattribute__(attr)
+        if v is None:
+            raise ValueError("attribute {} is not available for band".format(attr.strip("_")))
+        return v
 
     def is_metal(self):
         """bool. True if the bandstructure belongs to a metal, False otherwise
