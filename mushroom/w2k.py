@@ -1,14 +1,16 @@
 # -*- coding: utf-8 -*-
 """classes that manipulate WIEN2k inputs and outputs"""
+import pathlib
+from os import PathLike
 from io import StringIO
-from typing import Sequence
+from typing import Sequence, Union
 import re
 
 import numpy as np
 
 from mushroom.core.cell import Cell
 from mushroom.core.elements import NUCLEAR_CHARGE
-from mushroom.core.ioutils import get_cwd_name, grep, print_file_or_iowrapper
+from mushroom.core.ioutils import grep, print_file_or_iowrapper, get_filename_wo_ext
 from mushroom.core.crystutils import (get_latt_vecs_from_latt_consts,
                                       atms_from_sym_nat,
                                       get_latt_consts_from_latt_vecs)
@@ -114,6 +116,57 @@ def _read_symops(lines):
         symops["rotations"][i, :, :] = r
         symops["translations"][i, :] = t
     return symops
+
+def get_casename(dirpath: Union[str, PathLike] = ".", casename: str = None):
+    """get the case name of the wien2k calculation under directory `dirpath`
+    
+    It will first search for .struct file under dirpath and
+    return the filename without extension if found.
+    Otherwise the name of the directory will be returned
+
+    Args:
+        dirpath (str) : the path to the wien2k working directory
+        casename (str) : manually specified casename.
+            if casename.struct is not found under dirpath,
+            FileNotFoundError will be raised
+    """
+    if isinstance(dirpath, str):
+        dirpath = pathlib.Path(dirpath)
+    abspath = dirpath.resolve()
+    if abspath.is_dir():
+        if casename is not None:
+            tentative = abspath / "{}.struct".format(casename)
+            if tentative.exists():
+                return casename
+            raise FileNotFoundError("{}.struct is not found under {}".format(casename, abspath))
+        for filename in abspath.glob("*.struct"):
+            return get_filename_wo_ext(filename)
+        return abspath.name
+    raise TypeError("{} is not a directory".format(abspath))
+
+def get_inputs(suffix: str, *suffices, dirpath: Union[str, PathLike] = ".",
+               casename: str = None, relative=None):
+    """get path of input files given the suffices
+
+    Args:
+        suffix and suffices (str): suffices of input files to get
+        dirpath (path-like)
+        relative (str) : if set to pathlike, the output will be relative file paths to `relative`.
+            If set to true, only the filenames will be returned
+
+    Returns:
+        list, the absolute path of input files
+    """
+    suffices = [suffix,] + list(suffices)
+    if isinstance(dirpath, str):
+        dirpath = pathlib.Path(dirpath)
+    home = dirpath.resolve()
+    if relative is not None:
+        if relative is True:
+            relative = home
+        home = home.relative_to(relative)
+    casename = get_casename(dirpath=dirpath, casename=casename)
+    return ["{}.{}".format(home / casename, s) for s in suffices]
 
 class Struct:
     """object for generating struct files
@@ -309,7 +362,7 @@ class Struct:
             pstruct (str): path to the file to read as WIEN2k struct
         """
         if pstruct is None:
-            pstruct = get_cwd_name() + ".struct"
+            pstruct = get_casename() + ".struct"
         with open(pstruct, "r") as h:
             lines = h.readlines()
 

@@ -8,7 +8,8 @@ import tempfile
 
 import numpy as np
 
-from mushroom.w2k import Struct, _energy_kpt_line, read_energy
+from mushroom.w2k import (Struct, _energy_kpt_line, read_energy,
+                          get_casename, get_inputs)
 
 class test_struct(ut.TestCase):
     """test struct file processing"""
@@ -72,6 +73,27 @@ class test_energy(ut.TestCase):
             self.assertEqual(natm_ineq, verify["natm_ineq"])
             self.assertTrue(np.allclose(kpts, verify["kpts"]))
 
+class test_utilities(ut.TestCase):
+    """test utilities for wien2k analysis"""
+    testdir = pathlib.Path(__file__).parent / "wien2k_testdir"
+
+    def test_get_casename(self):
+        """get the casename"""
+        self.assertEqual("fake", get_casename(self.testdir))
+        self.assertRaises(FileNotFoundError, get_casename, dirpath=self.testdir,
+                          casename="casename_not_exist")
+        self.assertEqual("fake", get_casename(dirpath=self.testdir, casename="fake"))
+        self.assertEqual("test", get_casename(pathlib.Path(__file__).parent))
+                          
+    def test_get_inputs(self):
+        """get inputs files"""
+        self.assertListEqual(get_inputs("struct", dirpath=self.testdir, relative=self.testdir),
+                             ["fake.struct",])
+        self.assertListEqual(get_inputs("struct", "in1", "inc", "core",
+                                        dirpath=self.testdir, relative=True),
+                             ["fake.struct", "fake.in1", "fake.inc", "fake.core"])
+        self.assertListEqual(get_inputs("struct", dirpath=self.testdir),
+                             ["{}.struct".format(self.testdir / "fake"),])
 
 if __name__ == "__main__":
     ut.main()
