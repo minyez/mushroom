@@ -1,53 +1,90 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""draw total density of states from vasp output DOSCAR and export to an XmGrace plot.
+"""draw projected density of states from vasp output DOSCAR and export to an XmGrace plot.
 
 TODO: plot spin-up and spin-down
 """
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
-from mushroom.graceplot import Plot
-from mushroom.vasp import read_doscar
+
+from mushroom.core.cell import Cell
+from mushroom.core.dos import split_ap
+from mushroom.core.data import export_2d_data
 from mushroom.core.ioutils import decode_float_ends, get_filename_wo_ext
+from mushroom.graceplot import Plot, prefer_gracecolors
+from mushroom.vasp import read_doscar
 
 def _parser():
     """the parser"""
     p = ArgumentParser(description=__doc__, formatter_class=RawDescriptionHelpFormatter)
     p.add_argument("-d", dest="doscar", type=str, default="DOSCAR",
                    help="DOSCAR file to read")
-    p.add_argument("-o", dest="output", type=str, default="plotdos.agr",
-                   help="path of agr file to export")
+    p.add_argument("-o", dest="output", type=str, default="plotpdos.agr",
+                   help="path of agr file to export projected density of states")
+    p.add_argument("--pos", dest="poscar", type=str, default="POSCAR",
+                   help="POSCAR structure file to read atoms")
     p.add_argument("-e", dest="energy_range", type=str, default=None,
                    help="energy range, e.g. 'm8~5' for -8.0 to 5.0")
+    p.add_argument("--ap", type=str, default=None,
+                   help="atom-projector (ap) string, separated by whitespace")
     p.add_argument("--savefig", dest="fig_ext", type=str, default=None,
                    help="figure extension to convert")
     return p
 
-def m_vasp_dos():
+def plot_pdos(graph, dos, aps, spin=None, colors=None):
+    """
+    Args:
+        graph (Graph)
+        dos (DensityOfStates)
+        aps (str) : atom-projector 
+    """
+    if colors is None:
+        colors = prefer_gracecolors
+    pdos_dat = open('pdos.dat', 'w')
+    egrid = dos.egrid
+    for i, ap in enumerate(aps.split()):
+        atms, prjs = split_ap(ap)
+        pdos = dos.get_pdos(ispin=spin, atm=atms, prj=prjs)
+        graph.plot(egrid-dos.efermi, pdos, color=colors[i%len(colors)], symbol="none",
+                   label="-".join(str(x) for x in ap.split(":")))
+        print("#atom-projector:{}".format(ap), file=pdos_dat)
+        print("\n".join(export_2d_data([egrid, pdos], transpose=True)),
+              file=pdos_dat, end="\n\n")
+    pdos_dat.close()
+
+def m_vasp_pdos():
     """main stream"""
     args = _parser().parse_args()
-    dos = read_doscar(args.doscar, read_pdos=False)
+    read_pdos = args.ap is not None
+    dos = read_doscar(args.doscar, read_pdos=read_pdos)
     p, ax = Plot.subplots()
     ax.plot(dos.egrid - dos.efermi, dos.get_dos(), color="k", symbol="none", label="Total")
     if args.energy_range is not None:
         try:
             emin, emax = decode_float_ends(args.energy_range)
             ax.set_xlim(xmin=emin, xmax=emax)
-            ax.tight_graph(yscale=1.2, xscale=None)
+            ax.tight_graph(yscale=1.1, xscale=None)
         except ValueError:
             raise ValueError("invalid energy range", args.energy_range)
     else:
-        ax.tight_graph(yscale=1.2)
+        ax.tight_graph(yscale=1.1)
+
     ax.set_ylim(ymin=0.0)
     ax.set_legend(loc="upper left")
-    ax.y.set_ticklabel(switch="off")
     ax.x.set_label("Energy ({})".format(dos.unit))
     ax.y.set_label("Density of states [arb. units]", charsize=2.)
+    ax.y.set_ticklabel(switch="off")
     ax.axvline(0.0, ls="dashed", lw=3, color="grey")
-    p.write(file=args.output)
 
+    if read_pdos:
+        c = Cell.read(args.poscar)
+        dos.atms = c.atms
+        plot_pdos(ax, dos, args.ap)
+
+    p.write(file=args.output)
     if args.fig_ext is not None:
         p.savefig(get_filename_wo_ext(args.output) + "." + args.fig_ext)
 
 
 if __name__ == "__main__":
-    m_vasp_dos()
+    m_vasp_pdos()
+

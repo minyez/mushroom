@@ -85,7 +85,7 @@ def _read_atm_block(lines):
     # the line including atomic symbol, NPT, R0, RMT and Z
     l = lines[mult + 1]
     # atom symbol may include an index
-    atm = l[:4]
+    atm = l[:3]
     npt = int(l[15:20])
     rzero = float(l[25:36])
     rmt = float(l[40:53])
@@ -102,7 +102,8 @@ def _read_symops(lines):
         dict with two keys, "rotations" and "translations"
     """
     nops = int(lines[0].split()[0])
-    symops = {"rotations": np.zeros((nops, 3, 3)), "translations": np.zeros((nops, 3))}
+    symops = {"rotations": np.zeros((nops, 3, 3), dtype='int'),
+              "translations": np.zeros((nops, 3))}
     for i in range(nops):
         st = 4 * i + 1
         r = np.array([
@@ -351,9 +352,9 @@ class Struct:
             atms_types.append(atm)
             posi_types.append(p)
             isplits.append(isplit)
-            npts[atm[0]] = npt
-            rzeros[atm[0]] = rzero
-            rmts[atm[0]] = rmt
+            npts[atm] = npt
+            rzeros[atm] = rzero
+            rmts[atm] = rmt
         symops = _read_symops(lines[symops_startline:])
         return cls(latt, atms_types, posi_types, npts=npts, symops=symops, rmts=rmts,
                    isplits=isplits, kind=kind, rzeros=rzeros, rotmats=rotmats, 
@@ -384,7 +385,7 @@ class Struct:
             for i in range(1, mult):
                 slist_atm.append("{:8d}: X={:10.8f} Y={:10.8f} Z={:10.8f}".format(iat+1,
                                                                                   *posi[i, :]))
-            slist_atm.append("{:<4s}{:<5s}  NPT={:5d}  R0={:10.8f} RMT={:10.4f}{:>5s}{:5.1f}"\
+            slist_atm.append("{:<3s}{:<6s}  NPT={:5d}  R0={:10.8f} RMT={:10.4f}{:>5s}{:5.1f}"\
                              .format(at, "", npt, rzero, rmt, "Z:", Z))
             rotmat_format = "\n".join(["{:<20s}{:10.7f}{:10.7f}{:10.7f}",] * 3)
             slist_atm.append(rotmat_format.format("LOCAL ROT MATRIX", *rotmat[0, :],

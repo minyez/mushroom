@@ -4,6 +4,7 @@
 import json
 import pathlib
 import unittest as ut
+import tempfile
 
 import numpy as np
 
@@ -22,13 +23,20 @@ class test_struct(ut.TestCase):
             fpath = dir_struct / f
             s = Struct.read(str(fpath))
             for k, v in verify.items():
+                objv = s.__getattribute__(k)
+                msg = "error testing {}: {}, {}".format(k, objv, v)
                 if isinstance(v, (int, float)):
-                    self.assertEqual(s.__getattribute__(k), v)
-                #else:
-                #    self.assertTrue(np.array_equal(v, s.__getattribute__(k)))
+                    self.assertEqual(objv, v, msg=msg)
+                elif isinstance(v, list):
+                    self.assertTrue(np.array_equal(objv, v), msg)
+            tf = tempfile.NamedTemporaryFile()
+            with open(tf.name, 'w') as h:
+                s.write(h)
+            tf.close()
 
 class test_match_lines(ut.TestCase):
     """test matching Fortran-formatted lines"""
+    # pylint: disable=C0301
     def test_match_one_energy_kpt_line(self):
         """kpt line"""
         valid_lines = [
