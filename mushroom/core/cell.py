@@ -564,6 +564,22 @@ When other keyword are parsed, they will be filtered out and no exception will b
         _d = OrderedDict.fromkeys(self._atms)
         return list(_d.keys())
 
+    def get_atm_indices(self, symbol: str) -> List[int]:
+        """get the indices of atom ``symbol`` in the atoms list
+
+        Args:
+            symbol (str)
+        """
+        return list(i for i, a in enumerate(self._atms) if a == symbol)
+
+    def get_atm_posi(self, symbol: str) -> List:
+        """get the positions of atom ``symbol`` in the atoms list
+
+        Args:
+            symbol (str)
+        """
+        return self._posi[tuple(i for i, a in enumerate(self._atms) if a == symbol), :]
+
     @property
     def type_mapping(self):
         """Map index (int) to atom type (str)
@@ -574,7 +590,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
             _dict.update({i: _at})
         return _dict
 
-    def type_index(self, start: int = 0) -> List[str]:
+    def type_index(self, start: int = 0) -> List[int]:
         """Indices of atomic type of all atoms
 
         Args:
@@ -742,18 +758,28 @@ When other keyword are parsed, they will be filtered out and no exception will b
         return self.latt, self.posi, self.type_index()
 
     # * Exporter implementations
-    def export(self, output_format: str, filename=None, scale: float=1.0):
+    def write(self, output_format: str, filename=None, scale: float=1.0):
         """Export cell to file in the format `output_format`
 
         Args:
             output_format (str)
             filename (str or file handler) : Set None to stdout
+            scale (float)
+        """
+        print_file_or_iowrapper(self.export(output_format, scale=scale), f=filename)
+
+    def export(self, output_format: str, scale: float=1.0):
+        """Export cell to file in the format `output_format`
+
+        Args:
+            output_format (str)
+            scale (float)
         """
         o = output_format.lower()
         e = self.exporters.get(o, None)
         if e is None:
             raise ValueError("Unsupported export:", output_format)
-        print_file_or_iowrapper(e(scale=scale), f=filename)
+        return e(scale=scale)
 
     def export_abi(self, scale: float = 1.0) -> str:
         """Export in ABINIT format.

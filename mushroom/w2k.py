@@ -1,20 +1,23 @@
 # -*- coding: utf-8 -*-
 """classes that manipulate WIEN2k inputs and outputs"""
 from io import StringIO
-from copy import deepcopy
+from typing import Sequence
 import re
 
 import numpy as np
 
 from mushroom.core.cell import Cell
-from mushroom.core.ioutils import get_cwd_name, grep
+from mushroom.core.elements import NUCLEAR_CHARGE
+from mushroom.core.ioutils import get_cwd_name, grep, print_file_or_iowrapper
 from mushroom.core.crystutils import (get_latt_vecs_from_latt_consts,
-                                      get_all_atoms_from_symops)
+                                      atms_from_sym_nat,
+                                      get_latt_consts_from_latt_vecs)
 from mushroom.core.logger import create_logger
 from mushroom.core.bs import BandStructure
 
 __all__ = [
         "Struct",
+        "read_energy",
         ]
 
 _logger = create_logger("wien2k")
@@ -72,8 +75,8 @@ def _read_atm_block(lines):
     posi = []
     # swicth the first-atom line and mult line for convenience
     lines[0], lines[1] = lines[1], lines[0]
-    mult = int(lines[0].split()[1])
-    #isplit = int(lines[0].split()[3])
+    mult = int(lines[0][15:17])
+    isplit = int(lines[0][34:36])
 
     for i in range(mult):
         l = lines[i + 1]
@@ -81,15 +84,12 @@ def _read_atm_block(lines):
         posi.append(p)
     # the line including atomic symbol, NPT, R0, RMT and Z
     l = lines[mult + 1]
-
-    at = l[:2].strip()
-    atom = []
-    for _ in range(mult):
-        atom.append(at)
+    # atom symbol may include an index
+    atm = l[:4]
     npt = int(l[15:20])
     rzero = float(l[25:36])
     rmt = float(l[40:53])
-    return atom, posi, npt, rzero, rmt
+    return atm, posi, npt, rzero, rmt, isplit
 
 
 def _read_symops(lines):
@@ -115,65 +115,115 @@ def _read_symops(lines):
     return symops
 
 class Struct:
-    """object for generating struct files"""
-    def __init__(self, latt, atms_ineq, posi_ineq, kind="P",
-                 npts=None, rzeros=None, rmts=None, symops=None,
-                 reference=None, comment=None):
-        self.symops = symops
+    """object for generating struct files
+
+    Args:
+        atms_types: symbols of each type of nonequivalent atoms
+        posi_types: direct positions of atoms of each type in atms_types
+            atms_types and posi_types should have the same length
+    """
+    # pylint: disable=R0912,R0914,R0915
+    def __init__(self, latt, atms_types: Sequence[str],
+                 posi_types, kind="P", unit="au", coord_sys="D",
+                 isplits=None, npts=None, rzeros=None, rmts=None, symops=None,
+                 mode: str = "rela",
+                 rotmats=None, reference: str = None, comment: str = None):
+        if len(atms_types) != len(posi_types):
+            raise ValueError("length of atms_types ({}) and posi_types ({}) are different"\
+                             .format(len(atms_types), len(posi_types)))
+        try:
+            assert len(np.shape(posi_types)) == 3
+            assert np.shape(posi_types)[2] == 3
+        except (AssertionError, ValueError):
+            raise ValueError("invalid shape of posi_types")
         self.kind = kind
-        self.atms_ineq = deepcopy(atms_ineq)
-        self.posi_ineq = deepcopy(posi_ineq)
+        self.atms_types = atms_types
+        self.isplits = isplits
+        if isplits is None:
+            self.isplits = [2,] * len(self.atms_types)
+        self.rotmats = rotmats
+        if rotmats is None:
+            self.rotmats = []
+            for i, _ in enumerate(atms_types):
+                self.rotmats.append(np.diag([1.0, 1.0, 1.0]))
+        self.symops = symops
         if symops is None:
-            self.symops = {"rotations": [np.diag(3),],
-                           "translations": [np.zero(3),]}
-        # TODO if better way to handle lattype?
+            self.symops = {"rotations": [np.diag((1, 1, 1)),],
+                           "translations": [np.zeros(3),]}
+        posi = []
+        natm_types = []
         if kind == "F":
-            atms_ineq = [*atms_ineq,] * 4
-            posi_ineq = np.stack([*posi_ineq,
-                                  *np.add(posi_ineq, [0.0, 0.5, 0.5]),
-                                  *np.add(posi_ineq, [0.5, 0.0, 0.5]),
-                                  *np.add(posi_ineq, [0.5, 0.5, 0.0]),
-                                  ])
-            posi_ineq = np.mod(posi_ineq, 1.0)
+            for p in posi_types:
+                posi.extend([*p, *np.add(p, [0.0, 0.5, 0.5]),
+                             *np.add(p, [0.5, 0.0, 0.5]), *np.add(p, [0.5, 0.5, 0.0]),
+                            ])
+                natm_types.append(len(p)*4)
         elif kind == "I":
-            atms_ineq = [*atms_ineq,] * 2
-            posi_ineq = np.stack([*posi_ineq,
-                                  *np.add(posi_ineq, [0.5, 0.5, 0.5]),
-                                  ])
-            posi_ineq = np.mod(posi_ineq, 1.0)
+            for p in posi_types:
+                posi.extend([*p, *np.add(p, [0.5, 0.5, 0.5]),
+                            ])
+                natm_types.append(len(p)*2)
         elif kind in ["P", "H", "R"]:
-            pass
+            for p in posi_types:
+                posi.extend(p)
+                natm_types.append(len(p))
         else:
             raise ValueError("Unsupported lattice type {}".format(kind))
-        # get_all_atoms_from_symops will handle the duplicate atoms in
-        # above kind detection
-        atms, posi = get_all_atoms_from_symops(atms_ineq, posi_ineq, self.symops)
-        self.cell = Cell(latt, atms, posi, unit="au", coord_sys="D",
-                         reference=reference, comment=comment)
+        posi = np.round(posi, decimals=8)
+        atms = atms_from_sym_nat(atms_types, natm_types)
+        self._cell = Cell(latt, atms, posi, unit=unit, coord_sys=coord_sys,
+                          reference=reference, comment=comment)
+        self._cell.move_atoms_to_first_lattice()
+        # reset units and coordinate system
+        self._cell.unit = "au"
+        self._cell.coord_sys = "D"
         self.npts = None
         self.rzeros = None
         self.rmts = None
+        self.mode_calc = mode
         self.__init_npts(npts)
         self.__init_rzeros(rzeros)
         self.__init_rmts(rmts)
-        self.comment = self.cell.comment
+        self.comment = self._cell.comment
+        _logger.debug(">  finish building Struct")
+        _logger.debug(">> atms_types: %r", self.atms_types)
+        _logger.debug(">>types(cell): %r", self._cell.atom_types)
+        _logger.debug(">> isplits: %r", self.isplits)
+        _logger.debug(">>    npts: %r", self.npts)
+        _logger.debug(">>  rzeros: %r", self.rzeros)
+        _logger.debug(">>    rmts: %r", self.rmts)
+        _logger.debug(">> rotmats: %r", self.rotmats)
 
     def get_reference(self):
         """get the reference"""
-        return self.cell.get_reference()
-    
+        return self._cell.get_reference()
+
+    def get_symops(self):
+        """get the symmetry operations
+
+        Returns:
+            ndarray, ndarry
+        """
+        rots, trans = map(self.symops.get, ["rotations", "translations"])
+        return rots, trans
+
+    def get_cell(self):
+        """get the Cell object of Struct"""
+        return self._cell
+
+
     def __init_npts(self, npts):
         self.npts = []
         if npts is None:
-            for _, _ in enumerate(self.atms_ineq):
+            for _, _ in enumerate(self.atms_types):
                 self.npts.append(npt_default)
             return
         if isinstance(npts, int):
-            for _, _ in enumerate(self.atms_ineq):
+            for _, _ in enumerate(self.atms_types):
                 self.npts.append(npts)
             return
         if isinstance(npts, dict):
-            for _, atm in enumerate(self.atms_ineq):
+            for _, atm in enumerate(self.atms_types):
                 self.npts.append(npts.get(atm))
             return
         self.npts = npts
@@ -181,15 +231,15 @@ class Struct:
     def __init_rzeros(self, rzeros):
         self.rzeros = []
         if rzeros is None:
-            for _, atm in enumerate(self.atms_ineq):
+            for _, atm in enumerate(self.atms_types):
                 self.rzeros.append(_get_default_rzero(atm))
             return
         if isinstance(rzeros, float):
-            for _, _ in enumerate(self.atms_ineq):
+            for _, _ in enumerate(self.atms_types):
                 self.rzeros.append(rzeros)
             return
         if isinstance(rzeros, dict):
-            for _, atm in enumerate(self.atms_ineq):
+            for _, atm in enumerate(self.atms_types):
                 self.rzeros.append(rzeros.get(atm))
             return
         self.rzeros = rzeros
@@ -197,15 +247,15 @@ class Struct:
     def __init_rmts(self, rmts):
         self.rmts = []
         if rmts is None:
-            for _, atm in enumerate(self.atms_ineq):
+            for _, atm in enumerate(self.atms_types):
                 self.rmts.append(_get_default_rmt(atm))
             return
         if isinstance(rmts, float):
-            for _, _ in enumerate(self.atms_ineq):
+            for _, _ in enumerate(self.atms_types):
                 self.rmts.append(rmts)
             return
         if isinstance(rmts, dict):
-            for _, atm in enumerate(self.atms_ineq):
+            for _, atm in enumerate(self.atms_types):
                 self.rmts.append(rmts.get(atm))
             return
         self.rmts = rmts
@@ -213,31 +263,41 @@ class Struct:
     @property
     def natm(self):
         """number of atoms in the cell"""
-        return self.cell.natm
+        return self._cell.natm
 
     @property
     def atms(self):
         """all atoms in the cell"""
-        return self.cell.atms
+        return self._cell.atms
 
     @property
     def posi(self):
         """positions of all atoms in direct coordinates"""
-        return self.cell.posi
+        return self._cell.posi
 
     @property
     def latt(self):
         """lattice vector of the cell"""
-        return self.cell.latt
+        return self._cell.latt
 
     @property
-    def natm_ineq(self):
-        """number of inequivalent"""
-        return len(self.atms_ineq)
+    def ntypes(self):
+        """number of atomic types"""
+        return len(self.atms_types)
 
     def __str__(self):
-        s = ""
-        return s
+        return self.export()
+
+    @classmethod
+    def from_cell(cls, cell: Cell):
+        """build the Struct object from Cell object"""
+        atms_types = cell.atom_types
+        posi_types = []
+        for a in atms_types:
+            posi_types.append(cell.get_atm_posi(a))
+        return cls(cell.latt, atms_types, posi_types, unit=cell.unit,
+                   reference=cell.get_reference(), comment=cell.comment,
+                   coord_sys=cell.coord_sys)
 
     # pylint: disable=R0914
     @classmethod
@@ -252,13 +312,14 @@ class Struct:
         with open(pstruct, "r") as h:
             lines = h.readlines()
 
-        natm_ineq = int(lines[1].split()[2])
+        ntypes = int(lines[1].split()[2])
         kind = lines[1][:4].strip()
         latt_consts = map(lambda i: float(lines[3][10*i:10*i+10]), range(6))
         mode = lines[2][13:].strip()
         latt = get_latt_vecs_from_latt_consts(*latt_consts)
 
         atm_blocks = []
+        rotmats = []
         new_atom = True
         # divide lines into block of atoms and symmetry operations
         for i, line in enumerate(lines):
@@ -269,34 +330,81 @@ class Struct:
                 s = i
                 new_atom = False
             if l.startswith("LOCAL ROT MATRIX"):
+                rotmats.append(np.loadtxt(StringIO("".join(x[20:] for x in lines[i:i+3]))))
                 atm_blocks.append(tuple([s, i + 2]))
                 new_atom = True
             if l.endswith("SYMMETRY OPERATIONS"):
                 symops_startline = i
                 break
-        if len(atm_blocks) != natm_ineq:
+        if len(atm_blocks) != ntypes:
             raise ValueError("number of atom types read is inconsistent with the file head")
 
-        atms_ineq = []
-        posi_ineq = []
+        atms_types = []
+        posi_types = []
+        isplits = []
         npts = {}
         rzeros = {}
         rmts = {}
 
         for s, l in atm_blocks:
-            atm, p, npt, rzero, rmt = _read_atm_block(lines[s:l+1])
-            atms_ineq.extend(atm)
-            posi_ineq.extend(p)
+            atm, p, npt, rzero, rmt, isplit = _read_atm_block(lines[s:l+1])
+            atms_types.append(atm)
+            posi_types.append(p)
+            isplits.append(isplit)
             npts[atm[0]] = npt
             rzeros[atm[0]] = rzero
             rmts[atm[0]] = rmt
         symops = _read_symops(lines[symops_startline:])
-        return cls(latt, atms_ineq, posi_ineq, npts=npts, symops=symops, rmts=rmts,
-                   kind=kind, rzeros=rzeros, comment=lines[0].strip())
+        return cls(latt, atms_types, posi_types, npts=npts, symops=symops, rmts=rmts,
+                   isplits=isplits, kind=kind, rzeros=rzeros, rotmats=rotmats, 
+                   comment=lines[0].strip())
 
     def export(self, scale: float = 1.0) -> str:
         """export the cell and atomic setup in the wien2k format"""
-        raise NotImplementedError
+        slist = ["{}, {}".format(self.comment, self.get_reference()),
+                 "{:<4s}LATTICE,NONEQUIV.ATOMS:{:3d}".format(self.kind, self.ntypes),
+                 "MODE OF CALC={}".format(self.mode_calc.upper()),]
+        latt_consts_form = "{:10.6f}" * 6
+        a1, a2, a3, angle1, angle2, angle3 = get_latt_consts_from_latt_vecs(self.latt)
+        slist.append(latt_consts_form.format(a1*scale, a2*scale, a3*scale, angle1, angle2, angle3))
+        self._cell.move_atoms_to_first_lattice()
+        # write each inequiv atoms
+        for iat, (at, rotmat, npt, rzero, rmt, isplit) in enumerate(zip(self.atms_types,
+                                                                        self.rotmats,
+                                                                        self.npts,
+                                                                        self.rzeros,
+                                                                        self.rmts,
+                                                                        self.isplits)):
+            posi = self._cell.get_atm_posi(at)
+            mult = len(posi)
+            Z = NUCLEAR_CHARGE.get(re.sub(r"[\d ]", "", at))
+            slist_atm = ["ATOM{:4d}: X={:10.8f} Y={:10.8f} Z={:10.8f}".format(iat+1,
+                                                                              *posi[0, :]),
+                         "           MULT={:2d}{:10s}ISPLIT={:2d}".format(mult, "", isplit),]
+            for i in range(1, mult):
+                slist_atm.append("{:8d}: X={:10.8f} Y={:10.8f} Z={:10.8f}".format(iat+1,
+                                                                                  *posi[i, :]))
+            slist_atm.append("{:<4s}{:<5s}  NPT={:5d}  R0={:10.8f} RMT={:10.4f}{:>5s}{:5.1f}"\
+                             .format(at, "", npt, rzero, rmt, "Z:", Z))
+            rotmat_format = "\n".join(["{:<20s}{:10.7f}{:10.7f}{:10.7f}",] * 3)
+            slist_atm.append(rotmat_format.format("LOCAL ROT MATRIX", *rotmat[0, :],
+                                                  "", *rotmat[1, :],
+                                                  "", *rotmat[2, :]))
+            slist.extend(slist_atm)
+        # write symmetry operations
+        rots, trans = self.get_symops()
+        slist.append("{:4d}      NUMBER OF SYMMETRY OPERATIONS".format(len(rots)))
+        for i, (rot, tran) in enumerate(zip(rots, trans)):
+            for j in range(3):
+                slist.append("{:2d}{:2d}{:2}{:11.8f}".format(*rot[j, :], tran[j]))
+            slist.append("{:8d}".format(i+1))
+        return "\n".join(slist)
+
+    def write(self, filename=None, scale: float = 1.0):
+        """write the w2k formatted string to filename
+        """
+        print_file_or_iowrapper(self.export(scale=scale), f=filename)
+        
 
 # pylint: disable=C0301
 _energy_kpt_line = re.compile(r"([ -]\d\.\d{12}E[+-]\d{2})([ -]\d\.\d{12}E[+-]\d{2})([ -]\d\.\d{12}E[+-]\d{2})\s*(\d+)\s*(\d+)\s*(\d+)\s*(\d+\.\d+)")
