@@ -72,6 +72,8 @@ class test_eigenval(ut.TestCase):
                 print(">> {} ?= {}".format(k, v))
                 self.assertTrue(np.allclose(bsv, v))
 
+class test_poscar(ut.TestCase):
+    """test poscar reader"""
 
 if __name__ == "__main__":
     ut.main()

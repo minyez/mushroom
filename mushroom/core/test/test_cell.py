@@ -3,6 +3,7 @@
 # pylint: disable=C0115,C0116
 """test cell functionality"""
 import os
+import pathlib
 import tempfile
 import json
 import unittest as ut
@@ -15,7 +16,6 @@ except ImportError:
 
 from mushroom.core.cell import (Cell, CellError)
 from mushroom.core.constants import ANG2AU, PI
-from mushroom.core.ioutils import get_dirpath
 
 
 class simple_cubic_lattice(ut.TestCase):
@@ -168,7 +168,7 @@ class cell_factory_method(ut.TestCase):
         oF = Cell.bravais_oF("C")
         self.assertEqual(len(oF), 4)
 
-    def test_typical_sysmtes(self):
+    def test_typical_systems(self):
         # both conventional and primitive
         for p in [True, False]:
             c = Cell.diamond("C", primitive=p)
@@ -177,12 +177,17 @@ class cell_factory_method(ut.TestCase):
             Cell.rutile("Ti", "O", primitive=p)
             c = Cell.zincblende("Zn", "O", primitive=p)
             self.assertEqual(8-6*int(p), c.natm)
+            c = Cell.rocksalt("Na", "Cl", primitive=p)
+            self.assertEqual(8-6*int(p), c.natm)
         # primitive only
         Cell.perovskite("Ca", "Ti", "O")
         Cell.wurtzite("Zn", "O")
         Cell.pyrite()
         Cell.marcasite()
 
+
+class cell_reader(ut.TestCase):
+    """Test the reader classmethods"""
     def test_read_tempfile_json(self):
         self.assertRaisesRegex(CellError, "JSON file not found: None",
                                Cell.read_json, None)
@@ -241,21 +246,57 @@ class cell_factory_method(ut.TestCase):
         self.assertEqual(c.natm, 2)
         self.assertListEqual(c.atms, ["C", "C"])
 
-    #def test_read_test_json(self):
-    #    """read test json data"""
-    #    datadir = os.path.join(get_dirpath(__file__), 'data')
-    #    for fn in os.listdir(datadir):
-    #        if fn.endswith('.json'):
-    #            jf = os.path.join(datadir, fn)
-    #            Cell.read_json(jf)
 
     def test_read_cif(self):
-        datadir = os.path.join(get_dirpath(__file__), 'data')
-        for fn in os.listdir(datadir):
-            if fn.endswith('.cif'):
-                cif = os.path.join(datadir, fn)
-                Cell.read_cif(cif)
+        dir_cif = pathlib.Path(__file__).parent / "data"
+        index_json = dir_cif / "cif.json"
+        with index_json.open('r') as fp:
+            verifies = json.load(fp)
+        for f, verify in verifies.items():
+            print("Testing {}".format(f))
+            fpath = dir_cif / f
+            c = Cell.read(str(fpath), form="cif")
+            for k, v in verify.items():
+                cell_value = c.__getattribute__(k)
+                msg = ">> error, different {}: {} != {}".format(k, v, cell_value)
+                if isinstance(v, (int, float)):
+                    self.assertEqual(cell_value, v, msg=msg)
+                elif isinstance(v, list):
+                    self.assertTrue(np.array_equal(cell_value, v), msg=msg)
 
+    def test_read_vasp(self):
+        """read vaps POSCAR"""
+        dir_poscar = pathlib.Path(__file__).parent / "data"
+        index_json = dir_poscar / "poscar.json"
+        with index_json.open('r') as fp:
+            verifies = json.load(fp)
+        for f, verify in verifies.items():
+            print("Testing {}".format(f))
+            fpath = dir_poscar / f
+            c = Cell.read(str(fpath), form="vasp")
+            for k, v in verify.items():
+                cell_value = c.__getattribute__(k)
+                msg = ">> error, different {}: {} != {}".format(k, v, cell_value)
+                if isinstance(v, (int, float)):
+                    self.assertEqual(cell_value, v, msg=msg)
+                elif isinstance(v, list):
+                    self.assertTrue(np.array_equal(cell_value, v), msg=msg)
+
+class test_exporter(ut.TestCase):
+    """test the exporter facilities"""
+    latt = [[5.0, 0.0, 0.0], [0.0, 5.0, 0.0], [0.0, 0.0, 5.0]]
+    atms = ["Cs", "Cl"]
+    posi = [[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]
+    c = Cell(latt, atms, posi)
+
+    def test_export_abi(self):
+        s = self.c.export_abi()
+
+    def test_export_vasp(self):
+        s = self.c.export_vasp()
+
+    def test_export_json(self):
+        s = self.c.export_json()
 
 class cell_select_dynamics(ut.TestCase):
     '''Test the functionality of selective dynamics
@@ -518,13 +559,6 @@ class test_supercell(ut.TestCase):
         self.assertTrue(np.array_equal(sc.latt, np.array(sclatt, dtype=Cell._dtype)))
         self.assertTrue(np.array_equal(sc.posi, np.array(scposi, dtype=Cell._dtype)))
 
-class cell_export(ut.TestCase):
-    """test various output format of Cell"""
-
-    def test_vasp_export(self):
-        """test VASP POSCAR export"""
-
-
 class test_spglib_convert(ut.TestCase):
     
     def test_primitize(self):
@@ -533,7 +567,6 @@ class test_spglib_convert(ut.TestCase):
         c = Cell.diamond("C")
         cprim = c.primitize()
         self.assertEqual(2, cprim.natm)
-
 
 if __name__ == "__main__":
     ut.main()

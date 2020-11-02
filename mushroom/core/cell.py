@@ -768,7 +768,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
         """
         print_file_or_iowrapper(self.export(output_format, scale=scale), f=filename)
 
-    def export(self, output_format: str, scale: float=1.0):
+    def export(self, output_format: str, scale: float = 1.0):
         """Export cell to file in the format `output_format`
 
         Args:
@@ -864,18 +864,6 @@ When other keyword are parsed, they will be filtered out and no exception will b
             "coord_sys": self.coord_sys,
             }
         return json.dumps(d)
-
-    def print(self, output_format: str, scale: float = 1.0):
-        """Return cell as a string to in the format `output_format`
-
-        Args:
-            output_format (str)
-        """
-        o = output_format.lower()
-        e = self.exporters.get(o, None)
-        if e is None:
-            raise ValueError("Unsupported export:", output_format)
-        return e(scale=scale)
 
 
     # * Reader implementations
