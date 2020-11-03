@@ -179,6 +179,8 @@ class cell_factory_method(ut.TestCase):
             self.assertEqual(8-6*int(p), c.natm)
             c = Cell.rocksalt("Na", "Cl", primitive=p)
             self.assertEqual(8-6*int(p), c.natm)
+            c = Cell.delafossite(primitive=p)
+            self.assertEqual(12-8*int(p), c.natm)
         # primitive only
         Cell.perovskite("Ca", "Ti", "O")
         Cell.wurtzite("Zn", "O")

@@ -84,6 +84,9 @@ Require `pymatgen`
 
 ### kpath
 
+- [ ] 参考 SetayawanW10-AFLOW, 更好地对路径进行分类
+- [ ] 处理输入结构对称性的数据库对象 `DBKPath` 方法
+
 ### 工作流 workflows
 
 #### VASP

@@ -6,6 +6,7 @@ If not specified, constants are extracted from scipy.constants, 2019-03-07
 #pylint: disable=bad-whitespace
 
 PI = 3.141592653589793
+SQRT3 = 1.732050807568873
 # fine stucture constant
 FSCA = 0.0072973525664
 # Avogadro constant, in mol^-1

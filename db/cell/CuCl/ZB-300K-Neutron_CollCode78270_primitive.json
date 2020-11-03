@@ -3,6 +3,7 @@
   "primitive": true,
   "atom1": "Cu", 
   "atom2": "Cl", 
-  "a": 5.420,
+  "a": 5.4202,
+  "reference": "Hull & Keen, PRB 50, 5868 (1994)",
   "unit": "ang"
 }

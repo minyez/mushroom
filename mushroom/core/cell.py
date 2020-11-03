@@ -18,7 +18,7 @@ try:
     from mushroom.__config__ import symprec
 except ImportError:
     symprec = 1.0E-5
-from mushroom.core.constants import PI
+from mushroom.core.constants import PI, SQRT3
 from mushroom.core.cif import Cif
 from mushroom.core.elements import NUCLEAR_CHARGE
 from mushroom.core.unit import LengthUnit
@@ -927,6 +927,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
             "anatase": (cls.anatase, ("atom1", "atom2", "a", "c", "u")),
             "pyrite": (cls.pyrite, ("atom1", "atom2", "a", "u")),
             "marcasite": (cls.marcasite, ("atom1", "atom2", "a", "b", "c", "v", "w")),
+            "delafossite": (cls.delafossite, ("atom1", "atom2", "atom3", "a", "c", "u")),
         }
         # found factory key
         if "factory" in js:
@@ -1398,6 +1399,48 @@ When other keyword are parsed, they will be filtered out and no exception will b
         kwargs.pop("coord_sys", None)
         if "comment" not in kwargs:
             kwargs.update({"comment": "Anatase {}{}2".format(atom1, atom2)})
+        return cls(latt, atms, posi, **kwargs)
+
+    @classmethod
+    def delafossite(cls, atom1="Cu", atom2="Al", atom3="O",
+                    a=2.858, c=16.958, u=0.1099, primitive=False,
+                    **kwargs):
+        '''Generate a standardized delafossite lattice (space group 166).
+
+        Args:
+            atom1, atom2, atom3 (str): symbol of atoms
+            a, c (float): the lattice constant of the conventional cell.
+            u (float): the internal coordinate
+            kwargs: keyword argument for ``Cell`` except ``coord_sys``
+        '''
+        a = abs(a)
+        c = abs(c)
+        ha = a/2
+        if primitive:
+            latt = [[ha, -ha/SQRT3, c], [0.0, 2*ha/SQRT3, c], [-ha, -ha/SQRT3, c]]
+            atms = [str(atom1), str(atom2), str(atom3), str(atom3)]
+            posi = [[0.0, 0.0, 0.0],
+                    [0.5, 0.5, 0.5],
+                    [u, u, u],
+                    [1.0-u, 1.0-u, 1.0-u]]
+        else:
+            latt = [[a, 0.0, 0.0], [-ha, ha*SQRT3, c], [0.0, 0.0, c]]
+            atms = [str(atom1),]*3 + [str(atom2),]*3 + [str(atom3),]*6
+            posi = [[0.0, 0.0, 0.0], #Cu
+                    [2/3, 1/3, 1/3],
+                    [1/3, 2/3, 2/3],
+                    [1/3, 2/3, 1/6], #Al
+                    [0., 0., 1/2],
+                    [2/3, 1/3, 5/6],
+                    [0., 0., u], #O
+                    [2/3, 1/3, 1/3-u],
+                    [2/3, 1/3, 1/3+u],
+                    [1/3, 2/3, 2/3-u],
+                    [1/3, 2/3, 2/3+u],
+                    [1.0-u, 1.0-u, 1.0-u]]
+        kwargs.pop("coord_sys", None)
+        if "comment" not in kwargs:
+            kwargs.update({"comment": "Delafossite {}{}{}2".format(atom1, atom2, atom3)})
         return cls(latt, atms, posi, **kwargs)
 
     @classmethod
