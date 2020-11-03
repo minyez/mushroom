@@ -10,7 +10,8 @@ import tempfile
 import numpy as np
 
 from mushroom.w2k import (Struct, _energy_kpt_line, read_energy,
-                          get_casename, get_inputs)
+                          _read_efermi_from_second_to_last_el,
+                          get_casename, get_inputs, In1)
 
 class test_struct(ut.TestCase):
     """test struct file processing"""
@@ -43,11 +44,14 @@ class test_match_lines(ut.TestCase):
         """kpt line"""
         valid_lines = [
             " 0.000000000000E+00 0.000000000000E+00 0.000000000000E+00         1  1017   113  1.0\n",
+            " 0.000000000000E+00 0.000000000000E+00 0.000000000000E+00M           1017   113  1.0\n",
             ]
         valid_kpts = [
             [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
             ]
         valid_nbands = [
+            113,
             113,
             ]
         for l, refk, refnb in zip(valid_lines, valid_kpts, valid_nbands):
@@ -88,17 +92,44 @@ class test_utilities(ut.TestCase):
                           
     def test_get_inputs(self):
         """get inputs files"""
-        self.assertListEqual(get_inputs("struct", dirpath=self.testdir, relative=self.testdir),
-                             ["fake.struct",])
-        self.assertListEqual(get_inputs("struct", "in1", "inc", "core",
-                                        dirpath=self.testdir, relative=True),
-                             ["fake.struct", "fake.in1", "fake.inc", "fake.core"])
-        self.assertListEqual(get_inputs("struct", dirpath=self.testdir),
-                             ["{}.struct".format(self.testdir / "fake"),])
+        self.assertTupleEqual(get_inputs("struct", dirpath=self.testdir, relative=self.testdir),
+                              ("fake.struct",))
+        self.assertTupleEqual(get_inputs("struct", "in1", "inc", "core",
+                                         dirpath=self.testdir, relative=True),
+                              ("fake.struct", "fake.in1", "fake.inc", "fake.core"))
+        self.assertTupleEqual(get_inputs("struct", dirpath=self.testdir),
+                              ("{}.struct".format(self.testdir / "fake"),))
         os.chdir(self.testdir.parent)
-        self.assertListEqual(get_inputs("struct", "in1",
-                                        dirpath=self.testdir, relative="CWD"),
-                             ["wien2k_testdir/fake.struct", "wien2k_testdir/fake.in1",])
+        self.assertTupleEqual(get_inputs("struct", "in1",
+                                         dirpath=self.testdir, relative="CWD"),
+                              ("wien2k_testdir/fake.struct", "wien2k_testdir/fake.in1",))
+
+    # pylint: disable=C0301
+    def test_read_efermi_from_el(self):
+        """test reading efermi"""
+        s = "198.98000200.44970  0.44970  0.44970  0.44970  0.44970  0.44970  0.44970  0.44970  0.44970  0.44970  0.44970  0.44970  0.00000"
+        self.assertEqual(0.6497, _read_efermi_from_second_to_last_el(s))
+
+class test_in1(ut.TestCase):
+    """test reading in1 """
+    def test_read(self):
+        """reading existing in1 file"""
+        dir_in1 = pathlib.Path(__file__).parent / "data"
+        index_json = dir_in1 / "in1.json"
+        with index_json.open('r') as fp:
+            verifies = json.load(fp)
+        for f, verify in verifies.items():
+            print("Testing {}".format(f))
+            fpath = dir_in1 / f
+            s = In1.read(str(fpath))
+            for k, v in verify.items():
+                objv = s.__getattribute__(k)
+                msg = "error testing {}: {}, {}".format(k, objv, v)
+                if isinstance(v, (str, int, float)):
+                    self.assertEqual(objv, v, msg=msg)
+                elif isinstance(v, list):
+                    self.assertTrue(np.array_equal(objv, v), msg)
+
 
 if __name__ == "__main__":
     ut.main()

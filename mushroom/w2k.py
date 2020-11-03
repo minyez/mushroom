@@ -144,8 +144,30 @@ def get_casename(dirpath: Union[str, PathLike] = ".", casename: str = None):
         return abspath.name
     raise TypeError("{} is not a directory".format(abspath))
 
+
+def search_cplx_input(path: Union[str, PathLike]) -> str:
+    """check if input file for complex calculation is available.
+
+    Args:
+        path (PathLike): the path of input file, with extension.
+    
+    Returns:
+        str, the path to the complex input file if found.
+             the input path is directed returned, if the path does not have an extension of input
+    """
+    if isinstance(path, str):
+        path = pathlib.Path(path)
+    ext = path.suffix
+    if ext in [".in1", ".in2"]:
+        pathc = pathlib.Path(str(path) + "c")
+        if pathc.is_file():
+            return str(pathc)
+    return str(path)
+    
+
 def get_inputs(suffix: str, *suffices, dirpath: Union[str, PathLike] = ".",
-               casename: str = None, relative: Union[str, PathLike] = None):
+               casename: str = None, relative: Union[bool, str, PathLike] = None,
+               search_cplx=True):
     """get path of input files given the suffices
 
     Args:
@@ -169,7 +191,10 @@ def get_inputs(suffix: str, *suffices, dirpath: Union[str, PathLike] = ".",
             relative = pathlib.Path('.').resolve()
         home = home.relative_to(relative)
     casename = get_casename(dirpath=dirpath, casename=casename)
-    return ["{}.{}".format(home / casename, s) for s in suffices]
+    inputs = [home / "{}.{}".format(casename, s) for s in suffices]
+    if search_cplx:
+        return tuple(search_cplx_input(i) for i in inputs)
+    return tuple(str(i) for i in inputs)
 
 class Struct:
     """object for generating struct files
@@ -463,9 +488,95 @@ class Struct:
         print_file_or_iowrapper(self.export(scale=scale), f=filename)
         
 
+class In1:
+    """class for in1 file
+
+    Args:
+        casename (str) :
+        efermi (float) : fermi energy in Rydberg unit
+        lmax (int) 
+        lnsmax (int) 
+        elparams : linearization energy parameters
+    """
+    def __init__(self, casename: str, efermi: float, rkmax: float, lmax: int,
+                 lnsmax: int, *elparams):
+        self.casename = casename
+        self.efermi = efermi
+        self.rkmax = rkmax
+        self.lmax = lmax
+        self.lnsmax = lnsmax
+        self.elparams = elparams
+
+    @classmethod
+    def read(cls, pin1: PathLike = None):
+        """Return In1 instance by reading an exisiting file
+
+        Args:
+            pin1 (PathLike): the path to the in1 file.
+                Left as default to automatic detect under CWD
+        """
+        if pin1 is None:
+            casename = get_casename()
+            pin1 = get_inputs("in1", casename=casename, search_cplx=True)
+        else:
+            casename = get_filename_wo_ext(str(pin1))
+        if isinstance(pin1, str):
+            pin1 = pathlib.Path(pin1)
+        with pin1.open('r') as h:
+            w2klines = h.readlines()
+        #switch = w2klines[0][:5]
+        matched = re.search(r"EF=(-?\d*\.\d+)", w2klines[0])
+        if matched is None:
+            raise ValueError("Fail to find Fermi energy from in1")
+        efermi = float(matched.group(1))
+        matched = re.match(r"([-\d\s.]+)", w2klines[1])
+        if matched is None:
+            raise ValueError("Fail to find RKmax, Lmax and LNSmax from in1")
+        rkmax, lmax, lnsmax = map(float, matched.group(1).split())
+        lmax = int(lmax)
+        lnsmax = int(lnsmax)
+
+        # TODO read linearization energies
+        elparams = []
+        #i = 2
+        #while i < len(w2klines):
+        #    line = re.match(r"([-\w\d\s.]+)", w2klines[i]).group()
+        #    if line.startswith("K-VECTORS FROM UNIT"):
+        #        break
+        #    words = line.split()
+        #    if len(words) == 3:
+        #        ndiff = int(words[1])
+        #        atomEl = _read_el_block(w2klines[i : i + ndiff + 1])
+        #        elparams.append(atomEl)
+        #        i += ndiff
+        #    i += 1
+        return cls(casename, efermi, rkmax, lmax, lnsmax, *elparams)
+
+
 # pylint: disable=C0301
 # kpoint line format in energy file, wien2k v14.2
-_energy_kpt_line = re.compile(r"([ -]\d\.\d{12}E[+-]\d{2})([ -]\d\.\d{12}E[+-]\d{2})([ -]\d\.\d{12}E[+-]\d{2})\s*(\d+)\s*(\d+)\s*(\d+)\s*(\d+\.\d+)")
+_energy_kpt_line = re.compile(r"([ -]\d\.\d{12}E[+-]\d{2})([ -]\d\.\d{12}E[+-]\d{2})([ -]\d\.\d{12}E[+-]\d{2})([\w\s\d]{10})\s*(\d+)\s+(\d+)\s+(\d+\.\d+)")
+
+def _read_efermi_from_second_to_last_el(l):
+    """extract the fermi energy from the line containing linearization energy of lapw at large l
+
+    Such energy is usually set to 0.2 Ry below the Fermi level.
+    here use the second to the last
+
+    Args:
+        l (str): the line containing linearization energy at angular momenta,
+            usually the first line of case.energy
+    """
+    efermi = 0.0
+    nel = l.count('.')
+    if len(l) % nel != 0:
+        raise ValueError("bad-formatted el string")
+    width = len(l) // nel
+    decimals = width - l.index('.') - 1
+    efermi = float(l[-2*width:-width]) + 0.2
+    if efermi > 150: # LAPW
+        efermi -= 200.0
+    return np.around(efermi, decimals=decimals)
 
 def read_energy(penergy: str, penergy_dn: str = None, efermi=None):
     """get a BandStructure instance from the wien2k energy file
@@ -487,9 +598,16 @@ def read_energy(penergy: str, penergy_dn: str = None, efermi=None):
         eigen = []
         lines = fp.readlines()
         for ln in ln_kpts:
+            _logger.debug("starting k-line %d: %s", ln, lines[ln])
             s = StringIO("".join(lines[ln+1:ln+1+nb]))
             eigen.append(np.loadtxt(s, usecols=[1,]))
         return np.array(eigen)
+    if efermi is None:
+        try:
+            with open(penergy, 'r') as h:
+                efermi = _read_efermi_from_second_to_last_el(h.readline().strip('\n'))
+        except ValueError:
+            pass
     kpt_lines, linenums = grep(_energy_kpt_line, penergy, error_not_found=True,
                                return_linenum=True, return_group=True)
     natm_ineq = linenums[0] // 2
@@ -502,6 +620,7 @@ def read_energy(penergy: str, penergy_dn: str = None, efermi=None):
         weights.append(float(mg.group(7)))
     weights = np.array(weights) / sum(weights)
     nbands_min = min(nbands)
+    _logger.debug("minimal nbands = %d", nbands_min)
     eigen = []
     with open(penergy, 'r') as h:
         eigen.append(_read_one_energy_file(h, linenums, nbands_min))

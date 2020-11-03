@@ -22,12 +22,10 @@
 
 ### 核心库 `core`
 
-- [ ] type hints
 - band structure analysis `bs`
-  - [ ] `BandStructure` object
+  - [x] `BandStructure` object
 - density of states analysis `dos`
-  - [ ] `DensityOfStates` object
-- [ ] map `p`, `d`, `f` to corresponding projector lists
+  - [x] `DensityOfStates` object
 
 ### Wannier90
 
@@ -53,9 +51,11 @@ XML reader for
 ### WIEN2k
 
 - [x] energy reader
+  - [ ] Extracting fermi energy is not working correctly. A value lower than VBM can be obtained.
 - [x] struct reader
 - [ ] output2 reader
 - [ ] output1 reader
+- [-] in1 reader
 - [ ] calculator of relativistic potential
 
 ### GPAW

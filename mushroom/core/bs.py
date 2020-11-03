@@ -104,7 +104,7 @@ class BandStructure(EnergyUnit):
             self._weight[:] = 1.0
         # set occupation numbers
         self._occ = None
-        self._efermi = None
+        self._efermi = efermi
         # channel: ispin, ikpt
         self._is_metal = None
         self._nelect_sp_kp = None
@@ -127,7 +127,7 @@ class BandStructure(EnergyUnit):
         self._cbm = None
         self._band_width = None
         if occ is not None:
-            self.set_occupations(occ, efermi)
+            self.set_occupations(occ)
 
         _logger.info("Read bandstructure. Dimensions")
         _logger.info(">> nspins = %d", self._nspins)
@@ -142,7 +142,7 @@ class BandStructure(EnergyUnit):
         if pwav is not None:
             self.parse_proj(pwav=pwav, atms=atms, prjs=prjs)
 
-    def set_occupations(self, occ, efermi=None):
+    def set_occupations(self, occ):
         """set occupation numbers
 
         Args:
@@ -163,8 +163,6 @@ class BandStructure(EnergyUnit):
         self._nelect_sp_kp = np.sum(self._occ, axis=2) * self._emulti
         self._nelect_sp = np.dot(self._nelect_sp_kp, self._weight) / np.sum(self._weight)
         self._nelect = np.sum(self._nelect_sp)
-        if isinstance(efermi, Real):
-            self._efermi = efermi
 
     def get_band_indices(self, *bands):
         '''Filter the band indices in ``bands``. 
@@ -225,10 +223,13 @@ class BandStructure(EnergyUnit):
         if coef != 1:
             if self._efermi is not None:
                 self._efermi *= coef
-            self._vbm *= coef
-            self._cbm *= coef
+            if self._vbm is not None:
+                self._vbm *= coef
+            if self._cbm is not None:
+                self._cbm *= coef
             for item in to_conv:
-                item *= coef
+                if item is not None:
+                    item *= coef
             self._eunit = newu.lower()
 
     @property
