@@ -1,10 +1,12 @@
 # K-path database
 
-all kpaths are stored in a JSON file. 
+All special kpoints along a k-point path are stored in a JSON file. 
 
-## Naming
+## Naming of JSON
 
-The file should be named as "spacegroup number" + `shorthand of k-point symbols`.
+The file should be named in a short-hand form of the special k-point symbols, and
+saved under the directory named after the number of space group of to the
+crystal cell which has the Brillouin zone where the special kpoints are defined.
 
 ## keys and values
 
@@ -12,6 +14,6 @@ The file should be named as "spacegroup number" + `shorthand of k-point symbols`
 - `labels`: labels of special points on the path.
 - `coeffs`: coefficients or coordinates of special point on the path.
 
-Note `labels` and `coeffs` should have the same number of members, which must be even
+Note `labels` and `coeffs` should have the same number of members, which is usually even
 to include all start and end points of path segments.
 

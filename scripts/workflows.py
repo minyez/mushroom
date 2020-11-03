@@ -30,7 +30,6 @@ def add_scheduler_header(wf: str, dirpath: str, platform: str, use_pbs=False):
             with open(wf_script, "w") as h:
                 print(*lines, sep="", file=h)
 
-
 def _parser():
     """the argument parser"""
     p = ArgumentParser(description=__doc__, formatter_class=RawDescriptionHelpFormatter)

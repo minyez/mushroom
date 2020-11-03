@@ -31,11 +31,11 @@ def _parser():
                    help="figure extension to convert")
     p.add_argument("-e", dest="energy_range", type=str, default=None,
                    help="energy range, e.g. 'm8~5' for -8.0 to 5.0")
-    return p.parse_args()
+    return p
 
 def m_v_band():
     """main stream"""
-    args = _parser()
+    args = _parser().parse_args()
     p = Plot(1, 1)
     c = Cell.read(args.poscar)
     

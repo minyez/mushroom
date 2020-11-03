@@ -52,6 +52,12 @@ XML reader for
 
 ### WIEN2k
 
+- [x] energy reader
+- [x] struct reader
+- [ ] output2 reader
+- [ ] output1 reader
+- [ ] calculator of relativistic potential
+
 ### GPAW
 
 ### 爬虫相关
@@ -72,40 +78,40 @@ Require `pymatgen`
 
 - [x] base class to manipulate grace objects
 
-## 工作流 workflows
-
-### VASP
-
-#### semilocal functional
-
-- [x] Band and DOS
-- [ ] 截断和 kmesh 收敛测试
-
-#### hybrid functional
-
-- [x] 截断和 kmesh 收敛测试
-- [ ] SCF 和 DOS
-- [x] Band
-
-#### GW
-
-- [ ] 正常三步计算
-- [x] 波函数截断 `ENCUT`, 介电矩阵截断 `ENCUTGW`, 能带数 `NBANDS` 收敛
-- [ ] `NOMEGA` 收敛测试
-
-#### 结构优化
-
-- [ ] 表面能随 slab 层数和固定层数的收敛
-
-### ABINIT
-
-### WIEN2k
-
-### GPAW
-
 ## 数据库 db
 
 ### cell
 
 ### kpath
+
+### 工作流 workflows
+
+#### VASP
+
+一般局域泛函
+
+- [x] Band and DOS
+- [ ] 截断和 kmesh 收敛测试
+
+杂化泛函
+
+- [x] 截断和 kmesh 收敛测试
+- [ ] SCF 和 DOS
+- [x] Band
+
+GW
+
+- [ ] 正常三步计算
+- [x] 波函数截断 `ENCUT`, 介电矩阵截断 `ENCUTGW`, 能带数 `NBANDS` 收敛
+- [ ] `NOMEGA` 收敛测试
+
+结构优化
+
+- [ ] 表面能随 slab 层数和固定层数的收敛
+
+#### ABINIT
+
+#### WIEN2k
+
+#### GPAW
 

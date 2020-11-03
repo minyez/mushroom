@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 """testing wien2k facilities"""
 import json
+import os
 import pathlib
 import unittest as ut
 import tempfile
@@ -69,7 +70,7 @@ class test_energy(ut.TestCase):
         for f, verify in verifies.items():
             print("Testing {}".format(f))
             fpath = dir_energy / f
-            natm_ineq, kpts, bs = read_energy(str(fpath))
+            bs, natm_ineq, kpts = read_energy(str(fpath))
             self.assertEqual(natm_ineq, verify["natm_ineq"])
             self.assertTrue(np.allclose(kpts, verify["kpts"]))
 
@@ -94,6 +95,10 @@ class test_utilities(ut.TestCase):
                              ["fake.struct", "fake.in1", "fake.inc", "fake.core"])
         self.assertListEqual(get_inputs("struct", dirpath=self.testdir),
                              ["{}.struct".format(self.testdir / "fake"),])
+        os.chdir(self.testdir.parent)
+        self.assertListEqual(get_inputs("struct", "in1",
+                                        dirpath=self.testdir, relative="CWD"),
+                             ["wien2k_testdir/fake.struct", "wien2k_testdir/fake.in1",])
 
 if __name__ == "__main__":
     ut.main()

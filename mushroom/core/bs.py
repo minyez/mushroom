@@ -58,7 +58,7 @@ class BandStructure(EnergyUnit):
     Optional args:
         occ (array-like) : the occupation numbers of all bands
         weight (array-like) : the weights of each kpoint, 1-d array,
-            either int or float. default to 1.0
+            either integer weight or scaled weight. default to 1.0
         unit ('ev','ry','au'): the unit of the eigenvalues
         efermi (float): the Fermi level. 
             If not parsed, the valence band maximum will be used.

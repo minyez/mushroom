@@ -145,14 +145,15 @@ def get_casename(dirpath: Union[str, PathLike] = ".", casename: str = None):
     raise TypeError("{} is not a directory".format(abspath))
 
 def get_inputs(suffix: str, *suffices, dirpath: Union[str, PathLike] = ".",
-               casename: str = None, relative=None):
+               casename: str = None, relative: Union[str, PathLike] = None):
     """get path of input files given the suffices
 
     Args:
         suffix and suffices (str): suffices of input files to get
         dirpath (path-like)
-        relative (str) : if set to pathlike, the output will be relative file paths to `relative`.
+        relative (str) : if set to PathLike, the output will be relative file paths to `relative`.
             If set to true, only the filenames will be returned
+            If set to CWD, it will return the filenames relative to current directory
 
     Returns:
         list, the absolute path of input files
@@ -164,6 +165,8 @@ def get_inputs(suffix: str, *suffices, dirpath: Union[str, PathLike] = ".",
     if relative is not None:
         if relative is True:
             relative = home
+        elif relative == "CWD":
+            relative = pathlib.Path('.').resolve()
         home = home.relative_to(relative)
     casename = get_casename(dirpath=dirpath, casename=casename)
     return ["{}.{}".format(home / casename, s) for s in suffices]
@@ -461,16 +464,17 @@ class Struct:
         
 
 # pylint: disable=C0301
+# kpoint line format in energy file, wien2k v14.2
 _energy_kpt_line = re.compile(r"([ -]\d\.\d{12}E[+-]\d{2})([ -]\d\.\d{12}E[+-]\d{2})([ -]\d\.\d{12}E[+-]\d{2})\s*(\d+)\s*(\d+)\s*(\d+)\s*(\d+\.\d+)")
 
-def read_energy(penergy: str, penergy_dn: str = None):
+def read_energy(penergy: str, penergy_dn: str = None, efermi=None):
     """get a BandStructure instance from the wien2k energy file
 
     Args:
         penergy (str) : path to the energy file.
             if penergy_dn is also parsed, penergy is treated as the spin-up eigenvalues
-    
         penergy_dn (str) : path to the eneryg file for spin-down channel
+        efermi (float): fermi energy. can be extracted from casename.output2 beforehand
 
     Notes:
         since in occupation numbers are not available in the energy file,
@@ -505,5 +509,6 @@ def read_energy(penergy: str, penergy_dn: str = None):
         _, linenums = grep(_energy_kpt_line, penergy_dn, error_not_found=True,
                            return_linenum=True)
         eigen.append(_read_one_energy_file(h, linenums, nbands_min))
-    return natm_ineq, kpts, BandStructure(eigen, weight=weights, unit='ry')
+    # always Rydberg unit
+    return BandStructure(eigen, weight=weights, unit='ry', efermi=efermi), natm_ineq, kpts
 

@@ -31,7 +31,7 @@ class _DBBase:
         name (str) : relative path for databse in mushroom. otherwise
         glob_regex (Iterable)
     """
-    def __init__(self, name: str, glob_regex: Iterable = None):
+    def __init__(self, name: str, glob_regex: Iterable):
         name = pathlib.Path(name)
         if name.is_absolute():
             self._db_path = name
@@ -39,11 +39,8 @@ class _DBBase:
             self._db_path = mushroom_db_home / name
         self._glob = glob_regex
         self._available_entries = None
-        if glob_regex is None:
-            self._glob = ["**/*.json"]
-        else:
-            if not isinstance(glob_regex, Iterable):
-                raise TypeError("expect Iterable, get", type(glob_regex))
+        if not isinstance(glob_regex, Iterable):
+            raise TypeError("expect Iterable, get", type(glob_regex))
 
     def get_db_location(self):
         """return the absolute path of the database"""
@@ -203,4 +200,10 @@ class DBWorkflow(_DBBase):
                     _logger.info(">> %s", f.name)
                 else:
                     _logger.warning(">> %s found. Use --force to overwrite.", f.name)
+
+class DBKPath(_DBBase):
+    """database of k-point path"""
+
+    def __init__(self):
+        _DBBase.__init__(self, "kpath", ["**/*.json",])
 
