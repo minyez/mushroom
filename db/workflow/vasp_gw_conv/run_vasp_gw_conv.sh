@@ -86,9 +86,9 @@ function run_vasp_gw_conv_clean () {
 
 function run_vasp_gw_conv_data () {
   case $# in
-    0 ) cwd="./"; ik=1 ;;
-    1 ) cwd="$1"; ik=1 ;;
-    * ) cwd="$1"; ik="$2" ;;
+    0 ) cwd="./"; ik=1;;
+    1 ) cwd="$1"; ik=1;;
+    * ) cwd="$1"; ik="$2";;
   esac
 
   printf "%6s%8s%7s%12s%12s%12s%12s%12s\n" \
@@ -102,7 +102,7 @@ function run_vasp_gw_conv_data () {
     if [[ "$nbands" != "*" ]] && [[ -f "$d/EIGENVAL.gw" ]] && [[ -f "$d/OUTCAR.gw" ]]; then
       gap=$(eigen_outcar_vbcb_ik "$d/EIGENVAL.gw" "$d/OUTCAR.gw" "$ik" | awk '{print($2-$1)}')
       qpdata=()
-      split_str qpdata "$(outcar_qpc_vb_cb "$d/OUTCAR.gw" "$ik")"
+      split_str qpdata "$(outcar_qpc_vb_cb "$d/OUTCAR.gw" "${@:2}")"
       printf "%6d%8d%7d%12.5f%12.5f%12.5f%12.5f%12.5f\n" \
         "$encut" "$encutgw" "$nbands" "$gap" "${qpdata[@]}"
     fi

@@ -117,9 +117,11 @@ function outcar_qpc_vb_cb () {
   # $2: index of kpoints
   # returns: qpc (VB), qpc (CB), unscaled QPC (VB), unscaled QPC (CB)
   case $# in
-    0 ) fn="OUTCAR"; ik=1;;
-    1 ) fn="$1"; ik=1;;
-    * ) fn="$1"; ik=$2;;
+    0 ) fn="OUTCAR"; ik=1; vbb=0; cba=0;;
+    1 ) fn="$1"; ik=1; vbb=0; cba=0;;
+    2 ) fn="$1"; ik=$2; vbb=0; cba=0;;
+    3 ) fn="$1"; ik=$2; vbb=$3; cba=0;;
+    * ) fn="$1"; ik=$2; vbb=$3; cba=$4;;
   esac
 
   vb=$(outcar_vb "$fn")
@@ -128,6 +130,8 @@ function outcar_qpc_vb_cb () {
   
   vbln=$(( ln + vb + 1 ))
   cbln=$(( vbln + 1 ))
+  vbln=$(( vbln - vbb ))
+  cbln=$(( cbln + cba ))
   
   qpc_vb=$(awk "FNR == $vbln {print(\$3-\$2)}" "$fn")
   qpc_cb=$(awk "FNR == $cbln {print(\$3-\$2)}" "$fn")
@@ -320,7 +324,11 @@ function poscar_scale () {
 }
 
 function incar_change_tag () {
-  # change one tag of INCAR
+  # change a one-line tag of INCAR.
+  # $1: tag to change (uppercase)
+  # $2: value to set
+  # $3: INCAR to modify
+  # $4: output path for the modified INCAR
   case $# in
     2 ) tag="$1"; value="$2"; incar="INCAR"; unset incarout;;
     3 ) tag="$1"; value="$2"; incar="$3"; unset incarout;;
