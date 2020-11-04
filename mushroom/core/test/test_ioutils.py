@@ -7,8 +7,8 @@ import unittest as ut
 
 from mushroom.core.ioutils import (split_comma, decode_int_range, decode_float_ends, grep,
                                    get_dirpath, get_file_ext, get_filename_wo_ext,
-                                   get_cwd_name, get_matched_files, trim_after, trim_comment,
-                                   trim_before, trim_both_sides)
+                                   get_cwd_name, get_matched_files, trim_after,# trim_comment,
+                                   trim_before, trim_both_sides, conv_string)
 
 # pylint: disable=C0116
 class test_string_decoding(ut.TestCase):
@@ -37,6 +37,16 @@ class test_string_decoding(ut.TestCase):
         self.assertListEqual(split_comma("a-2~1,9", int),
                              ["a-2", "a-1", "a+0", "a+1", 9])
 
+    def test_conv_string(self):
+        string = "1; ABC=5. "
+        # unsupported conversion type
+        self.assertRaises(AssertionError, conv_string, string, list, 0)
+        # single value
+        self.assertEqual(1, conv_string(string, int, 0, strips=";"))
+        # multiple values
+        self.assertListEqual([1, 5], conv_string(string, int, 0, 2, sep=r"[;=]", strips="."))
+
+
 class test_grep(ut.TestCase):
     """test grep emulation"""
     def test_raise(self):
@@ -51,6 +61,7 @@ class test_grep(ut.TestCase):
         self.assertListEqual(["utut\n", "ut",], grep("ut", s))
         s = ["unittest\n", "utut\n", "ut"]
         self.assertListEqual(["utut\n", "ut",], grep("ut", s))
+        self.assertListEqual(["utut\n",], grep("ut", s, maxcounts=1))
 
     def test_return_lineum(self):
         """match text"""
@@ -66,9 +77,48 @@ class test_grep(ut.TestCase):
         self.assertListEqual(["ut", "ut",], [g.group() for g in matched])
         self.assertListEqual([1, 2], index)
 
+class test_trim(ut.TestCase):
+    """string trimming functions"""
+    def test_trim_before(self):
+        """trim before"""
+        self.assertEqual("defg", trim_before("abc#defg", r'#'))
+        self.assertEqual("#defg", trim_before("abc#defg", r'#', include_pattern=True))
+        self.assertEqual("comment", trim_before("I have Fortran!comment", r'!'))
+        self.assertEqual("!comment", \
+            trim_before("I have Fortran!comment", r'!', include_pattern=True))
+        self.assertEqual("P", trim_before("Fe1P", r'\d'))
+        self.assertEqual("1P", trim_before("Fe1P", r'\d', include_pattern=True))
+        self.assertEqual("Fe", trim_before("Cd2Fe", r'\d'))
+        self.assertEqual("2Fe", trim_before("Cd2Fe", r'\d', include_pattern=True))
+
+    def test_trim_after(self):
+        """trim after"""
+        self.assertEqual("abc", trim_after("abc#defg", r'#'))
+        self.assertEqual("abc#", trim_after("abc#defg", r'#', include_pattern=True))
+        self.assertEqual("I have Fortran", \
+            trim_after("I have Fortran!comment", r'!'))
+        self.assertEqual("I have Fortran!", \
+            trim_after("I have Fortran!comment", r'!', include_pattern=True))
+        self.assertEqual("Fe", trim_after("Fe1", r'\d'))
+        self.assertEqual("Cd2", trim_after("Cd2Fe", r'\d', include_pattern=True))
+
+    def test_trim_both_sides(self):
+        """trim both"""
+        string = "WFFIL  EF=0.9725 (WFFIL, WFPRI, ENFIL, SUPWF)"
+        self.assertEqual("0.9725 ", \
+            trim_both_sides(string, r"=", r"\("))
+        self.assertEqual("=0.9725 (", \
+            trim_both_sides(string, r"=", r"\(", include_pattern=True))
+
+
 
 class test_file_path(ut.TestCase):
     """test of utilities related to file and path"""
+    def test_get_cwd_name(self):
+        """get cwd name"""
+        os.chdir(os.path.dirname(__file__))
+        self.assertEqual("test", get_cwd_name())
+
     def test_dirpath(self):
         """get dirpath"""
         self.assertEqual("test", os.path.basename(get_dirpath(__file__)))
@@ -84,9 +134,15 @@ class test_file_path(ut.TestCase):
         """get file extension"""
         self.assertEqual("test_ioutils", get_filename_wo_ext(__file__))
         self.assertEqual("abc", get_filename_wo_ext("/home/user/abc.txt"))
-    
-#   get_cwd_name, get_matched_files, trim_after, trim_comment,
-#   trim_before, trim_both_sides
+
+    def test_get_matched_files(self):
+        """get match files"""
+        os.chdir(os.path.dirname(__file__))
+        self.assertTupleEqual(("test_ioutils.py",),
+                              get_matched_files(regex=r".*ioutils.*", relative=True))
+
+
+#   trim_comment,
 
 if __name__ == "__main__":
     ut.main()

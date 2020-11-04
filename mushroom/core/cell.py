@@ -22,6 +22,7 @@ from mushroom.core.constants import PI, SQRT3
 from mushroom.core.cif import Cif
 from mushroom.core.elements import NUCLEAR_CHARGE
 from mushroom.core.unit import LengthUnit
+from mushroom.core.pkg import detect
 from mushroom.core.crystutils import (get_latt_consts_from_latt_vecs,
                                       periodic_duplicates_in_cell,
                                       select_dyn_flag_from_axis,
@@ -76,6 +77,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
     _err = CellError
     _dtype = 'float64'
     avail_exporters = ['vasp', 'abi', 'json']
+    avail_readers = ['vasp', 'json', 'cif']
 
     def __init__(self, latt, atms, posi, unit: str = 'ang', sanitize: bool = True,
                  coord_sys: str = 'D', select_dyn: dict = None, all_relax: bool = True,
@@ -873,7 +875,8 @@ When other keyword are parsed, they will be filtered out and no exception will b
 
         Args:
             path (str)
-            form (str) : should be in avail_reader"""
+            form (str) : should be in avail_readers
+        """
         path = str(path)
         _logger.info("Reading %s", path)
         readers = {
@@ -883,12 +886,12 @@ When other keyword are parsed, they will be filtered out and no exception will b
             }
         try:
             if form is None:
-                form = get_file_ext(path)
-                if path.endswith('POSCAR'):
-                    form = 'vasp'
+                form = detect(path)
+                if form is None:
+                    form = get_file_ext(path).lower()
                 _logger.info("Detected format %s", form)
-            if form is None:
-                raise ValueError("failt to get format from extension of file {}".format(path))
+            if not form:
+                raise ValueError("fail to get format from extension of file {}".format(path))
             return readers.get(form)(path)
         except KeyError:
             raise CellError("Unsupported reader format: {}".format(form))
@@ -1417,7 +1420,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
         c = abs(c)
         ha = a/2
         if primitive:
-            latt = [[ha, -ha/SQRT3, c], [0.0, 2*ha/SQRT3, c], [-ha, -ha/SQRT3, c]]
+            latt = [[ha, -ha/SQRT3, c/3], [0.0, 2*ha/SQRT3, c/3], [-ha, -ha/SQRT3, c/3]]
             atms = [str(atom1), str(atom2), str(atom3), str(atom3)]
             posi = [[0.0, 0.0, 0.0],
                     [0.5, 0.5, 0.5],

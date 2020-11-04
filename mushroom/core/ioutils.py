@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 """this module defines some common used utilities"""
 import os
+import pathlib
 import re
 from io import TextIOWrapper, StringIO
 from collections import OrderedDict
 from collections.abc import Iterable, Callable
 from sys import stdout
-from typing import List
+from typing import List, Union
 
 from mushroom.core.logger import create_logger
 
@@ -18,9 +19,9 @@ greeks_latex = list("\\" + x for x in greeks)
 _logger = create_logger("ioutil")
 del create_logger
 
-
+# pylint: disable=R0912,R0914
 def grep(pattern, filename, is_binary: bool = False, error_not_found: bool = False,
-         return_group: bool = False, return_linenum: bool = False) -> List:
+         maxcounts: int = None, return_group: bool = False, return_linenum: bool = False) -> List:
     """emulate command line grep with re package
 
     Args:
@@ -28,10 +29,12 @@ def grep(pattern, filename, is_binary: bool = False, error_not_found: bool = Fal
         filename (str, file-like, Iterable of str) :
             str: filename to search
             file-like: handle of file
+            Iterable: contents of a file from readlines()
         is_binary (bool)
-        error_not_found (bool)
-        return_group (bool)
-        return_linenum (bool)
+        error_not_found (bool): raise when no match is found
+        maxcounts (int)
+        return_group (bool): return re.Match object
+        return_linenum (bool): return both the matched lines and their indices in the contents
 
     Returns
         one list if return_linenum is False, re.Match object if return_group is True
@@ -56,12 +59,18 @@ def grep(pattern, filename, is_binary: bool = False, error_not_found: bool = Fal
         raise TypeError("expect str, file-like object or Iterable, got", type(filename))
     line_nums = []
     matched = []
+    n = 0
+    if maxcounts is None:
+        maxcounts = len(container)
     for i, l in enumerate(container):
         m = pattern.search(l)
         if m is not None:
             _logger.debug("grep matched %s", m.group())
             line_nums.append(i)
             matched.append({True: m, False: l}[return_group])
+            n += 1
+            if n >= maxcounts:
+                break
     if isinstance(filename, str):
         f.close()
 
@@ -84,11 +93,10 @@ def get_dirpath(path):
     p = os.path.abspath(path)
     if os.path.isdir(p):
         p += "/"
-    print(p)
     return os.path.dirname(p)
 
 
-def get_file_ext(path: str) -> str:
+def get_file_ext(path: Union[str, os.PathLike]) -> str:
     """Return the extension name of file at path
 
     If filePath is a existing directory, None will be returned
@@ -96,21 +104,22 @@ def get_file_ext(path: str) -> str:
     an empty string will be returned.
 
     Args:
-        path (str): the path of the file
+        path (PathLike): the path of the file
     """
-    if os.path.isdir(path):
+    path = pathlib.Path(path)
+    if path.is_dir():
         return None
-    base = os.path.basename(os.path.abspath(path))
-    return os.path.splitext(base)[1][1:]
+    return path.suffix[1:]
 
 
-def get_filename_wo_ext(path: str) -> str:
+def get_filename_wo_ext(path: Union[str, os.PathLike]) -> str:
     """Get the filename without extension
 
     Args:
         path (str): the path of file
     """
-    fn = os.path.basename(os.path.abspath(path))
+    path = pathlib.Path(path)
+    fn = path.resolve().name
     return os.path.splitext(fn)[0]
 
 
@@ -120,30 +129,33 @@ def get_cwd_name():
     return os.path.basename(os.getcwd())
 
 
-def get_matched_files(dir_path=".", regex=None) -> tuple:
-    """Get the abspath of the files whose name matches a regex
+def get_matched_files(regex: str = None, dirpath=".", relative=False) -> tuple:
+    """Get the path of the files whose name matches a regex
 
-    Only files will be returned, and directories are excluded.
+    Directories are excluded and only files will be returned.
 
     Args:
-        dirPath (str): the directory to search
         regex (regex): the regular expression to match the filename
+        dirpath (str): the directory to search
+        relative (bool): if True, the path relative to cwd are returned.
+            Otherwise returns the absolute path.
 
     Returns:
         tuple of strings
     """
     # check the exisitence of path
     fns = []
-    _abs_dir = os.path.abspath(dir_path)
-    if os.path.isdir(_abs_dir):
-        for i in os.listdir(_abs_dir):
+    cwd = pathlib.Path('.').resolve()
+    dirpath = pathlib.Path(dirpath)
+    if not dirpath.is_file():
+        for f in dirpath.glob("*"):
             if regex is not None:
-                if not re.match(regex, i):
+                if re.search(regex, f.name) is None:
                     continue
-            _fpath = os.path.join(_abs_dir, i)
-            if os.path.isfile(_fpath):
-                fns.append(_fpath)
-    return tuple(fns)
+                fns.append(f.resolve())
+    if relative:
+        return tuple(str(f.relative_to(cwd)) for f in fns)
+    return tuple(str(f) for f in fns)
 
 
 def trim_after(string: str, regex: str, include_pattern=False) -> str:

@@ -1,0 +1,11 @@
+{
+  "factory": "delafossite",
+  "a": 2.8604,
+  "c": 16.953,
+  "atom1": "Cu",
+  "atom2": "Al",
+  "atom3": "O",
+  "u": 0.10979,
+  "primitive": true,
+  "reference": "J Sol State Chem 40, 174 (1981) "
+}
