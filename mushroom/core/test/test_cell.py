@@ -267,7 +267,7 @@ class cell_reader(ut.TestCase):
                     self.assertTrue(np.array_equal(cell_value, v), msg=msg)
 
     def test_read_vasp(self):
-        """read vaps POSCAR"""
+        """read vasp POSCAR"""
         dir_poscar = pathlib.Path(__file__).parent / "data"
         index_json = dir_poscar / "poscar.json"
         with index_json.open('r') as fp:

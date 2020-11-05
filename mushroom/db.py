@@ -7,10 +7,10 @@ from shutil import copy
 from collections.abc import Iterable
 from typing import Union
 
+from mushroom.core.pkg import detect
 from mushroom.core.logger import create_logger
 from mushroom.core.cell import Cell
 from mushroom.w2k import Struct
-from mushroom.core.pkg import detect
 
 __all__ = [
         "DBCell",
@@ -247,13 +247,15 @@ class DBWorkflow(_DBBase):
                 p.unlink()
             p.symlink_to(self._libs / prog)
 
-    def copy_workflow_to_dst(self, wf: Union[str, int], dst: str = ".",
+    def copy_workflow_to_dst(self, wf: Union[str, int], dst: str = ".", create_dir: bool = True,
                              overwrite: bool = False, copy_readme: bool = False):
         """copy the workflow files to destination
 
         Args:
             wf (str or int)
             dst (str)
+            create_dir (bool): if set True, dst will be created when it is not found.
+                Otherwise NotADirectoryError will be raised
             overwrite (bool)
             copy_readme (bool)
         """
@@ -261,7 +263,16 @@ class DBWorkflow(_DBBase):
         p = pathlib.Path(self.get_workflow_path(wf))
         dst = pathlib.Path(dst)
         if not dst.is_dir():
-            raise ValueError("destination must be a directory")
+            try:
+                if create_dir:
+                    makedirs(dst)
+                else:
+                    raise NotADirectoryError("directory {} does not exist".format(dst))
+            except PermissionError:
+                raise PermissionError("cannot create directory due to limited permission")
+            else:
+                raise OSError("cannot create directory")
+            _logger.info("Created directory under %s", str(dst))
         _logger.info("Copying %s files to %s", p.name, dst.name)
         for x in p.glob("*"):
             if x.name == "README.md" and not copy_readme:

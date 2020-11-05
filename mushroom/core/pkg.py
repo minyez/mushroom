@@ -59,18 +59,22 @@ for v in _package_specific_exts.values():
     if v not in package_names:
         raise ValueError("invalid pkg name in extension match: {}".format(v))
 
-def detect_matchfn(path: Union[str, PathLike]) -> str:
+def detect_matchfn(path: Union[str, PathLike], fail_with_ext: bool = False) -> str:
     """detect the package of a file at `path` by matching its file name
 
     It matches in the order of full name, extension name
 
     Args:
         path (str or os.PathLike): path to the file
+        fail_with_ext (bool): if set True, extension name will be returned if no package is detected
 
     Returns:
         str, the token of package if detected succesfully
-        None if otherwise or path is a directory
+        None, if detection fails and fail_with_ext is False
+        str, the extension name if detection fails and fail_with_ext is True
+        None if path is a directory
     """
+    fail = {True: get_file_ext(path)}.get(fail_with_ext, None)
     path = pathlib.Path(path)
     if path.is_dir():
         return None
@@ -84,7 +88,7 @@ def detect_matchfn(path: Union[str, PathLike]) -> str:
             _logger.debug("detected by matchfn (%s, %s) %s", name, ext, pkg)
             return pkg
     _logger.debug("fail detecting by matchfn %s (%s, %s)", full, name, ext)
-    return None
+    return fail
 
 _package_specific_head_patterns = {
     }
