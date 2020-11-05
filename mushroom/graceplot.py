@@ -9,12 +9,15 @@ Therefore, platform-related functions are generally discarded. (minyez)
 """
 import sys
 import time
+import pathlib
+from os import PathLike
 import subprocess
 from re import sub, findall
 from io import TextIOWrapper, StringIO
 from shutil import which
 from collections.abc import Iterable
 from copy import deepcopy
+from typing import Union
 from numpy import shape, absolute, loadtxt
 
 from mushroom.core.data import Data
@@ -2737,20 +2740,19 @@ class Plot:
         for g in self._graphs:
             g.set_ylim(ymin=ymin, ymax=ymax)
 
-    def write(self, file=sys.stdout, mode='w'):
+    def write(self, file: Union[str, TextIOWrapper, PathLike] = sys.stdout, mode: str = 'w'):
         """write grace plot file to `fn`
 
         Args:
             file (str or file handle)
             mode (str) : used only when `file` is set to a filename
         """
-        if isinstance(file, str):
-            fp = open(file, mode)
-            print(self.__str__(), file=fp)
-            fp.close()
+        if isinstance(file, (str, PathLike)):
+            with open(file, mode) as fp:
+                print(str(self), file=fp)
             return
         if isinstance(file, TextIOWrapper):
-            print(self.__str__(), file=file)
+            print(str(self), file=file)
             return
         raise TypeError("should be str or TextIOWrapper type")
 

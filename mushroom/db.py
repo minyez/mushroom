@@ -65,21 +65,25 @@ class _DBBase:
         """reload the list of entries"""
         self._available_entries = None
 
-    def register(self, entry: Union[str, PathLike], overwrite=False):
+    def register(self, entry: Union[str, PathLike],
+                 relative: bool = False, overwrite: bool = False):
         """register a new entry to database
 
         Args:
             entry (str) : file name of entry
-            overwrite
+            relative (bool) 
+            overwrite (bool)
 
         Returns:
-            Path, the path to the entry if the entry does not exist or overwrite is switched on.
+            str, the path to the entry if the entry does not exist or overwrite is switched on.
             None, otherwise.
         """
         entry_path = self._db_path / entry
         if not entry_path.exists() or overwrite:
             makedirs(entry_path.parent, exist_ok=True)
-            return entry_path
+            if relative:
+                entry_path = entry_path.relative_to(pathlib.Path('.').resolve())
+            return str(entry_path)
         _logger.warning("Entry %s is found at %s. Skip", str(entry), str(entry_path))
         return None
 

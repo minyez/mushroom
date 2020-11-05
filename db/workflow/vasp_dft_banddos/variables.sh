@@ -16,7 +16,10 @@ ispin=1
 prec="Accurate"
 # modules to load
 modules=()
-
+# for band-decomposed charge density after SCF calculation
+# always decomposed to band and kpoint
+iband=""
+kpuse=""
 # TODO multiplier for DOS kmesh. not work yet
 kmult_dos=2
 

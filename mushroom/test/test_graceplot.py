@@ -2,6 +2,7 @@
 """Test graceplot"""
 import unittest as ut
 import tempfile
+import pathlib
 from itertools import product
 
 from numpy import array_equal
@@ -248,6 +249,7 @@ class test_Plot(ut.TestCase):
         for g in p.get():
             self.assertListEqual(g._world.world_location,
                                  [1.0, 3.0, 2.0, 4.0])
+        p.tight_graph()
 
     def test_add_graph(self):
         """graph addition"""
@@ -280,6 +282,9 @@ class test_Plot(ut.TestCase):
         tf = tempfile.NamedTemporaryFile()
         with open(tf.name, 'w') as h:
             p.write(file=h)
+        p.write(file=tf.name)
+        p.write(file=pathlib.Path(tf.name))
+        self.assertRaises(TypeError, p.write, file=[1,])
         tf.close()
 
 
@@ -296,6 +301,28 @@ class test_Dataset(ut.TestCase):
         d = Dataset(0, [0,], [0,])
         d.set_errorbar(color="red")
         self.assertEqual(d._errorbar.color, Color.RED)
+
+class test_classmethod(ut.TestCase):
+    """test classmethod for quick plot"""
+    def test_banddos(self):
+        """band dos graph"""
+        p = Plot.band_dos()
+        self.assertEqual(len(p), 2)
+
+    def test_bandstructure(self):
+        """band graph"""
+        p = Plot.bandstructure()
+        self.assertEqual(len(p), 1)
+
+    def test_dos(self):
+        """dos graph"""
+        p = Plot.dos()
+        self.assertEqual(len(p), 1)
+
+    def test_double_y(self):
+        """dos graph"""
+        p = Plot.double_yaxis()
+        self.assertEqual(len(p), 2)
 
 class test_read_agr(ut.TestCase):
     """test agr reading methods"""

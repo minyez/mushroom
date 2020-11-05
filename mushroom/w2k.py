@@ -383,7 +383,7 @@ class Struct:
 
     # pylint: disable=R0914
     @classmethod
-    def read(cls, pstruct=None):
+    def read(cls, pstruct: Union[str, PathLike] = None):
         """Read the object from an existing struct file
 
         Args:
@@ -391,7 +391,8 @@ class Struct:
         """
         if pstruct is None:
             pstruct = get_casename() + ".struct"
-        with open(pstruct, "r") as h:
+        pstruct = pathlib.Path(pstruct)
+        with pstruct.open("r") as h:
             lines = h.readlines()
 
         ntypes = int(lines[1].split()[2])

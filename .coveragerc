@@ -13,5 +13,6 @@ exclude_lines =
     if __name__ == .__main__.:
 
 	def _run_gracebat
+	def savefig
 
     raise NotImplementedError

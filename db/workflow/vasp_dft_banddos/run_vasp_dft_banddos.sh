@@ -35,6 +35,15 @@ function __setup_inputs () {
   for d in INCAR.scf INCAR.dos INCAR.band; do
     incar_add_npar_kpar "$npar" "$kpar" "$1/$d"
   done
+  if [[ -n "$iband" ]] || [[ -n "$kpuse" ]]; then
+    cp INCAR.parchg "$1/INCAR.parchg"
+    if [[ -n "$iband" ]]; then
+      incar_change_tag "IBAND" "$iband" "$1/INCAR.parchg"
+    fi
+    if [[ -n "$kpuse" ]]; then
+      incar_change_tag "KPUSE" "$kpuse" "$1/INCAR.parchg"
+    fi
+  fi
 
   cp KPOINTS.scf "$1/KPOINTS.scf"
   cp KPOINTS.dos "$1/KPOINTS.dos"
@@ -73,6 +82,17 @@ function run_vasp_dft_banddos_calc () {
     cd "$workdir" || exit 1
     __run_single scf
     cp CHGCAR CHGCAR.scf
+
+    if [ -f INCAR.parchg ]; then
+      mkdir -p parchg
+      cd parchg || exit 1
+      ln -s ../../POSCAR POSCAR
+      ln -s ../../POTCAR POTCAR
+      cp ../INCAR.parchg INCAR
+      cp ../KPOINTS KPOINTS
+      __run_single parchg
+      cd ..
+    fi
 
     __run_single dos
     warning_chgwav_change CHGCAR CHGCAR.scf
