@@ -45,6 +45,10 @@ function __setup_incars () {
       incar_change_tag "KPAR" "$kpar" "$1/$d"
     fi
   done
+  if (( use_damp != 0 )); then
+    incar_change_tag "ALGO" "Damped" "$1/INCAR.coarse"
+    incar_change_tag "ALGO" "Damped" "$1/INCAR.hf"
+  fi
 }
 
 function run_vasp_hf_dos_calc () {

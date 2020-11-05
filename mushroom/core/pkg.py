@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """utilies to detect the file package of which a particular file is used to"""
 import pathlib
+from io import TextIOWrapper
 from os import PathLike
 from os.path import splitext
 from typing import Union
@@ -59,7 +60,7 @@ for v in _package_specific_exts.values():
     if v not in package_names:
         raise ValueError("invalid pkg name in extension match: {}".format(v))
 
-def detect_matchfn(path: Union[str, PathLike], fail_with_ext: bool = False) -> str:
+def detect_matchfn(path: Union[str, PathLike, TextIOWrapper], fail_with_ext: bool = False) -> str:
     """detect the package of a file at `path` by matching its file name
 
     It matches in the order of full name, extension name
@@ -74,8 +75,10 @@ def detect_matchfn(path: Union[str, PathLike], fail_with_ext: bool = False) -> s
         str, the extension name if detection fails and fail_with_ext is True
         None if path is a directory
     """
+    if isinstance(path, TextIOWrapper):
+        path = path.name
+    path =pathlib.Path(path)
     fail = {True: get_file_ext(path)}.get(fail_with_ext, None)
-    path = pathlib.Path(path)
     if path.is_dir():
         return None
     full = path.name
@@ -104,7 +107,9 @@ for v in _package_specific_tail_patterns.values():
 
 def detect_matchhead(path: Union[str, PathLike]) -> str:
     """detect the package of a file by matching its head"""
-    path = pathlib.Path(path)
+    if isinstance(path, TextIOWrapper):
+        path = path.name
+    path =pathlib.Path(path)
     if path.is_dir():
         return None
     for pattern, pkg in _package_specific_head_patterns.items():
@@ -115,6 +120,8 @@ def detect_matchhead(path: Union[str, PathLike]) -> str:
 
 def detect_matchtail(path: Union[str, PathLike]) -> str:
     """detect the package of a file by matching its tail"""
+    if isinstance(path, TextIOWrapper):
+        path = path.name
     path = pathlib.Path(path)
     if path.is_dir():
         return None

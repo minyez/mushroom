@@ -14,5 +14,7 @@ prec="Accurate"
 # screening
 hfscreen=0
 lthomas=0
+# use ALGO=Damped
+use_damp=0
 # modules to load
 modules=()

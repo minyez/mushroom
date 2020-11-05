@@ -1,12 +1,12 @@
 FeS2 HSE06 coarse convergence
 ISTART = 1
 LREAL = .FALSE.
-EDIFF = 1e-06
+EDIFF = _ediff_
 ENCUT = _encut_
 
 ISMEAR = 0
 SIGMA = 0.05
-PREC = Accurate
+PREC = _prec_
 ISPIN = 1
 LMAXMIX = 6
 ALGO = ALL

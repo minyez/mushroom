@@ -13,8 +13,7 @@ function run_vasp_hf_conv_data () {
   case $# in
     0 ) cwd="./"; ik=1 ;;
     1 ) cwd="$1"; ik=1 ;;
-    2 ) cwd="$1"; ik="$2" ;;
-    * ) exit 1;;
+    * ) cwd="$1"; ik="$2" ;;
   esac
 
   printf "%6s%9s%15s%9s%9s%9s\n" "#ENCUT" "kmesh" "Etot" "CBM" "VBM" "Egap"
@@ -63,10 +62,14 @@ function run_vasp_hf_conv_calc () {
         sed "s/_encut_/$encut/g;s/_ediff_/$ediff/g;s/_prec_/$prec/g;s/_hfscreen_/$hfscreen/g;" \
           INCAR.hf > "$workdir/INCAR.hf"
         sed "s/PRECFOCK = Normal/PRECFOCK = Fast/g" "$workdir/INCAR.hf" > "$workdir/INCAR.coarse"
-        if (( lthomas == 1 )); then
+        if (( lthomas != 0 )); then
           s="AEXX = 1.0 ; AGGAC = 1.0 ; ALDAC = 1.0 ; LTHOMAS = T"
           echo "$s" >> "$workdir/INCAR.coarse"
           echo "$s" >> "$workdir/INCAR.hf"
+        fi
+        if (( use_damp != 0 )); then
+          incar_change_tag "ALGO" "Damped" "$workdir/INCAR.coarse"
+          incar_change_tag "ALGO" "Damped" "$workdir/INCAR.hf"
         fi
         cat > "$workdir/KPOINTS.scf" << EOF
 kpoints for hf convergence

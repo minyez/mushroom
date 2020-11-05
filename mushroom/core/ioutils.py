@@ -111,7 +111,7 @@ def get_dirpath(path):
     return os.path.dirname(p)
 
 
-def get_file_ext(path: Union[str, os.PathLike]) -> str:
+def get_file_ext(path: Union[str, os.PathLike, TextIOWrapper]) -> str:
     """Return the extension name of file at path
 
     If filePath is a existing directory, None will be returned
@@ -121,6 +121,8 @@ def get_file_ext(path: Union[str, os.PathLike]) -> str:
     Args:
         path (PathLike): the path of the file
     """
+    if isinstance(path, TextIOWrapper):
+        path = pathlib.Path(path.name)
     path = pathlib.Path(path)
     if path.is_dir():
         return None

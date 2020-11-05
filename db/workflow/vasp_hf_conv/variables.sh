@@ -25,5 +25,7 @@ kmeshes=(
 hfscreen=0
 # switch on thomas-fermi screening, use for SX-PBE/LDA
 lthomas=0
+# set non-zero to use ALGO=damp for hybrid calculation
+use_damp=0
 
 modules=()

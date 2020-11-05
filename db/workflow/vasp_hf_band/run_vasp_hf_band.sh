@@ -32,10 +32,14 @@ function __setup_incars () {
     INCAR.hf > "$1/INCAR.hf"
   #sed "s/PRECFOCK = Normal/PRECFOCK = Fast/g" "$workdir/INCAR.hf" > "$workdir/INCAR.coarse"
   incar_change_tag "PRECFOCK" "Fast" "$1/INCAR.hf" "$1/INCAR.coarse"
-  if (( "$lthomas" == 1 )); then
+  if (( lthomas != 0 )); then
     s="AEXX = 1.0\nAGGAC = 1.0\nALDAC = 1.0\nLTHOMAS = T"
     echo -e "$s" >> "$1/INCAR.coarse"
     echo -e "$s" >> "$1/INCAR.hf"
+  fi
+  if (( use_damp != 0 )); then
+    incar_change_tag "ALGO" "Damped" "$1/INCAR.coarse"
+    incar_change_tag "ALGO" "Damped" "$1/INCAR.hf"
   fi
   # parallel setup
   kpar=$(largest_div_below_sqrt "$np")

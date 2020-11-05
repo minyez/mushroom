@@ -224,7 +224,7 @@ class DBWorkflow(_DBBase):
         self.get_workflow_path = self.get_entry_path
         self.get_avail_workflows = self.get_avail_entries
 
-    def _init_workflow_libs_symlink(self, wf: Union[str, int]):
+    def init_workflow_libs_symlink(self, wf: Union[str, int]):
         """initialize symlinks to workflow lib shell file"""
         wf = self.get_workflow(wf)
         if wf is None:
@@ -259,7 +259,7 @@ class DBWorkflow(_DBBase):
             overwrite (bool)
             copy_readme (bool)
         """
-        self._init_workflow_libs_symlink(wf)
+        self.init_workflow_libs_symlink(wf)
         p = pathlib.Path(self.get_workflow_path(wf))
         dst = pathlib.Path(dst)
         if not dst.is_dir():

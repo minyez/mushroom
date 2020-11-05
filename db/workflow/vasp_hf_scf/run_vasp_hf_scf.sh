@@ -17,12 +17,23 @@ function run_vasp_hf_scf_calc () {
   raise_missing_prereq "${reqs[@]}"
   mkdir "$workdir"
   # process INCAR tags from variables
-  sed "s/_encut_/$encut/g" INCAR.pbe > "$workdir/INCAR.pbe"
-  sed "s/_encut_/$encut/g;s/_hfscreen_/$hfscreen/g" INCAR.coarse > "$workdir/INCAR.coarse"
+  sed "s/_encut_/$encut/g;s/_ediff_/$ediff/g;s/_prec_/$prec/g" INCAR.pbe > "$workdir/INCAR.pbe"
+  sed "s/_encut_/$encut/g;s/_ediff_/$ediff/g;s/_prec_/$prec/g;s/_hfscreen_/$hfscreen/g" \
+    INCAR.coarse > "$workdir/INCAR.coarse"
   sed -i "s/_nkredx_/$nkredx/g;s/_nkredy_/$nkredy/g;s/_nkredz_/$nkredz/g" "$workdir/INCAR.coarse"
-  sed "s/_encut_/$encut/g;s/_hfscreen_/$hfscreen/g" INCAR.hf > "$workdir/INCAR.hf"
+  sed "s/_encut_/$encut/g;s/_hfscreen_/$hfscreen/g;s/_ediff_/$ediff/g;s/_prec_/$prec/g" INCAR.hf > "$workdir/INCAR.hf"
   cp KPOINTS.scf "$workdir/"
   
+  if (( lthomas != 0 )); then
+    s="AEXX = 1.0\nAGGAC = 1.0\nALDAC = 1.0\nLTHOMAS = T"
+    echo -e "$s" >> "$workdir/INCAR.coarse"
+    echo -e "$s" >> "$workdir/INCAR.hf"
+  fi
+  if (( use_damp != 0 )); then
+    incar_change_tag "ALGO" "Damped" "$workdir/INCAR.coarse"
+    incar_change_tag "ALGO" "Damped" "$workdir/INCAR.hf"
+  fi
+
   dry=0
   if (( $# == 1 )); then
     dry=1

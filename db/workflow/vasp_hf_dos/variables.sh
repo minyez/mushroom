@@ -14,6 +14,8 @@ encut=400
 prec="Accurate"
 hfscreen=0
 lthomas=0
+# set non-zero to use ALGO=damp for hybrid calculation
+use_damp=0
 # modules to load
 modules=()
 
