@@ -21,8 +21,8 @@ def _parser():
                       help="show predefined sample cells")
     #p.add_argument('-a', dest='add_cell', type=str, default=None,
     #               help="add converted input to sample data (JSON format)")
-    #p.add_argument('-i', dest='input_format', type=str, default=None,
-    #               help="format of input file, automatic detection (TODO)")
+    p.add_argument('-i', dest='input_format', choices=DBCell.avail_readers, type=str, default=None,
+                   help="format of input file, automatic detection")
     p.add_argument('-O', dest='output_path', type=str, default=None,
                    help="output file")
     p.add_argument('-o', dest='output_format', type=str,

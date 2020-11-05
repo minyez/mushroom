@@ -2,7 +2,7 @@
 """database related"""
 import pathlib
 from re import search
-from os import makedirs
+from os import makedirs, PathLike
 from shutil import copy
 from collections.abc import Iterable
 from typing import Union
@@ -61,21 +61,27 @@ class _DBBase:
             self._available_entries = d
         return self._available_entries
 
-    def add_entry(self, entry: str, data_object, rewrite=False):
-        """add a new entry to database with data_object as its content
+    def reload(self):
+        """reload the list of entries"""
+        self._available_entries = None
+
+    def register(self, entry: Union[str, PathLike], overwrite=False):
+        """register a new entry to database
 
         Args:
-            entry (str) : name of entry
-            data_object (any object with __str__ method)
+            entry (str) : file name of entry
+            overwrite
+
+        Returns:
+            Path, the path to the entry if the entry does not exist or overwrite is switched on.
+            None, otherwise.
         """
         entry_path = self._db_path / entry
-        if not entry_path.exists() or rewrite:
+        if not entry_path.exists() or overwrite:
             makedirs(entry_path.parent, exist_ok=True)
-            with entry_path.open('w') as h:
-                print(str(data_object), file=h)
-            self._available_entries = None
-        else:
-            _logger.warning("Entry %s is found at %s. Skip", entry, str(entry_path))
+            return entry_path
+        _logger.warning("Entry %s is found at %s. Skip", str(entry), str(entry_path))
+        return None
 
     def filter(self, regex=None):
         """filter the database entries
@@ -163,12 +169,13 @@ class DBCell(_DBBase):
         self.get_cell_path = self.get_entry_path
         self.get_avail_cells = self.get_avail_entries
 
-    def extract(self, cell_entry, filename=None, writer=None):
+    def extract(self, cell_entry, output_path=None, writer=None):
         """extract the entry from cell database"""
-        self._write(self._reader(cell_entry), output_path=filename, writer=writer)
+        self._write(self._read_entry(cell_entry),
+                    output_path=output_path, writer=writer)
 
-    def _reader(self, cell_entry: Union[str, int], reader=None):
-        """read in an entry and return a cell object"""
+    def _read_entry(self, cell_entry: Union[str, int], reader=None):
+        """read in a database entry and return a cell object"""
         pcell = self.get_cell_path(cell_entry)
         if pcell is None:
             raise DBEntryNotFoundError("cell entry {} is not found".format(cell_entry))

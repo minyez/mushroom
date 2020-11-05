@@ -77,6 +77,25 @@ class test_grep(ut.TestCase):
         self.assertListEqual(["ut", "ut",], [g.group() for g in matched])
         self.assertListEqual([1, 2], index)
 
+    def test_from_behind(self):
+        """match text"""
+        s = StringIO("unittest\nutut\nut")
+        matched, index = grep("ut", s, from_behind=True, return_linenum=True)
+        self.assertListEqual(["ut", "utut\n"], matched)
+        self.assertListEqual([2, 1], index)
+        # check iterable stays the same
+        s = ["unittest\n", "utut\n", "ut"]
+        matched = grep("ut", s, from_behind=True)
+        self.assertListEqual(s, ["unittest\n", "utut\n", "ut"])
+        
+    def test_maxdepth_counts(self):
+        """match text"""
+        s = StringIO("unittest\nutut\nut")
+        matched = grep("ut", s, maxcounts=1)
+        self.assertListEqual(["utut\n",], matched)
+        matched = grep("ut", s, maxdepth=1)
+        self.assertListEqual([], matched)
+
 class test_trim(ut.TestCase):
     """string trimming functions"""
     def test_trim_before(self):

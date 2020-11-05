@@ -21,7 +21,8 @@ del create_logger
 
 # pylint: disable=R0912,R0914
 def grep(pattern, filename, is_binary: bool = False, error_not_found: bool = False,
-         maxcounts: int = None, return_group: bool = False, return_linenum: bool = False) -> List:
+         from_behind: bool = False, return_group: bool = False,
+         maxcounts: int = None, maxdepth: int = None, return_linenum: bool = False) -> List:
     """emulate command line grep with re package
 
     Args:
@@ -31,6 +32,7 @@ def grep(pattern, filename, is_binary: bool = False, error_not_found: bool = Fal
             file-like: handle of file
             Iterable: contents of a file from readlines()
         is_binary (bool)
+        from_behind (bool): search from behind
         error_not_found (bool): raise when no match is found
         maxcounts (int)
         return_group (bool): return re.Match object
@@ -41,15 +43,21 @@ def grep(pattern, filename, is_binary: bool = False, error_not_found: bool = Fal
             otherwise the string of the matched line
         otherwise another list of integers will be returned as well
     """
+    def _ln_modifier(index, size):
+        ln = index
+        if from_behind:
+            ln = size - 1 - index
+        return ln
     if not isinstance(pattern, re.Pattern):
         pattern = re.compile(pattern)
-    if isinstance(filename, str):
-        if not os.path.isfile(filename):
+    if isinstance(filename, (str, os.PathLike)):
+        filename = pathlib.Path(filename)
+        if not filename.is_file():
             if error_not_found:
                 raise FileNotFoundError("{} is not a file".format(filename))
             return None
         mode = 'r' + 'b' * int(is_binary)
-        f = open(filename, mode=mode)
+        f = filename.open(mode=mode)
         container = f.readlines()
     elif isinstance(filename, (TextIOWrapper, StringIO)):
         container = filename.readlines()
@@ -60,18 +68,25 @@ def grep(pattern, filename, is_binary: bool = False, error_not_found: bool = Fal
     line_nums = []
     matched = []
     n = 0
+    size = len(container)
     if maxcounts is None:
-        maxcounts = len(container)
+        maxcounts = size
+    if maxdepth is None:
+        maxdepth = size
+    if from_behind:
+        container = reversed(container)
     for i, l in enumerate(container):
-        m = pattern.search(l)
+        m = pattern.search(l.strip('\n'))
         if m is not None:
             _logger.debug("grep matched %s", m.group())
-            line_nums.append(i)
+            line_nums.append(_ln_modifier(i, size))
             matched.append({True: m, False: l}[return_group])
             n += 1
             if n >= maxcounts:
                 break
-    if isinstance(filename, str):
+        if i >= maxdepth:
+            break
+    if isinstance(filename, os.PathLike):
         f.close()
 
     if return_linenum:
