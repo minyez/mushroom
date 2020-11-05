@@ -204,7 +204,7 @@ class _ColorMap(_MapOutput):
         if isinstance(color, int):
             if color in self._map:
                 return color
-            raise ValueError("color {:d} is not defined in the color map".format(color))
+            raise IndexError("color {:d} is not defined in the color map".format(color))
         raise TypeError("color input is not valid, use str or int", color)
 
     @property

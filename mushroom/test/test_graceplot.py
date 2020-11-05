@@ -4,10 +4,11 @@ import unittest as ut
 import tempfile
 from itertools import product
 
+from numpy import array_equal
 from mushroom.graceplot import (_ColorMap, Color, Font, Symbol,
                                 Graph, View, World, Label, Axis,
                                 Plot, Dataset,
-                                encode_string)
+                                encode_string, extract_data_from_agr)
 
 class test_string_encoder(ut.TestCase):
     """test encoder to get grace-favored text string"""
@@ -61,6 +62,13 @@ map color 15 to (0, 139, 0), "green4"
         self.assertTrue(c.has_color("color" + str(n)))
         self.assertEqual(c[n], "color" + str(n))
 
+    def test_get_color(self):
+        """get an existing color"""
+        c = _ColorMap(load_custom=False)
+        n = c.n
+        self.assertRaises(IndexError, c.get, n+1)
+        self.assertRaises(ValueError, c.get, "colorcode not registered")
+        self.assertRaises(TypeError, c.get, [])
 
 class test_Font(ut.TestCase):
     """test font utilites"""
@@ -121,11 +129,11 @@ class test_World(ut.TestCase):
 class test_Axis(ut.TestCase):
     """test Axix functionality"""
 
-    """test the axis label setup"""
     def test_label(self):
-        """raise for unknown attribute"""
+        """test the axis label setup"""
         a = Axis('x')
         l = a._label
+        # raise for unknown attribute
         self.assertRaises(ValueError, l.set, not_an_attribute="label")
         l.set(s=r"\Gamma")
         self.assertEqual(r"\Gamma", l.label)
@@ -201,6 +209,7 @@ class test_Graph(ut.TestCase):
         self.assertEqual(g.xmax(), 2.3)
         self.assertEqual(g.min(), -1.2)
         self.assertEqual(g.max(), 3)
+        g.tight_graph()
 
     def test_drawing(self):
         """test draing objects"""
@@ -215,10 +224,6 @@ class test_Graph(ut.TestCase):
         self.assertListEqual(g._objects[-1].string_location, [0.5, 0.5])
         g.circle([0.5, 0.5], 0.1, 0.1)
         g.export()
-
-
-class test_Axis(ut.TestCase):
-    """test Axix functionality"""
 
 
 class test_Plot(ut.TestCase):
@@ -291,6 +296,24 @@ class test_Dataset(ut.TestCase):
         d = Dataset(0, [0,], [0,])
         d.set_errorbar(color="red")
         self.assertEqual(d._errorbar.color, Color.RED)
+
+class test_read_agr(ut.TestCase):
+    """test agr reading methods"""
+    def text_extract_data_from_agr(self):
+        """extract data"""
+        tf = tempfile.NamedTemporaryFile(suffix=".agr")
+        types, data = extract_data_from_agr(tf.name)
+        # empty
+        self.assertListEqual([], types)
+        self.assertListEqual([], data)
+        with open(tf.name, 'w') as h:
+            print("@type xy\n1 2\n3 4\n5 6\n&\n", file=h)
+
+        types, data = extract_data_from_agr(tf.name)
+        self.assertListEqual(['xy'], types)
+        self.assertEqual(1, len(data))
+        self.assertTrue(array_equal(data[0], [[1, 3, 5], [2, 4, 6]]))
+        tf.close()
 
 
 if __name__ == "__main__":
