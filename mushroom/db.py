@@ -71,7 +71,7 @@ class _DBBase:
 
         Args:
             entry (str) : file name of entry
-            relative (bool) 
+            relative (bool)
             overwrite (bool)
 
         Returns:
@@ -272,8 +272,8 @@ class DBWorkflow(_DBBase):
                     makedirs(dst)
                 else:
                     raise NotADirectoryError("directory {} does not exist".format(dst))
-            except PermissionError:
-                raise PermissionError("cannot create directory due to limited permission")
+            except PermissionError as err:
+                raise PermissionError("cannot create directory due to limited permission") from err
             else:
                 raise OSError("cannot create directory")
             _logger.info("Created directory under %s", str(dst))
