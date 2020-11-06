@@ -51,7 +51,7 @@ def get_scheduler_header(platform: str, use_pbs: bool = False) -> str:
         pbs_headers = {}
     avail_platforms = {True: pbs_headers}.get(use_pbs, sbatch_headers)
     prefix = {True: "PBS"}.get(use_pbs, "SBATCH")
-    head = avail_platforms.get(platform)
+    head = avail_platforms.get(platform, None)
     if head is None:
         raise ValueError("{} headers are not set for platform {}".format(prefix, platform))
     _logger.debug("found %s headers for platform %s ", prefix, platform)

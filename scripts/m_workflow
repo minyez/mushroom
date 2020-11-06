@@ -34,7 +34,7 @@ def _parser():
     return p
 
 
-def workflows():
+def m_workflow():
     """main stream"""
     args = _parser().parse_args()
     dbwf = DBWorkflow()
@@ -52,11 +52,13 @@ def workflows():
 
     if args.wf:
         wf = dbwf.get_workflow(args.wf)
+        if wf is None:
+            raise ValueError("workflow {} not available".format(args.wf))
         dbwf.init_workflow_libs_symlink(wf)
         dbwf.copy_workflow_to_dst(wf, args.dst, args.overwrite, args.copy_readme)
-        add_scheduler_header(wf, args.dst, current_platform, current_use_pbs)
-
+        pscript = Path(args.dst) / "run_{}.sh".format(wf)
+        add_scheduler_header(pscript, current_platform, current_use_pbs)
 
 if __name__ == "__main__":
-    workflows()
+    m_workflow()
 

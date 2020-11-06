@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2016,SC1004
 
+# the control script will be written to run_prog_task_subtask
+
 function template () {
   echo '#!/usr/bin/env bash
-# naming the workflow to prog_task_subtask
-# and the control scripts to run_prog_task_subtask
 # source custom variables and backend infrastructure
 source ./variables.sh
 source ./common.sh
@@ -101,6 +101,11 @@ Things usually not necessary to change
 ## References
 '
 }
+
+if (( $# < 1 ));then
+  echo "Usage: $0 prog_task_subtask"
+  exit 1
+fi
 
 mkdir "$1" || exit 1
 template | sed "s/run_template/run_$1/g" > "$1/run_$1.sh"
