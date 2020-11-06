@@ -6,10 +6,10 @@ import pathlib
 from itertools import product
 
 from numpy import array_equal
-from mushroom.graceplot import (_ColorMap, Color, Font, Symbol,
-                                Graph, View, World, Label, Axis,
-                                Plot, Dataset,
-                                encode_string, extract_data_from_agr)
+from mushroom.visual.graceplot import (_ColorMap, Color, Font, Symbol,
+                                       Graph, View, World, Label, Axis,
+                                       Plot, Dataset,
+                                       encode_string, extract_data_from_agr)
 
 class test_string_encoder(ut.TestCase):
     """test encoder to get grace-favored text string"""

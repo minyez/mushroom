@@ -5,10 +5,10 @@
 vbm is used as Fermi-energy
 """
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
-from mushroom.graceplot import Plot
 from mushroom.core.cell import Cell
 from mushroom.core.kpoints import KPath
 from mushroom.core.ioutils import get_filename_wo_ext, decode_float_ends
+from mushroom.visual.graceplot import Plot
 
 from mushroom.vasp import read_eigen
 
@@ -38,7 +38,7 @@ def m_v_band():
     args = _parser().parse_args()
     p = Plot(1, 1)
     c = Cell.read(args.poscar)
-    
+
     # get band energies from EIGENVAL
     bs, _, kpts = read_eigen(args.eigenval, filter_k_before=args.removek)
     kp = KPath(kpts, c.b)
@@ -52,8 +52,8 @@ def m_v_band():
         try:
             emin, emax = decode_float_ends(args.energy_range)
             p[0].set_ylim(ymin=emin, ymax=emax)
-        except ValueError:
-            raise ValueError("invalid energy range", args.energy_range)
+        except ValueError as err:
+            raise ValueError("invalid energy range", args.energy_range) from err
     p[0].set_xlim(0.0, kp.x[-1] + 0.0001)
     p[0].y.set_major(major=4)
     p[0].y.set_label("Energy (eV)")

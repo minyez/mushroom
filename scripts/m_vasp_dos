@@ -10,7 +10,7 @@ from mushroom.core.cell import Cell
 from mushroom.core.dos import split_ap
 from mushroom.core.data import export_2d_data
 from mushroom.core.ioutils import decode_float_ends, get_filename_wo_ext
-from mushroom.graceplot import Plot, prefer_gracecolors
+from mushroom.visual.graceplot import Plot, prefer_gracecolors
 from mushroom.vasp import read_doscar
 
 def _parser():
@@ -35,7 +35,7 @@ def plot_pdos(graph, dos, aps, spin=None, colors=None):
     Args:
         graph (Graph)
         dos (DensityOfStates)
-        aps (str) : atom-projector 
+        aps (str) : atom-projector
     """
     if colors is None:
         colors = prefer_gracecolors
@@ -63,8 +63,8 @@ def m_vasp_pdos():
             emin, emax = decode_float_ends(args.energy_range)
             ax.set_xlim(xmin=emin, xmax=emax)
             ax.tight_graph(yscale=1.1, xscale=None)
-        except ValueError:
-            raise ValueError("invalid energy range", args.energy_range)
+        except ValueError as err:
+            raise ValueError("invalid energy range", args.energy_range) from err
     else:
         ax.tight_graph(yscale=1.1)
 

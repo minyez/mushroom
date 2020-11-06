@@ -50,6 +50,9 @@ XML reader for
 
 ### ABINIT `abi`
 
+- [ ] 确认最佳的 abinit 输入 practice
+- [ ] 设计 workflow 构成
+
 ### WIEN2k `w2k`
 
 - [x] energy reader
@@ -57,7 +60,7 @@ XML reader for
 - [x] struct reader
 - [ ] output2 reader
 - [ ] output1 reader
-- [-] in1 reader
+- [ ] in1 reader
 - [ ] calculators of relativistic potential
 
 ### GPAW `gpaw`
@@ -80,6 +83,10 @@ Require `pymatgen`
 
 - [x] base class to manipulate grace objects
 
+### Gaussian Cube
+
+- [ ] ! Gaussian cube format <http://paulbourke.net/dataformats/cube/>
+
 ## 数据库 db
 
 ### 晶体结构 cell
@@ -87,7 +94,7 @@ Require `pymatgen`
 ### 特殊点路径 kpath
 
 - [ ] 参考 SetayawanW10-AFLOW, 更好地对路径进行分类
-- [ ] 处理输入结构对称性的数据库对象 `DBKPath` 方法
+- [ ] 数据库对象 `DBKPath` 的处理输入结构对称性的方法
 
 ### 工作流 workflows
 

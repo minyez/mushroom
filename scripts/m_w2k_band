@@ -6,8 +6,8 @@ from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 from mushroom.core.kpoints import KPath
 from mushroom.core.ioutils import decode_float_ends, get_filename_wo_ext
+from mushroom.visual.graceplot import Plot
 from mushroom.w2k import Struct, read_energy, get_inputs
-from mushroom.graceplot import Plot
 
 def _parser():
     """the parser"""
@@ -35,7 +35,7 @@ def _parser():
 
 def get_bs_kpath(casename, dirpath, energyfile, efermi):
     """return BandStructure and KPath objects"""
-    pstruct, penergy, pin1 = get_inputs("struct", "energy", "in1", 
+    pstruct, penergy, pin1 = get_inputs("struct", "energy", "in1",
                                         casename=casename,
                                         dirpath=dirpath, relative="CWD")
     if energyfile is not None:
@@ -64,8 +64,8 @@ def m_w2k_band():
         try:
             emin, emax = decode_float_ends(args.energy_range)
             ax.set_ylim(ymin=emin, ymax=emax)
-        except ValueError:
-            raise ValueError("invalid energy range", args.energy_range)
+        except ValueError as err:
+            raise ValueError("invalid energy range", args.energy_range) from err
     else:
         ax.tight_graph()
     ax.set_xlim(0.0, kp.x[-1] + 0.0001)
@@ -76,7 +76,7 @@ def m_w2k_band():
     p.write(file=args.output)
     if args.fig_ext is not None:
         p.savefig(get_filename_wo_ext(args.output) + "." + args.fig_ext)
-    
+
 
 if __name__ == "__main__":
     m_w2k_band()
