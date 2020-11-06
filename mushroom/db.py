@@ -244,12 +244,7 @@ class DBWorkflow(_DBBase):
                         pnew.unlink()
                     pnew.symlink_to(self._libs / dep)
         else:
-            prog = wf.split("_")[0] + ".sh"
-            p = self._db_path / wf / prog
-            _logger.debug(p)
-            if p.is_symlink():
-                p.unlink()
-            p.symlink_to(self._libs / prog)
+            _logger.warning(".depends file is not found for workflow %s", wf)
 
     def copy_workflow_to_dst(self, wf: Union[str, int], dst: str = ".", create_dir: bool = True,
                              overwrite: bool = False, copy_readme: bool = False):

@@ -87,7 +87,7 @@ class test_grep(ut.TestCase):
         s = ["unittest\n", "utut\n", "ut"]
         matched = grep("ut", s, from_behind=True)
         self.assertListEqual(s, ["unittest\n", "utut\n", "ut"])
-        
+
     def test_maxdepth_counts(self):
         """match text"""
         s = StringIO("unittest\nutut\nut")
@@ -143,11 +143,18 @@ class test_file_path(ut.TestCase):
         self.assertEqual("test", os.path.basename(get_dirpath(__file__)))
         self.assertEqual("/home/user/abc", get_dirpath("/home/user/abc/efg"))
         self.assertEqual("/bin", get_dirpath("/bin"))
-        
+
     def test_file_ext(self):
         """get file extension"""
+        self.assertEqual("", get_file_ext("noext"))
         self.assertEqual("py", get_file_ext(__file__))
         self.assertEqual("txt", get_file_ext("/home/user/abc.txt"))
+        self.assertEqual("in", get_file_ext("/home/user/abc.abi.in"))
+        # non-greedy
+        self.assertEqual("", get_file_ext("noext", greedy=False))
+        self.assertEqual("py", get_file_ext(__file__, greedy=False))
+        self.assertEqual("txt", get_file_ext("/home/user/abc.txt", greedy=False))
+        self.assertEqual("abi.in", get_file_ext("/home/user/abc.abi.in", greedy=False))
 
     def test_filename_wo_ext(self):
         """get file extension"""

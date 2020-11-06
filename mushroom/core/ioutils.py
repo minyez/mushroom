@@ -111,7 +111,7 @@ def get_dirpath(path):
     return os.path.dirname(p)
 
 
-def get_file_ext(path: Union[str, os.PathLike, TextIOWrapper]) -> str:
+def get_file_ext(path: Union[str, os.PathLike, TextIOWrapper], greedy: bool = True) -> str:
     """Return the extension name of file at path
 
     If filePath is a existing directory, None will be returned
@@ -120,14 +120,23 @@ def get_file_ext(path: Union[str, os.PathLike, TextIOWrapper]) -> str:
 
     Args:
         path (PathLike): the path of the file
+        greedy (bool): greedy searching the extension.
+            If False, the largest extension will be returned.
     """
     if isinstance(path, TextIOWrapper):
         path = pathlib.Path(path.name)
     path = pathlib.Path(path)
     if path.is_dir():
         return None
-    return path.suffix[1:]
-
+    if greedy:
+        return path.suffix[1:]
+    name = path.name
+    m = re.search(r'\.', name)
+    if m is None:
+        end = len(name)
+    else:
+        end = m.end()
+    return name[end:]
 
 def get_filename_wo_ext(path: Union[str, os.PathLike]) -> str:
     """Get the filename without extension
