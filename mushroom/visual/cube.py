@@ -28,6 +28,7 @@ class Cube:
         self.data = np.array(data)
         self.nvoxels = np.shape(data)
         self.voxel_vecs = np.array(voxel_vecs)
+        self.posi = np.array(posi)
         self.atms = list(get_atomic_number(a) for a in atms)
         self.origin = origin
         if len(atms) != len(posi):
@@ -68,12 +69,12 @@ class Cube:
             slist.append("{:4d}{:12.6f}{:12.6f}{:12.6f}{:12.6f}".format(an, c, *posi))
         data = self.data.flatten()
         nlines = len(data) // 6
-        form = "{:13.5e}" * 6
+        form = "{:13.5E}" * 6
         for i in range(nlines):
             slist.append(form.format(*data[6*i:6*(i+1)]))
         left = len(data) - nlines*6
         if left != 0:
-            form = "{:13.5e}" * left
+            form = "{:13.5E}" * left
             slist.append(form.format(*data[-left:]))
         return "\n".join(slist)
 
