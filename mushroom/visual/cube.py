@@ -15,8 +15,15 @@ class Cube(LengthUnit):
     """object for reading/writing Gaussian Cube file
 
     Args:
-        data (ndarray, (n1,n2,n3)) : data with x, y, z coordiantes as outer, middle and inner loop
+        data (ndarray, (n1,n2,n3)) : volumetric data
+            x, y, z coordiantes as outer, middle and inner loop
         voxel_vecs (ndarray, (3,3)) : step vector between voxels
+        posi (ndarray) : Cartisian coordinates of atoms
+        atms (int/str sequence): atomic number or symbol of atoms
+        charges (float sequence): charge of atoms
+        origin (ndarray, (3,)): origin of the voxels
+        unit (str): unit of input
+        comment (str): comment information
     """
     default_comment = "Cube from mushroom"
 
@@ -53,6 +60,7 @@ class Cube(LengthUnit):
     def unit(self, u):
         coef = self._get_lunit_conversion(u)
         if coef != 1:
+            self.data = self.data / (coef ** 3)
             self.posi = self.posi * coef
             self.voxel_vecs = self.voxel_vecs * coef
             self._lunit = u.lower()

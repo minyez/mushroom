@@ -2,17 +2,15 @@
 """Objects to manipulate units of physical quantities"""
 from mushroom.core.constants import ANG2AU, EV2HA, EV2RY, RY2HA
 
-
 class UnitError(Exception):
     """exception for unit manipulation"""
 
-
 class EnergyUnit:
-    '''Base class for controlling energy unit
+    """Base class for controlling energy unit
 
     Args:
         eunit (str)
-    '''
+    """
 
     _defaul_eu = 'ev'
     _valid_eu = ['ev', 'ry', 'au']
@@ -40,23 +38,21 @@ class EnergyUnit:
         elif pair[::-1] in self._conv_eu:
             co = 1.0 / self._conv_eu[pair[::-1]]
         return co
-    
+
     def _check_valid_eunit(self, eunit: str):
-        try:
-            assert isinstance(eunit, str)
-            u = eunit.lower()
-            assert u in self._valid_eu
-        except AssertionError:
-            raise UnitError("allowed energy unit {}, {} parsed".format(
-                self._valid_eu, eunit))
+        u = eunit.lower()
+        if u not in self._valid_eu:
+            info = "{} is not a valid energy unit".format(eunit)
+            raise UnitError(info)
+
 
 
 class LengthUnit:
-    '''Base class for controlling length unit
+    """Base class for controlling length unit
 
     Args:
         lunit (str)
-    '''
+    """
 
     _default_lu = 'ang'
     _valid_lu = ['ang', 'au', 'bohr',]
@@ -85,11 +81,8 @@ class LengthUnit:
         return co
 
     def _check_valid_lunit(self, lunit: str):
-        try:
-            assert isinstance(lunit, str)
-            u = lunit.lower()
-            assert u in self._valid_lu
-        except AssertionError:
-            info = "allowed length unit {}, {} parsed".format(
-                self._valid_lu, lunit)
+        u = lunit.lower()
+        if u not in self._valid_lu:
+            info = "{} is not a valid length unit".format(lunit)
             raise UnitError(info)
+

@@ -9,11 +9,11 @@ import numpy as np
 from bs4 import BeautifulSoup
 
 from mushroom.core.logger import create_logger
-from mushroom.core.ioutils import conv_string, open_textio
+from mushroom.core.ioutils import conv_string
 from mushroom.core.dos import DensityOfStates
 from mushroom.core.bs import BandStructure
 from mushroom.core.cell import Cell
-from mushroom.core.typehint import Path, TextIO
+from mushroom.core.typehint import Path
 from mushroom.visual.cube import Cube
 
 _logger = create_logger("vasp")
@@ -284,15 +284,20 @@ class WaveCar:
     def __init__(self, pwavecar: Path):
         pwavecar = pathlib.Path(pwavecar)
 
-class ChgCar:
-    """object to read Wavecar
+    def export_cube(self, ikpt: int, iband: int):
+        """export the wavefunction at k-point ``ikpt`` and band ``iband``
+        """
+        raise NotImplementedError
 
-    While CHGCAR record data in F order, i.e. x fastest,
-    the data is stored in C order.
+class ChgLike:
+    """object to read file in the format like CHG, CHGCAR, etc
+
+    In these files, the charge data are recorded in F order, i.e. x fastest.
     """
     def __init__(self, pchgcar: Path):
         init = 0
         pchgcar = pathlib.Path(pchgcar)
+        self.path = str(pchgcar)
         with pchgcar.open('r') as h:
             cell_lines = []
             while True:
@@ -304,28 +309,30 @@ class ChgCar:
             self.cell = read_poscar(StringIO("".join(cell_lines)))
             self.shape = tuple(map(int, h.readline().split()))
             lines = h.readlines()
+            # check columns, since CHG has 10 while CHGCAR has 5
             ncols = len(lines[0].split())
-            lines = lines[:np.prod(self.shape)//ncols + 1]
+            size = np.prod(self.shape)
+            lines = lines[:size//ncols + 1]
             datastring = StringIO(" ".join(x.strip() for x in lines))
             data = np.loadtxt(datastring)
             self.size = len(data)
-            # in Fortran order, as x is the fastest index
+            # sanity check
+            assert self.size == size
             self.rawdata = data.reshape(self.shape, order='F')
-            self.data = self.rawdata / self.cell.vol
 
     @property
     def natm(self):
         """number of atoms"""
         return self.cell.natm
 
-    def export_cube(self, pcube: TextIO):
-        """export as cube"""
+    def export_cube(self):
+        """export as cube file
+        Returns:
+            str
+        """
         was_d = self.cell.coord_sys == "D"
-        was_ang = self.cell.unit == "ang"
         if was_d:
             self.cell.coord_sys = "C"
-        if was_ang:
-            self.cell.unit = "bohr"
         voxel_vecs = self.cell.latt.transpose() / self.shape
         voxel_vecs = voxel_vecs.transpose()
         data = self.rawdata / self.cell.vol
@@ -334,12 +341,10 @@ class ChgCar:
                     voxel_vecs=voxel_vecs,
                     atms=self.cell.atms,
                     posi=self.cell.posi,
-                    origin=[0.,0.,0.], unit="bohr",
+                    origin=[0.,0.,0.], unit=self.cell.unit,
                     )
-        with open_textio(pcube, 'w') as h:
-            print(cube.export(), file=h)
         if was_d:
             self.cell.coord_sys = "D"
-        if was_ang:
-            self.cell.unit = "ang"
+        return cube.export()
 
+ChgCar = ChgLike

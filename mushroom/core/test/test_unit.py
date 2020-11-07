@@ -11,9 +11,7 @@ class test_energy_unit(ut.TestCase):
 
     def test_raise_error(self):
         """test if UnitError is correctly raised"""
-        self.assertRaisesRegex(UnitError, \
-            r"allowed energy unit *", \
-            EnergyUnit, "unknown-energy-unit")
+        self.assertRaises(UnitError, EnergyUnit, "unknown-energy-unit")
 
     def test_conversion(self):
         """check if energy conversion unit is correct"""
@@ -25,9 +23,7 @@ class test_length_unit(ut.TestCase):
 
     def test_raise_error(self):
         """test if UnitError is correctly raised"""
-        self.assertRaisesRegex(UnitError, \
-            r"allowed length unit *", \
-            LengthUnit, "unknown-length-unit")
+        self.assertRaises(UnitError, LengthUnit, "unknown-length-unit")
     
     def test_conversion(self):
         """check if length conversion unit is correct"""

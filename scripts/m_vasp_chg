@@ -20,7 +20,8 @@ def m_vasp_chg():
     """main stream"""
     args = _parser().parse_args()
     chg = ChgCar(args.pchg)
-    chg.export_cube(args.pchg + ".cube")
+    with open(args.pchg + ".cube", 'w') as h:
+        print(chg.export_cube(), file=h)
 
 if __name__ == "__main__":
     m_vasp_chg()

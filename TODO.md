@@ -41,7 +41,7 @@
 - [ ] LOCPOT reader
 - [ ] POTCAR searcher
 - [ ] WAVECAR reader
-- [ ] CHGCAR reader
+- [x] CHGCAR reader
 
 XML reader for
 
@@ -81,11 +81,13 @@ Require `pymatgen`
 
 ### XmGrace `graceplot`
 
-- [x] base class to manipulate grace objects
+- [x] base classes to manipulate attributes of elementary objects and options
+- [x] Graph object for data plotting
+- [x] Plot object for export
 
 ### Gaussian Cube
 
-- [ ] ! Gaussian cube format <http://paulbourke.net/dataformats/cube/>
+- [x] Gaussian cube format <http://paulbourke.net/dataformats/cube/>
 
 ## 数据库 db
 
