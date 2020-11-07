@@ -46,7 +46,6 @@ class test_dbcell(ut.TestCase):
         self.dbc._write(so, output_path=tf.name, writer='w2k')
         self.dbc._write(so, output_path=tf.name, writer='vasp')
         tf.close()
-        
 
     def test_extract_to_vasp(self):
         """successful extract"""

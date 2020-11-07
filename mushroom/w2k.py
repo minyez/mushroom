@@ -22,7 +22,7 @@ __all__ = [
         "read_energy",
         ]
 
-_logger = create_logger("wien2k")
+_logger = create_logger("w2k")
 del create_logger
 
 npt_default = 781
@@ -213,11 +213,11 @@ class Struct:
         if len(atms_types) != len(posi_types):
             raise ValueError("length of atms_types ({}) and posi_types ({}) are different"\
                              .format(len(atms_types), len(posi_types)))
-        try:
-            assert len(np.shape(posi_types)) == 3
-            assert np.shape(posi_types)[2] == 3
-        except (AssertionError, ValueError):
-            raise ValueError("invalid shape of posi_types")
+        #try:
+        #    assert len(np.shape(posi_types)) == 3
+        #    assert np.shape(posi_types)[2] == 3
+        #except (AssertionError, ValueError):
+        #    raise ValueError("invalid shape of posi_types")
         self.kind = kind
         self.atms_types = atms_types
         self.isplits = isplits
@@ -463,11 +463,11 @@ class Struct:
             Z = nuclear_charges.get(re.sub(r"[\d ]", "", at))
             slist_atm = ["ATOM{:4d}: X={:10.8f} Y={:10.8f} Z={:10.8f}".format(iat+1,
                                                                               *posi[0, :]),
-                         "           MULT={:2d}{:10s}ISPLIT={:2d}".format(mult, "", isplit),]
+                         "{:10s}MULT={:2d}{:10s}ISPLIT={:2d}".format("", mult, "", isplit),]
             for i in range(1, mult):
                 slist_atm.append("{:8d}: X={:10.8f} Y={:10.8f} Z={:10.8f}".format(iat+1,
                                                                                   *posi[i, :]))
-            slist_atm.append("{:<3s}{:<6s}  NPT={:5d}  R0={:10.8f} RMT={:10.4f}{:>5s}{:5.1f}"\
+            slist_atm.append("{:<3s}{:<8s}NPT={:5d}  R0={:10.8f} RMT={:10.4f}{:>5s}{:5.1f}"\
                              .format(at, "", npt, rzero, rmt, "Z:", Z))
             rotmat_format = "\n".join(["{:<20s}{:10.7f}{:10.7f}{:10.7f}",] * 3)
             slist_atm.append(rotmat_format.format("LOCAL ROT MATRIX", *rotmat[0, :],
