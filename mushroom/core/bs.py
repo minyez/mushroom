@@ -2,14 +2,14 @@
 """Module that defines class and utilities for band structure
 """
 import re
-from collections.abc import Iterable
-from numbers import Real
+from typing import Sequence, Union
 
 import numpy as np
 
 from mushroom.core.logger import create_logger
 from mushroom.core.unit import EnergyUnit
 from mushroom.core.ioutils import get_str_indices_by_iden, split_comma
+from mushroom.core.typing import Key
 
 __all__ = [
         "BandStructure",
@@ -32,6 +32,8 @@ BAND_STR_PATTERN = re.compile(r"[vc]bm([-+][\d]+)?")
 
 THRES_EMP = 1.0E-3
 THRES_OCC = 1.0 - THRES_EMP
+
+AtmPrjToken = Union[Key, Sequence[Key]]
 
 _logger = create_logger("bs")
 del create_logger
@@ -69,8 +71,8 @@ class BandStructure(EnergyUnit):
     """
     _dtype = "float64"
     # pylint: disable=R0912,R0915
-    def __init__(self, eigen, occ=None, weight=None, unit='ev', efermi=None,
-                 pwav=None, atms=None, prjs=None):
+    def __init__(self, eigen, occ=None, weight=None, unit: str = 'ev', efermi: float = None,
+                 pwav=None, atms: Sequence[str] = None, prjs: Sequence[str] = None):
         shape_e = np.shape(eigen)
         if occ is not None:
             consist = [len(shape_e) == DIM_EIGEN_OCC, shape_e[0] <= 2]
@@ -214,7 +216,7 @@ class BandStructure(EnergyUnit):
         return self._eunit
 
     @unit.setter
-    def unit(self, newu):
+    def unit(self, newu: str):
         coef = self._get_eunit_conversion(newu)
         to_conv = [self._eigen,
                    self._vbm_sp, self._vbm_sp_kp,
@@ -280,7 +282,7 @@ class BandStructure(EnergyUnit):
         '''Int. number of bands'''
         return self._nbands
 
-    def parse_proj(self, pwav=None, atms=None, prjs=None):
+    def parse_proj(self, pwav=None, atms: Sequence[str] = None, prjs: Sequence[str] = None):
         """Parse the partial wave information
         """
         if pwav is None:
@@ -315,7 +317,7 @@ class BandStructure(EnergyUnit):
         """list of strings, types of each atom. None for no atoms info"""
         return self._atms
     @atms.setter
-    def atms(self, new):
+    def atms(self, new: str):
         if self._pwav is None:
             raise BandStructureError("no partial wave found")
         if len(new) != self._natms:
@@ -332,7 +334,7 @@ class BandStructure(EnergyUnit):
         """list of strings, names of atomic projectors. None for no projectors info"""
         return self._prjs
     @prjs.setter
-    def prjs(self, new):
+    def prjs(self, new: str):
         if self._pwav is None:
             raise BandStructureError("no partial wave found")
         if len(new) != self._nprjs:
@@ -355,7 +357,7 @@ class BandStructure(EnergyUnit):
         return self._pwav
 
     # pylint: disable=R0912,R0915
-    def compute_band_edges(self, reload=False):
+    def compute_band_edges(self, reload: bool = False):
         '''compute the band edges on each spin-kpt channel
 
         Note:
@@ -435,7 +437,7 @@ class BandStructure(EnergyUnit):
         self._icbm[1:3] = self._icbm_sp[self._icbm[0], :]
         self._cbm = self._cbm_sp[self._icbm[0]]
 
-    def __lazy_bandedge_return(self, attr=None):
+    def __lazy_bandedge_return(self, attr: str = None):
         """lazy return of attribute related to band edges
 
         Args:
@@ -594,8 +596,11 @@ class BandStructure(EnergyUnit):
         return np.dot(self.direct_gap(), self._weight) / np.sum(self._weight)
 
     # * Projection related functions
-    def effective_gap(self, ivb=None, atm_vbm=None, prj_vbm=None,
-                      icb=None, atm_cbm=None, prj_cbm=None):
+    def effective_gap(self, ivb: int = None, icb: int = None,
+                      atm_vbm: AtmPrjToken = None,
+                      prj_vbm: AtmPrjToken = None,
+                      atm_cbm: AtmPrjToken = None,
+                      prj_cbm: AtmPrjToken = None):
         '''Compute the effective band gap between ``ivb`` and ``icb``, 
         the responsible transition of which associates projector `proj_vbm` on `atom_vbm` in VB
         and `proj_cbm` on atom `atom_cbm` in CB.
@@ -606,10 +611,10 @@ class BandStructure(EnergyUnit):
         Args:
             ivb (int): index of the lower band. Use VBM if not specified or is invalid index.
             icb (int): index of the upper band. Use CBM if not specified or is invalid index.
-            atm_vbm (int, str, Iterable): atom where the VB projector is located
-            atm_cbm (int, str, Iterable): atom where the CB projector is located
-            prj_vbm (int, str, Iterable): index of VB projector
-            prj_cbm (int, str, Iterable): index of CB projector
+            atm_vbm (instance or sequence of Key): atom where the VB projector is located
+            atm_cbm (instance or sequence of Key): atom where the CB projector is located
+            prj_vbm (instance or sequence of Key): index of VB projector
+            prj_cbm (instance or sequence of Key): index of CB projector
 
         Note:
             Spin-polarization is not considered in retriving projection coefficients.
@@ -638,7 +643,7 @@ class BandStructure(EnergyUnit):
         """get eigenvalues of particular bands
 
         Args:
-            indices (int, str, or their Iterable): indices of band.
+            indices (int, str, or their Sequence): indices of band.
                 None to include all bands.
 
         Returns:
@@ -650,13 +655,13 @@ class BandStructure(EnergyUnit):
             indices = self._get_band_indices(indices)
         return self._eigen[:, :, indices]
 
-    def get_pwav(self, atm=None, prj=None, indices=None):
+    def get_pwav(self, atm: AtmPrjToken = None, prj: AtmPrjToken = None, indices=None):
         """get particular partial wave for projectors `proj` on atoms `atom`
 
         Args:
-            atm (int, str, or their Iterable)
-            prj (int, str, or their Iterable)
-            indices (int, str, or their Iterable): indices of band.
+            atm (int, str, or their Sequence)
+            prj (int, str, or their Sequence)
+            indices (int, str, or their Sequence): indices of band.
                 None to include all bands.
 
         Returns:
@@ -691,7 +696,7 @@ class BandStructure(EnergyUnit):
         return coeff
 
     def _get_band_indices(self, ib):
-        if isinstance(ib, Iterable):
+        if isinstance(ib, Sequence):
             return list(map(self._convert_band_iden, ib))
         return [self._convert_band_iden(ib),]
 
@@ -699,7 +704,7 @@ class BandStructure(EnergyUnit):
         if self._atms is None:
             if isinstance(atm, int):
                 return [atm,]
-            if isinstance(atm, Iterable):
+            if isinstance(atm, Sequence):
                 has_str = any(isinstance(a, str) for a in atm)
                 if not has_str:
                     return atm
@@ -710,7 +715,7 @@ class BandStructure(EnergyUnit):
         if self._prjs is None:
             if isinstance(prj, int):
                 return [prj,]
-            if isinstance(prj, Iterable):
+            if isinstance(prj, Sequence):
                 has_str = any(isinstance(p, str) for p in prj)
                 if not has_str:
                     return prj
@@ -780,8 +785,9 @@ class BandStructure(EnergyUnit):
 
 
 # pylint: disable=R0914
-def random_band_structure(nspins=1, nkpts=1, nbands=2, natms=1, nprjs=1,
-                          has_proj=False, is_metal=False):
+def random_band_structure(nspins: int = 1, nkpts: int = 1, nbands: int = 2,
+                          natms: int = 1, nprjs: int = 1,
+                          has_proj: bool = False, is_metal: bool = False):
     """Return a BandStructure object with fake band energies, occupations and
     projections
 

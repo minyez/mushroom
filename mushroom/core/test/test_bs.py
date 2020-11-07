@@ -11,10 +11,10 @@ import numpy as np
 from mushroom.core.bs import BandStructure as BS
 from mushroom.core.bs import BandStructureError as BSE
 from mushroom.core.bs import random_band_structure
+from mushroom.core.bs import split_apb
 from mushroom.core.constants import EV2RY
 from mushroom.core.ioutils import get_matched_files
 
-# pylint: disable=bad-whitespace
 goodEigen = [
     [
         [1, 2, 3],
@@ -88,10 +88,28 @@ class test_BS_no_projection(ut.TestCase):
         self.assertListEqual([ivb, ], bs.get_band_indices('vbm'))
         self.assertListEqual(
             [ivb-1, ivb+1], bs.get_band_indices('vbm-1', 'cbm'))
-    
-    #def test_get_dos(self):
-    #    bs = BS(goodEigen, goodOcc, goodWeight, efermi=efermi)
-    #    bs.get_dos()
+
+    def test_get_eigen(self):
+        """get eigen values"""
+        nsp, nkp, nb = 1, 4, 4
+        eigen = np.ones((nsp, nkp, nb))
+        bs = BS(eigen)
+        self.assertTrue(np.array_equal(np.ones((nsp, nkp, 1)), bs.get_eigen(0)))
+        self.assertTrue(np.array_equal(eigen, bs.get_eigen()))
+
+    def test_gap(self):
+        """test gap calculation"""
+        nsp, nkp, nb = 1, 4, 4
+        gap = 1.0
+        # create a gap of 1 eV
+        eigen = np.ones((nsp, nkp, nb))
+        eigen[:, :, nb//2:] += gap
+        occ = np.zeros((nsp, nkp, nb))
+        # occupied
+        occ[:, :, :nb//2] += 1.0
+        weight = np.ones(nkp)
+        bs = BS(eigen, occ, weight)
+        self.assertTrue(np.array_equal(bs.direct_gap(), np.ones((nsp, nkp))*gap))
 
 
 class test_BS_projection(ut.TestCase):
@@ -126,15 +144,29 @@ class test_BS_projection(ut.TestCase):
             good += 1
         print("Processed {} good band structure projections".format(good))
 
+
     # pylint: disable=R0914
     def test_get_pwav(self):
-        nsp, nkp, nb, natm, nprj = 1, 4, 5, 6, 9
+        nsp, nkp, nb, natm, nprj = 1, 4, 4, 6, 9
         eigen = np.ones((nsp, nkp, nb))
-        occ = np.ones((nsp, nkp, nb))
+        gap = 1.0
+        # create a gap of 1 eV
+        eigen[:, :, :nb//2] += gap
+        occ = np.zeros((nsp, nkp, nb))
+        # occupied
+        occ[:, :, :nb//2] += 1.0
         weight = np.ones(nkp)
         atms = np.random.choice(["Si", "O", "C"], natm)
         prjs = np.random.choice(["s", "p", "f"], nprj)
         pwav = np.ones((nsp, nkp, nb, natm, nprj))
+        bs = BS(eigen, occ, weight)
+        self.assertRaises(BSE, bs.get_pwav)
+        # when no atms or prjs is parsed, error will be raised
+        bs = BS(eigen, occ, weight, pwav=pwav)
+        self.assertRaises(ValueError, bs.get_pwav, atm='Si')
+        self.assertRaises(ValueError, bs.get_pwav, atm=['Si', 0])
+        self.assertRaises(ValueError, bs.get_pwav, prj='s')
+        self.assertRaises(ValueError, bs.get_pwav, prj=[0, 's'])
         bs = BS(eigen, occ, weight, pwav=pwav, atms=atms, prjs=prjs)
         self.assertTrue(np.array_equal(bs.get_pwav(0, 0), np.ones((nsp, nkp, nb))))
         self.assertTrue(np.array_equal(bs.get_pwav(0, 0, 0), np.ones((nsp, nkp, 1))))
@@ -147,7 +179,8 @@ class test_BS_projection(ut.TestCase):
             self.assertTrue(np.array_equal(bs.get_pwav(0, pt), npt * np.ones((nsp, nkp, nb))))
             self.assertTrue(np.array_equal(bs.get_pwav([0, 1], pt),
                                            2 * npt * np.ones((nsp, nkp, nb))))
-
+        #self.assertEqual(gap, bs.effective_gap())
+        self.assertIsInstance(bs.effective_gap(), float)
 
 class test_BS_randomize(ut.TestCase):
     """Test if the random band structure behaves as expected
@@ -178,6 +211,24 @@ class test_BS_randomize(ut.TestCase):
             bs = random_band_structure(ns, nk, nb, is_metal=True)
             self.assertTrue(bs.is_metal())
 
+    def test_has_proj(self):
+        """check randomize with projection"""
+        bs = random_band_structure(has_proj=True)
+        self.assertIsInstance(bs, BS)
+
+class test_split_apb(ut.TestCase):
+    """test splitting of apb"""
+    def test_raise(self):
+        """raise for whitesapce and missing members"""
+        self.assertRaises(ValueError, split_apb, "Fe :3:10")
+        self.assertRaises(ValueError, split_apb, "Fe :3")
+
+    def test_correct_splitting(self):
+        """correct split of a string"""
+        atms, prjs, bands = split_apb("Fe:4:12")
+        self.assertListEqual(atms, ["Fe",])
+        self.assertListEqual(prjs, [4,])
+        self.assertListEqual(bands, [12,])
 
 if __name__ == '__main__':
     ut.main()

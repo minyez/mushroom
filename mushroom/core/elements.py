@@ -2,7 +2,7 @@
 import string
 
 # pylint: disable=bad-continuation,bad-whitespace,line-too-long
-ELEMENT_SYMBOLS = ('X' , # pseudo atom
+element_symbols = ('X' , # pseudo atom
                 'H' , 'He', 
                 'Li', 'Be', 'B' , 'C' , 'N' , 'O' , 'F' , 'Ne', 
                 'Na', 'Mg', 'Al', 'Si', 'P' , 'S' , 'Cl', 'Ar', 
@@ -24,7 +24,7 @@ ELEMENT_SYMBOLS = ('X' , # pseudo atom
                 # 'Nh', 'Fl', 'Mc', 'Lv', 'Ts', 'Og', 
                 )
 
-NUCLEAR_CHARGE = {s: i for i, s in enumerate(ELEMENT_SYMBOLS)}
+nuclear_charges = {s: i for i, s in enumerate(element_symbols)}
 
 # ====================================================
 # Standard atomic weight, or relative atomic mass of the element 
@@ -35,7 +35,7 @@ NUCLEAR_CHARGE = {s: i for i, s in enumerate(ELEMENT_SYMBOLS)}
 # the data in WLE is used instead and noted below.
 # All data are accurate to 6 decimals, if available
 # WLE data used: H, Li, B, C, N, O, Mg, Si, S, Cl, Br, Tl
-ATOMIC_WEIGHT = (0.0,
+atomic_weights = (0.0,
 1.008     , 4.002602 ,
 6.94      , 9.012183 , 10.81    , 12.011 , 14.007   , 15.999 , 18.998403, 20.1797   ,
 22.989769 , 24.305   , 26.981539, 28.085 , 30.973762, 32.06  , 35.45    , 39.948    ,

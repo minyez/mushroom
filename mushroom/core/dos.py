@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """density of states object"""
-from collections.abc import Iterable
+from typing import Sequence
 import numpy as np
 
 from mushroom.core.unit import EnergyUnit
@@ -203,8 +203,8 @@ class DensityOfStates(EnergyUnit):
         Args:
             ispin (int) : 0 for spin-up and 1 for spin-down.
                 Total dos will be returned otherwise or nspins=1
-            atm (int, str, Iterable) : atomic identifier, either index or symbol
-            prj (int, str, Iterable) : projector identifier, either index or name
+            atm (int, str, Sequence) : atomic identifier, either index or symbol
+            prj (int, str, Sequence) : projector identifier, either index or name
 
         Returns:
             1-d array
@@ -235,7 +235,7 @@ class DensityOfStates(EnergyUnit):
         if self._atms is None:
             if isinstance(atm, int):
                 return [atm,]
-            if isinstance(atm, Iterable):
+            if isinstance(atm, Sequence):
                 has_str = any(isinstance(a, str) for a in atm)
                 if not has_str:
                     return atm
@@ -246,7 +246,7 @@ class DensityOfStates(EnergyUnit):
         if self._prjs is None:
             if isinstance(prj, int):
                 return [prj,]
-            if isinstance(prj, Iterable):
+            if isinstance(prj, Sequence):
                 has_str = any(isinstance(p, str) for p in prj)
                 if not has_str:
                     return prj

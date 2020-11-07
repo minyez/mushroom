@@ -6,6 +6,7 @@ import numpy as np
 
 from mushroom.core.constants import EV2RY
 from mushroom.core.dos import DensityOfStates, DosError
+from mushroom.core.dos import split_ap
 
 goodEgrid = [-4, -3, -2, -1, 0, 1, 2, 3, 4]
 badEgrid = [-4, -3, -2, -1, 0, 1]
@@ -64,6 +65,19 @@ class test_dos_initialize(ut.TestCase):
     #    self.assertRaisesRegex(TypeError, r"fail_one should be bool type.",
     #                           dos.sum_atom_proj_comp, fail_one=3)
 
+class test_split_ap(ut.TestCase):
+    """test split atom-projector string"""
+    def test_raise(self):
+        """raise for whitespace and wrong number of members"""
+        self.assertRaises(ValueError, split_ap, "Fe :3")
+        self.assertRaises(ValueError, split_ap, "Fe")
+        self.assertRaises(ValueError, split_ap, "Fe:4:5")
+
+    def test_correct_splitting(self):
+        """correct split of a string"""
+        atms, prjs = split_ap("Fe:4")
+        self.assertListEqual(atms, ["Fe",])
+        self.assertListEqual(prjs, [4,])
 
 if __name__ == '__main__':
     ut.main()

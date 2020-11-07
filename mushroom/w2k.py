@@ -9,7 +9,7 @@ import re
 import numpy as np
 
 from mushroom.core.cell import Cell
-from mushroom.core.elements import NUCLEAR_CHARGE
+from mushroom.core.elements import nuclear_charges
 from mushroom.core.ioutils import grep, print_file_or_iowrapper, get_filename_wo_ext
 from mushroom.core.crystutils import (get_latt_vecs_from_latt_consts,
                                       atms_from_sym_nat,
@@ -460,7 +460,7 @@ class Struct:
                                                                         self.isplits)):
             posi = self._cell.get_atm_posi(at)
             mult = len(posi)
-            Z = NUCLEAR_CHARGE.get(re.sub(r"[\d ]", "", at))
+            Z = nuclear_charges.get(re.sub(r"[\d ]", "", at))
             slist_atm = ["ATOM{:4d}: X={:10.8f} Y={:10.8f} Z={:10.8f}".format(iat+1,
                                                                               *posi[0, :]),
                          "           MULT={:2d}{:10s}ISPLIT={:2d}".format(mult, "", isplit),]

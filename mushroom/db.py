@@ -2,7 +2,7 @@
 """database related"""
 import pathlib
 from re import search
-from os import makedirs, PathLike
+from os import makedirs
 from shutil import copy
 from collections.abc import Iterable
 from typing import Union
@@ -10,6 +10,7 @@ from typing import Union
 from mushroom.core.pkg import detect
 from mushroom.core.logger import create_logger
 from mushroom.core.cell import Cell
+from mushroom.core.typing import Path
 from mushroom.w2k import Struct
 
 __all__ = [
@@ -65,7 +66,7 @@ class _DBBase:
         """reload the list of entries"""
         self._available_entries = None
 
-    def register(self, entry: Union[str, PathLike],
+    def register(self, entry: Path,
                  relative: bool = False, overwrite: bool = False):
         """register a new entry to database
 
@@ -173,7 +174,7 @@ class DBCell(_DBBase):
         self.get_cell_path = self.get_entry_path
         self.get_avail_cells = self.get_avail_entries
 
-    def extract(self, cell_entry, output_path=None, writer=None):
+    def extract(self, cell_entry: Union[str, int], output_path=None, writer=None):
         """extract the entry from cell database"""
         self._write(self._read_entry(cell_entry),
                     output_path=output_path, writer=writer)

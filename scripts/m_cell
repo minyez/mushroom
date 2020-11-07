@@ -47,7 +47,7 @@ def build_cell():
     #    cdb.add_entry(args.add_sample, s)
     #    return
     if args.cell is not None:
-        cdb.extract(args.cell, filename=args.output_path, writer=args.output_format)
+        cdb.extract(args.cell, output_path=args.output_path, writer=args.output_format)
         return
     if args.show or args.search:
         for i, s in cdb.filter(args.search):

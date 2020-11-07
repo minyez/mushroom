@@ -5,7 +5,8 @@ import os
 import sys
 from importlib import machinery
 
-__NAME__ = "mushroom"
+from mushroom import __NAME__
+
 # a global configuration file
 config_file = os.path.join(os.environ["HOME"], "." + __NAME__ + "rc")
 
@@ -15,3 +16,4 @@ if os.path.isfile(config_file):
     machinery.SourceFileLoader(__NAME__ + '.__config__', config_file).load_module()
 
 del(machinery, os, sys)
+

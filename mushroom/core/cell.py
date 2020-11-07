@@ -6,7 +6,7 @@ import string
 import os
 from collections import OrderedDict
 from numbers import Real
-from typing import List
+from typing import List, Sequence, Union
 from itertools import product
 
 import numpy as np
@@ -20,7 +20,7 @@ except ImportError:
     symprec = 1.0E-5
 from mushroom.core.constants import PI, SQRT3
 from mushroom.core.cif import Cif
-from mushroom.core.elements import NUCLEAR_CHARGE
+from mushroom.core.elements import nuclear_charges
 from mushroom.core.unit import LengthUnit
 from mushroom.core.pkg import detect
 from mushroom.core.crystutils import (get_latt_consts_from_latt_vecs,
@@ -34,6 +34,7 @@ from mushroom.core.ioutils import (grep, get_str_indices,
                                    get_file_ext,
                                    print_file_or_iowrapper)
 from mushroom.core.logger import create_logger
+from mushroom.core.typing import Latt3T3, RealVec3D, Path
 
 __all__ = [
         "CellError",
@@ -79,9 +80,10 @@ When other keyword are parsed, they will be filtered out and no exception will b
     avail_exporters = ['vasp', 'abi', 'json']
     avail_readers = ['vasp', 'json', 'cif']
 
-    def __init__(self, latt, atms, posi, unit: str = 'ang', sanitize: bool = True,
+    def __init__(self, latt: Latt3T3, atms: Sequence[str], posi: Sequence[RealVec3D],
+                 unit: str = 'ang', sanitize: bool = True,
                  coord_sys: str = 'D', select_dyn: dict = None, all_relax: bool = True,
-                 reference=None, comment=None, **kwargs):
+                 reference: str = None, comment: str = None, **kwargs):
 
         self.comment = "Default Cell class"
         if comment is not None:
@@ -123,7 +125,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
     def __len__(self):
         return len(self._atms)
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: Union[int, str]):
         if isinstance(index, int):
             return self._posi[index, :]
         if isinstance(index, str):
@@ -227,16 +229,16 @@ When other keyword are parsed, they will be filtered out and no exception will b
             self._posi = self._posi - np.floor(self._posi)
             self.coord_sys = "C"
 
-    def get_sym_index(self, csymbol):
-        '''Get the indices of atoms with element symbol ``csymbol``
+    def get_sym_index(self, csymbol: str):
+        """Get the indices of atoms with element symbol ``csymbol``
 
         Note that this is equivalent to ``cell[csymbol]``, given cell an instance of ``Cell``.
 
         Args:
             csymbol (str) : chemical-symbol-like identifier
-        '''
+        """
         assert isinstance(csymbol, str)
-        return get_str_indices(self.atms, csymbol.capitalize())
+        return get_str_indices(self.atms, csymbol)
 
     # * Sorting method
     def _bubble_sort_atoms(self, key, indices, reverse=False):
@@ -289,8 +291,8 @@ When other keyword are parsed, they will be filtered out and no exception will b
         """
         self._bubble_sort_atoms(self.type_index(), range(self.natm))
 
-    def sort_posi(self, axis=3, reverse=False):
-        '''Sort the atoms by its coordinate along axis.
+    def sort_posi(self, axis: int = 3, reverse: bool = False):
+        """Sort the atoms by its coordinate along axis.
 
         The ``atoms`` list will not change by sorting, i.e. the sorting is performed
         within each atomic group.
@@ -304,7 +306,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
         Args :
             axis (1,2,3)
             reverse (bool)
-        '''
+        """
         try:
             assert axis in range(1, 4)
             assert isinstance(reverse, bool)
@@ -328,7 +330,8 @@ When other keyword are parsed, they will be filtered out and no exception will b
         if self._coord_sys == "C":
             self._posi = self._posi * scale
 
-    def add_atom(self, atom, coord, select_dyn=None, sanitize=True):
+    def add_atom(self, atom: str, coord: RealVec3D,
+                 select_dyn: bool = None, sanitize: bool = True):
         """Add an atom with coordinate and selective dynamic flags
 
         Args:
@@ -358,7 +361,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
         """
         return sym_nat_from_atms(self._atms)
 
-# pylint: disable=R0914
+    # pylint: disable=R0914
     def get_supercell(self, n1: int = 1, n2: int = 1, n3: int = 1):
         """create supercell from current
 
@@ -547,7 +550,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
         return self._coord_sys
 
     @coord_sys.setter
-    def coord_sys(self, sys):
+    def coord_sys(self, sys: str):
         sys = sys.upper()
         if sys != self._coord_sys:
             _convDict = {"C": self._latt, "D": np.linalg.inv(self._latt)}
@@ -672,7 +675,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
         self._select_dyn = {}
         self._all_relax = True
 
-    def set_fix(self, *iats, axis=0):
+    def set_fix(self, *iats, axis: int = 0):
         """Fix the atoms with index in iats
 
         Args:
@@ -688,7 +691,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
                         {i: select_dyn_flag_from_axis(axis, relax=False)})
             self._set_select_dyn(new)
 
-    def set_relax(self, *iats, axis=0):
+    def set_relax(self, *iats, axis: int = 0):
         '''Relax the atoms with index in iats
 
         Args:
@@ -704,21 +707,19 @@ When other keyword are parsed, they will be filtered out and no exception will b
                         {_ia: select_dyn_flag_from_axis(axis, relax=True)})
             self._set_select_dyn(_new)
 
-    def relax_from_top(self, n, axis=3):
+    def relax_from_top(self, n: int, axis: int = 3):
         """Set all atoms fixed, and relax the n atoms from top along axis
         """
         raise NotImplementedError
 
-    def fix_from_center(self, n, axis=3):
+    def fix_from_center(self, n: int, axis: int = 3):
         """Set all atoms relaxed, and fix the n atoms from the middle along axis
         """
         raise NotImplementedError
 
-    def _set_select_dyn(self, flags):
+    def _set_select_dyn(self, flags: dict):
         """Set the flags for selective dynamics"""
-        try:
-            assert isinstance(flags, dict)
-        except AssertionError:
+        if not isinstance(flags, dict):
             raise self._err("need dictionary to set selective dynamics")
         for flag in flags.values():
             try:
@@ -729,7 +730,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
                 raise self._err("Bad flag for selective dynamics")
         self._select_dyn.update(flags)
 
-    def sd_flag(self, ia=-1):
+    def sd_flag(self, ia: int = -1):
         '''Return the selective dynamic flag (bool) of an atom
 
         Args:
@@ -770,7 +771,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
         """
         print_file_or_iowrapper(self.export(output_format, scale=scale), f=filename)
 
-    def export(self, output_format: str, scale: float = 1.0):
+    def export(self, output_format: str, scale: float = 1.0) -> str:
         """Export cell to file in the format `output_format`
 
         Args:
@@ -805,7 +806,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
         ret.append(form[:-1].format(*self._latt.flatten()))
         # nuclear charge of each atom type
         form = "znucl " + " {:d}" * len(syms)
-        ret.append(form.format(*map(NUCLEAR_CHARGE.__getitem__, syms)))
+        ret.append(form.format(*map(nuclear_charges.__getitem__, syms)))
         # type of each atom
         form = "typat" + " {:d}" * self.natm
         ret.append(form.format(*self.type_index(start=1)))
@@ -854,7 +855,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
         self.unit = uwas
         return '\n'.join(ret)
 
-    def export_json(self, scale=1.0):
+    def export_json(self, scale: float = 1.0) -> str:
         """Export in JSON format"""
         latt = self._latt * scale
         posi = self._posi * {"C": scale, "D": 1.0}[self.coord_sys]
@@ -957,7 +958,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
         return cls(*pargs, **js)
 
     @classmethod
-    def read_cif(cls, pcif):
+    def read_cif(cls, pcif: Path):
         """Read from Cif file and return a instance by use of PyCIFRW
         """
         cif = Cif(pcif)
@@ -1053,7 +1054,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
 
     # * Factory methods
     @classmethod
-    def _bravais_o(cls, kind, atom, a, b, c, **kwargs):
+    def _bravais_o(cls, kind: str, atom: str, a: float, b: float, c: float, **kwargs):
         assert kind in ["P", "I", "F"]
         latt = [[a, 0.0, 0.0], [0.0, b, 0.0], [0.0, 0.0, c]]
         if kind == "P":
@@ -1070,7 +1071,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
         return cls(latt, atms, posi, **kwargs)
 
     @classmethod
-    def bravais_oP(cls, atom, a=1.0, b=2.0, c=3.0, **kwargs):
+    def bravais_oP(cls, atom, a: float = 1.0, b: float = 2.0, c: float = 3.0, **kwargs):
         '''Generate a simple orthorhombic Bravais lattice
 
         Args:
@@ -1084,7 +1085,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
         return cls._bravais_o("P", atom, a, b, c, **kwargs)
 
     @classmethod
-    def bravais_oI(cls, atom, a=1.0, b=2.0, c=3.0, **kwargs):
+    def bravais_oI(cls, atom: str, a: float = 1.0, b: float = 2.0, c: float = 3.0, **kwargs):
         '''Generate a body-centered orthorhombic Bravais lattice
 
         Args:
@@ -1098,7 +1099,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
         return cls._bravais_o("I", atom, a, b, c, **kwargs)
 
     @classmethod
-    def bravais_oF(cls, atom, a=1.0, b=2.0, c=3.0, **kwargs):
+    def bravais_oF(cls, atom: str, a: float = 1.0, b: float = 2.0, c: float = 3.0, **kwargs):
         '''Generate a face-centered orthorhombic Bravais lattice
 
         Args:
@@ -1112,7 +1113,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
         return cls._bravais_o("F", atom, a, b, c, **kwargs)
 
     @classmethod
-    def bravais_cP(cls, atom, a=1.0, **kwargs):
+    def bravais_cP(cls, atom: str, a: float = 1.0, **kwargs):
         '''Generate a simple cubic Bravais lattice, space group 221
 
         Args:
@@ -1120,8 +1121,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
             a (float) : the lattice constant (a)
             kwargs: keyword argument for ``Cell`` except ``coord_sys``
         '''
-        _a = abs(a)
-        latt = [[_a, 0.0, 0.0], [0.0, _a, 0.0], [0.0, 0.0, _a]]
+        latt = [[a, 0.0, 0.0], [0.0, a, 0.0], [0.0, 0.0, a]]
         atms = [atom,]
         posi = [[0.0, 0.0, 0.0]]
         kwargs.pop("coord_sys", None)
@@ -1130,7 +1130,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
         return cls(latt, atms, posi, **kwargs)
 
     @classmethod
-    def bravais_cI(cls, atom, a=1.0, primitive=False, **kwargs):
+    def bravais_cI(cls, atom: str, a: float = 1.0, primitive: bool = False, **kwargs):
         '''Generate a body-centered cubic Bravais lattice
 
         Args:
@@ -1139,15 +1139,14 @@ When other keyword are parsed, they will be filtered out and no exception will b
             primitive (bool) : if set True, the primitive cell will be generated
             kwargs: keyword argument for ``Cell`` except ``coord_sys``
         '''
-        _a = abs(a)
         if primitive:
-            latt = [[-_a/2.0, _a/2.0, _a/2.0],
-                    [_a/2.0, -_a/2.0, _a/2.0],
-                    [_a/2.0, _a/2.0, -_a/2.0]]
+            latt = [[-a/2.0, a/2.0, a/2.0],
+                    [a/2.0, -a/2.0, a/2.0],
+                    [a/2.0, a/2.0, -a/2.0]]
             atms = [atom]
             posi = [[0.0, 0.0, 0.0]]
         else:
-            latt = [[_a, 0.0, 0.0], [0.0, _a, 0.0], [0.0, 0.0, _a]]
+            latt = [[a, 0.0, 0.0], [0.0, a, 0.0], [0.0, 0.0, a]]
             atms = [atom, ]*2
             posi = [[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]
         kwargs.pop("coord_sys", None)
@@ -1156,7 +1155,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
         return cls(latt, atms, posi, **kwargs)
 
     @classmethod
-    def bravais_cF(cls, atom, a=1.0, primitive=False, **kwargs):
+    def bravais_cF(cls, atom: str, a: float = 1.0, primitive: bool = False, **kwargs):
         '''Generate a face-centered cubic Bravais lattice
 
         Args:
@@ -1165,14 +1164,13 @@ When other keyword are parsed, they will be filtered out and no exception will b
             primitive (bool) : if set True, the primitive cell will be generated
             kwargs: keyword argument for ``Cell`` except ``coord_sys``
         '''
-        _a = abs(a)
         if primitive:
-            latt = [[0.0, _a/2.0, _a/2.0],
-                    [_a/2.0, 0.0, _a/2.0], [_a/2.0, _a/2.0, 0.0]]
+            latt = [[0.0, a/2.0, a/2.0],
+                    [a/2.0, 0.0, a/2.0], [a/2.0, a/2.0, 0.0]]
             atms = [atom]
             posi = [[0.0, 0.0, 0.0]]
         else:
-            latt = [[_a, 0.0, 0.0], [0.0, _a, 0.0], [0.0, 0.0, _a]]
+            latt = [[a, 0.0, 0.0], [0.0, a, 0.0], [0.0, 0.0, a]]
             atms = [atom,]*4
             posi = [[0.0, 0.0, 0.0], [0.0, 0.5, 0.5],
                     [0.5, 0.0, 0.5], [0.5, 0.5, 0.0]]
@@ -1182,7 +1180,8 @@ When other keyword are parsed, they will be filtered out and no exception will b
         return cls(latt, atms, posi, **kwargs)
 
     @classmethod
-    def perovskite(cls, atom1="Ca", atom2="Ti", atom3="O", a=1.0, **kwargs):
+    def perovskite(cls, atom1: str = "Ca", atom2: str = "Ti", atom3: str = "O",
+                   a: float = 1.0, **kwargs):
         '''Generate a perovskit lattice
 
         Args:
@@ -1193,8 +1192,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
             primitive (bool) : if set True, the primitive cell will be generated
             kwargs: keyword argument for ``Cell`` except ``coord_sys``
         '''
-        _a = abs(a)
-        latt = [[_a, 0.0, 0.0], [0.0, _a, 0.0], [0.0, 0.0, _a]]
+        latt = [[a, 0.0, 0.0], [0.0, a, 0.0], [0.0, 0.0, a]]
         atms = [atom1, atom2, ] + [atom3, ]*3
         posi = [[0.0, 0.0, 0.0], [0.5, 0.5, 0.5], [
             0.0, 0.5, 0.5], [0.5, 0.0, 0.5], [0.5, 0.5, 0.0]]
@@ -1205,7 +1203,9 @@ When other keyword are parsed, they will be filtered out and no exception will b
         return cls(latt, atms, posi, **kwargs)
 
     @classmethod
-    def zincblende(cls, atom1="Zn", atom2="O", a=1.0, primitive=False, **kwargs):
+    def zincblende(cls, atom1: str = "Zn", atom2: str = "O",
+                   a: float = 1.0,
+                   primitive: bool = False, **kwargs):
         '''Generate a zincblende lattice (space group 216)
 
         ``atom1`` are placed at vertex and ``atom2`` at tetrahedron interstitial
@@ -1217,15 +1217,14 @@ When other keyword are parsed, they will be filtered out and no exception will b
             primitive (bool): if set True, the primitive cell will be generated.
             kwargs: keyword argument for ``Cell`` except ``coord_sys``
         '''
-        _a = abs(a)
         if primitive:
-            latt = [[0.0, _a/2.0, _a/2.0],
-                    [_a/2.0, 0.0, _a/2.0], [_a/2.0, _a/2.0, 0.0]]
+            latt = [[0.0, a/2.0, a/2.0],
+                    [a/2.0, 0.0, a/2.0], [a/2.0, a/2.0, 0.0]]
             atms = [atom1, atom2]
             posi = [[0.0, 0.0, 0.0],
                     [0.25, 0.25, 0.25]]
         else:
-            latt = [[_a, 0.0, 0.0], [0.0, _a, 0.0], [0.0, 0.0, _a]]
+            latt = [[a, 0.0, 0.0], [0.0, a, 0.0], [0.0, 0.0, a]]
             atms = [atom1, ]*4 + [atom2, ]*4
             posi = [[0.0, 0.0, 0.0],
                     [0.0, 0.5, 0.5],
@@ -1241,7 +1240,9 @@ When other keyword are parsed, they will be filtered out and no exception will b
         return cls(latt, atms, posi, **kwargs)
 
     @classmethod
-    def rocksalt(cls, atom1="Na", atom2="Cl", a=1.0, primitive=False, **kwargs):
+    def rocksalt(cls, atom1: str = "Na", atom2: str = "Cl",
+                 a: float = 1.0,
+                 primitive: bool = False, **kwargs):
         '''Generate a rocksalt lattice
 
         ``atom1`` are placed at vertex and ``atom2`` at tetrahedron interstitial
@@ -1253,16 +1254,15 @@ When other keyword are parsed, they will be filtered out and no exception will b
             primitive (bool): if set True, the primitive cell will be generated.
             kwargs: keyword argument for ``Cell`` except ``coord_sys``
         '''
-        _a = abs(a)
         if primitive:
-            latt = [[0.0, _a/2.0, _a/2.0],
-                    [_a/2.0, 0.0, _a/2.0],
-                    [_a/2.0, _a/2.0, 0.0]]
+            latt = [[0.0, a/2.0, a/2.0],
+                    [a/2.0, 0.0, a/2.0],
+                    [a/2.0, a/2.0, 0.0]]
             atms = [atom1, atom2]
             posi = [[0.0, 0.0, 0.0],
                     [0.5, 0.5, 0.5]]
         else:
-            latt = [[_a, 0.0, 0.0], [0.0, _a, 0.0], [0.0, 0.0, _a]]
+            latt = [[a, 0.0, 0.0], [0.0, a, 0.0], [0.0, 0.0, a]]
             atms = [atom1, ]*4 + [atom2, ]*4
             posi = [[0.0, 0.0, 0.0],
                     [0.0, 0.5, 0.5],
@@ -1278,7 +1278,9 @@ When other keyword are parsed, they will be filtered out and no exception will b
         return cls(latt, atms, posi, **kwargs)
         
     @classmethod
-    def diamond(cls, atom="C", a=1.0, primitive=False, **kwargs):
+    def diamond(cls, atom: str = "C",
+                a: float = 1.0,
+                primitive: bool = False, **kwargs):
         '''Generate a diamond lattice (space group 227)
 
         Args:
@@ -1292,7 +1294,8 @@ When other keyword are parsed, they will be filtered out and no exception will b
         return cls.zincblende(atom, atom, a=a, primitive=primitive, **kwargs)
 
     @classmethod
-    def wurtzite(cls, atom1="Zn", atom2="O", a=3.250, c=None, u=None, **kwargs):
+    def wurtzite(cls, atom1: str = "Zn", atom2: str = "O",
+                 a: float = 3.250, c: float = None, u: float = None, **kwargs):
         '''Generate a wurtzite lattice (space group 186)
 
         Args:
@@ -1322,7 +1325,8 @@ When other keyword are parsed, they will be filtered out and no exception will b
         return cls(latt, atms, posi, **kwargs)
 
     @classmethod
-    def rutile(cls, atom1="Ti", atom2="O", a=1.0, c=2.0, u=0.31, **kwargs):
+    def rutile(cls, atom1: str = "Ti", atom2: str = "O",
+               a: float = 1.0, c: float = 2.0, u: float = 0.31, **kwargs):
         '''Generate a rutile lattice (space group 136)
 
         Args:
@@ -1353,8 +1357,9 @@ When other keyword are parsed, they will be filtered out and no exception will b
         return cls(latt, atms, posi, **kwargs)
 
     @classmethod
-    def anatase(cls, atom1="Ti", atom2="O", a=3.7845, c=9.5143, u=0.2199,
-                primitive=False, **kwargs):
+    def anatase(cls, atom1: str = "Ti", atom2: str = "O",
+                a: float = 3.7845, c: float = 9.5143, u: float = 0.2199,
+                primitive: bool = False, **kwargs):
         '''Generate an anatase lattice (space group 141).
 
         Note:
@@ -1405,9 +1410,9 @@ When other keyword are parsed, they will be filtered out and no exception will b
         return cls(latt, atms, posi, **kwargs)
 
     @classmethod
-    def delafossite(cls, atom1="Cu", atom2="Al", atom3="O",
-                    a=2.858, c=16.958, u=0.1099, primitive=False,
-                    **kwargs):
+    def delafossite(cls, atom1: str = "Cu", atom2: str = "Al", atom3: str = "O",
+                    a: float = 2.858, c: float = 16.958, u: float = 0.1099,
+                    primitive: bool = False, **kwargs):
         '''Generate a standardized delafossite lattice (space group 166).
 
         Args:
@@ -1416,8 +1421,6 @@ When other keyword are parsed, they will be filtered out and no exception will b
             u (float): the internal coordinate
             kwargs: keyword argument for ``Cell`` except ``coord_sys``
         '''
-        a = abs(a)
-        c = abs(c)
         ha = a/2
         if primitive:
             latt = [[ha, -ha/SQRT3, c/3], [0.0, 2*ha/SQRT3, c/3], [-ha, -ha/SQRT3, c/3]]
@@ -1447,8 +1450,9 @@ When other keyword are parsed, they will be filtered out and no exception will b
         return cls(latt, atms, posi, **kwargs)
 
     @classmethod
-    def pyrite(cls, atom1="Fe", atom2="S", a=5.4183, u=0.1174, **kwargs):
-        '''Generate a standardized pyrite lattice (space group 205).
+    def pyrite(cls, atom1: str = "Fe", atom2: str = "S",
+               a: float = 5.4183, u: float = 0.1174, **kwargs):
+        """Generate a standardized pyrite lattice (space group 205).
 
         Args:
             atom1 (str): symbol of atom at vertex and face-center
@@ -1456,9 +1460,8 @@ When other keyword are parsed, they will be filtered out and no exception will b
             a (float): the lattice constant of the conventional cell.
             u (float): the internal coordinate
             kwargs: keyword argument for ``Cell`` except ``coord_sys``
-        '''
-        _a = abs(a)
-        latt = [[_a, 0.0, 0.0], [0.0, _a, 0.0], [0.0, 0.0, _a]]
+        """
+        latt = [[a, 0.0, 0.0], [0.0, a, 0.0], [0.0, 0.0, a]]
         atms = [atom1, ]*4 + [atom2, ]*8
         posi = [[0.0, 0.0, 0.0],
                 [0.0, 0.5, 0.5],
@@ -1478,9 +1481,9 @@ When other keyword are parsed, they will be filtered out and no exception will b
         return cls(latt, atms, posi, **kwargs)
 
     @classmethod
-    def marcasite(cls, atom1="Fe", atom2="S",
-                  a=4.4450, b=5.4151, c=3.3922,
-                  v=0.2066, w=0.3750, **kwargs):
+    def marcasite(cls, atom1: str = "Fe", atom2: str = "S",
+                  a: float = 4.4450, b: float = 5.4151, c: float = 3.3922,
+                  v: float = 0.2066, w: float = 0.3750, **kwargs):
         '''Generate a standardized marcasite lattice (space group 58).
 
         Args:
@@ -1490,10 +1493,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
             v, w(float): the internal coordinates
             kwargs: keyword argument for ``Cell`` except ``coord_sys``
         '''
-        _a = abs(a)
-        _b = abs(b)
-        _c = abs(c)
-        latt = [[_a, 0.0, 0.0], [0.0, _b, 0.0], [0.0, 0.0, _c]]
+        latt = [[a, 0.0, 0.0], [0.0, b, 0.0], [0.0, 0.0, c]]
         atms = [atom1, ]*2 + [atom2, ]*4
         posi = [[0.0, 0.0, 0.0],
                 [0.5, 0.5, 0.5],

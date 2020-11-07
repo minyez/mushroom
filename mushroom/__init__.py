@@ -2,10 +2,11 @@
 """mushroom, a Multi-fUnctional, Simple and Helpful Research tOOlkit for Material science
 """
 
-from mushroom import __config__
-
-__NAME__ = __config__.__NAME__
+__NAME__ = "mushroom"
 __version__ = "0.0.3"
 __author__ = "Minye Zhang"
 
-del __config__
+def get_version():
+    """return the version of mushroom"""
+    return __version__
+

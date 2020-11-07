@@ -9,7 +9,6 @@ Therefore, platform-related functions are generally discarded. (minyez)
 """
 import sys
 import time
-import pathlib
 from os import PathLike
 import subprocess
 from re import sub, findall
@@ -117,7 +116,7 @@ class _MapOutput:
 
 class _ColorMap(_MapOutput):
     """Class to map the color
-    
+
     Private attribute:
         _map (dict) : color map
         _cn (dict) : color names
@@ -404,7 +403,7 @@ class Font(_MapOutput):
 
 class LineStyle(_IntMap):
     """line style
-    
+
     Args:
         ls (int or str)"""
     NONE = 0
@@ -569,7 +568,7 @@ class _Affix:
     def __init__(self, affix, is_prefix=False):
         self._affix = str(affix)
         self._is_prefix = is_prefix
-    
+
 
 class _BaseOutput:
     """abstract class for initializing and printing element object
