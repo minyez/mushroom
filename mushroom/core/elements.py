@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import string
+from typing import Union
 
 # pylint: disable=bad-continuation,bad-whitespace,line-too-long
 element_symbols = ('X' , # pseudo atom
@@ -25,6 +26,26 @@ element_symbols = ('X' , # pseudo atom
                 )
 
 nuclear_charges = {s: i for i, s in enumerate(element_symbols)}
+
+def get_atomic_number(e: Union[str, int]):
+    """get the atomic number of element
+
+    Args:
+        e (str or int): the symbol or atomic number of element
+            if e is a int, it will check the validity of the number.
+
+    Returns:
+        int, atomic number of the element
+    """
+    an = None
+    if isinstance(e, int):
+        if e < len(element_symbols):
+            an = e
+    if isinstance(e, str):
+        an = nuclear_charges.get(e, None)
+    if an is None:
+        raise ValueError("invalid element {}".format(e))
+    return an
 
 # ====================================================
 # Standard atomic weight, or relative atomic mass of the element 
