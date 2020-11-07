@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 """density of states object"""
-from typing import Sequence
 import numpy as np
 
 from mushroom.core.unit import EnergyUnit
@@ -24,7 +23,7 @@ atms: a list of strings
 
 prjs: a list of strings
 
-pdos: array-like, floats as elements. 
+pdos: array-like, floats as elements.
 The shape should be (nspins, nedos, natms, nprjs)
 """
 
@@ -97,12 +96,12 @@ class DensityOfStates(EnergyUnit):
             raise DosError("bad pdos shape: {}".format(shape))
 
         self._natms, self._nprjs = shape[2:]
-        if atms:
+        if atms is not None:
             natms = len(atms)
             if natms != self._natms:
                 raise DosError("inconsistent atms input {}".format(atms))
             self._atms = atms
-        if prjs:
+        if prjs is not None:
             nprjs = len(prjs)
             if nprjs != self._nprjs:
                 raise DosError("inconsistent prjs input {}".format(prjs))
@@ -235,7 +234,7 @@ class DensityOfStates(EnergyUnit):
         if self._atms is None:
             if isinstance(atm, int):
                 return [atm,]
-            if isinstance(atm, Sequence):
+            if isinstance(atm, (list, tuple)):
                 has_str = any(isinstance(a, str) for a in atm)
                 if not has_str:
                     return atm
@@ -246,7 +245,7 @@ class DensityOfStates(EnergyUnit):
         if self._prjs is None:
             if isinstance(prj, int):
                 return [prj,]
-            if isinstance(prj, Sequence):
+            if isinstance(prj, (list, tuple)):
                 has_str = any(isinstance(p, str) for p in prj)
                 if not has_str:
                     return prj
@@ -300,7 +299,7 @@ class DensityOfStates(EnergyUnit):
         """
         if sep is None:
             sep = ' '
-        data = np.column_stack([self._egrid, self.get_dos(ispin=ispin)])
+        data = np.stack([self._egrid, self.get_dos(ispin=ispin)])
         return export_2d_data(data, transpose=transpose, form=form, sep=sep)
 
 def split_ap(ap: str):
