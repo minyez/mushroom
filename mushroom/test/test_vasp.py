@@ -73,7 +73,27 @@ class test_eigenval(ut.TestCase):
                 self.assertTrue(np.allclose(bsv, v))
 
 class test_poscar(ut.TestCase):
-    """test poscar reader"""
+    """test poscar reader. Actually tested in Cell"""
+
+#class test_chgcar(ut.TestCase):
+#    """test reading CHG and CHGCAR file"""
+#    def test_read_chgcar(self):
+#        """kpoints"""
+#        dir_chgcar = pathlib.Path(__file__).parent / "data"
+#        index_json = dir_chgcar / "chgcar.json"
+#        with index_json.open('r') as fp:
+#            verifies = json.load(fp)
+#        for f, verify in verifies.items():
+#            print("Testing {}".format(f))
+#            fpath = dir_chgcar / f
+#            chgcar = vasp.ChgCar(fpath)
+#            for k, v in verify.items():
+#                ccv = chgcar.__getattribute__(k)
+#                print(">> {} ?= {}".format(k, v))
+#                if isinstance(v, list):
+#                    self.assertListEqual(v, ccv)
+#                if isinstance(v, (int, float)):
+#                    self.assertEqual(v, ccv)
 
 if __name__ == "__main__":
     ut.main()

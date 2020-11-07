@@ -3,6 +3,7 @@
 from io import StringIO
 from os.path import realpath
 from typing import Tuple
+import pathlib
 
 import numpy as np
 from bs4 import BeautifulSoup
@@ -12,6 +13,7 @@ from mushroom.core.ioutils import conv_string
 from mushroom.core.dos import DensityOfStates
 from mushroom.core.bs import BandStructure
 from mushroom.core.cell import Cell
+from mushroom.core.typing import Path
 
 _logger = create_logger("vasp")
 del create_logger
@@ -28,7 +30,7 @@ __all__ = [
 def _dict_read_doscar(path: str = "DOSCAR",
                       read_pdos: bool = True, ncl: bool = False) -> dict:
     """read DOSCAR file and returns a dict
-    
+
     Args:
         path (str) : path to DOSCAR file. default to "DOSCAR"
         read_pdos (bool) : if read projected densit of states
@@ -85,7 +87,7 @@ def _dict_read_doscar(path: str = "DOSCAR",
 def read_doscar(path: str = "DOSCAR", read_pdos: bool = True,
                 reset_fermi: bool = False, ncl: bool = False) -> DensityOfStates:
     """read DOSCAR file and returns a DensityOfStates object
-    
+
     Args:
         path (str) : path to DOSCAR file. default to "DOSCAR"
         read_pdos (bool) : if read projected densit of states
@@ -204,8 +206,8 @@ def read_xml(*datakey, path: str = "vasprun.xml") -> dict:
     for key in datakey:
         try:
             objects[key] = avail_keys.get(key)(xml)
-        except KeyError:
-            raise ValueError("datakey {} is not supported for vasp xml parser".format(key))
+        except KeyError as err:
+            raise ValueError("datakey {} is not supported for vasp xml parser".format(key)) from err
     return objects
 
 def __read_xml_kpoints(xml: BeautifulSoup):
@@ -275,4 +277,38 @@ def read_eigen(path="EIGENVAL", filter_k_before=0, filter_k_after=None):
     return BandStructure(eigen, occ, weight), natms, kpoints
 
 read_poscar = Cell.read_vasp
+
+class WaveCar:
+    """object to read Wavecar"""
+    def __init__(self, pwavecar: Path):
+        pwavecar = pathlib.Path(pwavecar)
+
+class ChgCar:
+    """object to read Wavecar
+
+    While CHGCAR record data in F order, i.e. x fastest,
+    the data is stored in C order.
+    """
+    def __init__(self, pchgcar: Path):
+        init = 0
+        pchgcar = pathlib.Path(pchgcar)
+        with pchgcar.open('r') as h:
+            cell_lines = []
+            while True:
+                l = h.readline()
+                init += 1
+                if not l.strip():
+                    break
+                cell_lines.append(l)
+            self.cell = read_poscar(StringIO("".join(cell_lines)))
+            self.shape = tuple(map(int, h.readline().split()))
+            lines = h.readlines()
+            ncols = len(lines[0].split())
+            lines = lines[:np.prod(self.shape)//ncols + 1]
+            datastring = StringIO(" ".join(x.strip() for x in lines))
+            data = np.loadtxt(datastring)
+            self.size = len(self.data)
+            # in Fortran order, as x is the fastest index
+            self.rawdata = data.reshape(self.shape, order='F')
+            self.data = self.rawdata / self.cell.vol
 

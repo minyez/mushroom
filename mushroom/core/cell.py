@@ -29,9 +29,8 @@ from mushroom.core.crystutils import (get_latt_consts_from_latt_vecs,
                                       atms_from_sym_nat,
                                       sym_nat_from_atms,
                                       axis_list)
-from mushroom.core.ioutils import (grep, get_str_indices,
-                                   trim_comment,
-                                   get_file_ext,
+from mushroom.core.ioutils import (grep, get_str_indices, open_textio,
+                                   trim_comment, get_file_ext,
                                    print_file_or_iowrapper)
 from mushroom.core.logger import create_logger
 from mushroom.core.typing import Latt3T3, RealVec3D, Path
@@ -971,6 +970,13 @@ When other keyword are parsed, they will be filtered out and no exception will b
 
     # pylint: disable=R0912,R0914,R0915
     @classmethod
+    def decode_vasp(cls, s: str):
+        """
+        Args:
+            s (str) : the content of vasp POSCAR as a string
+        """
+
+    @classmethod
     def read_vasp(cls, pvasp="./POSCAR"):
         """Create Cell instance by reading from vasp POSCAR file
 
@@ -985,7 +991,8 @@ When other keyword are parsed, they will be filtered out and no exception will b
 
         fixed = {}
         flags = {'T': True, 'F': False}
-        with open(pvasp, 'r') as fp:
+        #with open(pvasp, 'r') as fp:
+        with open_textio(pvasp) as fp:
             symbols = None
             # line 1: comment on system
             comment = fp.readline().strip()

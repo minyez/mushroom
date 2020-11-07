@@ -3,6 +3,7 @@
 import os
 import pathlib
 import re
+from contextlib import contextmanager
 from io import TextIOWrapper, StringIO
 from collections import OrderedDict
 from collections.abc import Iterable, Callable
@@ -590,3 +591,22 @@ def fortran_read(fstring: str, fortran_format: str):
     """
     raise NotImplementedError
 
+TextIO = Union[str, os.PathLike, StringIO, TextIOWrapper]
+
+@contextmanager
+def open_textio(f: TextIO):
+    """open and read a file, path, TextIOWrapper or StringIO
+    """
+    if isinstance(f, (str, os.PathLike)):
+        try:
+            fp = open(f, 'r')
+            yield fp
+        finally:
+            if fp:
+                fp.close()
+    elif isinstance(f, (TextIOWrapper, StringIO)):
+        try:
+            yield f
+        finally:
+            pass
+            
