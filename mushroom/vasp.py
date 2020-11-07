@@ -9,11 +9,12 @@ import numpy as np
 from bs4 import BeautifulSoup
 
 from mushroom.core.logger import create_logger
-from mushroom.core.ioutils import conv_string
+from mushroom.core.ioutils import conv_string, open_textio
 from mushroom.core.dos import DensityOfStates
 from mushroom.core.bs import BandStructure
 from mushroom.core.cell import Cell
-from mushroom.core.typing import Path
+from mushroom.core.typehint import Path, TextIO
+from mushroom.visual.cube import Cube
 
 _logger = create_logger("vasp")
 del create_logger
@@ -307,8 +308,38 @@ class ChgCar:
             lines = lines[:np.prod(self.shape)//ncols + 1]
             datastring = StringIO(" ".join(x.strip() for x in lines))
             data = np.loadtxt(datastring)
-            self.size = len(self.data)
+            self.size = len(data)
             # in Fortran order, as x is the fastest index
             self.rawdata = data.reshape(self.shape, order='F')
             self.data = self.rawdata / self.cell.vol
+
+    @property
+    def natm(self):
+        """number of atoms"""
+        return self.cell.natm
+
+    def export_cube(self, pcube: TextIO):
+        """export as cube"""
+        was_d = self.cell.coord_sys == "D"
+        was_ang = self.cell.unit == "ang"
+        if was_d:
+            self.cell.coord_sys = "C"
+        if was_ang:
+            self.cell.unit = "bohr"
+        voxel_vecs = self.cell.latt.transpose() / self.shape
+        voxel_vecs = voxel_vecs.transpose()
+        data = self.rawdata / self.cell.vol
+        # divide the cell volume from the raw data
+        cube = Cube(data,
+                    voxel_vecs=voxel_vecs,
+                    atms=self.cell.atms,
+                    posi=self.cell.posi,
+                    origin=[0.,0.,0.], unit="bohr",
+                    )
+        with open_textio(pcube, 'w') as h:
+            print(cube.export(), file=h)
+        if was_d:
+            self.cell.coord_sys = "D"
+        if was_ang:
+            self.cell.unit = "ang"
 

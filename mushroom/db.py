@@ -10,7 +10,7 @@ from typing import Union
 from mushroom.core.pkg import detect
 from mushroom.core.logger import create_logger
 from mushroom.core.cell import Cell
-from mushroom.core.typing import Path
+from mushroom.core.typehint import Path
 from mushroom.w2k import Struct
 
 __all__ = [

@@ -11,6 +11,7 @@ from sys import stdout
 from typing import List, Union
 
 from mushroom.core.logger import create_logger
+from mushroom.core.typehint import TextIO
 
 lower_greeks = ["alpha", "beta", "gamma", "theta", "omega"]
 upper_greeks = list(x.capitalize() for x in lower_greeks)
@@ -591,22 +592,18 @@ def fortran_read(fstring: str, fortran_format: str):
     """
     raise NotImplementedError
 
-TextIO = Union[str, os.PathLike, StringIO, TextIOWrapper]
-
 @contextmanager
-def open_textio(f: TextIO):
-    """open and read a file, path, TextIOWrapper or StringIO
+def open_textio(f: TextIO, mode: str = 'r'):
+    """open, and read/write text from a filename/path/TextIOWrapper/StringIO
     """
     if isinstance(f, (str, os.PathLike)):
-        try:
-            fp = open(f, 'r')
-            yield fp
-        finally:
-            if fp:
-                fp.close()
-    elif isinstance(f, (TextIOWrapper, StringIO)):
-        try:
-            yield f
-        finally:
-            pass
+        f = open(f, mode)
+    try:
+        yield f
+    finally:
+        #if isinstance(f, (str, os.PathLike)):
+        #    f.close()
+        #elif isinstance(f, (TextIOWrapper, StringIO)):
+        #    pass
+        f.close()
             

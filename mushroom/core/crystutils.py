@@ -4,7 +4,7 @@ from copy import deepcopy
 from typing import List, Iterable
 import numpy as np
 from numpy import cos, sin
-from mushroom.core.typing import Latt3T3
+from mushroom.core.typehint import Latt3T3
 from mushroom.core.constants import PI
 from mushroom.core.logger import create_logger
 

@@ -20,7 +20,7 @@ from typing import Union
 from numpy import shape, absolute, loadtxt
 
 from mushroom.core.data import Data
-from mushroom.core.ioutils import (greeks,
+from mushroom.core.ioutils import (greeks, open_textio,
                                    get_file_ext)
 from mushroom.core.logger import create_logger
 
@@ -49,7 +49,6 @@ ext2device = {
     "jpeg":"JPEG",
     }
 
-# pylint: disable=bad-whitespace
 def encode_string(string):
     r"""encode a string to grace format.
 
@@ -241,8 +240,8 @@ class _ColorMap(_MapOutput):
         """
         try:
             return self._cn.index(name.lower())
-        except ValueError:
-            raise ValueError("color name {:s} is not found".format(name))
+        except ValueError as err:
+            raise ValueError("color name {:s} is not found".format(name)) from err
 
     def get_rgb(self, i):
         """get the rgb value of color with its code"""
@@ -644,10 +643,10 @@ class _BaseOutput:
                 # for Symbol
                 if attr == "type":
                     temps = f.format(attrv)
-                # for on off attribute 
+                # for on off attribute
                 if attr.endswith("_switch"):
                     temps = attr.replace("_switch", "") + " " + Switch.get_str(attrv)
-                # for inout attribute 
+                # for inout attribute
                 elif attr.endswith("_pointing"):
                     temps = attr.replace("_pointing", "") + " " + Pointing.get_str(attrv)
                 elif attr.endswith("_placement"):
@@ -743,7 +742,7 @@ class Title(_Title):
         _Title.__init__(self, title_comment=title, size=fontsize,
                         color=Color.get(color), font=font)
         _raise_unknown_attr(self, *kwargs)
-    
+
     def set(self, title=None, font=None, fontsize=None, color=None, **kwargs):
         self._set(title_comment=title, size=fontsize, color=Color.get(color), font=font)
         _raise_unknown_attr(self, *kwargs)
@@ -781,8 +780,8 @@ def _set_loclike_attr(marker, form, *args, sep=', '):
 def _get_corner(corner):
     try:
         return {'xmin':0, 'ymin':1, 'xmax':2, 'ymax':3}.get(corner)
-    except KeyError:
-        raise ValueError("invalid corner name ", corner)
+    except KeyError as err:
+        raise ValueError("invalid corner name ", corner) from err
 
 class _WorldLike(_BaseOutput):
     """super class for object with only one attribute whose
@@ -842,7 +841,7 @@ class _Line(_BaseOutput):
         'color': (int, Color.BLACK, "{:d}"),
         'pattern': (int, 1, "{:d}"),
         }
-    
+
 class Line(_Line):
     """User interface of line object"""
     def __init__(self, lt=None, color=None, pattern=None, width=None, style=None, **kwargs):
@@ -967,7 +966,7 @@ class Frame(_Frame):
                  bgc=None, bgp=None, **kwargs):
         _raise_unknown_attr(self, *kwargs)
         _Frame.__init__(self, type=_Frame.get(ft), linestyle=LineStyle.get(ls), linewidth=lw,
-                        color=Color.get(color), pattern=Pattern.get(pattern), 
+                        color=Color.get(color), pattern=Pattern.get(pattern),
                         background_pattern=Pattern.get(bgp),
                         background_color=Color.get(bgc))
 
@@ -975,7 +974,7 @@ class Frame(_Frame):
             bgc=None, bgp=None, **kwargs):
         _raise_unknown_attr(self, *kwargs)
         self._set(type=_Frame.get(ft), linestyle=LineStyle.get(ls), linewidth=lw,
-                  color=Color.get(color), pattern=Pattern.get(pattern), 
+                  color=Color.get(color), pattern=Pattern.get(pattern),
                   background_pattern=Pattern.get(bgp),
                   background_color=Color.get(bgc))
 
@@ -993,7 +992,7 @@ class BaseLine(_BaseLine):
     def __init__(self, lt=None, switch=None, **kwargs):
         _raise_unknown_attr(self, *kwargs)
         _BaseLine.__init__(self, type=BaseLineType.get(lt), baseline_switch=Switch.get(switch))
-    
+
     def set(self, lt=None, switch=None, **kwargs):
         _raise_unknown_attr(self, *kwargs)
         self._set(type=BaseLineType.get(lt), baseline_switch=Switch.get(switch))
@@ -1043,7 +1042,7 @@ class Fill(_Fill):
         _raise_unknown_attr(self, *kwargs)
         _Fill.__init__(self, type=_Fill.get(ft), rule=rule, color=Color.get(color),
                        pattern=Pattern.get(pattern))
-    
+
     def set(self, ft=None, rule=None, color=None, pattern=None, **kwargs):
         _raise_unknown_attr(self, *kwargs)
         self._set(type=_Fill.get(ft), rule=rule, color=Color.get(color),
@@ -1309,8 +1308,9 @@ class Tick(_Tick):
                  milw=None, mils=None, mig=None, **kwargs):
         _raise_unknown_attr(self, *kwargs)
         _Tick.__init__(self, tick_switch=Switch.get(switch), tick_pointing=Pointing.get(pointing),
-                       major_color=Color.get(mjc), major_size=mjs, major_grid_switch=Switch.get(mjg),
-                       major=major, major_linewidth=mjlw, major_linestyle=LineStyle.get(mjls),
+                       major_color=Color.get(mjc), major_size=mjs,
+                       major_grid_switch=Switch.get(mjg), major=major, major_linewidth=mjlw,
+                       major_linestyle=LineStyle.get(mjls),
                        minor_color=Color.get(mic), minor_size=mis, minor_ticks=mit,
                        minor_grid_switch=Switch.get(mig), minor_linewidth=milw,
                        minor_linestyle=LineStyle.get(mils))
@@ -1340,13 +1340,6 @@ class Tick(_Tick):
                   major_grid_switch=Switch.get(grid),
                   major_linewidth=lw, major_linestyle=LineStyle.get(ls))
 
-
-    def set_major(self, major=None, color=None, size=None,
-                  lw=None, ls=None, grid=None, **kwargs):
-        _raise_unknown_attr(self, *kwargs)
-        self._set(major=major, major_color=Color.get(color), major_size=size,
-                  major_grid_switch=Switch.get(grid),
-                  major_linewidth=lw, major_linestyle=LineStyle.get(ls))
 
     def set_minor(self, color=None,
                   size=None, ticks=None, grid=None,
@@ -1575,7 +1568,7 @@ class Axis(_Axis):
 
     Args:
         axis (str) : in ['x', 'y', 'altx', 'alty']
-        switch (bool): 
+        switch (bool):
         at (str) : axis type
         offset (2-member list):
         bar (bool)
@@ -1616,7 +1609,7 @@ class Axis(_Axis):
     def export(self):
         if self.axis_switch is Switch.OFF:
             return [self._affix + self._marker + "  " + Switch.get_str(Switch.OFF),]
-        slist = _BaseOutput.export(self) 
+        slist = _BaseOutput.export(self)
         header = [self._bar, self._label, self._tick, self._ticklabel]
         for x in header:
             slist += [self._affix + self._marker + " " + i for i in x.export()]
@@ -1626,7 +1619,7 @@ class Axis(_Axis):
         """Bind Axis objects
 
         Args:
-            axis (Axis) : 
+            axis (Axis) :
         """
 
     def set_major(self, **kwargs):
@@ -1702,7 +1695,7 @@ class _Dataset(_BaseOutput, _Affix):
 
 class Dataset(_Dataset):
     """User interface of dataset object
-    
+
     Args:
         index
         xy (arraylike)
@@ -1764,7 +1757,7 @@ class Dataset(_Dataset):
         self._errorbar = Errorbar(switch=errorbar, place=ebpos, color=ebc, pattern=ebp,
                                   size=ebsize, lw=eblw, ls=ebls, rlw=ebrlw, rls=ebrls, rc=ebrc,
                                   rcl=ebrcl)
-    
+
     def xmin(self):
         """get the minimal value of abscissa"""
         return self.data.xmin()
@@ -1853,7 +1846,7 @@ class Arrow(_IntMap):
         "filled": FILLED,
         "opaque": OPAQUE,
         }
-    
+
 
 class _DrawString(_BaseOutput):
     """class for string drawing"""
@@ -1957,7 +1950,7 @@ class _DrawEllipse(_BaseOutput):
 
 class DrawEllipse(_DrawEllipse):
     """user interface of drawing line object
-    
+
     Args:
         xy (2-member Iterable) : location of center
         width (float) : width of ellipse
@@ -2121,7 +2114,7 @@ class Graph(_Graph):
         xmin, ymin, xmax, ymax = self.get_limit()
         self._xaxis.set_major(major=(xmax-xmin)/nxticks)
         self._yaxis.set_major(major=(ymax-ymin)/nyticks)
-        
+
     def export(self):
         """export the header of graph, including `with g` part and data header"""
         slist = []
@@ -2156,21 +2149,21 @@ class Graph(_Graph):
         d = {'x': self._xaxis, 'y': self._yaxis, 'altx': self._altxaxis, 'alty': self._altyaxis}
         try:
             ax = d.get(axis)
-        except KeyError:
-            raise ValueError("axis name %s is not supported. %s" % (axis, d.keys()))
+        except KeyError as err:
+            raise ValueError("axis name %s is not supported. %s" % (axis, d.keys())) from err
         ax.set(**kwargs)
 
     def get_axis(self, axis):
         """set axis
-        
+
         Args:
             axis (str) : x, y, altx, alty
         """
         d = {'x': self._xaxis, 'y': self._yaxis, 'altx': self._altxaxis, 'alty': self._altyaxis}
         try:
             ax = d.get(axis)
-        except KeyError:
-            raise ValueError("axis name %s is not supported. %s" % (axis, d.keys()))
+        except KeyError as err:
+            raise ValueError("axis name %s is not supported. %s" % (axis, d.keys())) from err
         return ax
 
     def set_xlim(self, xmin=None, xmax=None):
@@ -2238,7 +2231,7 @@ class Graph(_Graph):
 
     def plot(self, x, ys, **kwargs):
         """plot a dataset with abscissa ``x`` and data ``ys``
-        
+
         As the name indicates, multiple y can be parsed along with one x.
         In this case, the keyword arguments except `label`
         will be parsed for each y. `label` will be parsed
@@ -2259,7 +2252,7 @@ class Graph(_Graph):
                 extra = {k: v[i+1] for k, v in extras.items()}
                 ds.append(Dataset(n+i+1, x, y, **kwargs, **extra))
             self._datasets.extend(ds)
-        else: 
+        else:
             ds = Dataset(self.ndata, x, ys, **kwargs)
             self._datasets.append(ds)
 
@@ -2280,7 +2273,7 @@ class Graph(_Graph):
         try:
             loc_token = kwargs["loc"]
             int(loc_token)
-        except ValueError:
+        except ValueError as err:
             try:
                 loctype = kwargs.get("loctype")
                 assert loctype == "world"
@@ -2304,7 +2297,8 @@ class Graph(_Graph):
 
             loc = (x, y)
             if x is None or y is None:
-                raise ValueError("invalid location token for legend: {}".format(kwargs["loc"]))
+                msg = "invalid location token for legend: {}".format(kwargs["loc"])
+                raise ValueError(msg) from err
             kwargs["loc"] = loc
         except KeyError:
             # location of legend is specified
@@ -2403,8 +2397,8 @@ class Graph(_Graph):
         try:
             ends = {"view": self.get_view, "world": self.get_limit}
             left, _, right, _ = ends[loctype]()
-        except KeyError:
-            raise KeyError("unknown location type {}".format(loctype))
+        except KeyError as err:
+            raise KeyError("unknown location type {}".format(loctype)) from err
         if xmin is None:
             xmin = left
         elif isinstance(xmin, str):
@@ -2430,8 +2424,8 @@ class Graph(_Graph):
         try:
             ends = {"view": self.get_view, "world": self.get_limit}
             _, bottom, _, top = ends[loctype]()
-        except KeyError:
-            raise KeyError("unknown location type {}".format(loctype))
+        except KeyError as err:
+            raise KeyError("unknown location type {}".format(loctype)) from err
         if ymin is None:
             ymin = bottom
         elif isinstance(ymin, str):
@@ -2551,7 +2545,7 @@ class Plot:
         color (str/int) : default color
         bc (str/int) : background color
         background (str/int) : switch of background fill
-        qtgrace (bool) : if true, QtGrace comments will be added 
+        qtgrace (bool) : if true, QtGrace comments will be added
     """
     def __init__(self, rows=1, cols=1, hgap=0.02, vgap=0.02, bc=0, background=None,
                  lw=None, ls=None, color=None, pattern=None, font=None,
@@ -2640,7 +2634,7 @@ class Plot:
 
     def get(self, i: int = None):
         """Get the Graph object of index i
-        
+
         Args:
             i (int) : index of graph.
                 If not specified, all graphs are returned in a list
@@ -2653,14 +2647,14 @@ class Plot:
         """Get the Graph object of index i"""
         try:
             return self._graphs[i]
-        except IndexError:
-            raise IndexError("G.{:d} does not exist".format(i))
+        except IndexError as err:
+            raise IndexError("G.{:d} does not exist".format(i)) from err
 
     def add_graph(self, xmin=None, xmax=None, ymin=None, ymax=None):
         """add a new graph
 
         the location and size of graph is determined by x/ymin/max.
-        
+
         Returns:
             list of graphs after addition of new graph
         """
@@ -2778,8 +2772,8 @@ class Plot:
         if device is None:
             try:
                 device = ext2device.get(ext.lower())
-            except KeyError:
-                raise ValueError("No detected device for extension {}".format(ext))
+            except KeyError as err:
+                raise ValueError("No detected device for extension {}".format(ext)) from err
         _logger.info("save figure to %s", figname)
         _run_gracebat(str(self), figname, device)
 
@@ -2864,7 +2858,7 @@ def extract_data_from_agr(pagr):
     starts = []
     ends = []
     types = []
-    with open(pagr, 'r') as h:
+    with open_textio(pagr) as h:
         for i, l in enumerate(h.readlines()):
             if l.startswith("@type"):
                 # exclude @type line
@@ -2873,8 +2867,8 @@ def extract_data_from_agr(pagr):
             if l == "&\n":
                 ends.append(i)
     data = []
-    
-    with open(pagr, 'r') as h:
+
+    with open_textio(pagr) as h:
         lines = h.readlines()
         for i, (start, end) in enumerate(zip(starts, ends)):
             s = StringIO("".join(lines[start:end]))

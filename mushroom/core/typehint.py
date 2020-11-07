@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """define some public type hints"""
+from io import StringIO, TextIOWrapper
 from os import PathLike
 from numbers import Real, Complex
 from typing import Tuple, Union, Sequence
@@ -8,6 +9,7 @@ from typing import Tuple, Union, Sequence
 Path = Union[str, PathLike]
 # string or int identifier for key
 Key = Union[str, int]
+TextIO = Union[str, PathLike, StringIO, TextIOWrapper]
 
 # Vectors
 # N-dimensional real vector
@@ -16,5 +18,5 @@ CplxVec = Sequence[Complex]
 RealVec3D = Tuple[Real, Real, Real]
 CplxVec3D = Tuple[Complex, Complex, Complex]
 Latt3T3 = Tuple[RealVec3D, RealVec3D, RealVec3D]
-del PathLike, Real, Tuple, Union, Sequence, Complex
+del PathLike, Real, Tuple, Union, Sequence, Complex, StringIO, TextIOWrapper
 

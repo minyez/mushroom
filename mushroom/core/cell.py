@@ -33,7 +33,7 @@ from mushroom.core.ioutils import (grep, get_str_indices, open_textio,
                                    trim_comment, get_file_ext,
                                    print_file_or_iowrapper)
 from mushroom.core.logger import create_logger
-from mushroom.core.typing import Latt3T3, RealVec3D, Path
+from mushroom.core.typehint import Latt3T3, RealVec3D, Path
 
 __all__ = [
         "CellError",

@@ -9,7 +9,7 @@ import numpy as np
 from mushroom.core.logger import create_logger
 from mushroom.core.unit import EnergyUnit
 from mushroom.core.ioutils import get_str_indices_by_iden, split_comma
-from mushroom.core.typing import Key
+from mushroom.core.typehint import Key
 
 __all__ = [
         "BandStructure",

@@ -59,9 +59,10 @@ class LengthUnit:
     '''
 
     _default_lu = 'ang'
-    _valid_lu = ['ang', 'au']
+    _valid_lu = ['ang', 'au', 'bohr',]
     _conv_lu = {
         ('ang', 'au'): ANG2AU,
+        ('ang', 'bohr'): ANG2AU,
     }
 
     def __init__(self, lunit: str = None):
@@ -76,7 +77,7 @@ class LengthUnit:
         tu = unit_to.lower()
         fu = self._lunit
         pair = (fu, tu)
-        co = 1.
+        co = 1
         if pair in self._conv_lu:
             co = self._conv_lu[pair]
         elif pair[::-1] in self._conv_lu:
