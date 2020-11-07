@@ -24,8 +24,9 @@ class test_initialize_internal(ut.TestCase):
         self.assertListEqual([], dbwf.filter(r"no entry match this"))
         self.assertIsNone(dbwf.get_entry_path("entry not exist"))
         # test copy a workflow to temprary directory
-        with tempfile.TemporaryDirectory() as td:
-            dbwf.copy_workflow_to_dst(0, dst=td)
+        for i in range(dbwf.N):
+            with tempfile.TemporaryDirectory() as td:
+                dbwf.copy_workflow_to_dst(i, dst=td)
 
 class test_dbcell(ut.TestCase):
     """test methods of cell database instance"""
@@ -50,15 +51,17 @@ class test_dbcell(ut.TestCase):
     def test_extract_to_vasp(self):
         """successful extract"""
         tf = tempfile.NamedTemporaryFile(suffix=".POSCAR")
-        with open(tf.name, 'w') as h:
-            self.dbc.extract(0, output_path=h)
+        for i in range(self.dbc.N):
+            with open(tf.name, 'w') as h:
+                self.dbc.extract(i, output_path=h)
         tf.close()
 
     def test_extract_to_w2k(self):
         """successful extract"""
         tf = tempfile.NamedTemporaryFile(suffix=".struct")
-        with open(tf.name, 'w') as h:
-            self.dbc.extract(0, output_path=h)
+        for i in range(self.dbc.N):
+            with open(tf.name, 'w') as h:
+                self.dbc.extract(i, output_path=h)
         tf.close()
 
     def test_register_new_cell(self):

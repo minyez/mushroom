@@ -49,6 +49,11 @@ class _DBBase:
         if not isinstance(glob_regex, Iterable):
             raise TypeError("expect Iterable, get", type(glob_regex))
 
+    @property
+    def N(self):
+        """number of entries"""
+        return len(self.get_avail_entries())
+
     def get_db_location(self):
         """return the absolute path of the database"""
         return self._db_path
