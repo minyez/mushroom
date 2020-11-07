@@ -4,6 +4,7 @@ from copy import deepcopy
 from typing import List, Iterable
 import numpy as np
 from numpy import cos, sin
+from mushroom.core.typing import Latt3T3
 from mushroom.core.constants import PI
 from mushroom.core.logger import create_logger
 
@@ -72,31 +73,33 @@ def get_latt_consts_from_latt_vecs(latt):
     return (*alen, *angle)
 
 
-def get_all_atoms_from_symops(ineq_atms: Iterable[str], ineq_posi, symops: dict,
-                              left_mult: bool = True, iden_thres: float = 1e-5):
+def get_all_atoms_from_symops(atms_ineq: Iterable[str], posi_ineq, symops: dict,
+                              left_mult: bool = True, latt: Latt3T3 = np.diag((1., 1., 1.)),
+                              unit: str = "ang", iden_thres: float = 1e-5):
     """Get atomic symbols and positions of all atoms in the cell
     by performing symmetry operations on inequivalent atoms
 
     Args:
-        ineq_atms (list of str):
-        ineq_posi (array-like):
+        atms_ineq (list of str):
+        posi_ineq (array-like): positions in direct coordinate
         symops (dict): dictionary containing symmetry operations
         left_mult (bool):
             True : x' = Rx + t
             False: x'^T = x^T R + t^T
-
-    TODO:
-        use Cartisian to determine identical atoms
+        latt (ndarray, (3,3)): lattice vectors
+        unit (str): length unit
+        iden_thres (float) : threshold in unit for equalize two atoms
     """
-    if len(ineq_atms) != len(ineq_posi):
+    if len(atms_ineq) != len(posi_ineq):
         raise ValueError("inequivalent atoms and positions are inconsistent")
     if not isinstance(symops, dict):
         raise ValueError("symops must be a dictionary")
 
     posi = []
+    xyzs = []
     atms = []
-    _logger.debug("ineq_atms: %r", ineq_atms)
-    _logger.debug("ineq_posi: %r", ineq_posi)
+    _logger.debug("atms_ineq: %r", atms_ineq)
+    _logger.debug("posi_ineq: %r", posi_ineq)
     try:
         _logger.debug("# of symops: %r", len(symops["translations"]))
         rots, trans = symops["rotations"], symops["translations"]
@@ -105,21 +108,23 @@ def get_all_atoms_from_symops(ineq_atms: Iterable[str], ineq_posi, symops: dict,
     for r, t in zip(rots, trans):
         if not left_mult:
             r = np.transpose(r)
-        for i, p in enumerate(ineq_posi):
+        for i, p in enumerate(posi_ineq):
             a = np.add(np.dot(r, p), t)
             # move to the lattice at origin
             a = np.subtract(a, np.floor(a))
+            xyz = np.dot(latt, a)
             try:
-                for xyz in posi:
-                    if np.allclose(xyz, a, atol=iden_thres):
+                for old_xyz in xyzs:
+                    if np.allclose(xyz, old_xyz, atol=iden_thres):
                         raise ValueError
             except ValueError:
                 _logger.debug("Found duplicate: %r", a)
                 continue
             else:
-                atms.append(ineq_atms[i])
                 _logger.debug("Add new atom: %r", a)
+                atms.append(atms_ineq[i])
                 posi.append(a)
+                xyzs.append(xyz)
     return atms, posi
 
 # pylint: disable=C0301

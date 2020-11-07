@@ -25,10 +25,14 @@ class Cif:
         self._blk = CifFile.ReadCif(pcif, scantype="flex").first_block()
         self.__init_inequiv()
         self.__init_symmetry_operations()
-        self.latt = None
+        self._latt = None
         self.atms = None
         self.posi = None
         self.ref = None
+
+    @property
+    def latt(self):
+        return self.get_lattice_vectors()
 
     def __init_inequiv(self):
         """initialize the positions and symbols of all inequivalent atoms"""
@@ -68,7 +72,7 @@ class Cif:
             symmetry_loop = self._blk.GetLoop(symmetry_key)
 
         for l in symmetry_loop:
-            r, t = Cif.decode_equiv_pos_string(l.__getattribute__(symmetry_key))
+            r, t = decode_equiv_pos_string(l.__getattribute__(symmetry_key))
             rots.append(r)
             trans.append(t)
         self.operations["rotations"] = tuple(rots)
@@ -106,7 +110,7 @@ class Cif:
         Returns
             list, shape (3,3)
         """
-        if self.latt is None:
+        if self._latt is None:
             latta, lattb, lattc = tuple(
                 map(
                     lambda x: conv_estimate_number(self._blk.GetItemValue(x)),
@@ -117,9 +121,9 @@ class Cif:
             for a in ["_cell_angle_alpha", "_cell_angle_beta", "_cell_angle_gamma"]:
                 angles.append(conv_estimate_number(self._blk.GetItemValue(a)))
             _logger.debug("found angles: %r", angles)
-            self.latt = get_latt_vecs_from_latt_consts(latta, lattb, lattc, *angles)
-        _logger.debug("lattice parameters: %r", self.latt)
-        return self.latt
+            self._latt = get_latt_vecs_from_latt_consts(latta, lattb, lattc, *angles)
+        _logger.debug("lattice parameters: %r", self._latt)
+        return self._latt
 
     def get_all_atoms(self):
         """return the symbols and positions of all atoms
@@ -131,7 +135,7 @@ class Cif:
         """
         if self.atms is None or self.posi is None:
             atms, posi = get_all_atoms_from_symops(
-                self.atms_ineq, self.posi_ineq, self.operations)
+                self.atms_ineq, self.posi_ineq, self.operations, latt=self.latt)
             # consistency check
             _logger.debug("natoms of each inequiv type: %r", self.natm_ineq)
             _logger.debug("positions of each inequiv type: %r", self.posi_ineq)
@@ -162,58 +166,57 @@ class Cif:
             self.ref = ref.replace('\n', ' ')
         return self.ref
 
-    @staticmethod
-    def decode_equiv_pos_string(s):
-        """Convert a string representing symmetry operation in CIF file
-        to a rotation matrix R and a translation vector t
+def decode_equiv_pos_string(s):
+    """Convert a string representing symmetry operation in CIF file
+    to a rotation matrix R and a translation vector t
 
-        The relation between original and transformed fractional coordinate, x and x',
-        is
+    The relation between original and transformed fractional coordinate, x and x',
+    is
 
-        x' = Rx + t
+    x' = Rx + t
 
-        Obviously, x, x' and t are treated as a column vector
+    Obviously, x, x' and t are treated as a column vector
 
-        Args:
-            s (str): a symmetry operation string found in 
-                _symmetry_equiv_pos_as_xyz item of a CIF file.
+    Args:
+        s (str): a symmetry operation string found in 
+            _symmetry_equiv_pos_as_xyz item of a CIF file.
 
-        Returns:
-            two lists, shape (3,3) and (3,)
-        """
-        trans = [0, 0, 0]
-        rot = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
-        items = [x.strip() for x in s.split(",")]
-        if len(items) != 3:
+    Returns:
+        two lists, shape (3,3) and (3,)
+    """
+    trans = [0, 0, 0]
+    rot = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
+    items = [x.strip() for x in s.split(",")]
+    if len(items) != 3:
+        raise ValueError("s does not seem to be a symmetry operation string")
+    for i in items:
+        if len(i) == 0:
             raise ValueError("s does not seem to be a symmetry operation string")
-        for i in items:
-            if len(i) == 0:
-                raise ValueError("s does not seem to be a symmetry operation string")
 
-        d = {"x": 0, "y": 1, "z": 2}
-        for i in range(3):
-            stList = items[i].split("+")
-            for st in stList:
-                # loop in case that string like '-x-y' appears
-                while True:
-                    sign = 1
-                    try:
-                        if st.startswith("-"):
-                            sign = -1
-                            st = st[1:]
-                        if st[0] in d:
-                            rot[i][d[st[0]]] = sign
-                            st = st[1:]
-                        else:
-                            # confront number
-                            break
-                    except IndexError:
-                        # end of line
+    d = {"x": 0, "y": 1, "z": 2}
+    for i in range(3):
+        stList = items[i].split("+")
+        for st in stList:
+            # loop in case that string like '-x-y' appears
+            while True:
+                sign = 1
+                try:
+                    if st.startswith("-"):
+                        sign = -1
+                        st = st[1:]
+                    if st[0] in d:
+                        rot[i][d[st[0]]] = sign
+                        st = st[1:]
+                    else:
+                        # confront number
                         break
-                if len(st) == 0:
-                    continue
-                # deal with fractional number x/y
-                trans[i] = float(st[0]) / float(st[-1])
-        return rot, trans
+                except IndexError:
+                    # end of line
+                    break
+            if len(st) == 0:
+                continue
+            # deal with fractional number x/y
+            trans[i] = float(st[0]) / float(st[-1])
+    return rot, trans
 
 
