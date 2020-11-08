@@ -23,6 +23,7 @@
 
 - band structure analysis `bs`
   - [x] `BandStructure` object
+  - [ ] resolve band entanglement
 - density of states analysis `dos`
   - [x] `DensityOfStates` object
 - io helper functions `ioutils`

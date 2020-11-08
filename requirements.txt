@@ -1,5 +1,5 @@
 numpy
-spglib
+spglib>=1.9.0
 PyCIFRW
 lxml
 BeautifulSoup4

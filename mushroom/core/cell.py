@@ -47,6 +47,11 @@ class CellError(Exception):
 _logger = create_logger("cell")
 del create_logger
 
+def _raise_no_spglib(msg=None):
+    if spglib is None:
+        if msg is None:
+            msg = ""
+        raise ImportError("require spglib {}".format(msg))
 
 class Cell(LengthUnit):
     """Cell structure class
@@ -413,8 +418,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
         return sc
 
     def __spglib_convert(self, funcname, **kwargs):
-        if spglib is None:
-            raise ImportError("need spglib to primitize cell")
+        _raise_no_spglib()
         was_c = self.coord_sys == "C"
         if was_c:
             self.coord_sys = "D"
@@ -428,6 +432,27 @@ When other keyword are parsed, they will be filtered out and no exception will b
         atms = [self.type_mapping[i] for i in indice]
         return type(self)(latt, atms, posi, unit=self.unit, coord_sys="D",
                           reference=self.get_reference(), comment=self.comment)
+
+    def get_symops(self):
+        """get the symmetry operations by spglib
+
+        If spglib is not available, return the elemental operation only
+        """
+        elemental = {"rotations": np.diag((1.,1.,1.)), "translations": np.zeros(3)}
+        try:
+            _raise_no_spglib()
+        except ImportError:
+            return elemental
+
+        was_c = self.coord_sys == "C"
+        self.coord_sys = "D"
+        symops = spglib.get_symmetry(self.get_spglib_input(), symprec=symprec)
+        # fail to find symmetries
+        if symops is None:
+            symops = elemental
+        if was_c:
+            self.coord_sys = "C"
+        return symops
 
     def primitize(self):
         """get the primitized cell

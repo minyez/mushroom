@@ -379,7 +379,7 @@ class Struct:
             posi_types.append(cell.get_atm_posi(a))
         return cls(cell.latt, atms_types, posi_types, unit=cell.unit,
                    reference=cell.get_reference(), comment=cell.comment,
-                   coord_sys=cell.coord_sys)
+                   coord_sys=cell.coord_sys, symops=cell.get_symops())
 
     # pylint: disable=R0914
     @classmethod

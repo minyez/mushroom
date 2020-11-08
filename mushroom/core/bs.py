@@ -722,6 +722,16 @@ class BandStructure(EnergyUnit):
             raise ValueError("parse prjs first for projector string")
         return get_str_indices_by_iden(self._prjs, prj)
 
+    def resolve(self, eres=0.01):
+        """resolve band entanglements and making each band energy continuous in k
+
+        Useful in drawing band structure with a kpath
+
+        Args:
+            eres (float): resolution of energy for grouping bands
+        """
+        raise NotImplementedError
+
     #def get_dos(self, emin=None, emax=None, nedos=3000, smearing="Gaussian", sigma=0.05):
     #    """Generate a Dos object on a energy grid by smearing the band structure
     #    with particular smearing scheme
