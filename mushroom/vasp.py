@@ -14,6 +14,7 @@ from mushroom.core.logger import create_logger
 from mushroom.core.ioutils import conv_string
 from mushroom.core.dos import DensityOfStates
 from mushroom.core.bs import BandStructure
+from mushroom.core.pw import PWBasis
 from mushroom.core.cell import Cell, have_same_latt
 from mushroom.core.typehint import Path
 from mushroom.visual.cube import Cube
@@ -307,6 +308,7 @@ class WaveCar:
             self.nkpts, self.nbands = map(int, data[:2])
             self.encut = data[2]
             self.latt = np.array(data[3:]).reshape((3, 3))
+        self._pw = PWBasis(self.encut, self.latt, eunit="ev", lunit="ang", order_kind="vasp")
         _logger.debug(">> record length = %d", self.nrecl)
         _logger.debug(">> coeff.'s type = %s", self.dtype)
         _logger.debug(">> nspins = %d", self.nspins)
@@ -317,7 +319,7 @@ class WaveCar:
         self._blk_ikpt = self.nbands + 1
         # an extra line at the end if the coefficients are real
         if self.is_coef_real:
-            self._blk_ikpt = self.nbands + 2
+            self._blk_ikpt += 1
         self._blk_ispin = self.nkpts * self._blk_ikpt
         self._bs = None
         self._kpts = None
@@ -328,25 +330,19 @@ class WaveCar:
         eigen = []
         occ = []
         nplanes = []
+
+        interval = 2
         if self.is_coef_real:
-            n = self.nbands * 3 + 4
-        else:
-            n = self.nbands * 2 + 4
+            interval = 3
+        n = self.nbands * interval + 4
         with open(self.pwavecar, 'rb') as h:
             for ispin, ikpt in product(*map(range, [self.nspins, self.nkpts])):
                 h.seek(self._seek_recl(ispin, ikpt, iband=-1))
-                if self.is_coef_real:
-                    data = struct.unpack('d'*n, h.read(8*n))
-                    nplanes.append(int(data[0]))
-                    kpts.append(data[1:4])
-                    eigen.extend(data[4::3])
-                    occ.extend(data[6::3])
-                else:
-                    data = struct.unpack('d'*n, h.read(8*n))
-                    nplanes.append(int(data[0]))
-                    kpts.append(data[1:4])
-                    eigen.extend(data[4::2])
-                    occ.extend(data[5::2])
+                data = struct.unpack('d'*n, h.read(8*n))
+                nplanes.append(int(data[0]))
+                kpts.append(data[1:4])
+                eigen.extend(data[4::interval])
+                occ.extend(data[3+interval::interval])
         eigen = np.array(eigen).reshape((self.nspins, self.nkpts, self.nbands))
         occ = np.array(occ).reshape((self.nspins, self.nkpts, self.nbands))
         nplanes = np.array(nplanes).reshape((self.nspins, self.nkpts))
@@ -374,6 +370,26 @@ class WaveCar:
         if self._nplanes is None:
             self._compute_kpts_bs_nplanes()
         return self._nplanes
+
+    def get_raw_coeff(self, ispin: int, ikpt: int, iband: int):
+        """get the raw plane-wave coefficient of band state
+
+        Args:
+            ispin, ikpt, iband (int): the spin, kpoint and band index of a particular band
+        """
+        with open(self.pwavecar, 'rb') as h:
+            h.seek(self._seek_recl(ispin, ikpt, iband))
+            nplane = self.nplanes[ispin, ikpt]
+            data = h.read(nplane*self.width)
+            return np.frombuffer(data, dtype=self.dtype, count=nplane)
+
+    def get_ipw(self, ikpt: int):
+        """get the integer planewave index at kpoint ``ikpt``
+
+        Args:
+            ikpt (int)
+        """
+        return self._pw.get_ipw(self.kpts[ikpt])
 
     def export_cube(self, ispin: int, ikpt: int, iband: int):
         """export the wavefunction at k-point ``ikpt`` and band ``iband``

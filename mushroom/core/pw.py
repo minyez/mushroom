@@ -14,7 +14,7 @@ class PWBasis(LengthUnit, EnergyUnit):
         eunit, lunit (str): unit of cutoff and lattice vectors input
     """
     def __init__(self, cutoff: float, latt: Latt3T3,
-                 eunit: str = "ry", lunit: str = "au"):
+                 eunit: str = "ry", lunit: str = "au", order_kind: str = None):
         LengthUnit.__init__(self, lunit=lunit)
         EnergyUnit.__init__(self, eunit=eunit)
         self.latt = np.array(latt)
@@ -22,6 +22,7 @@ class PWBasis(LengthUnit, EnergyUnit):
         # convert to Ryberg and Bohr after initialization
         self.eunit = "ry"
         self.lunit = "bohr"
+        self.order_kind = order_kind
 
     @property
     def b(self):
@@ -60,20 +61,30 @@ class PWBasis(LengthUnit, EnergyUnit):
             self.latt = self.latt * coef
             self._lunit = new
 
-    def get_ipw(self, kpt: RealVec3D = None):
+    def get_ipw(self, kpt: RealVec3D, order_kind=None):
         """get index of planewave basis at kpoint ``kpt``
 
         Args:
             kpt (ndarray, (3,)): the kpoint vector in the reciprocal lattice unit
         """
-        if kpt is None:
-            kpt = np.zeros(3)
         try:
             np.add(kpt, np.zeros(3))
         except ValueError as err:
             raise ValueError("invalid kpoint vector") from err
         nmax = list(int(x) for x in self.gmax * np.reciprocal(self.blen))
-        ipw = np.array(tuple(product(*map(lambda x: range(-x, x+1), nmax))))
+        if order_kind is None:
+            order_kind = self.order_kind
+        if order_kind is None:
+            ipw = np.array(tuple(product(*map(lambda n: range(-n, n+1), nmax))))
+        elif order_kind == "vasp":
+            nmax.reverse()
+            ipw = np.array(list(list(reversed(xyz)) for xyz in \
+                                product(*map(lambda n: [(n+i) % (2*n+1) - n for i in range(2*n+1)],
+                                              nmax))))
+        else:
+            raise NotImplementedError("unsupport order kind {}".format(order_kind))
         indices = np.linalg.norm(np.dot(ipw+kpt, self.b), axis=1) <= self.gmax
         return ipw[indices, :]
+
+
 

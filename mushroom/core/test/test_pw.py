@@ -20,7 +20,8 @@ class test_pwbasis(ut.TestCase):
         """test gamma point"""
         pw = PWBasis(50, [[5.,0.,0.],[0.,5.,0.],[0.,0.,5.]],
                      eunit="ev", lunit="ang")
-        self.assertEqual(93, len(pw.get_ipw()))
+        self.assertEqual(93, len(pw.get_ipw(0)))
+        self.assertEqual(93, len(pw.get_ipw(0, order_kind='vasp')))
 
 if __name__ == "__main__":
     ut.main()

@@ -87,9 +87,11 @@ class test_wavecar(ut.TestCase):
         for f, verify in verifies.items():
             print("Testing {}".format(f))
             fpath = dir_wavecar / f
-            wavecar = vasp.WaveCar(fpath)
+            wc = vasp.WaveCar(fpath)
+            wc.get_ipw(0)
+            wc.get_raw_coeff(0, 0, 0)
             for k, v in verify.items():
-                wv = wavecar.__getattribute__(k)
+                wv = wc.__getattribute__(k)
                 print(">> {} ?= {}".format(k, v))
                 if isinstance(v, (list, tuple)):
                     self.assertTrue(np.allclose(v, wv))
