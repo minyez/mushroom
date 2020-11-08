@@ -84,6 +84,7 @@ Require `pymatgen`
 - [x] base classes to manipulate attributes of elementary objects and options
 - [x] Graph object for data plotting
 - [x] Plot object for export
+- [ ] Extensions like those in PyGrace, e.g. colorbar, matrix plot
 
 ### Gaussian Cube
 

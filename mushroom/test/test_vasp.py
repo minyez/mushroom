@@ -7,6 +7,7 @@ import json
 import numpy as np
 
 from mushroom import vasp
+from mushroom.core.cell import Cell
 
 class test_read_doscar(ut.TestCase):
     """test reading in DOSCAR to get a DensityOfStates object"""
@@ -75,25 +76,44 @@ class test_eigenval(ut.TestCase):
 class test_poscar(ut.TestCase):
     """test poscar reader. Actually tested in Cell"""
 
-#class test_chgcar(ut.TestCase):
-#    """test reading CHG and CHGCAR file"""
-#    def test_read_chgcar(self):
-#        """kpoints"""
-#        dir_chgcar = pathlib.Path(__file__).parent / "data"
-#        index_json = dir_chgcar / "chgcar.json"
-#        with index_json.open('r') as fp:
-#            verifies = json.load(fp)
-#        for f, verify in verifies.items():
-#            print("Testing {}".format(f))
-#            fpath = dir_chgcar / f
-#            chgcar = vasp.ChgCar(fpath)
-#            for k, v in verify.items():
-#                ccv = chgcar.__getattribute__(k)
-#                print(">> {} ?= {}".format(k, v))
-#                if isinstance(v, list):
-#                    self.assertListEqual(v, ccv)
-#                if isinstance(v, (int, float)):
-#                    self.assertEqual(v, ccv)
+class test_chgcar(ut.TestCase):
+    """test reading CHG and CHGCAR file"""
+    def test_read_chgcar(self):
+        """kpoints"""
+        dir_chgcar = pathlib.Path(__file__).parent / "data"
+        index_json = dir_chgcar / "chgcar.json"
+        with index_json.open('r') as fp:
+            verifies = json.load(fp)
+        for f, verify in verifies.items():
+            print("Testing {}".format(f))
+            fpath = dir_chgcar / f
+            chgcar = vasp.read_chg(fpath)
+            for k, v in verify.items():
+                ccv = chgcar.__getattribute__(k)
+                print(">> {} ?= {}".format(k, v))
+                if isinstance(v, (list, tuple)):
+                    self.assertTrue(np.allclose(v, ccv))
+                if isinstance(v, (int, float)):
+                    self.assertEqual(v, ccv)
+
+    def test_arithmetics(self):
+        """addition and subtraction"""
+        cell1 = Cell.diamond("C", a=2.0)
+        cell2 = Cell.diamond("C", a=1.0)
+        data1 = np.ones((2, 3, 4))
+        data2 = np.ones((2, 3, 4)) * 2
+        data_diff = data2 - data1
+        data_add = data2 + data1
+        data_another_shape = np.ones((1, 2, 8))
+        chg1 = vasp.ChgLike(cell1, data1)
+        chg2 = vasp.ChgLike(cell1, data2)
+        chg_another_shape = vasp.ChgLike(cell2, data_another_shape)
+        chg_diff = chg2 - chg1
+        chg_add = chg2 + chg1
+        self.assertTrue(np.array_equal(chg_diff.rawdata, data_diff))
+        self.assertTrue(np.array_equal(chg_add.rawdata, data_add))
+        self.assertRaises(TypeError, chg_another_shape.__sub__, chg1)
+        
 
 if __name__ == "__main__":
     ut.main()

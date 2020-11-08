@@ -121,6 +121,19 @@ When other keyword are parsed, they will be filtered out and no exception will b
             'json': self.export_json,
             }
 
+    def __eq__(self, cell):
+        unit = cell.unit
+        cell.unit = self.unit
+        coord_sys = cell.coord_sys
+        cell.coord_sys = self.coord_sys
+        same_latt = np.allclose(self.latt, cell.latt)
+        same_atms = np.array_equal(cell.atms, self.atms)
+        same_posi = np.allclose(cell.posi, self.posi)
+        # recover the unit and coordinate system of cell
+        cell.unit = unit
+        cell.coord_sys = coord_sys
+        return all([same_latt, same_atms, same_posi])
+
     def __len__(self):
         return len(self._atms)
 
@@ -531,22 +544,23 @@ When other keyword are parsed, they will be filtered out and no exception will b
     @property
     def unit(self):
         '''str.'''
-        return self._lunit
+        return self._lunit.lower()
 
     @unit.setter
     def unit(self, u):
+        u = u.lower()
         coef = self._get_lunit_conversion(u)
         if coef != 1:
             if self._coord_sys == "C":
                 self._posi = self._posi * coef
             self._latt = self._latt * coef
-            self._lunit = u.lower()
+            self._lunit = u
 
     @property
     def coord_sys(self):
         '''coordinate system
         '''
-        return self._coord_sys
+        return self._coord_sys.upper()
 
     @coord_sys.setter
     def coord_sys(self, sys: str):
@@ -1512,4 +1526,12 @@ When other keyword are parsed, they will be filtered out and no exception will b
         if "comment" not in kwargs:
             kwargs.update({"comment": "Marcasite {}{}2".format(atom1, atom2)})
         return cls(latt, atms, posi, **kwargs)
+
+def have_same_latt(cell1: Cell, cell2: Cell) -> bool:
+    """compare the lattice vectors of two cell"""
+    unit = cell2.unit
+    cell2.unit = cell1.unit
+    same_latt = np.allclose(cell1.latt, cell2.latt)
+    cell2.unit = unit
+    return same_latt
 

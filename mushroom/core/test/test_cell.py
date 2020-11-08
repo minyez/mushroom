@@ -14,7 +14,7 @@ try:
 except ImportError:
     spglib = None
 
-from mushroom.core.cell import (Cell, CellError)
+from mushroom.core.cell import (Cell, CellError, have_same_latt)
 from mushroom.core.constants import ANG2AU, PI
 
 
@@ -569,6 +569,21 @@ class test_spglib_convert(ut.TestCase):
         c = Cell.diamond("C")
         cprim = c.primitize()
         self.assertEqual(2, cprim.natm)
+
+class test_cell_compare(ut.TestCase):
+    def test_equal(self):
+        c1 = Cell.diamond("Si", a=2.0)
+        c2 = Cell.diamond("Si", a=2.0)
+        self.assertTrue(c1 == c2)
+        c3 = Cell.diamond("Si", a=2.0 * ANG2AU, unit="bohr")
+        self.assertTrue(c1 == c3)
+        c4 = Cell.diamond("C", a=2.0)
+        self.assertFalse(c1 == c4)
+
+    def test_same_latt(self):
+        c1 = Cell.rocksalt("Na", "Cl", a=2.0)
+        c2 = Cell.diamond("Si", a=2.0)
+        self.assertTrue(have_same_latt(c1, c2))
 
 if __name__ == "__main__":
     ut.main()

@@ -12,7 +12,7 @@ from mushroom.core.logger import create_logger
 from mushroom.core.ioutils import conv_string
 from mushroom.core.dos import DensityOfStates
 from mushroom.core.bs import BandStructure
-from mushroom.core.cell import Cell
+from mushroom.core.cell import Cell, have_same_latt
 from mushroom.core.typehint import Path
 from mushroom.visual.cube import Cube
 
@@ -290,61 +290,82 @@ class WaveCar:
         raise NotImplementedError
 
 class ChgLike:
-    """object to read file in the format like CHG, CHGCAR, etc
+    """object to represent a charge distribution computed from vasp.
 
     In these files, the charge data are recorded in F order, i.e. x fastest.
     """
-    def __init__(self, pchgcar: Path):
-        init = 0
-        pchgcar = pathlib.Path(pchgcar)
-        self.path = str(pchgcar)
-        with pchgcar.open('r') as h:
-            cell_lines = []
-            while True:
-                l = h.readline()
-                init += 1
-                if not l.strip():
-                    break
-                cell_lines.append(l)
-            self.cell = read_poscar(StringIO("".join(cell_lines)))
-            self.shape = tuple(map(int, h.readline().split()))
-            lines = h.readlines()
-            # check columns, since CHG has 10 while CHGCAR has 5
-            ncols = len(lines[0].split())
-            size = np.prod(self.shape)
-            lines = lines[:size//ncols + 1]
-            datastring = StringIO(" ".join(x.strip() for x in lines))
-            data = np.loadtxt(datastring)
-            self.size = len(data)
-            # sanity check
-            assert self.size == size
-            self.rawdata = data.reshape(self.shape, order='F')
+    def __init__(self, cell: Cell, rawdata):
+        self._cell = cell
+        self.shape = np.shape(rawdata)
+        self.size = np.prod(self.shape)
+        self.rawdata = rawdata
 
     @property
     def natm(self):
         """number of atoms"""
-        return self.cell.natm
+        return self._cell.natm
+
+    def _add_or_sub(self, chglike, operation="add"):
+        if self.shape != chglike.shape:
+            raise TypeError("data shape are different")
+        if have_same_latt(self._cell, chglike._cell):
+            _logger.warning("charges with different lattice!")
+        if operation == "add":
+            new = self.rawdata + chglike.rawdata
+        if operation == "sub":
+            new = self.rawdata - chglike.rawdata
+        return type(self)(self._cell, new)
+
+    def __add__(self, chglike):
+        return self._add_or_sub(chglike, "add")
+
+    def __sub__(self, chglike):
+        return self._add_or_sub(chglike, "sub")
 
     def export_cube(self):
-        """export as cube file
+        """export the charge distribution data as cube file
+
         Returns:
             str
         """
-        was_d = self.cell.coord_sys == "D"
+        was_d = self._cell.coord_sys == "D"
         if was_d:
-            self.cell.coord_sys = "C"
-        voxel_vecs = self.cell.latt.transpose() / self.shape
+            self._cell.coord_sys = "C"
+        voxel_vecs = self._cell.latt.transpose() / self.shape
         voxel_vecs = voxel_vecs.transpose()
-        data = self.rawdata / self.cell.vol
+        data = self.rawdata / self._cell.vol
         # divide the cell volume from the raw data
         cube = Cube(data,
                     voxel_vecs=voxel_vecs,
-                    atms=self.cell.atms,
-                    posi=self.cell.posi,
-                    origin=[0.,0.,0.], unit=self.cell.unit,
+                    atms=self._cell.atms,
+                    posi=self._cell.posi,
+                    origin=[0.,0.,0.], unit="ang",
                     )
         if was_d:
-            self.cell.coord_sys = "D"
+            self._cell.coord_sys = "D"
         return cube.export()
 
-ChgCar = ChgLike
+def read_chg(pchg: Path):
+    """read a CHG/CHGCAR file and return a ChgLike object"""
+    pchg = pathlib.Path(pchg)
+    with pchg.open('r') as h:
+        cell_lines = []
+        while True:
+            l = h.readline()
+            if not l.strip():
+                break
+            cell_lines.append(l)
+        cell = read_poscar(StringIO("".join(cell_lines)))
+        cell.unit = "ang"
+        shape = tuple(map(int, h.readline().split()))
+        lines = h.readlines()
+        # check columns, since CHG has 10 while CHGCAR has 5
+        ncols = len(lines[0].split())
+        size = np.prod(shape)
+        lines = lines[:size//ncols + 1]
+        datastring = StringIO(" ".join(x.strip() for x in lines))
+        data = np.loadtxt(datastring)
+        rawdata = data.reshape(shape, order='F')
+        return ChgLike(cell, rawdata)
+    raise IOError("fail to read charge file {}".format(pchg))
+
