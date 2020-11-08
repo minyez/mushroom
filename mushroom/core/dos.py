@@ -59,10 +59,10 @@ class DensityOfStates(EnergyUnit):
             assert len(shape_e) == 1
             assert len(shape_tdos) == 2
             assert shape_tdos[1] == shape_e[0]
-        except AssertionError:
+        except AssertionError as err:
             info = 'Inconsistent shape, egrid {} vs tdos {}'.format(shape_e, shape_tdos)
-            raise DosError(info)
-                
+            raise DosError(info) from err
+
         EnergyUnit.__init__(self, eunit=unit)
         self._egrid = np.array(egrid, dtype=self._dtype)
         if efermi is not None:
@@ -288,7 +288,7 @@ class DensityOfStates(EnergyUnit):
                 "e1[sep]tdosup1[sep]tdosdn1[sep]"
                 "e2[sep]tdosup2[sep]tdosdn2[sep]"
                 "e3[sep]tdosup3[sep]tdosdn3[sep]"
-                
+
             i.e., data goes fastest. If transpose is switched on, the output is
 
                 "e1[sep]e2[sep]e3[sep]..."
@@ -321,8 +321,8 @@ def split_ap(ap: str):
         raise ValueError("whitespace is not allowed in atom-projector string, got", ap)
     try:
         a, p = ap.split(":")
-    except ValueError:
-        raise ValueError("should contain two colons")
+    except ValueError as err:
+        raise ValueError("should contain two colons") from err
 
     return split_comma(a, int), split_comma(p, int)
 

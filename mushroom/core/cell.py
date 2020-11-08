@@ -541,7 +541,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
     @property
     def alen(self):
         """Length of lattice vectors"""
-        return np.linalg.norm(self.latt, axis=0)
+        return np.linalg.norm(self.latt, axis=1)
 
     @property
     def latt_consts(self):
@@ -690,7 +690,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
     def blen(self):
         """Length of reciprocal lattice vector in unit^-1
         """
-        return np.linalg.norm(self.b, axis=0)
+        return np.linalg.norm(self.b, axis=1)
 
     # * selective dynamics related
     def fix_all(self):
