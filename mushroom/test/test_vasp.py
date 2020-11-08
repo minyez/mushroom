@@ -76,10 +76,30 @@ class test_eigenval(ut.TestCase):
 class test_poscar(ut.TestCase):
     """test poscar reader. Actually tested in Cell"""
 
-class test_chgcar(ut.TestCase):
-    """test reading CHG and CHGCAR file"""
+class test_wavecar(ut.TestCase):
+    """test wavecar object"""
+    def test_read_wavecar(self):
+        """reading the predefined cases"""
+        dir_wavecar = pathlib.Path(__file__).parent / "data"
+        index_json = dir_wavecar / "wavecar.json"
+        with index_json.open('r') as fp:
+            verifies = json.load(fp)
+        for f, verify in verifies.items():
+            print("Testing {}".format(f))
+            fpath = dir_wavecar / f
+            wavecar = vasp.WaveCar(fpath)
+            for k, v in verify.items():
+                wv = wavecar.__getattribute__(k)
+                print(">> {} ?= {}".format(k, v))
+                if isinstance(v, (list, tuple)):
+                    self.assertTrue(np.allclose(v, wv))
+                if isinstance(v, (int, float)):
+                    self.assertEqual(v, wv)
+
+class test_chglike(ut.TestCase):
+    """test CHG and CHGCAR object"""
     def test_read_chgcar(self):
-        """kpoints"""
+        """reading the predefined cases"""
         dir_chgcar = pathlib.Path(__file__).parent / "data"
         index_json = dir_chgcar / "chgcar.json"
         with index_json.open('r') as fp:
@@ -113,7 +133,7 @@ class test_chgcar(ut.TestCase):
         self.assertTrue(np.array_equal(chg_diff.rawdata, data_diff))
         self.assertTrue(np.array_equal(chg_add.rawdata, data_add))
         self.assertRaises(TypeError, chg_another_shape.__sub__, chg1)
-        
+
 
 if __name__ == "__main__":
     ut.main()

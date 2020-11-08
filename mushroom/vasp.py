@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 """utilities of vasp"""
+import struct
 from io import StringIO
 from os.path import realpath
+from itertools import product
 from typing import Tuple
 import pathlib
 
@@ -280,14 +282,107 @@ def read_eigen(path="EIGENVAL", filter_k_before=0, filter_k_after=None):
 read_poscar = Cell.read_vasp
 
 class WaveCar:
-    """object to read Wavecar"""
-    def __init__(self, pwavecar: Path):
-        pwavecar = pathlib.Path(pwavecar)
+    """object to read Wavecar
 
-    def export_cube(self, ikpt: int, iband: int):
+    dtype different from complex64 is not tested
+    """
+    def __init__(self, pwavecar: Path):
+        _logger.info("reading wavecar: %s", str(pwavecar))
+        with open(pwavecar, 'rb') as h:
+            nrecl, nspins, nprec = struct.unpack('ddd', h.read(24))
+            nprec = int(nprec)
+            if nprec == 45200:
+                dtype = 'complex64'
+            elif nprec == 45210:
+                dtype = 'complex128'
+            else:
+                msg = "precision ({}) is not supported".format(nprec)
+                raise ValueError(msg)
+        self.pwavecar = pwavecar
+        self.nrecl = int(nrecl)
+        self.dtype = dtype
+        self.nspins = int(nspins)
+        self.width = 16
+        if dtype == 'complex128':
+            self.width = 32
+        with open(self.pwavecar, 'rb') as h:
+            h.seek(self.nrecl)
+            data = struct.unpack('d'*12, h.read(96))
+            self.nkpts, self.nbands = map(int, data[:2])
+            self.encut = data[2]
+            self.latt = np.array(data[3:]).reshape((3, 3))
+        _logger.debug(">> record length = %d", self.nrecl)
+        _logger.debug(">> coeff.'s type = %s", self.dtype)
+        _logger.debug(">> nspins = %d", self.nspins)
+        _logger.debug(">>  nkpts = %d", self.nkpts)
+        _logger.debug(">> nbands = %d", self.nbands)
+        _logger.debug(">>  encut = %f", self.encut)
+        # each kpt block has an extra line to store the information
+        self._blk_ikpt = self.nbands + 1
+        self._blk_ispin = self.nkpts * self._blk_ikpt
+        self._bs = None
+        self._kpts = None
+        self._nplanes = None
+
+    def _compute_kpts_bs_nplanes(self):
+        kpts = []
+        eigen = []
+        occ = []
+        nplanes = []
+        n = self.nbands *2 + 4
+        with open(self.pwavecar, 'rb') as h:
+            for ispin, ikpt in product(*map(range, [self.nspins, self.nkpts])):
+                h.seek(self._seek_recl(ispin, ikpt, iband=-1))
+                data = struct.unpack('d'*n, h.read(8*n))
+                nplanes.append(int(data[0]))
+                kpts.append(data[1:4])
+                eigen.extend(data[4::2])
+                occ.extend(data[5::2])
+        eigen = np.array(eigen).reshape((self.nspins, self.nkpts, self.nbands))
+        occ = np.array(occ).reshape((self.nspins, self.nkpts, self.nbands))
+        nplanes = np.array(nplanes).reshape((self.nspins, self.nkpts))
+        self._bs = BandStructure(eigen, occ)
+        self._kpts = np.array(kpts)
+        self._nplanes = nplanes
+
+    @property
+    def bs(self):
+        """band structure"""
+        if self._bs is None:
+            self._compute_kpts_bs_nplanes()
+        return self._bs
+
+    @property
+    def kpts(self):
+        """band structure"""
+        if self._kpts is None:
+            self._compute_kpts_bs_nplanes()
+        return self._kpts
+
+    @property
+    def nplanes(self):
+        """band structure"""
+        if self._nplanes is None:
+            self._compute_kpts_bs_nplanes()
+        return self._nplanes
+
+    def export_cube(self, ispin: int, ikpt: int, iband: int):
         """export the wavefunction at k-point ``ikpt`` and band ``iband``
         """
         raise NotImplementedError
+
+    def _seek_recl(self, ispin: int, ikpt: int, iband: int):
+        """seek to the record for the coefficients at ispin, ikpt, iband
+
+        Args:
+            ispin, ikpt, iband (int): the spin, kpoint and band index of a particular band
+                Particularly, set iband to -1 to reach the information line of each kpoint.
+        """
+        # here 1 stands for the information line of each kpt
+        index = self._blk_ispin * ispin + self._blk_ikpt * ikpt + iband + 1
+        # here 2 stands for the first two lines of size and lattice information
+        return (index+2)*self.nrecl
+
 
 class ChgLike:
     """object to represent a charge distribution computed from vasp.

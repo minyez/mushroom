@@ -29,6 +29,9 @@ dist/
 .cache/
 *coverage*
 
+# prototypes
+prototype/
+
 # workflow database
 db/workflow/vasp_*/vasp.sh
 db/workflow/*/common.sh
