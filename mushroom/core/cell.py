@@ -26,7 +26,7 @@ from mushroom.core.pkg import detect
 from mushroom.core.crystutils import (get_latt_consts_from_latt_vecs,
                                       periodic_duplicates_in_cell,
                                       select_dyn_flag_from_axis,
-                                      atms_from_sym_nat,
+                                      atms_from_sym_nat, get_vol, get_recp_latt,
                                       sym_nat_from_atms,
                                       axis_list)
 from mushroom.core.ioutils import (grep, get_str_indices, open_textio,
@@ -540,9 +540,8 @@ When other keyword are parsed, they will be filtered out and no exception will b
 
     @property
     def alen(self):
-        '''Length of lattice vectors
-        '''
-        return np.array([np.linalg.norm(x) for x in self._latt], dtype=self._dtype)
+        """Length of lattice vectors"""
+        return np.linalg.norm(self.latt, axis=0)
 
     @property
     def latt_consts(self):
@@ -552,8 +551,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
 
     @property
     def latt(self):
-        '''Lattice vectors
-        '''
+        """Lattice vectors"""
         return self._latt
 
     @property
@@ -563,12 +561,12 @@ When other keyword are parsed, they will be filtered out and no exception will b
 
     @property
     def posi(self):
-        '''array.'''
+        """array. positions"""
         return self._posi
 
     @property
     def unit(self):
-        '''str.'''
+        """str. lenght unit"""
         return self._lunit.lower()
 
     @unit.setter
@@ -583,8 +581,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
 
     @property
     def coord_sys(self):
-        '''coordinate system
-        '''
+        """coordinate system"""
         return self._coord_sys.upper()
 
     @coord_sys.setter
@@ -649,7 +646,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
     def vol(self) -> float:
         """Volume of the cell
         """
-        return np.linalg.det(self._latt)
+        return get_vol(self._latt)
 
     @property
     def natm(self) -> int:
@@ -667,14 +664,9 @@ When other keyword are parsed, they will be filtered out and no exception will b
 
     @property
     def recp_latt_2pi(self):
-        '''Reciprocal lattice vectors in 2Pi unit^-1
-        '''
-        b = []
-        for i in range(3):
-            j = (i + 1) % 3
-            k = (i + 2) % 3
-            b.append(np.cross(self.latt[j, :], self.latt[k, :]))
-        return np.array(b, dtype=self._dtype) / self.vol
+        """Reciprocal lattice vectors in 2Pi unit^-1
+        """
+        return self.recp_latt / 2.0E0 / PI
 
     @property
     def b_2pi(self):
@@ -686,7 +678,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
     def recp_latt(self):
         """Reciprocal lattice vectors in unit^-1
         """
-        return self.b_2pi * 2.0E0 * PI
+        return get_recp_latt(self._latt)
 
     @property
     def b(self):
@@ -698,7 +690,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
     def blen(self):
         """Length of reciprocal lattice vector in unit^-1
         """
-        return np.array([np.linalg.norm(x) for x in self.b], dtype=self._dtype)
+        return np.linalg.norm(self.b, axis=0)
 
     # * selective dynamics related
     def fix_all(self):

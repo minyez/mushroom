@@ -5,5 +5,19 @@
     "nbands": 21,
     "dtype": "complex64",
     "nplanes": [[2103,2096,2104,2107,2120,2096,2118,2134,2112,2176]]
+  },
+  "WAVECAR_2.vasp": {
+    "nspins": 1,
+    "nkpts": 4,
+    "nbands": 13,
+    "dtype": "float64",
+    "nplanes": [[27,21,23,26]]
+  },
+  "WAVECAR_3.vasp": {
+    "nspins": 1,
+    "nkpts": 4,
+    "nbands": 43,
+    "dtype": "float64",
+    "nplanes": [[93,102,102,99]]
   }
 }

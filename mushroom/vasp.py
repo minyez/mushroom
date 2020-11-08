@@ -291,20 +291,16 @@ class WaveCar:
         with open(pwavecar, 'rb') as h:
             nrecl, nspins, nprec = struct.unpack('ddd', h.read(24))
             nprec = int(nprec)
-            if nprec == 45200:
-                dtype = 'complex64'
-            elif nprec == 45210:
-                dtype = 'complex128'
-            else:
+            dtype = {45200: 'complex64', 45210: 'complex128', 53300: 'float64'}.get(nprec, None)
+            if dtype is None:
                 msg = "precision ({}) is not supported".format(nprec)
                 raise ValueError(msg)
         self.pwavecar = pwavecar
         self.nrecl = int(nrecl)
         self.dtype = dtype
+        self.is_coef_real = dtype == 'float64'
         self.nspins = int(nspins)
-        self.width = 16
-        if dtype == 'complex128':
-            self.width = 32
+        self.width = {'complex64': 16, 'complex128': 32, 'float64': 8}.get(dtype, None)
         with open(self.pwavecar, 'rb') as h:
             h.seek(self.nrecl)
             data = struct.unpack('d'*12, h.read(96))
@@ -319,6 +315,9 @@ class WaveCar:
         _logger.debug(">>  encut = %f", self.encut)
         # each kpt block has an extra line to store the information
         self._blk_ikpt = self.nbands + 1
+        # an extra line at the end if the coefficients are real
+        if self.is_coef_real:
+            self._blk_ikpt = self.nbands + 2
         self._blk_ispin = self.nkpts * self._blk_ikpt
         self._bs = None
         self._kpts = None
@@ -329,15 +328,25 @@ class WaveCar:
         eigen = []
         occ = []
         nplanes = []
-        n = self.nbands *2 + 4
+        if self.is_coef_real:
+            n = self.nbands * 3 + 4
+        else:
+            n = self.nbands * 2 + 4
         with open(self.pwavecar, 'rb') as h:
             for ispin, ikpt in product(*map(range, [self.nspins, self.nkpts])):
                 h.seek(self._seek_recl(ispin, ikpt, iband=-1))
-                data = struct.unpack('d'*n, h.read(8*n))
-                nplanes.append(int(data[0]))
-                kpts.append(data[1:4])
-                eigen.extend(data[4::2])
-                occ.extend(data[5::2])
+                if self.is_coef_real:
+                    data = struct.unpack('d'*n, h.read(8*n))
+                    nplanes.append(int(data[0]))
+                    kpts.append(data[1:4])
+                    eigen.extend(data[4::3])
+                    occ.extend(data[6::3])
+                else:
+                    data = struct.unpack('d'*n, h.read(8*n))
+                    nplanes.append(int(data[0]))
+                    kpts.append(data[1:4])
+                    eigen.extend(data[4::2])
+                    occ.extend(data[5::2])
         eigen = np.array(eigen).reshape((self.nspins, self.nkpts, self.nbands))
         occ = np.array(occ).reshape((self.nspins, self.nkpts, self.nbands))
         nplanes = np.array(nplanes).reshape((self.nspins, self.nkpts))
