@@ -325,7 +325,7 @@ class WaveCar:
         _logger.debug(">>  encut = %f", self.encut)
         # each kpt block has an extra line to store the information
         self._blk_ikpt = self.nbands + 1
-        # an extra line at the end if the coefficients are real
+        # an extra line at the end for nprec=533xx
         if self._is_symmetrized:
             self._blk_ikpt += 1
         self._blk_ispin = self.nkpts * self._blk_ikpt
@@ -336,7 +336,7 @@ class WaveCar:
 
     @property
     def is_symmetrized(self):
-        """if the system has an inversion center"""
+        """if the system is symmetrized"""
         return self._is_symmetrized
 
     def _compute_kpts_bs_nplanes(self):

@@ -51,6 +51,13 @@ XML reader for
 - [x] kpoint list
 - [ ] geometry at specific ion step 
 
+### GAP2 `gap`
+
+- [ ] handle binary `.eps` file for dielectric matrix 
+  - [x] `Eps` class for reading matrix elements
+  - [ ] matrix plot with pyplot
+  - [ ] number of frequency points
+
 ### ABINIT `abi`
 
 - [ ] 确认最佳的 abinit 输入 practice
@@ -92,6 +99,8 @@ Require `pymatgen`
 ### Gaussian Cube
 
 - [x] Gaussian cube format <http://paulbourke.net/dataformats/cube/>
+
+### `matplotlib.pyplot` wrapper
 
 ## 数据库 db
 
