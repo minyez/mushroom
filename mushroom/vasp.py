@@ -286,22 +286,29 @@ class WaveCar:
     """object to read Wavecar
 
     dtype different from complex64 is not tested
+
+    For system with inversion symmetry, when symmetry is switched on (ISYM>0),
+    VASP seems to use C_{-G} = C^*_{G} to reduce the size of coefficients.
     """
+    known_nprec = {
+        45200: ('complex64', 16, False),
+        #45210: ('complex128', 32, False),
+        #53300: ('complex64', 16, True),
+        #53310: ('complex128', 32, True),
+        }
     def __init__(self, pwavecar: Path):
         _logger.info("reading wavecar: %s", str(pwavecar))
         with open(pwavecar, 'rb') as h:
             nrecl, nspins, nprec = struct.unpack('ddd', h.read(24))
             nprec = int(nprec)
-            dtype = {45200: 'complex64', 45210: 'complex128', 53300: 'float64'}.get(nprec, None)
-            if dtype is None:
+            if nprec not in WaveCar.known_nprec:
                 msg = "precision ({}) is not supported".format(nprec)
                 raise ValueError(msg)
+        self.dtype, self.width, self._is_symmetrized = WaveCar.known_nprec[nprec]
         self.pwavecar = pwavecar
         self.nrecl = int(nrecl)
-        self.dtype = dtype
-        self.is_coef_real = dtype == 'float64'
         self.nspins = int(nspins)
-        self.width = {'complex64': 16, 'complex128': 32, 'float64': 8}.get(dtype, None)
+        # 12 double: nkpts, nbands, encut, latt 3x3
         with open(self.pwavecar, 'rb') as h:
             h.seek(self.nrecl)
             data = struct.unpack('d'*12, h.read(96))
@@ -311,6 +318,7 @@ class WaveCar:
         self._pw = PWBasis(self.encut, self.latt, eunit="ev", lunit="ang", order_kind="vasp")
         _logger.debug(">> record length = %d", self.nrecl)
         _logger.debug(">> coeff.'s type = %s", self.dtype)
+        _logger.debug(">> use symmetry? = %s", self._is_symmetrized)
         _logger.debug(">> nspins = %d", self.nspins)
         _logger.debug(">>  nkpts = %d", self.nkpts)
         _logger.debug(">> nbands = %d", self.nbands)
@@ -318,12 +326,18 @@ class WaveCar:
         # each kpt block has an extra line to store the information
         self._blk_ikpt = self.nbands + 1
         # an extra line at the end if the coefficients are real
-        if self.is_coef_real:
+        if self._is_symmetrized:
             self._blk_ikpt += 1
         self._blk_ispin = self.nkpts * self._blk_ikpt
         self._bs = None
         self._kpts = None
         self._nplanes = None
+        self._coeffs = {}
+
+    @property
+    def is_symmetrized(self):
+        """if the system has an inversion center"""
+        return self._is_symmetrized
 
     def _compute_kpts_bs_nplanes(self):
         kpts = []
@@ -332,7 +346,7 @@ class WaveCar:
         nplanes = []
 
         interval = 2
-        if self.is_coef_real:
+        if self._is_symmetrized:
             interval = 3
         n = self.nbands * interval + 4
         with open(self.pwavecar, 'rb') as h:
@@ -371,25 +385,37 @@ class WaveCar:
             self._compute_kpts_bs_nplanes()
         return self._nplanes
 
-    def get_raw_coeff(self, ispin: int, ikpt: int, iband: int):
+    def get_raw_coeff(self, ispin: int, ikpt: int, iband: int, cache=True):
         """get the raw plane-wave coefficient of band state
 
         Args:
             ispin, ikpt, iband (int): the spin, kpoint and band index of a particular band
+            cache (bool): use cached data
         """
+        coef = self._coeffs.get((ispin, ikpt, iband), None)
+        if coef is not None and cache:
+            return coef
         with open(self.pwavecar, 'rb') as h:
             h.seek(self._seek_recl(ispin, ikpt, iband))
             nplane = self.nplanes[ispin, ikpt]
             data = h.read(nplane*self.width)
-            return np.frombuffer(data, dtype=self.dtype, count=nplane)
+            coef = np.frombuffer(data, dtype=self.dtype, count=nplane)
+        if cache:
+            self._coeffs[(ispin, ikpt, iband)] = coef
+        return coef
 
     def get_ipw(self, ikpt: int):
         """get the integer planewave index at kpoint ``ikpt``
 
         Args:
             ikpt (int)
+
+        Returns:
+            list
+            tuple
         """
-        return self._pw.get_ipw(self.kpts[ikpt])
+        #return self._pw.get_ipw(self.kpts[ikpt], symmetrize=self.is_symmetrized)
+        return self._pw.get_ipw(self.kpts[ikpt], symmetrize=self.is_symmetrized)
 
     def export_cube(self, ispin: int, ikpt: int, iband: int):
         """export the wavefunction at k-point ``ikpt`` and band ``iband``

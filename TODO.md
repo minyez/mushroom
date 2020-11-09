@@ -42,6 +42,8 @@
 - [ ] LOCPOT reader
 - [ ] POTCAR searcher
 - [ ] WAVECAR reader
+  - [x] ISYM=0
+  - [ ] complex128 (45200) and symmetrized types (53300 and 53310)
 - [x] CHGCAR reader
 
 XML reader for

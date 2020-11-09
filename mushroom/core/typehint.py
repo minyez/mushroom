@@ -15,6 +15,7 @@ TextIO = Union[str, PathLike, StringIO, TextIOWrapper]
 # N-dimensional real vector
 RealVec = Sequence[Real]
 CplxVec = Sequence[Complex]
+IntVec3D = Tuple[int, int, int]
 RealVec3D = Tuple[Real, Real, Real]
 CplxVec3D = Tuple[Complex, Complex, Complex]
 Latt3T3 = Tuple[RealVec3D, RealVec3D, RealVec3D]
