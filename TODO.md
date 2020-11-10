@@ -55,8 +55,8 @@ XML reader for
 
 - [ ] handle binary `.eps` file for dielectric matrix 
   - [x] `Eps` class for reading matrix elements
+  - [x] number of frequency points
   - [ ] matrix plot with pyplot
-  - [ ] number of frequency points
 
 ### ABINIT `abi`
 

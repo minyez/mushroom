@@ -14,5 +14,7 @@ exclude_lines =
 
 	def _run_gracebat
 	def savefig
+	def fold_small_G_semisphere
+	def add_scheduler_header
 
     raise NotImplementedError

@@ -29,6 +29,14 @@ class Eps:
         self.nrecl = 4
         # including the index of omega (integer, starting from 1)
         self._blk_iomega = 4 + 16 * self._msize ** 2
+        self._nomega = 0
+        with open(peps, 'rb') as h:
+            while True:
+                h.seek(self._seek_recl(self._nomega))
+                data = h.read(1)
+                if not data:
+                    break
+                self._nomega += 1
 
     @classmethod
     def _check_kind(cls, kind):
@@ -48,7 +56,7 @@ class Eps:
     @property
     def nomega(self):
         """number of frequency points"""
-        raise NotImplementedError
+        return self._nomega
 
     @property
     def msize(self):
@@ -56,10 +64,10 @@ class Eps:
         return self._msize
 
     def _seek_recl(self, iomega: int):
-        """seek the record of matrix elements of eps(iomega)
+        """seek the location of the starting of matrix elements of eps(iomega)
 
         Args:
-            iomega (int)
+            iomega (int): index of frequency
         """
         return self.nrecl * self._blk_iomega * iomega
 

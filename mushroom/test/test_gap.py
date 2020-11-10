@@ -20,7 +20,9 @@ class test_eps(ut.TestCase):
             fpath = dir_eps / f
             nomega = verify["nomega"]
             eps = Eps(str(fpath), is_q0=verify["is_q0"], kind=verify["kind"])
-            self.assertEqual(eps.msize, verify["msize"])
+            for k, v in verify.items():
+                if isinstance(v, (int, str, bool)):
+                    self.assertEqual(eps.__getattribute__(k), v)
             #self.assertEqual(eps.nomega, nomega)
             if eps.is_q0:
                 emac_nlf_re = [eps.get_eps(i)[0, 0].real for i in range(nomega)]
