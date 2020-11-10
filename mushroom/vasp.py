@@ -299,40 +299,76 @@ class WaveCar:
     def __init__(self, pwavecar: Path):
         _logger.info("reading wavecar: %s", str(pwavecar))
         with open(pwavecar, 'rb') as h:
-            nrecl, nspins, nprec = struct.unpack('ddd', h.read(24))
+            _recl, nspins, nprec = struct.unpack('ddd', h.read(24))
             nprec = int(nprec)
             if nprec not in WaveCar.known_nprec:
                 msg = "precision ({}) is not supported".format(nprec)
                 raise ValueError(msg)
-        self.dtype, self.width, self._is_symmetrized = WaveCar.known_nprec[nprec]
+        self._nprec = nprec
+        self._dtype, self.width, self._is_symmetrized = WaveCar.known_nprec[nprec]
         self.pwavecar = pwavecar
-        self.nrecl = int(nrecl)
-        self.nspins = int(nspins)
+        self._recl = int(_recl)
+        self._nspins = int(nspins)
         # 12 double: nkpts, nbands, encut, latt 3x3
         with open(self.pwavecar, 'rb') as h:
-            h.seek(self.nrecl)
+            h.seek(self._recl)
             data = struct.unpack('d'*12, h.read(96))
-            self.nkpts, self.nbands = map(int, data[:2])
-            self.encut = data[2]
+            self._nkpts, self._nbands = map(int, data[:2])
+            self._encut = data[2]
             self.latt = np.array(data[3:]).reshape((3, 3))
-        self._pw = PWBasis(self.encut, self.latt, eunit="ev", lunit="ang", order_kind="vasp")
-        _logger.debug(">> record length = %d", self.nrecl)
-        _logger.debug(">> coeff.'s type = %s", self.dtype)
+        self._pw = PWBasis(self._encut, self.latt, eunit="ev", lunit="ang", order_kind="vasp")
+        _logger.debug(">> record length = %d", self._recl)
+        _logger.debug(">> coeff.'s type = %s", self._dtype)
         _logger.debug(">> use symmetry? = %s", self._is_symmetrized)
-        _logger.debug(">> nspins = %d", self.nspins)
-        _logger.debug(">>  nkpts = %d", self.nkpts)
-        _logger.debug(">> nbands = %d", self.nbands)
-        _logger.debug(">>  encut = %f", self.encut)
+        _logger.debug(">> nspins = %d", self._nspins)
+        _logger.debug(">>  nkpts = %d", self._nkpts)
+        _logger.debug(">> nbands = %d", self._nbands)
+        _logger.debug(">>  encut = %f", self._encut)
         # each kpt block has an extra line to store the information
-        self._blk_ikpt = self.nbands + 1
+        self._blk_ikpt = self._nbands + 1
         # an extra line at the end for nprec=533xx
         if self._is_symmetrized:
             self._blk_ikpt += 1
-        self._blk_ispin = self.nkpts * self._blk_ikpt
+        self._blk_ispin = self._nkpts * self._blk_ikpt
         self._bs = None
         self._kpts = None
         self._nplanes = None
         self._coeffs = {}
+
+    @property
+    def recl(self):
+        """record length"""
+        return self._recl
+
+    @property
+    def nprec(self):
+        """precision token"""
+        return self._nprec
+
+    @property
+    def dtype(self):
+        """data type"""
+        return self._dtype
+
+    @property
+    def nbands(self):
+        """number of bands"""
+        return self._nbands
+
+    @property
+    def encut(self):
+        """cut off"""
+        return self._encut
+
+    @property
+    def nspins(self):
+        """number of spin channels"""
+        return self._nspins
+
+    @property
+    def nkpts(self):
+        """number of k-points"""
+        return self._nkpts
 
     @property
     def is_symmetrized(self):
@@ -348,18 +384,18 @@ class WaveCar:
         interval = 2
         if self._is_symmetrized:
             interval = 3
-        n = self.nbands * interval + 4
+        n = self._nbands * interval + 4
         with open(self.pwavecar, 'rb') as h:
-            for ispin, ikpt in product(*map(range, [self.nspins, self.nkpts])):
-                h.seek(self._seek_recl(ispin, ikpt, iband=-1))
+            for ispin, ikpt in product(*map(range, [self._nspins, self._nkpts])):
+                h.seek(self._seek_record(ispin, ikpt, iband=-1))
                 data = struct.unpack('d'*n, h.read(8*n))
                 nplanes.append(int(data[0]))
                 kpts.append(data[1:4])
                 eigen.extend(data[4::interval])
                 occ.extend(data[3+interval::interval])
-        eigen = np.array(eigen).reshape((self.nspins, self.nkpts, self.nbands))
-        occ = np.array(occ).reshape((self.nspins, self.nkpts, self.nbands))
-        nplanes = np.array(nplanes).reshape((self.nspins, self.nkpts))
+        eigen = np.array(eigen).reshape((self._nspins, self._nkpts, self._nbands))
+        occ = np.array(occ).reshape((self._nspins, self._nkpts, self._nbands))
+        nplanes = np.array(nplanes).reshape((self._nspins, self._nkpts))
         self._bs = BandStructure(eigen, occ)
         self._kpts = np.array(kpts)
         self._nplanes = nplanes
@@ -396,10 +432,10 @@ class WaveCar:
         if coef is not None and cache:
             return coef
         with open(self.pwavecar, 'rb') as h:
-            h.seek(self._seek_recl(ispin, ikpt, iband))
+            h.seek(self._seek_record(ispin, ikpt, iband))
             nplane = self.nplanes[ispin, ikpt]
             data = h.read(nplane*self.width)
-            coef = np.frombuffer(data, dtype=self.dtype, count=nplane)
+            coef = np.frombuffer(data, dtype=self._dtype, count=nplane)
         if cache:
             self._coeffs[(ispin, ikpt, iband)] = coef
         return coef
@@ -422,7 +458,7 @@ class WaveCar:
         """
         raise NotImplementedError
 
-    def _seek_recl(self, ispin: int, ikpt: int, iband: int):
+    def _seek_record(self, ispin: int, ikpt: int, iband: int):
         """seek to the record for the coefficients at ispin, ikpt, iband
 
         Args:
@@ -432,7 +468,7 @@ class WaveCar:
         # here 1 stands for the information line of each kpt
         index = self._blk_ispin * ispin + self._blk_ikpt * ikpt + iband + 1
         # here 2 stands for the first two lines of size and lattice information
-        return (index+2)*self.nrecl
+        return (index+2)*self._recl
 
 
 class ChgLike:

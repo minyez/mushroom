@@ -1,9 +1,10 @@
 {
   "diamond.eps-q1": {
-    "nomega": 6,
+    "nbyte_recl": 4,
+    "kind": "invm1",
     "is_q0": true,
     "msize": 4,
-    "kind": "invm1",
+    "nomega": 6,
     "emac_nlf_re": [12.2858, 9.91075, 7.17481, 5.89049, 3.32362, 1.16882]
   }
 }

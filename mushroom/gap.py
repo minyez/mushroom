@@ -14,10 +14,14 @@ class Eps:
     Args:
         peps (Path): path to the epsilon binary file
         is_q0 (bool)
+        kind (str)
+        nbyte_recl (int) : number of bytes as unit of record length. default to 4.
+            Use 1 if GAP is compiled with ``assume bytenbyte_recl`` or compiled with gcc
     """
     known_kind = ("eps", "inv", "invm1")
 
-    def __init__(self, peps: Path, is_q0: bool = False, kind: str = "eps"):
+    def __init__(self, peps: Path, is_q0: bool = False,
+                 kind: str = "eps", nbyte_recl: int = 4):
         self._peps = peps
         self._rawdata = {}
         self._is_q0 = is_q0
@@ -26,13 +30,13 @@ class Eps:
         with open(peps, 'rb') as h:
             self._msize = struct.unpack('i', h.read(4))[0]
             self._msize += int(is_q0)
-        self.nrecl = 4
+        self._nbyte_recl = nbyte_recl
         # including the index of omega (integer, starting from 1)
         self._blk_iomega = 4 + 16 * self._msize ** 2
         self._nomega = 0
         with open(peps, 'rb') as h:
             while True:
-                h.seek(self._seek_recl(self._nomega))
+                h.seek(self._seek_record(self._nomega))
                 data = h.read(1)
                 if not data:
                     break
@@ -49,6 +53,11 @@ class Eps:
         return self._is_q0
 
     @property
+    def nbyte_recl(self):
+        """record length"""
+        return self._nbyte_recl
+
+    @property
     def kind(self):
         """the kind of data"""
         return self._kind
@@ -63,13 +72,13 @@ class Eps:
         """matrix size of the dielectric matrix in v-diagonal basis, including the head"""
         return self._msize
 
-    def _seek_recl(self, iomega: int):
-        """seek the location of the starting of matrix elements of eps(iomega)
+    def _seek_record(self, iomega: int):
+        """seek the record location of the starting of matrix elements of eps(iomega)
 
         Args:
             iomega (int): index of frequency
         """
-        return self.nrecl * self._blk_iomega * iomega
+        return self._nbyte_recl * self._blk_iomega * iomega
 
     def get(self, iomega: int, cache: bool = True):
         """get the raw eps data at frequency point iomega
@@ -82,7 +91,7 @@ class Eps:
         if cache and rawdata is not None:
             return rawdata
         with open(self._peps, 'rb') as h:
-            h.seek(self._seek_recl(iomega))
+            h.seek(self._seek_record(iomega))
             # first is an integer for matrix size
             struct.unpack('=i', h.read(4))
             counts = 2 * self._msize**2

@@ -53,9 +53,10 @@ XML reader for
 
 ### GAP2 `gap`
 
-- [ ] handle binary `.eps` file for dielectric matrix 
+- [ ] handle binary `.eps` file for dielectric matrix
   - [x] `Eps` class for reading matrix elements
   - [x] number of frequency points
+  - [ ] automatically check unit of record length by attempt to unpack the first several bytes
   - [ ] matrix plot with pyplot
 
 ### ABINIT `abi`

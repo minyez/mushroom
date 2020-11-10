@@ -19,7 +19,8 @@ class test_eps(ut.TestCase):
             print("Testing {}".format(f))
             fpath = dir_eps / f
             nomega = verify["nomega"]
-            eps = Eps(str(fpath), is_q0=verify["is_q0"], kind=verify["kind"])
+            eps = Eps(str(fpath), is_q0=verify["is_q0"], kind=verify["kind"],
+                      nbyte_recl=verify["nbyte_recl"])
             for k, v in verify.items():
                 if isinstance(v, (int, str, bool)):
                     self.assertEqual(eps.__getattribute__(k), v)

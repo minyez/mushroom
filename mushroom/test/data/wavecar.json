@@ -1,6 +1,7 @@
 {
   "WAVECAR_1.vasp": {
     "nspins": 1,
+    "nprec": 45200,
     "nkpts": 10,
     "nbands": 21,
     "dtype": "complex64",
@@ -9,6 +10,7 @@
   "WAVECAR_5_CuCl_prim_isym_0.vasp": {
     "nspins": 1,
     "nkpts": 8,
+    "nprec": 45200,
     "encut": 80.0,
     "nbands": 13,
     "dtype": "complex64",
