@@ -20,7 +20,7 @@ from typing import Union
 from numpy import shape, absolute, loadtxt
 
 from mushroom.core.data import Data
-from mushroom.core.ioutils import (greeks, open_textio,
+from mushroom.core.ioutils import (greeks, open_textio, grep,
                                    get_file_ext)
 from mushroom.core.logger import create_logger
 
@@ -239,7 +239,7 @@ class _ColorMap(_MapOutput):
             name (str) : name of color, case-insensitive
         """
         try:
-            return self._cn.index(name.lower())
+            return self._cn.index(name)
         except ValueError as err:
             raise ValueError("color name {:s} is not found".format(name)) from err
 
@@ -290,12 +290,12 @@ def _get_int_const(name, pair, marker):
         return None
     if isinstance(marker, str):
         try:
-            return pair.get(marker.lower())
-        except KeyError:
-            return ValueError("unknown marker \"{:s}\" for {:s}".format(marker.lower(), name))
+            return pair[marker]
+        except KeyError as err:
+            raise KeyError("unknown marker \"{:s}\" for {:s}".format(marker, name)) from err
     if isinstance(marker, int):
         return marker
-    raise TypeError("should be str or int")
+    raise TypeError("expect str or int")
 
 class _IntMap:
     pair = {None: None}
@@ -346,7 +346,7 @@ class Color:
             return None
         try:
             return _get_int_const(cls.__name__, cls.pair, marker)
-        except ValueError:
+        except KeyError:
             return plot_colormap.get(marker)
         raise ValueError
 
@@ -1752,8 +1752,6 @@ class Dataset(_Dataset):
                                   af=af, append=append, prepend=prepend, prec=prec, offset=offset)
         if ebc is None:
             ebc = color
-        if ebrc is None:
-            ebrc = color
         self._errorbar = Errorbar(switch=errorbar, place=ebpos, color=ebc, pattern=ebp,
                                   size=ebsize, lw=eblw, ls=ebls, rlw=ebrlw, rls=ebrls, rc=ebrc,
                                   rcl=ebrcl)
@@ -2857,23 +2855,28 @@ def extract_data_from_agr(pagr):
     """
     starts = []
     ends = []
+    index_gs = []
     types = []
     with open_textio(pagr) as h:
-        for i, l in enumerate(h.readlines()):
-            if l.startswith("@type"):
-                # exclude @type line
-                starts.append(i+1)
-                types.append(l.split()[-1].lower())
-            if l == "&\n":
-                ends.append(i)
-    data = []
-
-    with open_textio(pagr) as h:
         lines = h.readlines()
-        for i, (start, end) in enumerate(zip(starts, ends)):
-            s = StringIO("".join(lines[start:end]))
-            data.append(loadtxt(s, unpack=True))
-    return types, data
+    for i, l in enumerate(lines):
+        if l.startswith("@type"):
+            # the line above includes information like @target G0.S4
+            index_gs.append(tuple(map(int, findall(r"\d+", lines[i-1]))))
+            # exclude @type line
+            starts.append(i+1)
+            types.append(l.split()[-1].lower())
+        if l == "&\n":
+            ends.append(i)
+    # search for legends
+    # NOTE assume the labels are in the same order of the dataset.
+    # This is usually the case for xmgrace generated files
+    legends = grep(r"@\s+s(\d+)\s+legend\s+\"(.*)\"", lines, return_group=2)
+    data = []
+    for i, (start, end) in enumerate(zip(starts, ends)):
+        s = StringIO("".join(lines[start:end]))
+        data.append(loadtxt(s, unpack=True))
+    return types, data, legends
 
 
 def _run_gracebat(agr, figname, device):

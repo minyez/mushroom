@@ -329,15 +329,17 @@ class test_read_agr(ut.TestCase):
     def text_extract_data_from_agr(self):
         """extract data"""
         tf = tempfile.NamedTemporaryFile(suffix=".agr")
-        types, data = extract_data_from_agr(tf.name)
+        types, data, legends = extract_data_from_agr(tf.name)
         # empty
         self.assertListEqual([], types)
         self.assertListEqual([], data)
+        self.assertListEqual([], legends)
         with open(tf.name, 'w') as h:
-            print("@type xy\n1 2\n3 4\n5 6\n&\n", file=h)
+            print("@ s0 legend \"test\"\n@target G0.S0\n@type xy\n1 2\n3 4\n5 6\n&\n", file=h)
 
-        types, data = extract_data_from_agr(tf.name)
+        types, data, legends = extract_data_from_agr(tf.name)
         self.assertListEqual(['xy'], types)
+        self.assertListEqual(['test'], legends)
         self.assertEqual(1, len(data))
         self.assertTrue(array_equal(data[0], [[1, 3, 5], [2, 4, 6]]))
         tf.close()

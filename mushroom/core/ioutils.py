@@ -8,7 +8,7 @@ from io import TextIOWrapper, StringIO
 from collections import OrderedDict
 from collections.abc import Iterable, Callable
 from sys import stdout
-from typing import List, Union
+from typing import List, Union, Sequence
 
 from mushroom.core.logger import create_logger
 from mushroom.core.typehint import TextIO
@@ -23,7 +23,7 @@ del create_logger
 
 # pylint: disable=R0912,R0914
 def grep(pattern, filename, is_binary: bool = False, error_not_found: bool = False,
-         from_behind: bool = False, return_group: bool = False,
+         from_behind: bool = False, return_group: Union[bool, int, Sequence[int]] = False,
          maxcounts: int = None, maxdepth: int = None, return_linenum: bool = False) -> List:
     """emulate command line grep with re package
 
@@ -82,7 +82,15 @@ def grep(pattern, filename, is_binary: bool = False, error_not_found: bool = Fal
         if m is not None:
             _logger.debug("grep matched %s", m.group())
             line_nums.append(_ln_modifier(i, size))
-            matched.append({True: m, False: l}[return_group])
+            if return_group:
+                if return_group is True:
+                    matched.append(m)
+                elif isinstance(return_group, int):
+                    matched.append(m.group(return_group))
+                else:
+                    matched.append(tuple(map(m.group, return_group)))
+            else:
+                matched.append(l)
             n += 1
             if n >= maxcounts:
                 break
