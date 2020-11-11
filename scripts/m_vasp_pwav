@@ -29,7 +29,7 @@ def _parser():
                    help="PROCAR file to read band data")
     p.add_argument("--pos", dest="poscar", type=str, default="POSCAR",
                    help="POSCAR structure file")
-    p.add_argument("--sym", dest="ksymbols", type=str, default=None,
+    p.add_argument("--sym", dest="ksymbols", type=str, default=None, nargs="+",
                    help="Symbols of high symmetry points")
     p.add_argument("-o", dest="output", type=str, default="plotpwav.agr",
                    help="path of agr file to export")
@@ -97,9 +97,12 @@ def m_v_pwav():
     ax.x.set_major(grid=True, color="grey", lw=3, ls="dashed")
     ksymbols = None
     if args.ksymbols is not None:
-        ksymbols = args.ksymbols.split()
+        ksymbols = args.ksymbols
+        if len(args.ksymbols) == 1:
+            ksymbols = args.ksymbols[0].split()
     ax.x.set_spec(kp.special_x, labels=ksymbols)
     ax.y.set_major(major=3)
+    ax.set_ylim(-6, 6)
     ax.y.set_label("Energy (eV)")
     # 36.0 is a base factor
     scale = (kp.x[-1] - kp.x[0]) / len(kp.x) * 36.0 * args.scale

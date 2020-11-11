@@ -293,7 +293,6 @@ class Struct:
         """get the Cell object of Struct"""
         return self._cell
 
-
     def __init_npts(self, npts):
         self.npts = []
         if npts is None:
@@ -329,6 +328,7 @@ class Struct:
     def __init_rmts(self, rmts):
         self.rmts = []
         if rmts is None:
+            # TODO improve default RMT setup by using the nearest-neighbor distance
             for _, atm in enumerate(self.atms_types):
                 self.rmts.append(_get_default_rmt(atm))
             return
@@ -566,7 +566,7 @@ def _read_efermi_from_second_to_last_el(l):
 
     Args:
         l (str): the line containing linearization energy at angular momenta,
-            usually the first line of case.energy
+            usually the first lines of case.energy
     """
     efermi = 0.0
     nel = l.count('.')

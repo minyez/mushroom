@@ -19,7 +19,7 @@ def _parser():
                    help="EIGENVAL file to read band data")
     p.add_argument("--pos", dest="poscar", type=str, default="POSCAR",
                    help="POSCAR structure file")
-    p.add_argument("--sym", dest="ksymbols", type=str, default=None,
+    p.add_argument("--sym", dest="ksymbols", type=str, default=None, nargs="+",
                    help="Symbols of high symmetry points")
     p.add_argument("-e", dest="energy_range", type=str, default=None,
                    help="energy range, e.g. 'emin:emax'")
@@ -36,29 +36,32 @@ def _parser():
 def m_v_band():
     """main stream"""
     args = _parser().parse_args()
-    p = Plot(1, 1)
+    p, ax = Plot.subplots(1, 1, background=False)
     c = Cell.read(args.poscar)
 
     # get band energies from EIGENVAL
     bs, _, kpts = read_eigen(args.eigenval, filter_k_before=args.removek)
     kp = KPath(kpts, c.b)
-    p[0].plot(kp.x, bs.eigen[0, :, :].transpose() - bs.efermi, color="k", symbol="none")
-    p[0].x.set_major(grid=True, color="grey", lw=3, ls="dashed")
+    ax.plot(kp.x, bs.eigen[0, :, :].transpose() - bs.efermi, color="k", symbol="none")
+    ax.x.set_major(grid=True, color="grey", lw=3, ls="dashed")
     ksymbols = None
     if args.ksymbols is not None:
-        ksymbols = args.ksymbols.split()
-    p[0].x.set_spec(kp.special_x, labels=ksymbols)
+        ksymbols = args.ksymbols
+        if len(args.ksymbols) == 1:
+            ksymbols = args.ksymbols[0].split()
+    ax.x.set_spec(kp.special_x, labels=ksymbols)
     if args.energy_range is not None:
         try:
             emin, emax = decode_float_ends(args.energy_range)
-            p[0].set_ylim(ymin=emin, ymax=emax)
+            ax.set_ylim(ymin=emin, ymax=emax)
         except ValueError as err:
             raise ValueError("invalid energy range", args.energy_range) from err
-    p[0].set_xlim(0.0, kp.x[-1] + 0.0001)
-    p[0].y.set_major(major=4)
-    p[0].y.set_label("Energy (eV)")
+    ax.set_xlim(0.0, kp.x[-1] + 0.0001)
+    ax.set_ylim(-6, 6)
+    ax.y.set_major(major=4)
+    ax.y.set_label("Energy (eV)")
     # draw zero line
-    p[0].axhline(0.0, ls="dashed")
+    ax.axhline(0.0, ls="dashed")
     p.write(file=args.output)
     if args.fig_ext is not None:
         p.savefig(get_filename_wo_ext(args.output) + "." + args.fig_ext)

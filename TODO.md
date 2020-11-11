@@ -67,7 +67,8 @@ XML reader for
 ### WIEN2k `w2k`
 
 - [x] energy reader
-  - [ ] Extracting fermi energy is not working correctly. A value lower than VBM can be obtained.
+  - [x] Extracting fermi energy is not working correctly. A value lower than VBM can be obtained.
+    Work correctly for in situ band calculation
 - [x] struct reader
 - [ ] output2 reader
 - [ ] output1 reader

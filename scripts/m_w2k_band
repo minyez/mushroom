@@ -18,7 +18,7 @@ def _parser():
                    help="path to the directory containg inputs and outputs")
     p.add_argument("-f", dest="energyfile", type=str, default=None,
                    help="path of energy file")
-    p.add_argument("--sym", dest="ksymbols", type=str, default=None,
+    p.add_argument("--sym", dest="ksymbols", type=str, default=None, nargs="+",
                    help="Symbols of high symmetry points")
     p.add_argument("-o", dest="output", type=str, default="plotband.agr",
                    help="path of agr file to export")
@@ -58,7 +58,9 @@ def m_w2k_band():
     ax.x.set_major(grid=True, color="grey", lw=3, ls="dashed")
     ksymbols = None
     if args.ksymbols is not None:
-        ksymbols = args.ksymbols.split()
+        ksymbols = args.ksymbols
+        if len(args.ksymbols) == 1:
+            ksymbols = args.ksymbols[0].split()
     ax.x.set_spec(kp.special_x, labels=ksymbols)
     if args.energy_range is not None:
         try:
@@ -69,6 +71,7 @@ def m_w2k_band():
     else:
         ax.tight_graph()
     ax.set_xlim(0.0, kp.x[-1] + 0.0001)
+    ax.set_ylim(-6, 6)
     ax.y.set_major(major=4)
     ax.y.set_label("Energy (eV)")
     # draw zero line
