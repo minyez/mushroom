@@ -23,10 +23,25 @@ class test_string_encoder(ut.TestCase):
 
     def test_italic(self):
         """encoding special characters"""
-        self.assertEqual(encode_string(r"/this is italic/, this not"), 
+        self.assertEqual(encode_string(r"/this is italic/, this not"),
                          r"\f{Times-Italic}this is italic\f{}, this not")
-        self.assertEqual(encode_string(r"/italic here/, /also here/"), 
+        self.assertEqual(encode_string(r"/italic here/, /also here/"),
                          r"\f{Times-Italic}italic here\f{}, \f{Times-Italic}also here\f{}")
+
+    def test_super_or_subscript(self):
+        """encoding either super or subscript """
+        subs = [
+            ("A_{b}", "A\\sb\\N"),
+            ("A_{b}C_{d}", "A\\sb\\NC\\sd\\N"),
+            ("C^{d}", "C\\Sd\\N"),
+            ("A^{b}C_{d}", "A\\Sb\\NC\\sd\\N"),
+            ]
+        for latex, encoded in subs:
+            self.assertEqual(encode_string(latex), encoded)
+
+    def test_super_and_subscript(self):
+        """encoding super and subscript at the same prefix"""
+
 
 class test_ColorMap(ut.TestCase):
     """test colormap utilites"""
@@ -191,7 +206,7 @@ class test_Graph(ut.TestCase):
         # both symbol and line are colored
         self.assertEqual(g[0]._symbol.color, Color.get("red"))
         self.assertEqual(g[0]._line.color, Color.get("red"))
-        
+
     def test_multiple_plot(self):
         """test plotting xy data"""
         g = Graph(index=1)

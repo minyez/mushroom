@@ -603,15 +603,17 @@ def fortran_read(fstring: str, fortran_format: str):
 @contextmanager
 def open_textio(f: TextIO, mode: str = 'r'):
     """open, and read/write text from a filename/path/TextIOWrapper/StringIO
+
+    Note that whatever instance f is, it will be closed when exiting ``with``.
+
+    Args:
+        f (str, PathLike, TextIOWrapper, StringIO): file-like object to input and output
+        mode (str): specify the mode to process the file (only when f is str or PathLike)
     """
     if isinstance(f, (str, os.PathLike)):
         f = open(f, mode)
     try:
         yield f
     finally:
-        #if isinstance(f, (str, os.PathLike)):
-        #    f.close()
-        #elif isinstance(f, (TextIOWrapper, StringIO)):
-        #    pass
         f.close()
-            
+

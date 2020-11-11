@@ -52,6 +52,8 @@ ext2device = {
 def encode_string(string):
     r"""encode a string to grace format.
 
+    Note that when both subscript and superscript are used,
+
     Args:
         string (str): the string to encode. Supported markup:
             Greek letters: \alpha, \Beta, \gamma
@@ -65,14 +67,13 @@ def encode_string(string):
     for pat, agrstr in SPECIAL_CHAR_PATTERN.items():
         string = sub(pat, agrstr, string)
     # italic
-    has_italic = len(findall(r"/", string))
-    if has_italic > 1:
-        if has_italic % 2 == 0:
-            for _ in range(has_italic // 2):
-                string = sub(r"/", r"\\f{Times-Italic}", string, count=1)
-                string = sub(r"/", r"\\f{}", string, count=1)
-        else:
-            _logger.warning("unpaired italic marker")
+    string = sub(r"/(.+?)/", r"\\f{Times-Italic}\1\\f{}", string)
+    # both super and subscript
+    string = sub(r"\^{(.*?)}_{(.*?)}", r"\\S\1\\N\\s\2\\N", string)
+    string = sub(r"_{(.*?)}\^{(.*?)}", r"\\s\1\\N\\S\2\\N", string)
+    # either super or subscript
+    for pat, repl in [(r"\^{(.+?)}", r"\\S\1\\N"), (r"_{(.+?)}", r"\\s\1\\N")]:
+        string = sub(pat, repl, string)
     return string
 
 def decode_agr(agr):
@@ -2298,8 +2299,8 @@ class Graph(_Graph):
                 msg = "invalid location token for legend: {}".format(kwargs["loc"])
                 raise ValueError(msg) from err
             kwargs["loc"] = loc
-        except KeyError:
-            # location of legend is specified
+        except (KeyError, TypeError):
+            # location of legend is specified, or a non-str is parsed
             pass
 
         self._legend.set(**kwargs)
@@ -2851,7 +2852,9 @@ def extract_data_from_agr(pagr):
         pagr (str) : path to the agr file
 
     Returns:
-        list, type of each dataset; list, each member is a dataset as a 2d-array
+        list, type of each dataset
+        list, each member is a dataset as a 2d-array, shape (2,ndata)
+        list, legend of each dataset
     """
     starts = []
     ends = []
