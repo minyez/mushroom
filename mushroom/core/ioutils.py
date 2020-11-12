@@ -36,7 +36,8 @@ def grep(pattern, filename, is_binary: bool = False, error_not_found: bool = Fal
         is_binary (bool)
         from_behind (bool): search from behind
         error_not_found (bool): raise when no match is found
-        maxcounts (int)
+        maxcounts (int) : maximal times of matching
+        maxdepth (int) : end of line to search
         return_group (bool): return re.Match object
         return_linenum (bool): return both the matched lines and their indices in the contents
 
@@ -61,6 +62,8 @@ def grep(pattern, filename, is_binary: bool = False, error_not_found: bool = Fal
         mode = 'r' + 'b' * int(is_binary)
         f = filename.open(mode=mode)
         container = f.readlines()
+        f.close()
+        del f
     elif isinstance(filename, (TextIOWrapper, StringIO)):
         container = filename.readlines()
     elif isinstance(filename, Iterable):
@@ -94,10 +97,8 @@ def grep(pattern, filename, is_binary: bool = False, error_not_found: bool = Fal
             n += 1
             if n >= maxcounts:
                 break
-        if i >= maxdepth:
+        if i+1 >= maxdepth:
             break
-    if isinstance(filename, os.PathLike):
-        f.close()
 
     if return_linenum:
         return matched, line_nums

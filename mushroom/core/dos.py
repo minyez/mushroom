@@ -155,7 +155,7 @@ class DensityOfStates(EnergyUnit):
     @property
     def unit(self):
         """unit of energy grid"""
-        return self._eunit
+        return self._eunit.lower()
 
     @unit.setter
     def unit(self, newu):

@@ -14,7 +14,7 @@ try:
 except ImportError:
     spglib = None
 
-from mushroom.core.cell import (Cell, CellError, have_same_latt)
+from mushroom.core.cell import (Cell, CellError, latt_equal)
 from mushroom.core.constants import ANG2AU, PI
 
 
@@ -59,7 +59,7 @@ class simple_cubic_lattice(ut.TestCase):
         self.assertTupleEqual(tuple(self.posi[0]), tuple(self.cell[0]))
 
     def test_coord_conv(self):
-        self.assertRaisesRegex(CellError, 
+        self.assertRaisesRegex(CellError,
                                "Only support \"D\" direct or fractional and \"C\" Cartisian.",
                                self.cell.__setattr__, "coord_sys", 'unknown')
         # direct2cart
@@ -299,6 +299,9 @@ class test_exporter(ut.TestCase):
 
     def test_export_json(self):
         s = self.c.export_json()
+
+    def test_export_qe(self):
+        s = self.c.export_qe()
 
 class cell_select_dynamics(ut.TestCase):
     '''Test the functionality of selective dynamics
@@ -562,7 +565,7 @@ class test_supercell(ut.TestCase):
         self.assertTrue(np.array_equal(sc.posi, np.array(scposi, dtype=Cell._dtype)))
 
 class test_spglib_convert(ut.TestCase):
-    
+
     def test_primitize(self):
         if spglib is None:
             return
@@ -583,7 +586,7 @@ class test_cell_compare(ut.TestCase):
     def test_same_latt(self):
         c1 = Cell.rocksalt("Na", "Cl", a=2.0)
         c2 = Cell.diamond("Si", a=2.0)
-        self.assertTrue(have_same_latt(c1, c2))
+        self.assertTrue(latt_equal(c1, c2))
 
 if __name__ == "__main__":
     ut.main()

@@ -23,6 +23,7 @@ class Eps:
     def __init__(self, peps: Path, is_q0: bool = False,
                  kind: str = "eps", nbyte_recl: int = 4):
         self._peps = peps
+        self._fhandle = None
         self._rawdata = {}
         self._is_q0 = is_q0
         self._check_kind(kind)
@@ -41,6 +42,12 @@ class Eps:
                 if not data:
                     break
                 self._nomega += 1
+
+    def close(self):
+        """close the binary handle"""
+        if self._fhandle is not None:
+            self._fhandle.close()
+            self._fhandle = None
 
     @classmethod
     def _check_kind(cls, kind):
@@ -90,15 +97,16 @@ class Eps:
         rawdata = self._rawdata.get(iomega, None)
         if cache and rawdata is not None:
             return rawdata
-        with open(self._peps, 'rb') as h:
-            h.seek(self._seek_record(iomega))
-            # first is an integer for matrix size
-            struct.unpack('=i', h.read(4))
-            counts = 2 * self._msize**2
-            rawdata = np.frombuffer(h.read(8*counts),
-                                    dtype='float64', count=counts)
-            # reshape for head and wing
-            rawdata = self._reshape(rawdata)
+        if self._fhandle is None:
+            self._fhandle = open(self._peps, 'rb')
+        self._fhandle.seek(self._seek_record(iomega))
+        # first is an integer for matrix size
+        struct.unpack('=i', self._fhandle.read(4))
+        counts = 2 * self._msize**2
+        rawdata = np.frombuffer(self._fhandle.read(8*counts),
+                                dtype='float64', count=counts)
+        # reshape for head and wing
+        rawdata = self._reshape(rawdata)
         if cache:
             self._rawdata[iomega] = rawdata
         return rawdata

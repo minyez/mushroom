@@ -81,7 +81,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
 
     _err = CellError
     _dtype = 'float64'
-    avail_exporters = ['vasp', 'abi', 'json']
+    avail_exporters = ['vasp', 'abi', 'json', 'qe']
     avail_readers = ['vasp', 'json', 'cif']
 
     def __init__(self, latt: Latt3T3, atms: Sequence[str], posi: Sequence[RealVec3D],
@@ -124,7 +124,9 @@ When other keyword are parsed, they will be filtered out and no exception will b
             'vasp': self.export_vasp,
             'abi': self.export_abi,
             'json': self.export_json,
+            'qe': self.export_qe,
             }
+        assert set(self.exporters.keys()) == set(self.avail_exporters)
 
     def __eq__(self, cell):
         unit = cell.unit
@@ -813,6 +815,21 @@ When other keyword are parsed, they will be filtered out and no exception will b
         if e is None:
             raise ValueError("Unsupported export:", output_format)
         return e(scale=scale)
+
+    def export_qe(self, scale: float = 1.0) -> str:
+        """Export in Quantum espresso format"""
+        unit = self.unit
+        cs = self.coord_sys
+        self.unit = "ang"
+        slist = ["ATOMIC_POSITIONS {crystal}",]
+        for atm, pos in zip(self.atms, self.posi):
+            slist.append("{:<2s}{:19.16f}{:19.16f}{:19.16f}".format(atm, *pos))
+        slist.append("CELL_PARAMETERS {angstrom}")
+        for i in range(3):
+            slist.append("{:19.16f}{:19.16f}{:19.16f}".format(*(self.latt[i, :] * scale)))
+        self.unit = unit
+        self.coord_sys = cs
+        return "\n".join(slist)
 
     def export_abi(self, scale: float = 1.0) -> str:
         """Export in ABINIT format.
@@ -1544,11 +1561,11 @@ When other keyword are parsed, they will be filtered out and no exception will b
             kwargs.update({"comment": "Marcasite {}{}2".format(atom1, atom2)})
         return cls(latt, atms, posi, **kwargs)
 
-def have_same_latt(cell1: Cell, cell2: Cell) -> bool:
+def latt_equal(cell1: Cell, cell2: Cell) -> bool:
     """compare the lattice vectors of two cell"""
     unit = cell2.unit
     cell2.unit = cell1.unit
-    same_latt = np.allclose(cell1.latt, cell2.latt)
+    equal = np.allclose(cell1.latt, cell2.latt)
     cell2.unit = unit
-    return same_latt
+    return equal
 

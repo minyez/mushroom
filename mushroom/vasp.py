@@ -15,7 +15,7 @@ from mushroom.core.ioutils import conv_string
 from mushroom.core.dos import DensityOfStates
 from mushroom.core.bs import BandStructure
 from mushroom.core.pw import PWBasis
-from mushroom.core.cell import Cell, have_same_latt
+from mushroom.core.cell import Cell, latt_equal
 from mushroom.core.typehint import Path
 from mushroom.visual.cube import Cube
 
@@ -307,6 +307,7 @@ class WaveCar:
         self._nprec = nprec
         self._dtype, self.width, self._is_symmetrized = WaveCar.known_nprec[nprec]
         self.pwavecar = pwavecar
+        self._fhandle = None
         self._recl = int(_recl)
         self._nspins = int(nspins)
         # 12 double: nkpts, nbands, encut, latt 3x3
@@ -431,11 +432,12 @@ class WaveCar:
         coef = self._coeffs.get((ispin, ikpt, iband), None)
         if coef is not None and cache:
             return coef
-        with open(self.pwavecar, 'rb') as h:
-            h.seek(self._seek_record(ispin, ikpt, iband))
-            nplane = self.nplanes[ispin, ikpt]
-            data = h.read(nplane*self.width)
-            coef = np.frombuffer(data, dtype=self._dtype, count=nplane)
+        if self._fhandle is None:
+            self._fhandle = open(self.pwavecar, 'rb')
+        self._fhandle.seek(self._seek_record(ispin, ikpt, iband))
+        nplane = self.nplanes[ispin, ikpt]
+        data = self._fhandle.read(nplane*self.width)
+        coef = np.frombuffer(data, dtype=self._dtype, count=nplane)
         if cache:
             self._coeffs[(ispin, ikpt, iband)] = coef
         return coef
@@ -450,13 +452,18 @@ class WaveCar:
             list
             tuple
         """
-        #return self._pw.get_ipw(self.kpts[ikpt], symmetrize=self.is_symmetrized)
         return self._pw.get_ipw(self.kpts[ikpt], symmetrize=self.is_symmetrized)
 
     def export_cube(self, ispin: int, ikpt: int, iband: int):
         """export the wavefunction at k-point ``ikpt`` and band ``iband``
         """
         raise NotImplementedError
+
+    def close(self):
+        """close the binary handle"""
+        if self._fhandle is not None:
+            self._fhandle.close()
+            self._fhandle = None
 
     def _seek_record(self, ispin: int, ikpt: int, iband: int):
         """seek to the record for the coefficients at ispin, ikpt, iband
@@ -490,7 +497,7 @@ class ChgLike:
     def _add_or_sub(self, chglike, operation="add"):
         if self.shape != chglike.shape:
             raise TypeError("data shape are different")
-        if have_same_latt(self._cell, chglike._cell):
+        if latt_equal(self._cell, chglike._cell):
             _logger.warning("charges with different lattice!")
         if operation == "add":
             new = self.rawdata + chglike.rawdata

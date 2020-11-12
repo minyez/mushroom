@@ -28,7 +28,7 @@ def detect(path: Union[str, PathLike], fail_with_ext: bool = False) -> str:
     """detect the package of a file at `path`
 
     Args:
-        path (str or os.PathLike): path to the file 
+        path (str or os.PathLike): path to the file
         fail_with_ext (bool): if set True, extension name will be returned if no package is detected
     """
     fail = {True: get_file_ext(path)}.get(fail_with_ext, None)
@@ -50,6 +50,8 @@ _package_specific_fullnames = {
     "INCAR": "vasp",
     "POTCAR": "vasp",
     "KPOINTS": "vasp",
+    "pw.in": "qe",
+    "ph.in": "qe",
     }
 
 # check consistency
@@ -94,9 +96,12 @@ def detect_matchfn(path: Union[str, PathLike, TextIOWrapper], fail_with_ext: boo
     return fail
 
 _package_specific_head_patterns = {
+    r"&control": "qe",
     }
 _package_specific_tail_patterns = {
+    r"Voluntary context switches": "vasp",
     }
+
 # check consistency
 for v in _package_specific_head_patterns.values():
     if v not in package_names:
@@ -113,7 +118,7 @@ def detect_matchhead(path: Union[str, PathLike]) -> str:
     if path.is_dir():
         return None
     for pattern, pkg in _package_specific_head_patterns.items():
-        found = grep(pattern, path, maxcounts=1, from_behind=False)
+        found = grep(pattern, path, maxdepth=1, from_behind=False)
         if found:
             return pkg
     return None
@@ -126,7 +131,7 @@ def detect_matchtail(path: Union[str, PathLike]) -> str:
     if path.is_dir():
         return None
     for pattern, pkg in _package_specific_tail_patterns.items():
-        found = grep(pattern, path, maxcounts=1, from_behind=True)
+        found = grep(pattern, path, maxdepth=1, from_behind=True)
         if found:
             return pkg
     return None

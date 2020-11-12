@@ -97,6 +97,7 @@ class test_wavecar(ut.TestCase):
                     self.assertTrue(np.allclose(v, wv))
                 if isinstance(v, (int, float)):
                     self.assertEqual(v, wv)
+            wc.close()
 
 class test_chglike(ut.TestCase):
     """test CHG and CHGCAR object"""

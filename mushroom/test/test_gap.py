@@ -28,6 +28,7 @@ class test_eps(ut.TestCase):
             if eps.is_q0:
                 emac_nlf_re = [eps.get_eps(i)[0, 0].real for i in range(nomega)]
                 self.assertTrue(np.allclose(emac_nlf_re, verify["emac_nlf_re"]))
+            eps.close()
 
 if __name__ == "__main__":
     ut.main()
