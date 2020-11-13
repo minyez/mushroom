@@ -6,5 +6,12 @@
     "msize": 4,
     "nomega": 6,
     "emac_nlf_re": [12.2858, 9.91075, 7.17481, 5.89049, 3.32362, 1.16882]
+  },
+  "diamond.eps-q2": {
+    "nbyte_recl": 1,
+    "kind": "invm1",
+    "is_q0": false,
+    "msize": 8,
+    "nomega": 6
   }
 }

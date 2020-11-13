@@ -79,7 +79,7 @@ run_template "$@"
 }
 
 function readme () {
-  echo '# template
+  echo '# `template`
 
 ## Description
 

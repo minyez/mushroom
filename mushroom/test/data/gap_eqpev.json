@@ -1,0 +1,10 @@
+{
+  "diamond_1.eqpeV_GW": {
+    "method": "g0w0",
+    "nibzkpts": 3
+  },
+  "diamond_2.eqpeV_GW0": {
+    "method": "gw0",
+    "nibzkpts": 3
+  }
+}

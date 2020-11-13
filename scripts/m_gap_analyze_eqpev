@@ -1,0 +1,35 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""analyze GAP eqpeV data
+"""
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
+from mushroom.gap import Eqpev
+
+def _parser():
+    """the parser"""
+    p = ArgumentParser(description=__doc__, formatter_class=RawDescriptionHelpFormatter)
+    p.add_argument("-c", dest="casename", type=str, default=None,
+                   help="casename")
+    p.add_argument("-p", dest="dirpath", type=str, default=".",
+                   help="path to the directory containg inputs and outputs")
+    p.add_argument("-f", dest="eqpevfile", type=str, default=None,
+                   help="path of eqpev file")
+    p.add_argument("-g", dest="method", type=str, choices=["g0w0", "gw0"], default="g0w0",
+                   help="data of method to analyse")
+    return p
+
+def m_gap_analyze_eqpev():
+    """the main stream"""
+    args = _parser().parse_args()
+    eqpev = Eqpev(peqpev=args.eqpevfile, dirpath=args.dirpath,
+                  casename=args.casename, method=args.method)
+    qpb = eqpev.get_QP_bandstructure()
+    ksb = eqpev.get_KS_bandstructure()
+    print(qpb.fund_gap())
+    print(qpb.fund_trans())
+    print(ksb.fund_gap())
+    print(ksb.fund_trans())
+
+if __name__ == "__main__":
+    m_gap_analyze_eqpev()
+

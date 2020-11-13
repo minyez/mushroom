@@ -5,7 +5,7 @@ import unittest as ut
 import pathlib
 import json
 import numpy as np
-from mushroom.gap import Eps
+from mushroom.gap import Eps, Eqpev
 
 class test_eps(ut.TestCase):
     """.eps file"""
@@ -29,6 +29,25 @@ class test_eps(ut.TestCase):
                 emac_nlf_re = [eps.get_eps(i)[0, 0].real for i in range(nomega)]
                 self.assertTrue(np.allclose(emac_nlf_re, verify["emac_nlf_re"]))
             eps.close()
+
+class test_eqpev(ut.TestCase):
+    """.eps file"""
+    def test_read_testdata(self):
+        """read test eqpev files in data directory"""
+        dir_eqpev = pathlib.Path(__file__).parent / "data"
+        index_json = dir_eqpev / "gap_eqpev.json"
+        with index_json.open('r') as fp:
+            verifies = json.load(fp)
+        for f, verify in verifies.items():
+            print("Testing {}".format(f))
+            fpath = dir_eqpev / f
+            eqpev = Eqpev(peqpev=str(fpath))
+            qpbs = eqpev.get_QP_bandstructure()
+            ksbs = eqpev.get_KS_bandstructure()
+            hfbs = eqpev.get_HF_bandstructure()
+            for k, v in verify.items():
+                if isinstance(v, (int, str, bool)):
+                    self.assertEqual(eqpev.__getattribute__(k), v)
 
 if __name__ == "__main__":
     ut.main()

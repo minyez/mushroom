@@ -9,7 +9,10 @@ def _parser():
     """the argument parser"""
     p = ArgumentParser(description=__doc__, formatter_class=RawDescriptionHelpFormatter)
     p.add_argument("script_path", type=str, help="path to the script to add header")
-    p.add_argument("-p", dest='platform', default=None, type=str, help="use PBS headers")
+    p.add_argument("-J", dest='jobname', default=None, type=str, help="use PBS headers")
+    p.add_argument("-N", dest='nnodes', default=1, type=int, help="number of nodes")
+    p.add_argument("-n", dest='ntasks', default=None, type=int, help="number of tasks")
+    p.add_argument("-p", dest='platform', default=None, type=str, help="manually specify platform")
     p.add_argument("--use-pbs", dest='use_pbs', action="store_true", help="use PBS headers")
     return p
 

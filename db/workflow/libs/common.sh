@@ -71,6 +71,17 @@ function raise_missing_prereq (){
   done
 }
 
+function raise_missing_dir (){
+  # raise when any of pre-requisite directories is missing
+  # $@: names of pre-requisite directories
+  for f in "$@"; do
+    if [ ! -d "$f" ]; then
+      echo "Missing required directory \"$f\""
+      exit 1
+    fi
+  done
+}
+
 function match_directory () {
   echo "$@"
 }
@@ -92,7 +103,7 @@ function split_str () {
 function triple_prod () {
   # triple product of an array. two kinds of inputs
   # 1. 9 arguments can be either C-like or F-like
-  #    since determinant of a matrix is equal to that of its tranpose
+  #    since determinant of a matrix is equal to that of its transpose
   # 2. one string composed of 9 floats separated by single space
   if (( $# == 9 )); then
     echo "$@" | awk '{printf("%f\n",$1*($5*$9-$6*$8)-$2*($4*$9-$6*$7)+$3*($4*$8-$5*$7))}'
@@ -122,6 +133,18 @@ function estimate_npw () {
     '{printf("%d\n", 0.5 + (2.0*$1/$2)**1.5 / $3**3 * $4 / 6.0 / $5**2)}'
 }
 
+function estimate_npw_au () {
+  # estimate the maximum number of plane waves with atomic unit input
+  # $1: ENCUT in Ha
+  # $2: volume of crystal, in Bohr^3
+  if (( $# != 2 )); then
+    exit 1
+  fi
+  encut=$1
+  vol=$2
+  echo "$encut $vol $_PI" | awk \
+    '{printf("%d\n", 0.5 + (2.0)**1.5 / $1**3 * $2 / 6.0 / $3**2)}'
+}
 function largest_div_below_sqrt () {
   # get the largest divider of integer n below its square root
   num=$1

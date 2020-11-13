@@ -1,15 +1,21 @@
 # -*- coding: utf-8 -*-
 """utilities related to GAP2 code"""
 import struct
+import pathlib
 import numpy as np
 from mushroom.core.logger import create_logger
 from mushroom.core.typehint import Path
+from mushroom.core.bs import BandStructure
+from mushroom.core.ioutils import conv_string
+from mushroom.w2k import get_casename
 
 _logger = create_logger("gap")
 del create_logger
 
+gwmethod_suffices = {'g0w0': 'GW', 'gw0': 'GW0'}
+
 class Eps:
-    """object to handle the file ``.esp`` storing dielectric matrix
+    """object to handle the file ``.eps`` storing dielectric matrix
 
     Args:
         peps (Path): path to the epsilon binary file
@@ -140,4 +146,94 @@ class Eps:
         elif self._kind == "eps":
             eps = rawdata
         return eps
+
+class Eqpev:
+    """quasiparticle data object"""
+    _head_lines = 10
+    # pylint: disable=R0914
+    def __init__(self, peqpev: Path = None, dirpath: Path = ".",
+                 casename: str = None, method: str = 'g0w0'):
+        if casename is None:
+            casename = get_casename(dirpath)
+        dirpath = pathlib.Path(dirpath)
+        if peqpev is None:
+            try:
+                peqpev = dirpath / "{}.eqpeV_{}".format(casename, gwmethod_suffices[method.lower()])
+            except KeyError as err:
+                raise KeyError("unknown gw method: {}".format(method)) from err
+        else:
+            suffix = str(peqpev).split('_')[-1]
+            if suffix in gwmethod_suffices.values():
+                for k, v in gwmethod_suffices.items():
+                    if v == suffix:
+                        method = k
+                        break
+            else:
+                raise ValueError("fail to detect the method used in the file {}".format(peqpev))
+        self._peqpev = peqpev
+        self._method = method.lower()
+        data = np.loadtxt(peqpev)
+        nkpts = int(data[-1, 0])
+        nbandsgw = int(data[-1, 1] - data[0, 1]) + 1
+        self._ibandsgw = np.array(data[0:nbandsgw+1, 1], dtype='int')
+        self._eks = np.reshape(data[:, 2], (1, nkpts, nbandsgw), order="C")
+        self._eqp = np.reshape(data[:, 3], (1, nkpts, nbandsgw), order="C")
+        self._ehf = np.reshape(data[:, 4], (1, nkpts, nbandsgw), order="C")
+        self._degw = np.reshape(data[:, -4], (1, nkpts, nbandsgw), order="C")
+        self._nbandsgw = nbandsgw
+        # KS band structure
+        self._ks_bs = None
+        self._qp_bs = None
+        self._hf_bs = None
+        # get kpoints information (weight not included)
+        with open(peqpev, 'r') as h:
+            lines = h.readlines()
+        self._ik = []
+        self._ibzkpts = []
+        for ik in range(nkpts):
+            l = lines[self._head_lines+ik*(2+nbandsgw)]
+            kpt = conv_string(l, int, 3, -5, -4, -3, -1)
+            self._ibzkpts.append([x/kpt[-1] for x in kpt[1:4]])
+            self._ik.append(kpt[0])
+
+    @property
+    def method(self) -> str:
+        """method used to calculate this eps file"""
+        return self._method
+
+    @property
+    def ibzkpts(self):
+        """coordinates of irreducible kpoints"""
+        return self._ibzkpts
+
+    @property
+    def nibzkpts(self) -> int:
+        """coordinates of irreducible kpoints"""
+        return len(self._ibzkpts)
+
+    def _get_bandstructure(self, kind):
+        e = {"qp": self._eqp, "ks": self._eks, "hf": self._ehf}
+        assert kind in e
+        e = e[kind]
+        occ = 1.0 * (e < 0.009)
+        weight = [1.0,] * self.nibzkpts
+        return BandStructure(e, occ, weight, unit="ev", efermi=0.0)
+
+    def get_KS_bandstructure(self):
+        """get Kohn-Sham band structure"""
+        if self._ks_bs is None:
+            self._ks_bs = self._get_bandstructure("ks")
+        return self._ks_bs
+
+    def get_QP_bandstructure(self):
+        """get quasi-particle band structure"""
+        if self._qp_bs is None:
+            self._qp_bs = self._get_bandstructure("qp")
+        return self._qp_bs
+
+    def get_HF_bandstructure(self):
+        """get Hartree-Fock band structure"""
+        if self._hf_bs is None:
+            self._hf_bs = self._get_bandstructure("hf")
+        return self._hf_bs
 
