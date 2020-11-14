@@ -112,6 +112,8 @@ Require `pymatgen`
 
 ### 晶体结构 cell
 
+- [ ] define alias
+
 ### 特殊点路径 kpath
 
 - [ ] 参考 SetayawanW10-AFLOW, 更好地对路径进行分类

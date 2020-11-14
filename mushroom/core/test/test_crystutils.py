@@ -5,7 +5,8 @@ import unittest as ut
 import numpy as np
 from mushroom.core.constants import PI
 from mushroom.core.crystutils import (atms_from_sym_nat, axis_list, get_vol, get_recp_latt,
-                                      periodic_duplicates_in_cell, sym_nat_from_atms)
+                                      periodic_duplicates_in_cell, sym_nat_from_atms,
+                                      get_latt_vecs_from_latt_consts)
 
 class test_cell_utils(ut.TestCase):
     """Test the utility functions for ``Cell`` use
@@ -56,6 +57,21 @@ class test_cell_utils(ut.TestCase):
         sym, nat = sym_nat_from_atms(["C", "Al", "Al", "C", "Al", "F"])
         self.assertListEqual(sym, ["C", "Al", "F"])
         self.assertListEqual(nat, [2, 3, 1])
+
+    def test_get_latt_vecs_from_latt_consts(self):
+        """test lattice vectors"""
+        latt_consts = [2.510, 2.510, 6.690, 90.0, 90.0, 90.0]
+        latt = np.array([[2.51000000, 0.00000000, 0.00000000,],
+                         [0.00000000, 2.51000000, 0.00000000],
+                         [0.00000000, 0.00000000, 6.69000000]])
+        converted = get_latt_vecs_from_latt_consts(*latt_consts)
+        self.assertTrue(np.array_equal(latt, converted))
+        latt_consts = [2.510, 2.510, 6.690, 90.0, 90.0, 120.0]
+        latt = np.array([[2.51000000, 0.00000000, 0.00000000,],
+                         [-1.25500000, 2.17372400, 0.00000000],
+                         [0.00000000, 0.00000000, 6.69000000]])
+        converted = get_latt_vecs_from_latt_consts(*latt_consts)
+        self.assertTrue(np.array_equal(latt, converted))
 
 
 if __name__ == "__main__":

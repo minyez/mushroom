@@ -45,12 +45,12 @@ def get_latt_vecs_from_latt_consts(a: float, b: float, c: float,
     alpha *= PI / 180.
     beta *= PI / 180.
     gamma *= PI / 180.
+    ca, cb, cg = cos([alpha, beta, gamma])
+    sa, sb, sg = sin([alpha, beta, gamma])
     a1 = [a, 0., 0.]
-    a2 = [b*cos(gamma), b*sin(gamma), 0.0]
-    a3 = [c*cos(beta),
-          c/sin(gamma)*(cos(alpha)-cos(gamma)*cos(beta)),
-          c/sin(gamma)*np.sqrt(sin(alpha)*sin(alpha) - \
-                               cos(beta)*cos(beta)*(1.0+cos(gamma)*cos(gamma)))
+    a2 = [b*cg, b*sg, 0.0]
+    a3 = [c*cb, c/sg*(ca-cg*cb),
+          c/sg*np.sqrt(sb**2*sg**2 - ca**2 - cg**2*cb**2 + 2.0*ca*cb*cg)
           ]
     return np.round([a1, a2, a3], decimals=decimals)
 

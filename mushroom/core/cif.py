@@ -117,6 +117,7 @@ class Cif:
                     ["_cell_length_a", "_cell_length_b", "_cell_length_c"],
                 )
             )
+            _logger.debug("cell length: %r , %r, %r", latta, lattb, lattc)
             angles = []
             for a in ["_cell_angle_alpha", "_cell_angle_beta", "_cell_angle_gamma"]:
                 angles.append(conv_estimate_number(self._blk.GetItemValue(a)))

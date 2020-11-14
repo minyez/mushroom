@@ -26,10 +26,15 @@ try:
     from mushroom.__config__ import log_to_stream
 except ImportError:
     log_to_stream = False
+try:
+    from mushroom.__config__ import logfile_mode
+except ImportError:
+    logfile_mode = 'w'
+
 
 logfile = "mushroom.log"
 
-_root_hand = logging.FileHandler(logfile, mode='a')
+_root_hand = logging.FileHandler(logfile, mode=logfile_mode)
 _stream_hand = logging.StreamHandler()
 _root_form = logging.Formatter(fmt='%(asctime)s - %(name)7s:%(levelname)8s - %(message)s',
                                datefmt='%Y-%m-%d %H:%M:%S')
