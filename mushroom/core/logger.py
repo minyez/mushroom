@@ -10,48 +10,61 @@ def get_logging_level(ll):
 
 try:
     from mushroom.__config__ import log_level
-    LOG_LEVEL = get_logging_level(log_level)
+    log_level = get_logging_level(log_level)
 except ImportError:
-    LOG_LEVEL = logging.INFO
-
+    log_level = logging.INFO
 try:
     from mushroom.__config__ import stream_level
-    _STREAM_LEVEL = get_logging_level(stream_level)
+    stream_level = get_logging_level(stream_level)
 except ImportError:
-    _STREAM_LEVEL = logging.INFO
+    stream_level = logging.INFO
+try:
+    from mushroom.__config__ import log_to_file
+except ImportError:
+    log_to_file = True
+try:
+    from mushroom.__config__ import log_to_stream
+except ImportError:
+    log_to_stream = False
 
-LOGFILE = "mushroom.log"
+logfile = "mushroom.log"
 
-_ROOT_HAND = logging.FileHandler(LOGFILE, mode='a')
-_STREAM_HAND = logging.StreamHandler()
-_ROOT_FORM = logging.Formatter(fmt='%(asctime)s - %(name)7s:%(levelname)8s - %(message)s',
+_root_hand = logging.FileHandler(logfile, mode='a')
+_stream_hand = logging.StreamHandler()
+_root_form = logging.Formatter(fmt='%(asctime)s - %(name)7s:%(levelname)8s - %(message)s',
                                datefmt='%Y-%m-%d %H:%M:%S')
-_STREAM_FORM = logging.Formatter(fmt='%(name)7s:%(levelname)8s - %(message)s')
+_stream_form = logging.Formatter(fmt='%(name)7s:%(levelname)8s - %(message)s')
 
-_ROOT_HAND.setFormatter(_ROOT_FORM)
-_ROOT_HAND.setLevel(LOG_LEVEL)
-_STREAM_HAND.setFormatter(_STREAM_FORM)
-_STREAM_HAND.setLevel(_STREAM_LEVEL)
+_root_hand.setFormatter(_root_form)
+_root_hand.setLevel(log_level)
+_stream_hand.setFormatter(_stream_form)
+_stream_hand.setLevel(stream_level)
 
 
 def create_logger(name: str, level: str = None,
-                  f_handler: bool = True, s_handler: bool = True) -> logging.Logger:
+                  f_handler: bool = None, s_handler: bool = None) -> logging.Logger:
     """create a logger object for recording log
-    
+
     Args:
-        name (str) : the name of logger. 
+        name (str) : the name of logger.
         level (str or int) : level of logger
         f_handler (bool) : if write to the file handler (file "mushroom.log").
+            None to use custom variable ``log_to_file``
         s_handler (bool) : if write to the stream handler (stdout)
+            None to use custom variable ``log_to_stream``
     """
     logger = logging.getLogger(name)
     if level is not None:
         logger.setLevel(get_logging_level(level))
     else:
-        logger.setLevel(LOG_LEVEL)
+        logger.setLevel(log_level)
+    if f_handler is None:
+        f_handler = log_to_file
     if f_handler:
-        logger.addHandler(_ROOT_HAND)
+        logger.addHandler(_root_hand)
+    if s_handler is None:
+        s_handler = log_to_stream
     if s_handler:
-        logger.addHandler(_STREAM_HAND)
+        logger.addHandler(_stream_hand)
     return logger
 

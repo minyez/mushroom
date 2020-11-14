@@ -63,7 +63,8 @@ class test_BS_no_projection(ut.TestCase):
         self.assertTupleEqual((nspins, nkpts), np.shape(bs.cbm_sp_kp))
         self.assertTupleEqual((nspins,), np.shape(bs.cbm_sp))
         self.assertTupleEqual((), np.shape(bs.cbm))
-        self.assertTupleEqual((nspins, nkpts), np.shape(bs.direct_gap()))
+        self.assertTupleEqual((nspins, nkpts), np.shape(bs.direct_gaps()))
+        self.assertTupleEqual((nspins,), np.shape(bs.direct_gap()))
         self.assertTupleEqual((nspins,), np.shape(bs.fund_gap()))
         self.assertTupleEqual((nspins, 2), np.shape(bs.fund_trans()))
         self.assertTupleEqual((nspins,), np.shape(bs.kavg_gap()))
@@ -109,7 +110,9 @@ class test_BS_no_projection(ut.TestCase):
         occ[:, :, :nb//2] += 1.0
         weight = np.ones(nkp)
         bs = BS(eigen, occ, weight)
-        self.assertTrue(np.array_equal(bs.direct_gap(), np.ones((nsp, nkp))*gap))
+        self.assertTrue(np.array_equal(bs.direct_gaps(), np.ones((nsp, nkp))*gap))
+        self.assertTrue(np.array_equal(bs.direct_gap(), np.ones((nsp,))*gap))
+        self.assertTrue(bs.is_gap_direct())
 
 
 class test_BS_projection(ut.TestCase):

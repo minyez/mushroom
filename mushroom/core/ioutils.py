@@ -569,6 +569,29 @@ def decode_int_range(s: str) -> List:
         decoded.append(s)
     return decoded
 
+def block_banner(info: str, width: int = 80) -> str:
+    """return a three-line block banner with info centered at the second line"""
+    n = len(info)
+    if n >= width:
+        width = n
+    slist = ["="*width, one_line_center_banner(info, width, fill=" "), "="*width]
+    return "\n".join(slist)
+
+def one_line_center_banner(info: str, width: int = 80, fill: str = "=") -> str:
+    """return a string with centered information by fill with ``fill`` on both sides
+
+    newline in info will be replaced by space
+    """
+    info = info.replace("\n", " ")
+    n = len(info)
+    # remove two spaces for join
+    width = width - 2
+    if n >= width:
+        return info
+    lf = (width-n) // 2
+    rf = width - n - lf
+    slist = [fill*lf, info, fill*rf]
+    return "{} {} {}".format(*slist)
 
 def fortran_write(fortran_format: str, *args, file=stdout):
     """write out arguments in a Fortran format (without parentheses)

@@ -563,12 +563,23 @@ class BandStructure(EnergyUnit):
         """
         return self.__lazy_bandedge_return("_band_width")
 
-    def direct_gap(self):
+    def direct_gaps(self):
         """Direct gap between VBM and CBM of each spin-kpt channel
 
         float, shape (nspins, nkpts)
         """
         return self.cbm_sp_kp - self.vbm_sp_kp
+
+    def direct_gap(self):
+        """The minimal direct gap between VBM and CBM of each spin-kpt channel
+
+        float, shape (nspins,)
+        """
+        return np.min(self.direct_gaps(), axis=1)
+
+    def is_gap_direct(self) -> bool:
+        """True if the bandstructure belongs to a direct gap material"""
+        return all(self.fund_gap() >= self.direct_gap())
 
     def fund_gap(self):
         """Fundamental gap for each spin channel.
@@ -593,7 +604,7 @@ class BandStructure(EnergyUnit):
 
         float, shape (nspins,)
         """
-        return np.dot(self.direct_gap(), self._weight) / np.sum(self._weight)
+        return np.dot(self.direct_gaps(), self._weight) / np.sum(self._weight)
 
     # * Projection related functions
     def effective_gap(self, ivb: int = None, icb: int = None,
@@ -634,7 +645,7 @@ class BandStructure(EnergyUnit):
         else:
             cb_coef = cb_coefs[:, :, icb]
         # ! abs is added in case ivb and icb are put in the opposite
-        inv = np.sum(np.abs(np.reciprocal(self.direct_gap()) * vb_coef * cb_coef))
+        inv = np.sum(np.abs(np.reciprocal(self.direct_gaps()) * vb_coef * cb_coef))
         if np.allclose(inv, 0.0):
             return np.infty
         return 1.0/inv

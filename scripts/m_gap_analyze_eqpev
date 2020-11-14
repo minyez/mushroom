@@ -1,9 +1,33 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""analyze GAP eqpeV data
+"""analyze GAP eqpeV data from casename.eqpeV_GW and casename.eqpeV_GW0
 """
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
+import numpy as np
+from mushroom.core.ioutils import one_line_center_banner
+from mushroom.core.bs import BandStructure
 from mushroom.gap import Eqpev
+
+def display_bandinfo(bs: BandStructure, kpts):
+    """display information of band structure"""
+    eg_ind = bs.fund_gap()[0]
+    direct_gaps = bs.direct_gaps()[0]
+    eg_dir = np.min(direct_gaps)
+    ik_eg_dir = np.argmin(direct_gaps)
+    bs.unit = "ev"
+    unit = "eV"
+    ik_vb, ik_cb = bs.fund_trans()[0]
+    if bs.is_gap_direct():
+        print("> fundamental gap = {:8.5f} {}".format(eg_dir, unit))
+        print(">>   ik={:<3d} ({:7.5f},{:7.5f},{:7.5f})".format(ik_eg_dir, *kpts[ik_eg_dir, :]))
+    else:
+        print("> fundamental gap = {:8.5f} {}".format(eg_ind, unit))
+        print(">> ikvb={:<3d} ({:7.5f},{:7.5f},{:7.5f}) -> ikcb={:<3d} ({:7.5f},{:7.5f},{:7.5f})"
+              .format(ik_vb, *kpts[ik_vb, :], ik_cb, *kpts[ik_cb, :]))
+        print(">> VBM direct gap = {:8.5f} {}".format(direct_gaps[ik_vb], unit))
+        print(">> CBM direct gap = {:8.5f} {}".format(direct_gaps[ik_cb], unit))
+        print("> min. direct gap = {:8.5f} {} at ik={:<3d} ({:7.5f},{:7.5f},{:7.5f})"
+              .format(eg_dir, unit, ik_eg_dir, *kpts[ik_eg_dir, :]))
 
 def _parser():
     """the parser"""
@@ -14,21 +38,41 @@ def _parser():
                    help="path to the directory containg inputs and outputs")
     p.add_argument("-f", dest="eqpevfile", type=str, default=None,
                    help="path of eqpev file")
-    p.add_argument("-g", dest="method", type=str, choices=["g0w0", "gw0"], default="g0w0",
-                   help="data of method to analyse")
+    p.add_argument("--nohead", dest="removehead", action="store_true",
+                   help="remove header when display")
     return p
 
 def m_gap_analyze_eqpev():
     """the main stream"""
     args = _parser().parse_args()
-    eqpev = Eqpev(peqpev=args.eqpevfile, dirpath=args.dirpath,
-                  casename=args.casename, method=args.method)
-    qpb = eqpev.get_QP_bandstructure()
-    ksb = eqpev.get_KS_bandstructure()
-    print(qpb.fund_gap())
-    print(qpb.fund_trans())
-    print(ksb.fund_gap())
-    print(ksb.fund_trans())
+    if args.eqpevfile is not None:
+        eqpev = Eqpev(peqpev=args.eqpevfile, dirpath=args.dirpath,
+                      casename=args.casename)
+        ksb = eqpev.get_KS_bandstructure()
+        qpb = eqpev.get_QP_bandstructure()
+        if not args.removehead:
+            print(one_line_center_banner("KS band structure"))
+        display_bandinfo(ksb, eqpev.ibzkpts)
+        if not args.removehead:
+            print(one_line_center_banner("{} band structure".format(eqpev.method.upper())))
+        display_bandinfo(qpb, eqpev.ibzkpts)
+    else:
+        eqpevg0w0 = Eqpev(dirpath=args.dirpath, casename=args.casename,
+                          method='g0w0')
+        eqpevgw0 = Eqpev(dirpath=args.dirpath, casename=args.casename,
+                         method='gw0')
+        ksb = eqpevg0w0.get_KS_bandstructure()
+        g0w0b = eqpevg0w0.get_QP_bandstructure()
+        gw0b = eqpevgw0.get_QP_bandstructure()
+        if not args.removehead:
+            print(one_line_center_banner("KS band structure"))
+        display_bandinfo(ksb, eqpevg0w0.ibzkpts)
+        if not args.removehead:
+            print(one_line_center_banner("G0W0 band structure"))
+        display_bandinfo(g0w0b, eqpevg0w0.ibzkpts)
+        if not args.removehead:
+            print(one_line_center_banner("GW0 band structure"))
+        display_bandinfo(gw0b, eqpevgw0.ibzkpts)
 
 if __name__ == "__main__":
     m_gap_analyze_eqpev()

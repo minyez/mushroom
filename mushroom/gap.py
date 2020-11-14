@@ -195,6 +195,8 @@ class Eqpev:
             kpt = conv_string(l, int, 3, -5, -4, -3, -1)
             self._ibzkpts.append([x/kpt[-1] for x in kpt[1:4]])
             self._ik.append(kpt[0])
+        self._ik = np.array(self._ik)
+        self._ibzkpts = np.array(self._ibzkpts)
 
     @property
     def method(self) -> str:
