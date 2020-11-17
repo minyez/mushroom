@@ -258,15 +258,20 @@ class Vmat:
         self._load()
 
     @property
+    def nbyte_recl(self):
+        """unit of record length"""
+        return self._nbyte_recl
+
+    @property
     def is_q0(self):
         """bool, if the object is matrix elements at q=0"""
-        return self._iq == 1
+        return self.iq == 1
 
     @property
     def ev(self):
         """eigenvalue"""
         if self._ev is None:
-            self._ev = np.linalg.eig(self._vmat)
+            self._ev = np.linalg.eigvalsh(self._vmat)
         return self._ev
 
     @property

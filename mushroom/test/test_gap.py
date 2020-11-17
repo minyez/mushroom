@@ -5,7 +5,7 @@ import unittest as ut
 import pathlib
 import json
 import numpy as np
-from mushroom.gap import Eps, Eqpev
+from mushroom.gap import Eps, Eqpev, Vmat
 
 class test_eps(ut.TestCase):
     """.eps file"""
@@ -48,6 +48,24 @@ class test_eqpev(ut.TestCase):
             for k, v in verify.items():
                 if isinstance(v, (int, str, bool)):
                     self.assertEqual(eqpev.__getattribute__(k), v)
+
+class test_vmat(ut.TestCase):
+    """.eps file"""
+    def test_read_testdata(self):
+        """read test vmat files in data directory"""
+        dir_vmat = pathlib.Path(__file__).parent / "data"
+        index_json = dir_vmat / "gap_vmat.json"
+        with index_json.open('r') as fp:
+            verifies = json.load(fp)
+        for f, verify in verifies.items():
+            print("Testing {}".format(f))
+            fpath = dir_vmat / f
+            vmat = Vmat(pvmat=str(fpath), nbyte_recl=verify["nbyte_recl"])
+            self.assertTrue(vmat.is_hermitian())
+            ev = vmat.ev
+            for k, v in verify.items():
+                if isinstance(v, (int, str, bool)):
+                    self.assertEqual(vmat.__getattribute__(k), v)
 
 if __name__ == "__main__":
     ut.main()
