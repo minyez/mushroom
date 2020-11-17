@@ -38,7 +38,7 @@ db/workflow/*/common.sh
 !db/workflow/libs/*.sh
 
 # test scripts with underscore prefix
-scripts/_*.py
+scripts/_*
 
 mcm.info
 commit.info

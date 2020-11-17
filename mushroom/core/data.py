@@ -83,7 +83,7 @@ def closest_frac(decimal: float, maxn=100, thres=None, ret=1):
         If such fraction is found, depending on ``ret``, returns
 
             - 1: float, the guessed fraction
-            - 2: (int, int), numerator and denominator 
+            - 2: (int, int), numerator and denominator
             - 3: (int, int, float), numerator and denominator, error
             - otherwise: string, the guessed fraction
 
@@ -213,12 +213,12 @@ class Data:
         self.datatype = datatype
 
     def xmin(self) -> float:
-        """get the min value of abscissa 
+        """get the min value of abscissa
         """
         return self.x.min()
 
     def xmax(self) -> float:
-        """get the max value of abscissa 
+        """get the max value of abscissa
         """
         return self.x.max()
 
@@ -247,7 +247,7 @@ class Data:
     def _get(self, data_cols, scale=1.0, transpose=False):
         """get all data value
 
-        default as 
+        default as
                 (x1, y1, z1),
                 (x2, y2, z2),
                 ...
@@ -288,7 +288,7 @@ class Data:
                 if Iterable, each form will be parsed respectively.
         """
         slist = []
-        # check if format string is valid 
+        # check if format string is valid
         if form is not None and isinstance(form, (tuple, list)):
             if len(form) != len(data_cols):
                 msg = "format string does not conform data columns"
@@ -315,8 +315,8 @@ class Data:
 
     def get_extra(self, transpose=False):
         """get all error value
-       
-        Default as 
+
+        Default as
             (xel1, xer1, yel1, yer1, ...),
             (xel2, xer2, yel2, yer2, ...),
 
@@ -348,7 +348,7 @@ class Data:
 
     def export_data(self, form=None, transpose=False, sep=None) -> List[str]:
         """Export the data as a list of strings
-        
+
         See get for the meaning of transpose
 
         Args:
@@ -374,7 +374,7 @@ class Data:
 
     def export(self, form=None, transpose=False, sep=None) -> List[str]:
         """Export both data and extras as a list of strings
-        
+
         See get_all for the meaning of transpose
 
         Args:
@@ -386,10 +386,11 @@ class Data:
         return self._export(self._data_cols + self._extra_cols,
                             form=form, transpose=transpose, sep=sep)
 
+    # pylint: disable=R0914
     @classmethod
     def _check_data_type(cls, *xyz, datatype=None, **extras):
         """confirm the data type of input. Valid types are declared in Data.DATATYPES
-    
+
         Args:
             *xyz (array-like):
             datatype (str) : data type of . None for automatic detect
@@ -405,8 +406,8 @@ class Data:
         # check data size
         try:
             np.array(xyz, dtype='float')
-        except ValueError:
-            raise ValueError("inconsistent size of xyz data")
+        except ValueError as err:
+            raise ValueError("inconsistent size of xyz data") from err
         nd, ndp = np.array(xyz).shape
         if nd <= 1:
             raise ValueError("no enough parsed data")
@@ -478,3 +479,17 @@ def export_2d_data(data, form: str = None, transpose: bool = False, sep: str = N
         slist.append(s)
     return slist
 
+def reshape_2n_float_n_cmplx(data):
+    """convert 2n-float 1d-array into an n-complex 1d-array
+
+    The floats at even (from 0) and odd (from 1) indices become
+    the real and imaginary part of the returned array, respectively
+
+    Args:
+        data (1d-array): array consisting of 2n floats
+    """
+    n = len(data)
+    if n%2 != 0:
+        raise ValueError("odd length is invalid: {}".format(n))
+    data = np.array(data)
+    return data[0::2] + data[1::2]*1.0j

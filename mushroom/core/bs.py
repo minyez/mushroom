@@ -896,3 +896,29 @@ def split_apb(apb: str):
 
     return a, p, b
 
+def display_band_analysis(bs: BandStructure, kpts):
+    """display analysis of band structure"""
+    try:
+        eg_ind = bs.fund_gap()[0]
+        direct_gaps = bs.direct_gaps()[0]
+        eg_dir = np.min(direct_gaps)
+        ik_eg_dir = np.argmin(direct_gaps)
+        was_unit = bs.unit
+        bs.unit = "ev"
+        unit = "eV"
+        ik_vb, ik_cb = bs.fund_trans()[0]
+        if bs.is_gap_direct():
+            print("> fundamental gap = {:8.5f} {}".format(eg_dir, unit))
+            print(">>   ik={:<3d} ({:7.5f},{:7.5f},{:7.5f})".format(ik_eg_dir, *kpts[ik_eg_dir, :]))
+        else:
+            print("> fundamental gap = {:8.5f} {}".format(eg_ind, unit))
+            print(">> ikvb={:<3d} ({:7.5f},{:7.5f},{:7.5f}) -> ikcb={:<3d} ({:7.5f},{:7.5f},{:7.5f})"
+                  .format(ik_vb, *kpts[ik_vb, :], ik_cb, *kpts[ik_cb, :]))
+            print(">> VBM direct gap = {:8.5f} {}".format(direct_gaps[ik_vb], unit))
+            print(">> CBM direct gap = {:8.5f} {}".format(direct_gaps[ik_cb], unit))
+            print("> min. direct gap = {:8.5f} {} at ik={:<3d} ({:7.5f},{:7.5f},{:7.5f})"
+                  .format(eg_dir, unit, ik_eg_dir, *kpts[ik_eg_dir, :]))
+        bs.unit = was_unit
+    except BandStructureError as err:
+        raise err("fail to display band analysis")
+

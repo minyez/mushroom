@@ -6,9 +6,8 @@ import unittest as ut
 import numpy as np
 
 from mushroom.core.data import (conv_estimate_number,
-                                get_divisors,
-                                get_mutual_primes,
-                                closest_frac,
+                                get_divisors, get_mutual_primes, closest_frac,
+                                reshape_2n_float_n_cmplx,
                                 Data)
 
 class test_number_conversion(ut.TestCase):
@@ -85,8 +84,14 @@ class test_Data(ut.TestCase):
         self.assertListEqual(s_normal_51f_42f, data.export(form=["{:5.1f}", "{:4.2f}"]))
         self.assertListEqual(s_transp_51f_42f,
                              data.export(form=["{:5.1f}", "{:4.2f}"], transpose=True))
-        
 
+
+class test_reshape(ut.TestCase):
+    """reshape facility"""
+    def test_reshape_2n_floats(self):
+        fdata = [1.0, 2.0, 3.0, 4.0]
+        cdata = [1.0+2.0j, 3.0+4.0j]
+        self.assertTrue(np.array_equal(reshape_2n_float_n_cmplx(fdata), cdata))
 
 if __name__ == "__main__":
     ut.main()

@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
-"""utilities related to GAP2 code"""
+"""utilities related to GAP2 code
+
+TODO:
+    check out the use of nbyte_recl
+"""
 import struct
 import pathlib
 import numpy as np
@@ -7,6 +11,8 @@ from mushroom.core.logger import create_logger
 from mushroom.core.typehint import Path
 from mushroom.core.bs import BandStructure
 from mushroom.core.ioutils import conv_string
+from mushroom.core.data import reshape_2n_float_n_cmplx
+
 from mushroom.w2k import get_casename
 
 _logger = create_logger("gap")
@@ -27,7 +33,7 @@ class Eps:
     known_kind = ("eps", "inv", "invm1")
 
     def __init__(self, peps: Path, is_q0: bool = False,
-                 kind: str = "eps", nbyte_recl: int = 4):
+                 kind: str = "eps", nbyte_recl: int = 1):
         self._peps = peps
         self._fhandle = None
         self._rawdata = {}
@@ -238,4 +244,77 @@ class Eqpev:
         if self._hf_bs is None:
             self._hf_bs = self._get_bandstructure("hf")
         return self._hf_bs
+
+class Vmat:
+    """analyze Coulomb matrix vmat binary data (2e-201117)"""
+    def __init__(self, pvmat: Path, nbyte_recl: int = 4):
+        self._pvmat = pvmat
+        self._nbyte_recl = nbyte_recl
+        self._iq = None
+        self._vmat = None
+        self._msize = None
+        self._recl = None
+        self._ev = None
+        self._load()
+
+    @property
+    def is_q0(self):
+        """bool, if the object is matrix elements at q=0"""
+        return self._iq == 1
+
+    @property
+    def ev(self):
+        """eigenvalue"""
+        if self._ev is None:
+            self._ev = np.linalg.eig(self._vmat)
+        return self._ev
+
+    @property
+    def diag(self):
+        """diagonal elements"""
+        return np.diagonal(self._vmat)
+
+    @property
+    def iq(self):
+        """int, index of qpoint, starting from 1"""
+        return self._iq
+
+    @property
+    def vmat(self):
+        """complex ndarray, elements of Coulomb matrix"""
+        return self._vmat
+
+    @property
+    def msize(self):
+        """int, size of Coulomb matrix"""
+        return self._msize
+
+    @property
+    def recl(self):
+        """int, record length"""
+        return self._recl
+
+    def is_hermitian(self):
+        """if the Coulomb matrix is Hermitian
+
+        Returns:
+            bool
+        """
+        diff = self._vmat - self._vmat.conjugate().T
+        return np.allclose(diff, 0.0)
+
+    def _load(self):
+        """load the binary file"""
+        with open(self._pvmat, 'rb') as h:
+            recl, iq, msize = struct.unpack('iii', h.read(12))
+            self._recl = recl
+            self._iq = iq
+            self._msize = msize
+            h.seek(recl)
+            vmat = []
+            for i in range(msize):
+                h.seek((1+i)*recl)
+                data = np.frombuffer(h.read(16*msize), dtype='float64', count=2*msize)
+                vmat.append(reshape_2n_float_n_cmplx(data))
+            self._vmat = np.array(vmat)
 

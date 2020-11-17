@@ -29,7 +29,9 @@ npt_default = 781
 rzero_default = 0.0001
 rzero_default_elements = {}
 rmt_default = 1.8
-rmt_default_elements = {}
+rmt_default_elements = {
+        "N": 1.4, "B": 1.3
+    }
 
 def _get_default_rzero(element):
     """get the default R0 for element ``element``
@@ -228,10 +230,6 @@ class Struct:
             self.rotmats = []
             for i, _ in enumerate(atms_types):
                 self.rotmats.append(np.diag([1.0, 1.0, 1.0]))
-        self.symops = symops
-        if symops is None:
-            self.symops = {"rotations": [np.diag((1, 1, 1)),],
-                           "translations": [np.zeros(3),]}
         posi = []
         natm_types = []
         if kind == "F":
@@ -267,6 +265,9 @@ class Struct:
         self.__init_rzeros(rzeros)
         self.__init_rmts(rmts)
         self.comment = self._cell.comment
+        self.symops = symops
+        if symops is None:
+            self.symops = self._cell.get_symops()
         _logger.debug(">  finish building Struct")
         _logger.debug(">> atms_types: %r", self.atms_types)
         _logger.debug(">>types(cell): %r", self._cell.atom_types)
