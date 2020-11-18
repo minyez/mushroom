@@ -55,7 +55,8 @@ def m_workflow():
         if wf is None:
             raise ValueError("workflow {} not available".format(args.wf))
         dbwf.init_workflow_libs_symlink(wf)
-        dbwf.copy_workflow_to_dst(wf, args.dst, args.overwrite, args.copy_readme)
+        dbwf.copy_workflow(wf, args.dst, overwrite=args.overwrite,
+                           copy_readme=args.copy_readme)
         pscript = Path(args.dst) / "run_{}.sh".format(wf)
         add_scheduler_header(pscript, current_platform, current_use_pbs)
 

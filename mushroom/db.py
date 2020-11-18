@@ -63,7 +63,12 @@ class _DBBase:
         if self._available_entries is None:
             d = []
             for regex in self._glob:
-                d.extend(str(x.relative_to(self._db_path)) for x in self._db_path.glob(regex))
+                d.extend(str(x.relative_to(self._db_path))
+                         for x in self._db_path.glob(regex))
+            # remove cwd
+            if "." in d:
+                i = d.index(".")
+                del d[i]
             self._available_entries = d
         return self._available_entries
 
@@ -252,8 +257,8 @@ class DBWorkflow(_DBBase):
         else:
             _logger.warning(".depends file is not found for workflow %s", wf)
 
-    def copy_workflow_to_dst(self, wf: Union[str, int], dst: str = ".", create_dir: bool = True,
-                             overwrite: bool = False, copy_readme: bool = False):
+    def copy_workflow(self, wf: Union[str, int], dst: str = ".", create_dir: bool = True,
+                      overwrite: bool = False, copy_readme: bool = False):
         """copy the workflow files to destination
 
         Args:
@@ -296,3 +301,50 @@ class DBKPath(_DBBase):
     def __init__(self):
         _DBBase.__init__(self, "kpath", ["**/*.json",])
 
+class DBDoctemp(_DBBase):
+    """database of document template"""
+
+    def __init__(self):
+        _DBBase.__init__(self, "doctemp", ["**", "*.tex", "*.docx", "*.doc"])
+        self.get_doctemp = self.get_entry
+        self.get_doctemp_path = self.get_entry_path
+
+    def copy_doctemp(self, dt: Union[str, int], dst: str = ".", create_dir: bool = True,
+                     overwrite: bool = False):
+        """copy the document template to destination
+
+        Args:
+            dt (str or int)
+            dst (str)
+            create_dir (bool): if set True, dst will be created when it is not found.
+                Otherwise NotADirectoryError will be raised
+            overwrite (bool)
+        """
+        p = pathlib.Path(self.get_doctemp_path(dt))
+        dst = pathlib.Path(dst)
+        if not dst.is_dir():
+            try:
+                if create_dir:
+                    makedirs(dst)
+                else:
+                    raise NotADirectoryError("directory {} does not exist".format(dst))
+            except PermissionError as err:
+                raise PermissionError("cannot create directory due to limited permission") from err
+            else:
+                raise OSError("cannot create directory")
+            _logger.info("Created directory under %s", str(dst))
+        _logger.info("Copying %s files to %s", p.name, dst.name)
+        if p.is_file():
+            files = [p,]
+        elif p.is_dir():
+            files = [x for x in p.glob("*") if not x.is_dir()]
+        else:
+            raise TypeError("expected file/directory of document template, {}".format(p.name))
+        for x in files:
+            if not any([x.name.startswith("."), x.name.endswith(".log"), x.is_dir()]):
+                f = dst / x.name
+                if not f.is_file() or overwrite:
+                    copy(x, f)
+                    _logger.info(">> %s", f.name)
+                else:
+                    _logger.warning(">> %s found. Use --force to overwrite.", f.name)

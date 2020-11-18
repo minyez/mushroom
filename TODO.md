@@ -30,6 +30,8 @@
 
 ### 数据库管理模块 `db`
 
+- [ ] 支持文件夹条目下文件拷贝类型筛选, 避免拷贝不必要的文件
+
 ### Wannier90 `w90`
 
 ### VASP `vasp`
@@ -109,6 +111,8 @@ Require `pymatgen`
 ### `matplotlib.pyplot` wrapper
 
 ## 数据库 db
+
+### 文档模板 doctemp
 
 ### 晶体结构 cell
 

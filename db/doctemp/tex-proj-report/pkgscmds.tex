@@ -1,0 +1,9 @@
+% !TeX root = main.tex
+% set package here
+\usepackage{import} %解决相对路径input的问题
+\usepackage{ifxetex}
+\ifxetex%
+  \usepackage{xeCJK}%
+\else%
+  \usepackage[T1]{fontenc}%
+\fi
