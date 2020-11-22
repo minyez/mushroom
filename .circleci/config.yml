@@ -37,6 +37,7 @@ jobs:
       - run:
           command: |
             export PYTHONPATH="~/mushroom:$PYTHONPATH"
+            export FORCE_COPY=1
             pytest --cov=./
             codecov
   test-py35: &test-template
@@ -57,4 +58,5 @@ jobs:
       - run:
           command: |
             export PYTHONPATH="~/mushroom:$PYTHONPATH"
+            export FORCE_COPY=1
             pytest

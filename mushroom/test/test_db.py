@@ -5,7 +5,6 @@ import unittest as ut
 import os
 import tempfile
 import pathlib
-from pwd import getpwuid
 from mushroom.db import DBCell, DBWorkflow, DBEntryNotFoundError, DBDoctemp
 from mushroom.w2k import Struct
 
@@ -14,7 +13,6 @@ try:
     force_copy = True
 except KeyError:
     force_copy = False
-user = getpwuid(os.geteuid()).pw_name
 
 class test_initialize_internal(ut.TestCase):
     """test initialization of internal database"""
@@ -31,7 +29,7 @@ class test_initialize_internal(ut.TestCase):
         self.assertFalse(dbwf.has_entry("entry not exist"))
         self.assertListEqual([], dbwf.filter(r"no entry match this"))
         self.assertIsNone(dbwf.get_entry_path("entry not exist"))
-        if user == "stevezhang" and not force_copy:
+        if not force_copy:
             return
         # test copy a workflow to temprary directory
         for i in range(dbwf.N):
@@ -44,7 +42,7 @@ class test_initialize_internal(ut.TestCase):
         self.assertFalse(dbdt.has_entry("entry not exist"))
         self.assertListEqual([], dbdt.filter(r"no entry match this"))
         self.assertIsNone(dbdt.get_entry_path("entry not exist"))
-        if user == "stevezhang" and not force_copy:
+        if force_copy:
             return
         # test copy a doctemp to temprary directory
         for i in range(dbdt.N):
@@ -74,7 +72,7 @@ class test_dbcell(ut.TestCase):
     def test_extract_to_vasp(self):
         """successful extract"""
         tf = tempfile.NamedTemporaryFile(suffix=".POSCAR")
-        if user == "stevezhang" and not force_copy:
+        if not force_copy:
             tf.close()
             return
         for i in range(self.dbc.N):
@@ -85,7 +83,7 @@ class test_dbcell(ut.TestCase):
     def test_extract_to_w2k(self):
         """successful extract"""
         tf = tempfile.NamedTemporaryFile(suffix=".struct")
-        if user == "stevezhang" and not force_copy:
+        if not force_copy:
             tf.close()
             return
         for i in range(self.dbc.N):

@@ -3,7 +3,7 @@
 import pathlib
 from re import search
 from os import makedirs
-from shutil import copy
+import shutil
 from collections.abc import Iterable
 from typing import Union
 
@@ -17,6 +17,7 @@ __all__ = [
         "DBCell",
         "DBWorkflow",
         "DBKPath",
+        "DBDoctemp",
         ]
 
 _logger = create_logger("db")
@@ -38,12 +39,16 @@ class _DBBase:
         name (str) : relative path for databse in mushroom. otherwise
         glob_regex (Iterable)
     """
-    def __init__(self, name: str, glob_regex: Iterable):
+    def __init__(self, name: str, glob_regex: Iterable, excludes: Iterable = None):
         name = pathlib.Path(name)
         if name.is_absolute():
             self._db_path = name
         else:
             self._db_path = mushroom_db_home / name
+        self._excludes = []
+        if excludes is not None:
+            for ex in excludes:
+                self._excludes.extend(self._db_path.glob(ex))
         self._glob = glob_regex
         self._available_entries = None
         if not isinstance(glob_regex, Iterable):
@@ -64,7 +69,7 @@ class _DBBase:
             d = []
             for regex in self._glob:
                 d.extend(str(x.relative_to(self._db_path))
-                         for x in self._db_path.glob(regex))
+                         for x in self._db_path.glob(regex) if x not in self._excludes)
             # remove cwd
             if "." in d:
                 i = d.index(".")
@@ -290,7 +295,7 @@ class DBWorkflow(_DBBase):
             if not any([x.name.startswith("."), x.name.endswith(".log"), x.is_dir()]):
                 f = dst / x.name
                 if not f.is_file() or overwrite:
-                    copy(x, f)
+                    shutil.copy(x, f)
                     _logger.info(">> %s", f.name)
                 else:
                     _logger.warning(">> %s found. Use --force to overwrite.", f.name)
@@ -305,10 +310,11 @@ class DBDoctemp(_DBBase):
     """database of document template"""
 
     def __init__(self):
-        _DBBase.__init__(self, "doctemp", ["**", "*.tex", "*.docx", "*.doc"])
+        _DBBase.__init__(self, "doctemp", ["*",], excludes=[".gitignore"])
         self.get_doctemp = self.get_entry
         self.get_doctemp_path = self.get_entry_path
 
+    # pylint: disable=R0912
     def copy_doctemp(self, dt: Union[str, int], dst: str = ".", create_dir: bool = True,
                      overwrite: bool = False):
         """copy the document template to destination
@@ -337,14 +343,18 @@ class DBDoctemp(_DBBase):
         if p.is_file():
             files = [p,]
         elif p.is_dir():
-            files = [x for x in p.glob("*") if not x.is_dir()]
+            files = list(p.glob("**")) + list(p.glob("*"))
         else:
             raise TypeError("expected file/directory of document template, {}".format(p.name))
         for x in files:
-            if not any([x.name.startswith("."), x.name.endswith(".log"), x.is_dir()]):
+            if not any([x.name.startswith("."), x.name.endswith(".log")]):
                 f = dst / x.name
-                if not f.is_file() or overwrite:
-                    copy(x, f)
+                if not f.exists() or overwrite:
+                    if x.is_file():
+                        shutil.copy(x, f)
+                    else:
+                        shutil.copytree(x, f)
                     _logger.info(">> %s", f.name)
                 else:
                     _logger.warning(">> %s found. Use --force to overwrite.", f.name)
+
