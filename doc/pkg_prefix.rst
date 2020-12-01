@@ -1,5 +1,5 @@
 Package identifier
-------------------
+==================
 
 Prefices of package-specific scripts and workflows
 

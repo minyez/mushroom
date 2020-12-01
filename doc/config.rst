@@ -1,5 +1,5 @@
 Configurable variables
-----------------------
+======================
 
 Several variables can be configured in ``~/.mushroomrc``.
 

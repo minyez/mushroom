@@ -1218,7 +1218,7 @@ class _Page(_BaseOutput):
         "size": (list, [792, 612], "{:d}, {:d}"),
         "scroll": (float, 0.05, "{:.0%}"),
         "inout": (float, 0.05, "{:.0%}"),
-        "background_fill_switch": (bool, Switch.ON, "{:s}"),
+        "background_fill_switch": (bool, Switch.OFF, "{:s}"),
         }
 
 class Page(_Page):

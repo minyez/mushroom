@@ -1,5 +1,5 @@
 Script
-------
+======
 
 Python and Bash scripts are stored in ``scripts`` directory for efficient file handling and
 data analysis.

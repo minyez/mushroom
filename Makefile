@@ -7,10 +7,13 @@ BUILDTIME = $(shell date +'%Y-%m-%d %H:%M:%S')
 MESSAGE_FILE = mcm.info
 DIST_TARBALL = dist/$(PROJ)-$(VERSION).tar.gz
 SED = gsed
+CHANGELOG_FILE = ./doc/changelog.rst
+GIT_TODAY_CHANGE = $(strip $(shell awk "/$$(date +"%Y-%m-%d")/" $(CHANGELOG_FILE)))
+GIT = git
 
 include .objects
 
-.PHONY: default push clean remote pytest test commit amend version
+.PHONY: default distrc push clean remote pytest test commit amend version
 
 default: pytest
 
@@ -29,14 +32,20 @@ remote: $(DIST_TARBALL)
 	scripts/dist_rsync.py
 
 commit: pytest
-	git commit -F $(MESSAGE_FILE)
+ifeq ($(GIT_TODAY_CHANGE),)
+	@echo "Today's change log is not found in $(CHANGELOG_FILE). Please update!"; exit 1
+else
+	@awk "/$$(date +"%Y-%m-%d")/,EOF" $(CHANGELOG_FILE) | sed -e '0,/^-\+/d' -e '/[0-9]\{4\}-/Q' > $(MESSAGE_FILE)
+	@git commit -F $(MESSAGE_FILE)
+	@rm -f $(MESSAGE_FILE)
+endif
 	rm -f $(MESSAGE_FILE); touch $(MESSAGE_FILE)
 
 amend: pytest
-	git commit --amend
+	$(GIT) commit --amend
 
 push:
-	@git push origin master
+	@$(GIT) push origin master
 
 $(DIST_TARBALL): $(DIST_FILES)
 	mkdir -p dist/$(PROJ)

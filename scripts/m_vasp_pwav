@@ -90,6 +90,8 @@ def m_v_pwav():
             raise ValueError("invalid energy range", args.energy_range) from err
     else:
         ax.tight_graph(yscale=1.2)
+        #ax.set_ylim(-6, 6)
+        #ax.y.set_major(major=3)
     ax.set_xlim(0.0, kp.x[-1] + 0.001)
     # draw bands
     ax.plot(kp.x, bs.eigen[args.spin, :, :].transpose() - bs.efermi, color="k", symbol="none")
@@ -100,8 +102,6 @@ def m_v_pwav():
         if len(args.ksymbols) == 1:
             ksymbols = args.ksymbols[0].split()
     ax.x.set_spec(kp.special_x, labels=ksymbols)
-    ax.y.set_major(major=3)
-    ax.set_ylim(-6, 6)
     ax.y.set_label("Energy (eV)")
     # 36.0 is a base factor
     scale = (kp.x[-1] - kp.x[0]) / len(kp.x) * 36.0 * args.scale
