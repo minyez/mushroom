@@ -1,0 +1,50 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""Copy the desired document template from doctemp directory
+"""
+
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
+
+from mushroom.core.logger import create_logger
+from mushroom.db import DBDoctemp
+
+_logger = create_logger("doctemp")
+del create_logger
+
+def _parser():
+    """the argument parser"""
+    p = ArgumentParser(description=__doc__, formatter_class=RawDescriptionHelpFormatter)
+    p.add_argument("--dst", type=str, default=".",
+                   help="destination to copy the document template files")
+    p.add_argument("--force", dest='overwrite', action="store_true", help="force overwrite")
+    p.add_argument("-D", dest='debug', action="store_true", help="debug mode")
+    g = p.add_mutually_exclusive_group()
+    g.add_argument("-d", dest="dt", type=str, default=None,
+                   help="the name/index of document template to add")
+    g.add_argument("--filter", dest='search', type=str, default=None,
+                   help="search available templates with regex")
+    g.add_argument("-p", dest='print', action="store_true",
+                   help="print available document templates")
+    return p
+
+
+def m_doctemp():
+    """main stream"""
+    args = _parser().parse_args()
+    dbdt = DBDoctemp()
+    if args.debug:
+        _logger.setLevel("DEBUG")
+    if args.search or args.print:
+        for i, dt in dbdt.filter(args.search):
+            print("{:3d} : {}".format(i, dt))
+        return
+
+    if args.dt:
+        dt = dbdt.get_doctemp(args.dt)
+        if dt is None:
+            raise ValueError("template {} not available".format(args.dt))
+        dbdt.copy_doctemp(dt, args.dst, overwrite=args.overwrite)
+
+if __name__ == "__main__":
+    m_doctemp()
+

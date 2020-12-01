@@ -248,15 +248,15 @@ class Data:
         """get all data value
 
         default as
-                (x1, y1, z1),
-                (x2, y2, z2),
-                ...
+                (x1, x2, x3, ...)
+                (y1, y2, y3, ...)
+                (z1, z2, z3, ...)
 
         Args:
             transpose (bool) : if True, the output will be
-                x1, x2, x3...
-                y1, y2, y3...
-                z1, z2, z3...
+                (x1, y1, z1),
+                (x2, y2, z2),
+                ...
         """
         d = np.stack([self.__getattribute__(arg) for arg in data_cols])
         if transpose:
@@ -268,16 +268,16 @@ class Data:
 
         Default output will be one line for each data type, i.e.
 
+            'x1[sep]x2[sep]x3 ...'
+            'y1[sep]y2[sep]y3 ...'
+            'z1[sep]z2[sep]z3 ...'
+
+        Set `transpose` to True will get
+
             'x1[sep]y1[sep]z1'
             'x2[sep]y2[sep]z2'
             'x3[sep]y3[sep]z3'
             ...
-
-        Set `transpose` to True will get
-
-            'x1[sep]x2[sep]x3 ...'
-            'y1[sep]y2[sep]y3 ...'
-            'z1[sep]z2[sep]z3 ...'
 
         Args:
             transpose (bool)
@@ -333,16 +333,16 @@ class Data:
         """get all data and extra value
 
         Default as
-                (x1, y1, z1, xel1, xer1, yel1, yer1, ...),
-                (x2, y2, z2, xel2, xer2, yel2, yer2, ...),
-
-        Args:
-            transpose (bool) : if True, the output will be
                 x1, x2, x3, ...
                 y1, y2, y3, ...
                 ...
                 xel1, xel2, xel3, ...
                 ...
+
+        Args:
+            transpose (bool) : if True, the output will be
+                (x1, y1, z1, xel1, xer1, yel1, yer1, ...),
+                (x2, y2, z2, xel2, xer2, yel2, yer2, ...),
         """
         return self._get(self._data_cols + self._extra_cols, transpose=transpose)
 
@@ -447,19 +447,15 @@ def export_2d_data(data, form: str = None, transpose: bool = False, sep: str = N
 
     Args:
         data (2d array): each row has the same format
-        form (str or tuple/list): format string of each type of data.
+        form (str or tuple/list): format string of each row of data.
         transpose (bool) : if set True, the same column will be printed as one line
         sep (str)
 
     """
     slist = []
     if form is None:
-        if transpose:
-            l = len([x[0] for x in data])
-        else:
-            l = len(data[0])
+        l = len([x[0] for x in data])
         form = ['{:f}',] * l
-
     if sep is None:
         sep = " "
     if transpose:

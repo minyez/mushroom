@@ -1,3 +1,4 @@
+PROJNAME = main
 LATEX = $(shell \
 		  awk '/TS-program =/ {printf("%s", $$5)}' main.tex \
 		  )
@@ -7,7 +8,10 @@ WATCHMAN = watchman-make
 
 .PHONY: default clean veryclean watch
 
-default: main.pdf
+default: $(PROJNAME).pdf
+
+$(PROJNAME).pdf: main.pdf
+	rsync -ua $< $@
 
 main.pdf: main.tex
 	latexmk -latexoption="-synctex=1 -interaction=nonstopmode -shell-escape " -pdf -pdflatex=$(LATEX) -bibtex -f $<

@@ -59,17 +59,16 @@ def plot_pwav(graph, x, bs, apbs, spin, scale, colors=None):
     """
     if colors is None:
         colors = prefer_gracecolors
-    pwav_dat = open('pwav.dat', 'w')
-    for i, apb in enumerate(apbs.split()):
-        atms, prjs, bands = split_apb(apb)
-        pwav = bs.get_pwav(atms, prjs, bands)[spin, :, :]
-        eigen = bs.get_eigen(bands)[spin, :, :] - bs.efermi
-        graph.plot(x, eigen.transpose(), size=pwav.transpose()*scale,
-                   datatype="xysize", color=colors[i%len(colors)],
-                   label="-".join(str(x) for x in apb.split(":")[:2]), ls="none")
-        print("#atom-projector-band:{}".format(apb), file=pwav_dat)
-        print("\n".join(export_2d_data(pwav)), file=pwav_dat, end="\n\n")
-    pwav_dat.close()
+    with open('pwav.dat', 'w') as pwav_dat:
+        for i, apb in enumerate(apbs.split()):
+            atms, prjs, bands = split_apb(apb)
+            pwav = bs.get_pwav(atms, prjs, bands)[spin, :, :]
+            eigen = bs.get_eigen(bands)[spin, :, :] - bs.efermi
+            graph.plot(x, eigen.transpose(), size=pwav.transpose()*scale,
+                       datatype="xysize", color=colors[i%len(colors)],
+                       label="-".join(str(x) for x in apb.split(":")[:2]), ls="none")
+            print("#atom-projector-band:{}".format(apb), file=pwav_dat)
+            print("\n".join(export_2d_data(pwav)), file=pwav_dat, end="\n\n")
 
 def m_v_pwav():
     """main stream"""
