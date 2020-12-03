@@ -2,7 +2,7 @@
  ISTART = 1
  ICHARG = 11
  ENCUT = _encut_
- PREC = Accurate
+ PREC = _prec_
  LREAL = .False.
  EDIFF = 1E-8
  ISPIN = 1

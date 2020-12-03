@@ -58,11 +58,11 @@ function run_vasp_gw_conv_calc () {
         fi
         mkdir -p "$workdir"
 
-        sed "s/_encut_/$encut/g" INCAR.scf \
+        sed "s/_encut_/$encut/g;s/_prec_/$prec/g" INCAR.scf \
           > "$workdir"/INCAR.scf
-        sed "s/_encut_/$encut/g;s/_nbands_/$nbands/g" INCAR.diag \
+        sed "s/_encut_/$encut/g;s/_prec_/$prec/g;s/_nbands_/$nbands/g" INCAR.diag \
           > "$workdir"/INCAR.diag
-        sed "s/_encut_/$encut/g;s/_nbands_/$nbands/g;s/_encutgw_/$encutgw/g" INCAR.gw \
+        sed "s/_encut_/$encut/g;s/_prec_/$prec/g;s/_nbands_/$nbands/g;s/_encutgw_/$encutgw/g" INCAR.gw \
           > "$workdir"/INCAR.gw
 
         cd "$workdir" || exit 1
@@ -91,8 +91,8 @@ function run_vasp_gw_conv_data () {
     * ) cwd="$1"; ik="$2";;
   esac
 
-  printf "%6s%8s%7s%12s%12s%12s%12s%12s\n" \
-    "#ENCUT" "ENCUTGW" "NBANDS" "EgGW" "QPC_VB" "QPC_CB" "UQPC_VB" "UQPC_CB"
+  printf "%6s%8s%7s%12s%12s%12s%12s%12s%12s\n" \
+    "#ENCUT" "ENCUTGW" "NBANDS" "EmaxGW" "EgGW" "QPC_VB" "QPC_CB" "UQPC_VB" "UQPC_CB"
   for d in "$cwd"/encut_*_encutgw_*_nbands_*; do
     encut=${d##*encut_}
     encut=${encut%%_encutgw_*}
@@ -101,10 +101,11 @@ function run_vasp_gw_conv_data () {
     nbands=${d##*_nbands_}
     if [[ "$nbands" != "*" ]] && [[ -f "$d/EIGENVAL.gw" ]] && [[ -f "$d/OUTCAR.gw" ]]; then
       gap=$(eigen_outcar_vbcb_ik "$d/EIGENVAL.gw" "$d/OUTCAR.gw" "$ik" | awk '{print($2-$1)}')
+      emaxgw=$(awk "/ ${nbands} / {print \$2}" "$d/EIGENVAL.gw" | sort | tail -1)
       qpdata=()
       split_str qpdata "$(outcar_qpc_vb_cb "$d/OUTCAR.gw" "${@:2}")"
-      printf "%6d%8d%7d%12.5f%12.5f%12.5f%12.5f%12.5f\n" \
-        "$encut" "$encutgw" "$nbands" "$gap" "${qpdata[@]}"
+      printf "%6d%8d%7d%12.5f%12.5f%12.5f%12.5f%12.5f%12.5f\n" \
+        "$encut" "$encutgw" "$nbands" "$emaxgw" "$gap" "${qpdata[@]}"
     fi
   done
 }

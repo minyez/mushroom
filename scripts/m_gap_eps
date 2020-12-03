@@ -1,0 +1,41 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""read and plot the dielectric matrix"""
+import struct
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
+from mushroom.gap import Eps
+
+def print_eps_omega(eps: Eps, iomega):
+    """print out dielectric matrix at a particular frequency"""
+    epsdata = eps.get_eps(iomega)
+    print("Is epsilon(iomega={:d}) Hermitian? {}".format(iomega, eps.is_hermitian(iomega)))
+    if eps.is_q0:
+        print("E_macro (NLF) = {}".format(epsdata[0, 0]))
+
+def _parser():
+    """parser"""
+    p = ArgumentParser(description=__doc__, formatter_class=RawDescriptionHelpFormatter)
+    p.add_argument("epsfile", type=str, help="path to eps file")
+    p.add_argument("-t", dest='kind', choices=Eps.known_kind, default="invm1",
+                   help="kind of eps file")
+    p.add_argument("-n", dest='nbyte_recl', type=int, default=1,
+                   help="bytes unit of record length")
+    p.add_argument("-w", dest='iomega', type=int, default=None,
+                   help="index of frequency point (start from 0)")
+    return p
+
+def m_gap_eps():
+    """main stream"""
+    args = _parser().parse_args()
+    fn = args.epsfile
+    iq = int(fn.split('q')[-1])
+    eps = Eps(fn, is_q0=iq == 1, kind=args.kind, nbyte_recl=args.nbyte_recl, cache=True)
+    if args.iomega is not None:
+        print_eps_omega(eps, args.iomega)
+    else:
+        for iomega in range(eps.nomega):
+            print_eps_omega(eps, iomega)
+
+if __name__ == "__main__":
+    m_gap_eps()
+

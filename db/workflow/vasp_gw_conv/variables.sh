@@ -5,6 +5,7 @@
 vaspexe="/gpfs/share/home/1501210186/program/vasp.5.4.4/bin/vasp_std"
 # default number of tasks. used for non-hpc tasks
 defaultnp=4
+prec=Accurate
 # ENCUTs to test
 encuts=(
         800

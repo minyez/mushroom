@@ -343,9 +343,10 @@ class DBDoctemp(_DBBase):
         if p.is_file():
             files = [p,]
         elif p.is_dir():
-            files = list(p.glob("**")) + list(p.glob("*"))
+            files = list(p.glob("*"))
         else:
             raise TypeError("expected file/directory of document template, {}".format(p.name))
+        _logger.info("> files found: %r", list(x.name for x in files))
         for x in files:
             if not any([x.name.startswith("."), x.name.endswith(".log")]):
                 f = dst / x.name

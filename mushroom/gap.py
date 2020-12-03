@@ -29,17 +29,19 @@ class Eps:
         kind (str)
         nbyte_recl (int) : number of bytes as unit of record length. default to 4.
             Use 1 if GAP is compiled with ``assume bytenbyte_recl`` or compiled with gcc
+        cache (bool) : cache eps data
     """
     known_kind = ("eps", "inv", "invm1")
 
     def __init__(self, peps: Path, is_q0: bool = False,
-                 kind: str = "eps", nbyte_recl: int = 1):
+                 kind: str = "eps", nbyte_recl: int = 1, cache: bool = False):
         self._peps = peps
         self._fhandle = None
         self._rawdata = {}
         self._is_q0 = is_q0
         self._check_kind(kind)
         self._kind = kind
+        self._cache = cache
         with open(peps, 'rb') as h:
             self._msize = struct.unpack('i', h.read(4))[0]
             self._msize += int(is_q0)
@@ -99,7 +101,7 @@ class Eps:
         """
         return self._nbyte_recl * self._blk_iomega * iomega
 
-    def get(self, iomega: int, cache: bool = True):
+    def get(self, iomega: int):
         """get the raw eps data at frequency point iomega
 
         Args:
@@ -107,7 +109,7 @@ class Eps:
             cache (bool)
         """
         rawdata = self._rawdata.get(iomega, None)
-        if cache and rawdata is not None:
+        if self._cache and rawdata is not None:
             return rawdata
         if self._fhandle is None:
             self._fhandle = open(self._peps, 'rb')
@@ -119,7 +121,7 @@ class Eps:
                                 dtype='float64', count=counts)
         # reshape for head and wing
         rawdata = self._reshape(rawdata)
-        if cache:
+        if self._cache:
             self._rawdata[iomega] = rawdata
         return rawdata
 
@@ -137,14 +139,24 @@ class Eps:
             reshaped[0, 1:] = rawdata[self.msize:2*self.msize-1]
         return reshaped
 
-    def get_eps(self, iomega: int, cache: bool = False):
+    def is_hermitian(self, iomega: int) -> bool:
+        """if the dielectric matrix is Hermitian
+
+        Returns:
+            bool
+        """
+        data = self.get(iomega)
+        diff = data - data.conjugate().T
+        return np.allclose(diff, 0.0)
+
+    def get_eps(self, iomega: int):
         """get the dielectric matrix elements at frequency point iomega
 
         Args:
             iomega (int)
             cache (bool)
         """
-        rawdata = self.get(iomega, cache=cache)
+        rawdata = self.get(iomega)
         if self._kind == "inv":
             eps = np.linalg.inv(rawdata)
         elif self._kind == "invm1":
@@ -254,7 +266,8 @@ class Vmat:
         self._vmat = None
         self._msize = None
         self._recl = None
-        self._ev = None
+        self._eval = None
+        self._evec = None
         self._load()
 
     @property
@@ -268,11 +281,18 @@ class Vmat:
         return self.iq == 1
 
     @property
-    def ev(self):
+    def eval(self):
         """eigenvalue"""
-        if self._ev is None:
-            self._ev = np.linalg.eigvalsh(self._vmat)
-        return self._ev
+        if self._eval is None:
+            self._eval = np.linalg.eigvalsh(self._vmat)
+        return self._eval
+
+    @property
+    def evec(self):
+        """eigenvectors"""
+        if self._evec is None:
+            self._eval, self._evec = np.linalg.eigh(self._vmat)
+        return self._evec
 
     @property
     def diag(self):

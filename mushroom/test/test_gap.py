@@ -62,7 +62,7 @@ class test_vmat(ut.TestCase):
             fpath = dir_vmat / f
             vmat = Vmat(pvmat=str(fpath), nbyte_recl=verify["nbyte_recl"])
             self.assertTrue(vmat.is_hermitian())
-            ev = vmat.ev
+            ev = vmat.eval
             for k, v in verify.items():
                 if isinstance(v, (int, str, bool)):
                     self.assertEqual(vmat.__getattribute__(k), v)

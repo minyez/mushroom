@@ -37,7 +37,6 @@ ifeq ($(GIT_TODAY_CHANGE),)
 else
 	@awk "/$$(date +"%Y-%m-%d")/,EOF" $(CHANGELOG_FILE) | sed -e '0,/^-\+/d' -e '/[0-9]\{4\}-/Q' > $(MESSAGE_FILE)
 	@git commit -F $(MESSAGE_FILE)
-	@rm -f $(MESSAGE_FILE)
 endif
 	rm -f $(MESSAGE_FILE); touch $(MESSAGE_FILE)
 
