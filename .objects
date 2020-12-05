@@ -6,7 +6,6 @@ DIST_FILES = mushroom \
 			requirements.txt \
 			LICENSE \
 			TODO.md \
-			CHANGELOG.md \
 			README.md \
 			Makefile \
 			.objects

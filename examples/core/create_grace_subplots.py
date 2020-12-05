@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """A simple example for creating xmgrace subplots in mushroom"""
 import numpy as np
-from mushroom.graceplot import Plot
+from mushroom.visual.graceplot import Plot
 
 x = np.linspace(-1, 1)
 y = np.sin(x)

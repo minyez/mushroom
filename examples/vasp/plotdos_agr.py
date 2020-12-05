@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """example to draw DOS"""
 import pathlib
-from mushroom.graceplot import Plot
+from mushroom.visual.graceplot import Plot
 from mushroom.vasp import read_doscar
 
 p = Plot()

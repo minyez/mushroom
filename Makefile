@@ -5,6 +5,8 @@ VERSION = $(shell \
 		  )
 BUILDTIME = $(shell date +'%Y-%m-%d %H:%M:%S')
 MESSAGE_FILE = mcm.info
+AWK = gawk
+MAKE = gmake
 DIST_TARBALL = dist/$(PROJ)-$(VERSION).tar.gz
 SED = gsed
 CHANGELOG_FILE = ./doc/changelog.rst
@@ -31,16 +33,19 @@ test: pytest remote
 remote: $(DIST_TARBALL)
 	scripts/dist_rsync.py
 
-commit: pytest
+commit:
 ifeq ($(GIT_TODAY_CHANGE),)
 	@echo "Today's change log is not found in $(CHANGELOG_FILE). Please update!"; exit 1
 else
-	@awk "/$$(date +"%Y-%m-%d")/,EOF" $(CHANGELOG_FILE) | sed -e '0,/^-\+/d' -e '/[0-9]\{4\}-/Q' > $(MESSAGE_FILE)
-	@git commit -F $(MESSAGE_FILE)
+	@$(AWK) "/$$(date +"%Y-%m-%d")/,EOF" $(CHANGELOG_FILE) | sed -e '0,/^-\+/d' -e '/[0-9]\{4\}-/Q' > $(MESSAGE_FILE)
+	$(MAKE) pytest
+	@$(GIT) add $(CHANGELOG_FILE)
+	@$(GIT) commit -F $(MESSAGE_FILE)
 endif
 	rm -f $(MESSAGE_FILE); touch $(MESSAGE_FILE)
 
 amend: pytest
+	@$(GIT) add $(CHANGELOG_FILE)
 	$(GIT) commit --amend
 
 push:
@@ -58,7 +63,7 @@ $(DIST_TARBALL): $(DIST_FILES)
 		--exclude="vasp_*/vasp.sh" \
 		--exclude="*_*/common.sh" \
 		--exclude=".pytest_cache" \
-		-zcvf $(PROJ)-$(VERSION).tar.gz $(PROJ)
+		-zcvf $(shell basename $@) $(PROJ)
 	rm -rf dist/$(PROJ)
 
 distrc:

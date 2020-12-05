@@ -38,16 +38,26 @@ function run_vasp_gw_conv_calc () {
   raise_missing_prereq "${reqs[@]}"
 
   for encut in "${encuts[@]}"; do
-    # estimate number of bands from volumel
+    # estimate number of bands from volume
     scale=$(poscar_scale "POSCAR")
     vol=$(triple_prod "$(poscar_latt_vec "POSCAR")")
     vol=$(echo "$vol $scale" | awk '{printf("%f\n", $1 * $2**3)}')
     nbandsmax=$(estimate_npw "$encut" "$vol")
     #nbandsmax=$(echo "$encut 750 1139" | awk '{printf("%d",0.5 + ($1/$2)**1.5 * $3)}')
     for encutgwratio in "${encutgwratios[@]}"; do
-      encutgw=$(echo "$encut $encutgwratio" | awk '{printf("%d", 0.5 + $1*$2)}')
+      # give ENCUTGW explicitly instead from a ratio of ENCUT
+      if (( encutgwratio > 300 )); then
+        encutgw="$encutgw"
+      else
+        encutgw=$(echo "$encut $encutgwratio" | awk '{printf("%d", 0.5 + $1*$2)}')
+      fi
       for nbandsratio in "${nbandsratios[@]}"; do
-        nbands=$(echo "$nbandsmax $nbandsratio $np" | awk '{printf("%d",($1*$2) - ($1*$2) % $3)}')
+        # give nbands explicitly instead from a ratio of NPW
+        if (( nbandsratio > 1 )); then
+          nbands="$nbandsratio"
+        else
+          nbands=$(echo "$nbandsmax $nbandsratio $np" | awk '{printf("%d",($1*$2) - ($1*$2) % $3)}')
+        fi
         # skip zero bands
         if (( nbands == 0 )); then
           continue

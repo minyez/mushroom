@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import numpy as np
-from mushroom.graceplot import Plot
+from mushroom.visual.graceplot import Plot
 
 p = Plot()
 # add multiple data at once

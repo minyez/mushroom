@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """example to draw band structure along with DOS"""
 import pathlib
-from mushroom.graceplot import Plot
+from mushroom.visual.graceplot import Plot
 from mushroom.core.cell import Cell
 from mushroom.core.kpoints import KPath
 from mushroom.vasp import read_doscar, read_eigen
