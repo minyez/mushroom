@@ -1,0 +1,87 @@
+
+#(C) 2020 by FIZ Karlsruhe - Leibniz Institute for Information Infrastructure.  All rights reserved.
+data_633274-ICSD
+_database_code_ICSD 633274
+_audit_creation_date 2010-02-01
+_audit_update_record 2019-02-01
+_chemical_name_common 'Iron sulfide (1/2)'
+_chemical_formula_structural 'Fe S2'
+_chemical_formula_sum 'Fe1 S2'
+_chemical_name_structure_type Pyrite#FeS2(cP12)
+_exptl_crystal_density_diffrn 5.01
+_citation_title
+
+;
+High pressure X-ray diffraction study on p-FeS2, m-FeS2 and MnS2 to 340 kbar:
+A possible high spin-low spin transition in MnS2
+;
+_publ_section_comment 'Cell and Type only determined'
+loop_
+_citation_id
+_citation_journal_full
+_citation_year
+_citation_journal_volume
+_citation_page_first
+_citation_page_last
+_citation_journal_id_ASTM
+primary 'Journal of Physics and Chemistry of Solids' 1985 46 113 116 JPCSAW
+loop_
+_citation_author_citation_id
+_citation_author_name
+primary 'Chattopadhyay, T.'
+primary 'Schnering, H.G. von'
+_cell_length_a 5.418
+_cell_length_b 5.418
+_cell_length_c 5.418
+_cell_angle_alpha 90.
+_cell_angle_beta 90.
+_cell_angle_gamma 90.
+_cell_volume 159.04
+_cell_formula_units_Z 4
+_space_group_name_H-M_alt 'P a -3'
+_space_group_IT_number 205
+loop_
+_space_group_symop_id
+_space_group_symop_operation_xyz
+1 '-z+1/2, x+1/2, y'
+2 'z+1/2, x, -y+1/2'
+3 'z, -x+1/2, y+1/2'
+4 '-z, -x, -y'
+5 'y, -z+1/2, x+1/2'
+6 '-y+1/2, z+1/2, x'
+7 'y+1/2, z, -x+1/2'
+8 '-y, -z, -x'
+9 'x+1/2, y, -z+1/2'
+10 'x, -y+1/2, z+1/2'
+11 '-x+1/2, y+1/2, z'
+12 '-x, -y, -z'
+13 'z+1/2, -x+1/2, -y'
+14 '-z+1/2, -x, y+1/2'
+15 '-z, x+1/2, -y+1/2'
+16 'z, x, y'
+17 '-y, z+1/2, -x+1/2'
+18 'y+1/2, -z+1/2, -x'
+19 '-y+1/2, -z, x+1/2'
+20 'y, z, x'
+21 '-x+1/2, -y, z+1/2'
+22 '-x, y+1/2, -z+1/2'
+23 'x+1/2, -y+1/2, -z'
+24 'x, y, z'
+loop_
+_atom_type_symbol
+_atom_type_oxidation_number
+S1- -1
+Fe2+ 2
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_symmetry_multiplicity
+_atom_site_Wyckoff_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_B_iso_or_equiv
+_atom_site_occupancy
+S1 S1- 8 c 0.385 0.385 0.385 . 1.
+Fe1 Fe2+ 4 a 0 0 0 . 1.
+#End of TTdata_633274-ICSD

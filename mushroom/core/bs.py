@@ -45,7 +45,7 @@ class BandStructureError(Exception):
 class BandStructure(EnergyUnit):
     """Base class for analyzing band structure data.
 
-    The eigenvalues should be parsed in a shape of 
+    The eigenvalues should be parsed in a shape of
     (nspins, nkpts, nbands).
     The dimensions are automatically checked.
     Exception will be raised if their shapes are inconsistent.
@@ -62,9 +62,9 @@ class BandStructure(EnergyUnit):
         weight (array-like) : the weights of each kpoint, 1-d array,
             either integer weight or scaled weight. default to 1.0
         unit ('ev','ry','au'): the unit of the eigenvalues
-        efermi (float): the Fermi level. 
+        efermi (float): the Fermi level.
             If not parsed, the valence band maximum will be used.
-        keyword argument: wave projection information projection 
+        keyword argument: wave projection information projection
             It should have three keys, "atms", "prjs" and "pwav"
 
     Attributes:
@@ -167,7 +167,7 @@ class BandStructure(EnergyUnit):
         self._nelect = np.sum(self._nelect_sp)
 
     def get_band_indices(self, *bands):
-        '''Filter the band indices in ``bands``. 
+        '''Filter the band indices in ``bands``.
 
         If no indices is specified, return all available band indices.
 
@@ -208,7 +208,7 @@ class BandStructure(EnergyUnit):
             # check if the band index is valid
             if 0 <= ib < self.nbands:
                 return ib
-        raise ValueError("unrecognized band identifier", band_iden)
+        raise ValueError("unrecognized band identifier {}".format(band_iden))
 
     @property
     def unit(self):
@@ -363,7 +363,7 @@ class BandStructure(EnergyUnit):
         Note:
             When nbands is too small and all bands are found to be valence bands,
             or it is the case for one spin-kpoint channel, the corresponding CB will
-            be set to ``np.infty``. 
+            be set to ``np.infty``.
             Setup of indices of CB remains, thus IndexError might be raised when trying
             get CB value from `icbm` attributes
 
@@ -612,7 +612,7 @@ class BandStructure(EnergyUnit):
                       prj_vbm: AtmPrjToken = None,
                       atm_cbm: AtmPrjToken = None,
                       prj_cbm: AtmPrjToken = None):
-        '''Compute the effective band gap between ``ivb`` and ``icb``, 
+        '''Compute the effective band gap between ``ivb`` and ``icb``,
         the responsible transition of which associates projector `proj_vbm` on `atom_vbm` in VB
         and `proj_cbm` on atom `atom_cbm` in CB.
 
@@ -759,7 +759,7 @@ class BandStructure(EnergyUnit):
     #        ``Dos`` object
     #    """
     #    from mykit.core.dos import Dos
-    #    
+    #
     #    smearDict = {
     #        "Gaussian": Smearing.gaussian,
     #    }
@@ -819,10 +819,10 @@ def random_band_structure(nspins: int = 1, nkpts: int = 1, nbands: int = 2,
         randomize a kpath
 
     Args:
-        nspins, nkpts, nbands, natoms, nprojs (int): 
+        nspins, nkpts, nbands, natoms, nprojs (int):
             the dimensions of eigenvalues, occupation numbers and projections.
         has_proj (bool): if fake projection information is generated
-        is_metal (bool): if set True, a band structure of metal is generated, 
+        is_metal (bool): if set True, a band structure of metal is generated,
             otherwise semiconductor
     """
     atm_types = ["C", "Si", "Na", "Cl", "P"]

@@ -1,6 +1,15 @@
 Changelog
 =========
 
+2020-12-12
+----------
+New cells, math functions, typo fix
+
+[new]
+* more FeS2 structures from ICSD
+* math functions for structure constant calculation (``math_func``)
+* retrive lattice vectors within some cutoff (``cell``)
+
 2020-12-05
 ----------
 improvements and typo fix

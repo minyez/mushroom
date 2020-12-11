@@ -80,18 +80,6 @@ def m_v_pwav():
     if args.spin >= bs.nspins:
         raise ValueError("ispin {} >= nspins = {}".format(args.spin, bs.nspins))
     p, ax = Plot.subplots(1, 1, description=" ".join(argv))
-    # set limits
-    if args.energy_range is not None:
-        try:
-            emin, emax = decode_float_ends(args.energy_range)
-            ax.set_ylim(ymin=emin, ymax=emax)
-            ax.tight_graph(yscale=None)
-        except ValueError as err:
-            raise ValueError("invalid energy range", args.energy_range) from err
-    else:
-        ax.tight_graph(yscale=1.2)
-        #ax.set_ylim(-6, 6)
-        #ax.y.set_major(major=3)
     ax.set_xlim(0.0, kp.x[-1] + 0.001)
     # draw bands
     ax.plot(kp.x, bs.eigen[args.spin, :, :].transpose() - bs.efermi, color="k", symbol="none")
@@ -115,6 +103,17 @@ def m_v_pwav():
     p.write(file=args.output)
     if args.fig_ext is not None:
         p.savefig(get_filename_wo_ext(args.output) + "." + args.fig_ext)
+
+    # set limits
+    if args.energy_range is not None:
+        try:
+            emin, emax = decode_float_ends(args.energy_range)
+            ax.set_ylim(ymin=emin, ymax=emax)
+            ax.tight_graph(yscale=None)
+        except ValueError as err:
+            raise ValueError("invalid energy range", args.energy_range) from err
+    else:
+        ax.tight_graph(yscale=1.2)
 
 
 if __name__ == "__main__":

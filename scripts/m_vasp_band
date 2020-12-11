@@ -15,7 +15,7 @@ from mushroom.vasp import read_eigen
 def _parser():
     """the parser"""
     p = ArgumentParser(description=__doc__, formatter_class=RawDescriptionHelpFormatter)
-    p.add_argument("-e", dest="eigenval", type=str, default="EIGENVAL",
+    p.add_argument("-v", dest="eigenval", type=str, default="EIGENVAL",
                    help="EIGENVAL file to read band data")
     p.add_argument("--pos", dest="poscar", type=str, default="POSCAR",
                    help="POSCAR structure file")
@@ -29,7 +29,7 @@ def _parser():
                    help="number of kpoints at first to remove")
     p.add_argument("--savefig", dest="fig_ext", type=str, default=None,
                    help="figure extension to convert")
-    p.add_argument("-y", dest="energy_range", type=str, default=None,
+    p.add_argument("-e", dest="energy_range", type=str, default=None,
                    help="energy range (y-axis), e.g. 'm8~5' for -8.0 to 5.0")
     return p
 

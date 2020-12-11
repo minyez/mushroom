@@ -58,7 +58,7 @@ class Cell(LengthUnit):
 
     Args:
         latt (array-like) : The lattice vectors
-        atoms (list of str) : The list of strings of type for each atom 
+        atoms (list of str) : The list of strings of type for each atom
         corresponding to the member in pos
         pos (array-like) : The internal coordinates of atoms
         unit (str): the unit, in lower case, either "ang" (default) or "au".
@@ -66,8 +66,8 @@ class Cell(LengthUnit):
             either "D" (Direct, default) or "C" (Cartesian)
         all_relax (bool) : default selective dynamics option for atoms.
             Set True (default) to allow all DOFs to relax
-        select_dyn (dict) : a dictionary with key-value pair as ``int: [bool, bool, bool]``, 
-            which controls the selective dynamic option for atom with the particular index 
+        select_dyn (dict) : a dictionary with key-value pair as ``int: [bool, bool, bool]``,
+            which controls the selective dynamic option for atom with the particular index
             (starting from 0). Default is an empty ``dict``
         comment (str): message about the cell, e.g. theory level, experimental conditions
         reference (str): the reference where the lattice structure is derived.
@@ -248,6 +248,33 @@ When other keyword are parsed, they will be filtered out and no exception will b
             self._posi = self._posi - np.floor(self._posi)
             self.coord_sys = "C"
 
+    def Rs_in_rcut(self, rcut, ia, ib, axis=None):
+        """real space vector within rcut
+
+        Args:
+            rcut (float):
+            ia, ib (int): index of atom
+            axis (float tuple): searching axis. Default to search 3 axis, i.e. axis=(0, 1, 2)
+        """
+        was_coord_sys = self.coord_sys
+        self.coord_sys = "D"
+        if axis is None:
+            axis = (0, 1, 2)
+        alen = list(self.alen[i] for i in axis)
+        imax = [int(rcut // min(alen)) + 1,] * 3
+        for i in range(3):
+            if i not in axis:
+                imax[i] = 0
+        iR = list(product(*map(lambda x: range(-x, x+1), imax)))
+        if ia == ib:
+            del iR[iR.index((0, 0, 0))]
+        iR = np.array(iR, dtype="float64") + self.posi[ia] - self.posi[ib]
+        R = np.matmul(iR, self.latt)
+        Rlen = np.linalg.norm(R, axis=1)
+        in_rcut = Rlen < rcut
+        self.coord_sys = was_coord_sys
+        return R[in_rcut]
+
     def get_sym_index(self, csymbol: str):
         """Get the indices of atoms with element symbol ``csymbol``
 
@@ -356,7 +383,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
         Args:
             atom (str): the chemical symbol of the atom to add
             coord (array-like): the coordinate of atom in ``Cell`` coordinate system
-            select_dyn (list of 3 bools): 
+            select_dyn (list of 3 bools):
         """
         if not isinstance(atom, str):
             raise CellError("atom should be string, received {}".format(type(atom)))
@@ -429,7 +456,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
         if was_c:
             self.coord_sys = "C"
         if converted is None:
-            return converted 
+            return converted
         latt, posi, indice = converted
         atms = [self.type_mapping[i] for i in indice]
         return type(self)(latt, atms, posi, unit=self.unit, coord_sys="D",
@@ -463,7 +490,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
 
     def standardize(self, to_primitive: bool = False):
         """standardize a crystal structure
-        
+
         Args:
             to_primitive (bool)
         """
@@ -524,7 +551,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
         #         self.__print("  - Vacuum in the middle detected. Not supported currently. Pass.")
         #         continue
         #     else:
-        #         surf_atom = [self.check_extreme_atom(0.0,zdirt,False,1.0), 
+        #         surf_atom = [self.check_extreme_atom(0.0,zdirt,False,1.0),
         #                      self.check_extreme_atom(0.0,zdirt,True,1.0)]
         #         # debug
         #         # print surf_atom
@@ -1331,10 +1358,10 @@ When other keyword are parsed, they will be filtered out and no exception will b
         if "comment" not in kwargs:
             kwargs.update({"comment": "Rocksalt {}{}".format(atom1, atom2)})
         return cls(latt, atms, posi, **kwargs)
-        
+
     @classmethod
     def diamond(cls, atom: str = "C",
-                a: float = 1.0,
+                a: float = 3.5668,
                 primitive: bool = False, **kwargs):
         '''Generate a diamond lattice (space group 227)
 
