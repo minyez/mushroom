@@ -111,23 +111,14 @@ class MPGrid:
 
     @property
     def grids(self):
-        """array, grids of kmesh 
-
-        Args:
-            shift (Iterable) : half unit of shift along each vector
-
-        Returns:
-            ndarry, all member are integer if shift is zero
+        """array, integer grids of kmesh
         """
         return uniform_int_kmesh(self._kdivs[0], self._kdivs[1], self._kdivs[2],
-                                 shift=self._shift)
+                                 shift=self._shift, sort=self._require_sort)
 
     @property
     def kpts(self):
         """array, reciprocal coordinates of mesh points
-
-        Args:
-            shift (Iterable) : half unit of shift along each vector
         """
         return np.divide(self.grids, self._kdivs)
 
@@ -151,11 +142,11 @@ def find_k_segments(kpts):
     Usually, the number of kpoints on one line segments is no less than 3.
 
     Args:
-        kvec (array-like): the kpoint vectors to analysis, shape, (n,3) 
+        kvec (array-like): the kpoint vectors to analysis, shape, (n,3)
 
     Returns:
         list, with tuple as members. Each tuple has 2 int members,
-        the indices of kpoint vectors at the beginning and end of 
+        the indices of kpoint vectors at the beginning and end of
         a line segment
     """
     ksegs = []
@@ -190,7 +181,7 @@ def find_k_segments(kpts):
     return ksegs
 
 def uniform_int_kmesh(nk1: int, nk2: int, nk3: int,
-                      shift: Iterable):
+                      shift: Iterable, sort=False):
     """generate a uniform or homogeneous kpoint mesh
 
     Args:
@@ -205,8 +196,13 @@ def uniform_int_kmesh(nk1: int, nk2: int, nk3: int,
     ikmesh = np.array(ikmesh)
     centering = (divisions - 1) // 2
     ikmesh = ikmesh - centering
+    if sort:
+        indices = list(range(nk1*nk2*nk3))
+        norm = np.linalg.norm(ikmesh, axis=1)
+        indices.sort(key=norm.__getitem__)
+        ikmesh = ikmesh[indices]
     try:
         return ikmesh + 0.5 * np.array(shift)
-    except ValueError:
-        raise ValueError("expected Iterable for shift, got %s" % type(shift))
-    
+    except ValueError as err:
+        raise ValueError("expected Iterable for shift, got %s" % type(shift)) from err
+

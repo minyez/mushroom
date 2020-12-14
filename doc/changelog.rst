@@ -1,6 +1,24 @@
 Changelog
 =========
 
+2020-12-14
+----------
+special functions, etc
+
+[new]
+* Gpq in some cutoff ``cell``
+* k-points sort in MPGrid ``kpoints``
+* new functions in ``math_func``
+  - Hypergeometric function 2F2
+  - rising factor
+  - general combination number 
+
+[test]
+* ``math_func`` added
+
+[improve]
+* draw eps matrix in ``m_gap_eps``
+
 2020-12-12
 ----------
 New cells, math functions, typo fix

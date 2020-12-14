@@ -69,7 +69,7 @@ def m_gap_vmat():
         compare_vmat = args.diff
         if compare_vmat is not None:
             compare_vmat = Vmat(compare_vmat)
-        fig, ax = plot_vmat(vmat, compare_vmat=compare)
+        fig, ax = plot_vmat(vmat, compare_vmat=compare_vmat)
         fig, ax = plot_vmat(vmat)
         if args.diff:
             fig.savefig("diff_vmat.png")

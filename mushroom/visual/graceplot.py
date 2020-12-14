@@ -266,6 +266,8 @@ try:
         raise ImportError
     all_defined = all(gc in plot_colormap.names for gc in prefer_gracecolors)
     if not all_defined:
+        _logger.error("colormap names: %r", plot_colormap.names)
+        _logger.error("prefer gracecolor: %r", prefer_gracecolors)
         raise ValueError("some custom colors are not defined")
 except ImportError:
     prefer_gracecolors = ["red", "blue", "orange", "green4"]
@@ -2031,8 +2033,8 @@ class Graph(_Graph):
         self._subtitle = SubTitle(subtitle=subtitle, fontsize=stsize, color=stc)
         self._if_xtick_set = False
         self._if_ytick_set = False
-        self._xaxes = _Axes('x')
-        self._yaxes = _Axes('y')
+        self._xaxes = Axes('x')
+        self._yaxes = Axes('y')
         #self._altxaxes = _Axes('altx', switch=Switch.OFF)
         #self._altyaxes = _Axes('alty', switch=Switch.OFF)
         self._xaxis = Axis('x')
@@ -2172,6 +2174,33 @@ class Graph(_Graph):
     def set_ylim(self, ymin=None, ymax=None):
         """set limits of y axis"""
         self.set_lim(ymin=ymin, ymax=ymax)
+
+    def _set_scale(self, axes: str, scale_type: str):
+        st = scale_type.lower()
+        axes = {'x': self._xaxes, 'y': self._yaxes}[axes]
+        if st == "logit":
+            st = "Logit"
+        if st.startswith("log"):
+            st = "logarithmic"
+        if st.startswith("rec"):
+            st = "reciprocal"
+        axes.set(scale=st.caplitalize())
+
+    def set_yscale(self, scale_type: str):
+        """set scale of y axis
+
+        Args:
+            scale_type (str): log,logarithmic,logit,normal,rec,reciprocal
+        """
+        self._set_scale('y', scale_type)
+
+    def set_xscale(self, scale_type: str):
+        """set scale of x axis
+
+        Args:
+            scale_type (str): log,logarithmic,logit,normal,rec,reciprocal
+        """
+        self._set_scale('x', scale_type)
 
     def set_lim(self, xmin=None, ymin=None, xmax=None, ymax=None):
         """set the limits (world) of graph"""

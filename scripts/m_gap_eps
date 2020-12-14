@@ -1,9 +1,27 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """read and plot the dielectric matrix"""
-import struct
+from sys import argv
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
+import numpy as np
+import matplotlib.pyplot as plt
 from mushroom.gap import Eps
+from mushroom.visual.pyplot import rc_gracify
+
+# make grace style as default
+rc_gracify()
+
+def plot_eps(eps: Eps, iomega: int, compare_eps: Eps = None):
+    """plot Coulomb matrix"""
+    fig, ax = plt.subplots()
+    realpart = eps.get_eps(iomega).real
+    if compare_eps is not None:
+        realpart = eps.get_eps(iomega).real - compare_eps.get_eps(iomega).real
+    vmax = np.max(np.absolute(realpart))
+    # eps usually converges to 1
+    c = ax.pcolor(realpart, cmap="GnBu", vmin=1.0, vmax=vmax)
+    fig.colorbar(c, ax=ax)
+    return fig, ax
 
 def print_eps_omega(eps: Eps, iomega):
     """print out dielectric matrix at a particular frequency"""
@@ -21,7 +39,10 @@ def _parser():
     p.add_argument("-n", dest='nbyte_recl', type=int, default=1,
                    help="bytes unit of record length")
     p.add_argument("-w", dest='iomega', type=int, default=None,
+                   required="--plot" in argv,
                    help="index of frequency point (start from 0)")
+    p.add_argument("--plot", action="store_true",
+                   help="plot the v-matrix")
     return p
 
 def m_gap_eps():
@@ -29,9 +50,13 @@ def m_gap_eps():
     args = _parser().parse_args()
     fn = args.epsfile
     iq = int(fn.split('q')[-1])
-    eps = Eps(fn, is_q0=iq == 1, kind=args.kind, nbyte_recl=args.nbyte_recl, cache=True)
+    eps = Eps(fn, is_q0=iq == 1, kind=args.kind,
+              nbyte_recl=args.nbyte_recl, cache=True)
     if args.iomega is not None:
         print_eps_omega(eps, args.iomega)
+        if args.plot:
+            fig, ax = plot_eps(eps, args.iomega)
+            fig.savefig("eps_iq_{}_iomega_{}.png".format(iq, args.iomega))
     else:
         for iomega in range(eps.nomega):
             print_eps_omega(eps, iomega)

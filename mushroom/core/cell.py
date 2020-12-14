@@ -248,13 +248,16 @@ When other keyword are parsed, they will be filtered out and no exception will b
             self._posi = self._posi - np.floor(self._posi)
             self.coord_sys = "C"
 
-    def Rs_in_rcut(self, rcut, ia, ib, axis=None):
-        """real space vector within rcut
+    def Rab_in_rcut(self, rcut, ia, ib, axis=None, sort=True, return_iR=False, return_iR_Rablen=False):
+        """Rab = R + r_a - r_b real space vector within rcut
 
         Args:
-            rcut (float):
+            rcut (float): cutoff for Rab
             ia, ib (int): index of atom
             axis (float tuple): searching axis. Default to search 3 axis, i.e. axis=(0, 1, 2)
+            return_iR (bool): if True, integer of Rs in lattice vectors will be also returned.
+
+        Returns:
         """
         was_coord_sys = self.coord_sys
         self.coord_sys = "D"
@@ -268,12 +271,54 @@ When other keyword are parsed, they will be filtered out and no exception will b
         iR = list(product(*map(lambda x: range(-x, x+1), imax)))
         if ia == ib:
             del iR[iR.index((0, 0, 0))]
-        iR = np.array(iR, dtype="float64") + self.posi[ia] - self.posi[ib]
-        R = np.matmul(iR, self.latt)
-        Rlen = np.linalg.norm(R, axis=1)
-        in_rcut = Rlen < rcut
+        iR = np.array(iR, dtype="float64")
+        Rab = np.matmul(iR + self.posi[ia] - self.posi[ib], self.latt)
+        Rablen = np.linalg.norm(Rab, axis=1)
+        in_rcut = list(x[0] for x in np.argwhere(Rablen < rcut))
+        if sort:
+            in_rcut.sort(key=Rablen.__getitem__)
         self.coord_sys = was_coord_sys
-        return R[in_rcut]
+        if return_iR_Rablen:
+            return Rab[in_rcut], iR[in_rcut], Rablen[in_rcut]
+        if return_iR:
+            return Rab[in_rcut], iR[in_rcut]
+        return Rab[in_rcut]
+
+    def Gpq_in_gcut(self, gcut, q, axis=None, sort=True, return_iG=False, return_iG_Gpqlen=False):
+        """Gpq = G + q reciprocal space vector within gcut
+
+        Args:
+            gcut (float): cutoff for Rab
+            q (array-like,(3,)): q point coordinate
+            axis (float tuple): searching axis. Default to search 3 axis, i.e. axis=(0, 1, 2)
+            return_iG (bool): if True, integer of G in reciprocal vectors will be also returned.
+
+        Returns:
+        """
+        was_coord_sys = self.coord_sys
+        self.coord_sys = "D"
+        if axis is None:
+            axis = (0, 1, 2)
+        blen = list(self.blen[i] for i in axis)
+        imax = [int(gcut // min(blen)) + 1,] * 3
+        for i in range(3):
+            if i not in axis:
+                imax[i] = 0
+        iG = list(product(*map(lambda x: range(-x, x+1), imax)))
+        if np.allclose(q, 0.0):
+            del iG[iG.index((0, 0, 0))]
+        iG = np.array(iG, dtype="float64")
+        Gpq = np.matmul(np.add(iG, q), self.recp_latt)
+        Gpqlen = np.linalg.norm(Gpq, axis=1)
+        in_gcut = list(x[0] for x in np.argwhere(Gpqlen < gcut))
+        if sort:
+            in_gcut.sort(key=Gpqlen.__getitem__)
+        self.coord_sys = was_coord_sys
+        if return_iG_Gpqlen:
+            return Gpq[in_gcut], iG[in_gcut], Gpqlen[in_gcut]
+        if return_iG:
+            return Gpq[in_gcut], iG[in_gcut]
+        return Gpq[in_gcut]
 
     def get_sym_index(self, csymbol: str):
         """Get the indices of atoms with element symbol ``csymbol``
