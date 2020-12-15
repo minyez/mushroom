@@ -70,7 +70,7 @@ def plot_pwav(graph, x, bs, apbs, spin, scale, colors=None):
             print("#atom-projector-band:{}".format(apb), file=pwav_dat)
             print("\n".join(export_2d_data(pwav)), file=pwav_dat, end="\n\n")
 
-def m_v_pwav():
+def m_vasp_pwav():
     """main stream"""
     args = _parser().parse_args()
     c = Cell.read(args.poscar)
@@ -100,22 +100,22 @@ def m_v_pwav():
     if args.apb is not None:
         plot_pwav(ax, kp.x, bs, args.apb, args.spin, scale)
 
-    p.write(file=args.output)
-    if args.fig_ext is not None:
-        p.savefig(get_filename_wo_ext(args.output) + "." + args.fig_ext)
-
     # set limits
     if args.energy_range is not None:
         try:
             emin, emax = decode_float_ends(args.energy_range)
             ax.set_ylim(ymin=emin, ymax=emax)
-            ax.tight_graph(yscale=None)
+            ax.tight_graph(xscale=None, yscale=None)
         except ValueError as err:
             raise ValueError("invalid energy range", args.energy_range) from err
     else:
-        ax.tight_graph(yscale=1.2)
+        ax.tight_graph(xscale=None, yscale=1.2)
+
+    p.write(file=args.output)
+    if args.fig_ext is not None:
+        p.savefig(get_filename_wo_ext(args.output) + "." + args.fig_ext)
 
 
 if __name__ == "__main__":
-    m_v_pwav()
+    m_vasp_pwav()
 

@@ -34,7 +34,7 @@ def rsync_and_untar(tarball: pathlib.PosixPath, remote_ip: str, dirpath: str,
     except sp.CalledProcessError:
         warnings.warn("fail to rsync {} to {}:{}/".format(tarball, remote_ip, dirpath))
         return
-    
+
     try:
         # following cmds create bash error: No such file or directory
         #cmds = ["ssh", remote_ip] + ["\"cd", dirpath + ";"] + tar_cmd + ["-f", tarball.name, "\""]
@@ -67,6 +67,7 @@ def _parser():
     p.add_argument("--dest", dest="remotes", type=str, default=None, choices=list(dist_remotes),
                    help="remote servers to distribute. Left out to distribute to all")
     p.add_argument("-v", dest="verbose", action="store_true", help="verbose mode for debug")
+    p.add_argument("--test", action="store_true", help="upload the test version")
     p.add_argument("--rc", dest="sync_rc", action="store_true",
                    help="sync home rcfile instead of mushroom package")
     return p
@@ -77,8 +78,12 @@ def dist_rsync():
     args = _parser().parse_args()
     tarball = args.tarball
     if not tarball:
-        tarball = pathlib.Path(__file__).parent \
-                  / ".." / "dist" / "mushroom-{}.tar.gz".format(__version__)
+        if args.test:
+            tarball = pathlib.Path(__file__).parent \
+                      / ".." / "dist" / "mushroom-{}-test.tar.gz".format(__version__)
+        else:
+            tarball = pathlib.Path(__file__).parent \
+                      / ".." / "dist" / "mushroom-{}.tar.gz".format(__version__)
     else:
         tarball = pathlib.Path(tarball)
     if not tarball.is_file or not tarball.name.endswith(".tar.gz"):

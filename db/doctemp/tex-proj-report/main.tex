@@ -1,12 +1,20 @@
 % !TeX TS-program = pdflatex
-\documentclass[a4paper,12pt]{article}
-%import necessary packages and write custom commands in pkgscmds.tex
+% Intended LaTeX compiler: pdflatex
+\documentclass[a4paper,12pt]{report}
+% NOTE: import necessary packages and write custom commands in pkgscmds.tex
 \include{pkgscmds}
-\title{Title}
-\author{Min-Ye Zhang}
+%\addbibresource{ldgw.bib}
 
 \begin{document}
+\title{Title}
+\author{Min-Ye Zhang}
 \maketitle
+\tableofcontents
 % import each part
 \import{part01/}{part01}
+
+% appendix
+\import{appendix/}{appendix}
+
+%\printbibliography[title=References]
 \end{document}

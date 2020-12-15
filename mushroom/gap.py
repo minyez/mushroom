@@ -258,8 +258,13 @@ class Eqpev:
         return self._hf_bs
 
 class Vmat:
-    """analyze Coulomb matrix vmat binary data (2e-201117)"""
-    def __init__(self, pvmat: Path, nbyte_recl: int = 4):
+    """analyze Coulomb matrix vmat binary data (2e-201117)
+
+    Args:
+        pvmat (PathLike)
+        nbyte_recl (int): unit of record length.
+    """
+    def __init__(self, pvmat: Path, nbyte_recl: int = 1):
         self._pvmat = pvmat
         self._nbyte_recl = nbyte_recl
         self._iq = None
@@ -268,7 +273,20 @@ class Vmat:
         self._recl = None
         self._eval = None
         self._evec = None
+        with open(self._pvmat, 'rb') as h:
+            recl, iq, msize = struct.unpack('iii', h.read(12))
+            self._recl = recl
+            self._iq = iq
+            self._msize = msize
         self._load()
+
+    def _seek_record(self, imb: int):
+        """seek the record location of the starting of matrix elements of vmat(iomega)
+
+        Args:
+            iomega (int): index of frequency
+        """
+        return self._nbyte_recl * self._recl * (1+imb)
 
     @property
     def nbyte_recl(self):
@@ -330,15 +348,11 @@ class Vmat:
 
     def _load(self):
         """load the binary file"""
+        msize = self._msize
         with open(self._pvmat, 'rb') as h:
-            recl, iq, msize = struct.unpack('iii', h.read(12))
-            self._recl = recl
-            self._iq = iq
-            self._msize = msize
-            h.seek(recl)
             vmat = []
             for i in range(msize):
-                h.seek((1+i)*recl)
+                h.seek(self._seek_record(i))
                 data = np.frombuffer(h.read(16*msize), dtype='float64', count=2*msize)
                 vmat.append(reshape_2n_float_n_cmplx(data))
             self._vmat = np.array(vmat)

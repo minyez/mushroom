@@ -5,11 +5,14 @@ from sys import argv
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 import numpy as np
 import matplotlib.pyplot as plt
+from mushroom.core.display import set_np_linewidth_ratio
 from mushroom.gap import Eps
 from mushroom.visual.pyplot import rc_gracify
 
 # make grace style as default
 rc_gracify()
+# add numpy array print for large terminal
+set_np_linewidth_ratio(ratio=0.75, thres=100)
 
 def plot_eps(eps: Eps, iomega: int, compare_eps: Eps = None):
     """plot Coulomb matrix"""
@@ -26,9 +29,16 @@ def plot_eps(eps: Eps, iomega: int, compare_eps: Eps = None):
 def print_eps_omega(eps: Eps, iomega):
     """print out dielectric matrix at a particular frequency"""
     epsdata = eps.get_eps(iomega)
-    print("Is epsilon(iomega={:d}) Hermitian? {}".format(iomega, eps.is_hermitian(iomega)))
+    print("Is epsilon(iomega={:d}) Hermitian? {}"
+          .format(iomega, eps.is_hermitian(iomega)))
     if eps.is_q0:
         print("E_macro (NLF) = {}".format(epsdata[0, 0]))
+        epsdata = eps.get(iomega)
+        # if the raw data is related to the inverse, print emac data with local field
+        if eps.kind == "invm1":
+            print("         (LF) = {}".format(1.0/(epsdata[0, 0]+1.0)))
+        elif eps.kind == "inv":
+            print("         (LF) = {}".format(1.0/epsdata[0, 0]))
 
 def _parser():
     """parser"""

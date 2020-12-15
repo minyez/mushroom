@@ -4,20 +4,32 @@
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 import numpy as np
 import matplotlib.pyplot as plt
+from mushroom.core.display import set_np_linewidth_ratio
 from mushroom.gap import Vmat
 from mushroom.visual.pyplot import rc_gracify
 
 # make grace style as default
 rc_gracify()
+# add numpy array print for large terminal
+set_np_linewidth_ratio(ratio=0.75, thres=100)
 
-def plot_vmat(vmat: Vmat, compare_vmat=None):
+def plot_vmat(vmat: Vmat, compare_vmat: Vmat = None,
+              maxsize: int = None, center_zero: bool = False):
     """plot Coulomb matrix"""
     fig, ax = plt.subplots()
     realpart = vmat.vmat.real
     if compare_vmat is not None:
         realpart = vmat.vmat.real - compare_vmat.vmat.real
-    vmax = np.max(np.absolute(realpart))
-    c = ax.pcolor(realpart, cmap="RdBu", vmin=-vmax, vmax=vmax)
+    if maxsize:
+        if maxsize > 0:
+            realpart = realpart[:maxsize, :maxsize]
+        elif maxsize < 0:
+            realpart = realpart[maxsize:, maxsize:]
+    if center_zero:
+        vmax = np.max(np.absolute(realpart))
+        c = ax.pcolor(realpart, cmap="RdBu", vmin=-vmax, vmax=vmax)
+    else:
+        c = ax.pcolor(realpart, cmap="RdBu")
     fig.colorbar(c, ax=ax)
     return fig, ax
 
@@ -40,23 +52,26 @@ def plot_negative_eigvec(vmat: Vmat):
 def _parser():
     """the parser"""
     p = ArgumentParser(description=__doc__, formatter_class=RawDescriptionHelpFormatter)
-    #p.add_argument("-c", dest="casename", type=str, default=None, help="casename")
-    #p.add_argument("-q", dest="iq", type=int, default=1, help="qpoint index (from 1)")
-    #p.add_argument("-p", dest="dirpath", type=str, default=".",
-    #               help="path to the directory containg inputs and outputs")
-    #p.add_argument("-f", dest="vmatfile", type=str, default=None, help="path of vmat file")
     p.add_argument("vmatfile", type=str, help="path of vmat file")
+    p.add_argument("-n", dest="nbyte_recl", type=int, default=1,
+                   help="unit of record length. Usually 1/4 for gfortran/intel")
+    p.add_argument("-s", dest="maxsize", type=int, default=None,
+                   help="max size of the matrix element to show")
     p.add_argument("--plot", action="store_true", help="plot the v-matrix")
+    p.add_argument("--show", action="store_true", help="show the v-matrix plot")
     p.add_argument("--diff", type=str, default=None,
                    help="path of vmat file to compare when plot")
-    #p.add_argument("-n", dest="nbyte_recl", type=int, default=1, help="unit of record length")
+    p.add_argument("--nd", dest="nbyte_recl_diff", type=int, default=None,
+                   help="unit of record length of compare vmat")
+    p.add_argument("--cz", dest="center_zero", action="store_true",
+                   help="unit of record length of compare vmat")
     return p
 
 def m_gap_vmat():
     """main stream"""
     args = _parser().parse_args()
     if args.vmatfile is not None:
-        vmat = Vmat(args.vmatfile)
+        vmat = Vmat(args.vmatfile, nbyte_recl=args.nbyte_recl)
         print("     matrix size =", vmat.msize)
         print("Is vmat Hermitian?", vmat.is_hermitian())
         print("diagonal elements:")
@@ -68,9 +83,14 @@ def m_gap_vmat():
     if args.plot:
         compare_vmat = args.diff
         if compare_vmat is not None:
-            compare_vmat = Vmat(compare_vmat)
-        fig, ax = plot_vmat(vmat, compare_vmat=compare_vmat)
-        fig, ax = plot_vmat(vmat)
+            compare_vmat_nbyte_recl = args.nbyte_recl_diff
+            if compare_vmat_nbyte_recl is None:
+                compare_vmat_nbyte_recl = args.nbyte_recl
+            compare_vmat = Vmat(compare_vmat, nbyte_recl=compare_vmat_nbyte_recl)
+        fig, ax = plot_vmat(vmat, compare_vmat=compare_vmat,
+                            maxsize=args.maxsize, center_zero=args.center_zero)
+        if args.plot:
+            plt.show()
         if args.diff:
             fig.savefig("diff_vmat.png")
         else:
@@ -80,3 +100,4 @@ def m_gap_vmat():
 
 if __name__ == "__main__":
     m_gap_vmat()
+

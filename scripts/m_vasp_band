@@ -33,7 +33,7 @@ def _parser():
                    help="energy range (y-axis), e.g. 'm8~5' for -8.0 to 5.0")
     return p
 
-def m_v_band():
+def m_vasp_band():
     """main stream"""
     args = _parser().parse_args()
     p, ax = Plot.subplots(1, 1, background=False)
@@ -71,5 +71,5 @@ def m_v_band():
 
 
 if __name__ == "__main__":
-    m_v_band()
+    m_vasp_band()
 

@@ -8,6 +8,7 @@ MESSAGE_FILE = mcm.info
 AWK = gawk
 MAKE = gmake
 DIST_TARBALL = dist/$(PROJ)-$(VERSION).tar.gz
+DIST_TARBALL_TEST = dist/$(PROJ)-$(VERSION)-test.tar.gz
 SED = gsed
 CHANGELOG_FILE = ./doc/changelog.rst
 GIT_TODAY_CHANGE = $(strip $(shell awk "/$$(date +"%Y-%m-%d")/" $(CHANGELOG_FILE)))
@@ -15,7 +16,7 @@ GIT = git
 
 include .objects
 
-.PHONY: default distrc push clean remote pytest test commit amend version
+.PHONY: default distrc push clean remote pytest test commit amend version dist
 
 default: pytest
 
@@ -30,8 +31,11 @@ pytest:
 
 test: pytest remote
 
-remote: $(DIST_TARBALL)
-	scripts/dist_rsync.py
+dist: pytest
+	$(MAKE) $(DIST_TARBALL)
+
+remote: $(DIST_TARBALL_TEST)
+	scripts/dist_rsync.py --test
 
 commit:
 ifeq ($(GIT_TODAY_CHANGE),)
@@ -52,6 +56,21 @@ push:
 	@$(GIT) push origin master
 
 $(DIST_TARBALL): $(DIST_FILES)
+	mkdir -p dist/$(PROJ)
+	cp -r $^ dist/$(PROJ)/
+	$(SED) "/CircleCI/d;/codecov/,+1 d;s/build time/build time: $(BUILDTIME)/g" \
+		README.md > dist/$(PROJ)/README.md
+	cd dist; tar --exclude=".DS_Store" \
+		--exclude="*.pyc" --exclude="__pycache__" \
+		--exclude="*.log" \
+		--exclude=".git*" \
+		--exclude="vasp_*/vasp.sh" \
+		--exclude="*_*/common.sh" \
+		--exclude=".pytest_cache" \
+		-zcvf $(shell basename $@) $(PROJ)
+	rm -rf dist/$(PROJ)
+
+$(DIST_TARBALL_TEST): $(DIST_FILES) prototype
 	mkdir -p dist/$(PROJ)
 	cp -r $^ dist/$(PROJ)/
 	$(SED) "/CircleCI/d;/codecov/,+1 d;s/build time/build time: $(BUILDTIME)/g" \
