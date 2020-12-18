@@ -34,17 +34,21 @@ test: pytest remote
 dist: pytest
 	$(MAKE) $(DIST_TARBALL)
 
-remote: $(DIST_TARBALL_TEST)
+remote: $(DIST_TARBALL)
+	scripts/dist_rsync.py
+
+remotetest: $(DIST_TARBALL_TEST)
 	scripts/dist_rsync.py --test
 
 commit:
 ifeq ($(GIT_TODAY_CHANGE),)
 	@echo "Today's change log is not found in $(CHANGELOG_FILE). Please update!"; exit 1
 else
-	@$(AWK) "/$$(date +"%Y-%m-%d")/,EOF" $(CHANGELOG_FILE) | sed -e '0,/^-\+/d' -e '/[0-9]\{4\}-/Q' > $(MESSAGE_FILE)
+	@echo "(Review the message. Delete this message for commit)" > $(MESSAGE_FILE)
+	@$(AWK) "/$$(date +"%Y-%m-%d")/,EOF" $(CHANGELOG_FILE) | sed -e '0,/^-\+/d' -e '/^\^\+/d' -e '/[0-9]\{4\}-/Q' >> $(MESSAGE_FILE)
 	$(MAKE) pytest
 	@$(GIT) add $(CHANGELOG_FILE)
-	@$(GIT) commit -F $(MESSAGE_FILE)
+	@$(GIT) commit -t $(MESSAGE_FILE)
 endif
 	rm -f $(MESSAGE_FILE); touch $(MESSAGE_FILE)
 

@@ -2,6 +2,7 @@
 """Module that defines class and utilities for band structure
 """
 import re
+from collections.abc import Iterable
 from typing import Sequence, Union
 
 import numpy as np
@@ -94,9 +95,9 @@ class BandStructure(EnergyUnit):
         try:
             self._eigen = np.array(eigen, dtype=self._dtype)
             self._weight = np.array(weight, dtype=self._dtype)
-        except TypeError:
+        except TypeError as err:
             _logger.error("failt to convert eigen/weight to ndarray")
-            raise BandStructureError
+            raise BandStructureError from err
 
         EnergyUnit.__init__(self, eunit=unit)
         self._emulti = {1: 2, 2: 1}[self._nspins]
@@ -154,8 +155,8 @@ class BandStructure(EnergyUnit):
             raise AttributeError("occupations are already set")
         try:
             shape_o = np.shape(occ)
-        except ValueError:
-            raise ValueError("can not retrive the shape of input occupations")
+        except ValueError as err:
+            raise ValueError("can not retrive the shape of input occupations") from err
         shape_e = (self._nspins, self._nkpts, self._nbands)
         if shape_e != shape_o:
             info = "inconsistent eigen/occ shapes: {}, {}".format(shape_e, shape_o)
@@ -633,9 +634,9 @@ class BandStructure(EnergyUnit):
         try:
             vb_coefs = self.get_pwav(atm_vbm, prj_vbm)
             cb_coefs = self.get_pwav(atm_cbm, prj_cbm)
-        except BandStructureError:
+        except BandStructureError as err:
             info = "unable to compute effective gap, since no partial wave is parsed. try kavg_gap"
-            raise BandStructureError(info)
+            raise BandStructureError(info) from err
         if ivb is None or not ivb in range(self.nbands):
             vb_coef = vb_coefs[:, :, np.max(self.ivbm)]
         else:
@@ -707,7 +708,7 @@ class BandStructure(EnergyUnit):
         return coeff
 
     def _get_band_indices(self, ib):
-        if isinstance(ib, Sequence):
+        if isinstance(ib, Iterable):
             return list(map(self._convert_band_iden, ib))
         return [self._convert_band_iden(ib),]
 
@@ -715,7 +716,7 @@ class BandStructure(EnergyUnit):
         if self._atms is None:
             if isinstance(atm, int):
                 return [atm,]
-            if isinstance(atm, Sequence):
+            if isinstance(atm, Iterable):
                 has_str = any(isinstance(a, str) for a in atm)
                 if not has_str:
                     return atm
@@ -726,7 +727,7 @@ class BandStructure(EnergyUnit):
         if self._prjs is None:
             if isinstance(prj, int):
                 return [prj,]
-            if isinstance(prj, Sequence):
+            if isinstance(prj, Iterable):
                 has_str = any(isinstance(p, str) for p in prj)
                 if not has_str:
                     return prj
@@ -889,8 +890,8 @@ def split_apb(apb: str):
         raise ValueError("whitespace is not allowed in atom-projector-band string, got", apb)
     try:
         a, p, b = apb.split(":")
-    except ValueError:
-        raise ValueError("should contain two colons")
+    except ValueError as err:
+        raise ValueError("should contain two colons") from err
 
     a, p, b = map(lambda x: split_comma(x, int), [a, p, b])
 
@@ -909,7 +910,8 @@ def display_band_analysis(bs: BandStructure, kpts):
         ik_vb, ik_cb = bs.fund_trans()[0]
         if bs.is_gap_direct():
             print("> fundamental gap = {:8.5f} {}".format(eg_dir, unit))
-            print(">>   ik={:<3d} ({:7.5f},{:7.5f},{:7.5f})".format(ik_eg_dir, *kpts[ik_eg_dir, :]))
+            print(">>   ik={:<3d} ({:7.5f},{:7.5f},{:7.5f})"
+                  .format(ik_eg_dir, *kpts[ik_eg_dir, :]))
         else:
             print("> fundamental gap = {:8.5f} {}".format(eg_ind, unit))
             print(">> ikvb={:<3d} ({:7.5f},{:7.5f},{:7.5f}) -> ikcb={:<3d} ({:7.5f},{:7.5f},{:7.5f})"
@@ -920,5 +922,5 @@ def display_band_analysis(bs: BandStructure, kpts):
                   .format(eg_dir, unit, ik_eg_dir, *kpts[ik_eg_dir, :]))
         bs.unit = was_unit
     except BandStructureError as err:
-        raise err("fail to display band analysis")
+        raise BandStructureError("fail to display band analysis") from err
 

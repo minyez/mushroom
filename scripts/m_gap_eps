@@ -14,15 +14,22 @@ rc_gracify()
 # add numpy array print for large terminal
 set_np_linewidth_ratio(ratio=0.75, thres=100)
 
-def plot_eps(eps: Eps, iomega: int, compare_eps: Eps = None):
+def plot_eps(eps: Eps, iomega: int, compare_eps: Eps = None, print_data: bool = False):
     """plot Coulomb matrix"""
     fig, ax = plt.subplots()
     realpart = eps.get_eps(iomega).real
     if compare_eps is not None:
         realpart = eps.get_eps(iomega).real - compare_eps.get_eps(iomega).real
     vmax = np.max(np.absolute(realpart))
+    vmin = 1.0
+    cmap = "GnBu"
+    if print_data:
+        print(realpart)
+    if compare_eps is not None:
+        vmin=-vmax
+        cmap = "RdBu"
     # eps usually converges to 1
-    c = ax.pcolor(realpart, cmap="GnBu", vmin=1.0, vmax=vmax)
+    c = ax.pcolor(realpart, cmap=cmap, vmin=vmin, vmax=vmax)
     fig.colorbar(c, ax=ax)
     return fig, ax
 
@@ -52,7 +59,11 @@ def _parser():
                    required="--plot" in argv,
                    help="index of frequency point (start from 0)")
     p.add_argument("--plot", action="store_true",
-                   help="plot the v-matrix")
+                   help="plot the dielectric matrix")
+    p.add_argument("--data", action="store_true",
+                   help="print the realpart of dielectric matrix elements")
+    p.add_argument("--diff", dest="compare_eps", type=str, default=None,
+                   help="path to eps file for comparison")
     return p
 
 def m_gap_eps():
@@ -65,7 +76,8 @@ def m_gap_eps():
     if args.iomega is not None:
         print_eps_omega(eps, args.iomega)
         if args.plot:
-            fig, ax = plot_eps(eps, args.iomega)
+            fig, ax = plot_eps(eps, args.iomega,
+                               compare_eps=args.compare_eps, print_data=args.data)
             fig.savefig("eps_iq_{}_iomega_{}.png".format(iq, args.iomega))
     else:
         for iomega in range(eps.nomega):

@@ -21,7 +21,7 @@ del create_logger
 gwmethod_suffices = {'g0w0': 'GW', 'gw0': 'GW0'}
 
 class Eps:
-    """object to handle the file ``.eps`` storing dielectric matrix
+    """object to handle the binary file ``.eps`` storing dielectric matrix
 
     Args:
         peps (Path): path to the epsilon binary file
@@ -29,6 +29,7 @@ class Eps:
         kind (str)
         nbyte_recl (int) : number of bytes as unit of record length. default to 4.
             Use 1 if GAP is compiled with ``assume bytenbyte_recl`` or compiled with gcc
+            After fixing gap2e, this argument is obsolete.
         cache (bool) : cache eps data
     """
     known_kind = ("eps", "inv", "invm1")
@@ -106,7 +107,6 @@ class Eps:
 
         Args:
             iomega (int)
-            cache (bool)
         """
         rawdata = self._rawdata.get(iomega, None)
         if self._cache and rawdata is not None:
@@ -126,6 +126,7 @@ class Eps:
         return rawdata
 
     def _reshape(self, rawdata):
+        """reshape the rawdata of float vector into a complex matrix"""
         rawdata = rawdata[0::2] + rawdata[1::2] * 1.0j
         reshaped = np.zeros((self.msize, self.msize), dtype='complex64')
         s = int(self._is_q0)
@@ -281,10 +282,10 @@ class Vmat:
         self._load()
 
     def _seek_record(self, imb: int):
-        """seek the record location of the starting of matrix elements of vmat(iomega)
+        """seek the record location of the starting of row elements of vmat(imb)
 
         Args:
-            iomega (int): index of frequency
+            imb (int): row index of Coulomb matrix
         """
         return self._nbyte_recl * self._recl * (1+imb)
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""draw band from wien2k output
+"""draw band from wien2k output and export to a grace file
 """
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
@@ -62,19 +62,18 @@ def m_w2k_band():
         if len(args.ksymbols) == 1:
             ksymbols = args.ksymbols[0].split()
     ax.x.set_spec(kp.special_x, labels=ksymbols)
+    ax.set_xlim(0.0, kp.x[-1] + 0.0001)
     if args.energy_range is not None:
         try:
             emin, emax = decode_float_ends(args.energy_range)
             ax.set_ylim(ymin=emin, ymax=emax)
+            ax.tight_graph(xscale=None, yscale=None)
         except ValueError as err:
             raise ValueError("invalid energy range", args.energy_range) from err
     else:
-        ax.tight_graph()
-    ax.set_xlim(0.0, kp.x[-1] + 0.0001)
-    ax.set_ylim(-6, 6)
-    ax.y.set_major(major=4)
+        ax.tight_graph(xscale=None)
     ax.y.set_label("Energy (eV)")
-    # draw zero line
+    # draw zero line for Fermi level
     ax.axhline(0.0, ls="dashed", lw=2)
     p.write(file=args.output)
     if args.fig_ext is not None:

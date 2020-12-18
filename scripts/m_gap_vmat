@@ -57,7 +57,7 @@ def _parser():
                    help="unit of record length. Usually 1/4 for gfortran/intel")
     p.add_argument("-s", dest="maxsize", type=int, default=None,
                    help="max size of the matrix element to show")
-    p.add_argument("--plot", action="store_true", help="plot the v-matrix")
+    p.add_argument("--plot", action="store_true", help="save the v-matrix plot")
     p.add_argument("--show", action="store_true", help="show the v-matrix plot")
     p.add_argument("--diff", type=str, default=None,
                    help="path of vmat file to compare when plot")
@@ -65,6 +65,7 @@ def _parser():
                    help="unit of record length of compare vmat")
     p.add_argument("--cz", dest="center_zero", action="store_true",
                    help="unit of record length of compare vmat")
+    p.add_argument("-D", dest="debug", action="store_true", help="debug mode")
     return p
 
 def m_gap_vmat():
@@ -72,6 +73,9 @@ def m_gap_vmat():
     args = _parser().parse_args()
     if args.vmatfile is not None:
         vmat = Vmat(args.vmatfile, nbyte_recl=args.nbyte_recl)
+        if args.debug:
+            print("=Debug=: read record length and unit: {}, {}"
+                  .format(vmat.recl, vmat.nbyte_recl))
         print("     matrix size =", vmat.msize)
         print("Is vmat Hermitian?", vmat.is_hermitian())
         print("diagonal elements:")
@@ -80,7 +84,7 @@ def m_gap_vmat():
         print(vmat.eval)
     else:
         raise FileNotFoundError
-    if args.plot:
+    if args.plot or args.show:
         compare_vmat = args.diff
         if compare_vmat is not None:
             compare_vmat_nbyte_recl = args.nbyte_recl_diff
@@ -89,7 +93,7 @@ def m_gap_vmat():
             compare_vmat = Vmat(compare_vmat, nbyte_recl=compare_vmat_nbyte_recl)
         fig, ax = plot_vmat(vmat, compare_vmat=compare_vmat,
                             maxsize=args.maxsize, center_zero=args.center_zero)
-        if args.plot:
+        if args.show:
             plt.show()
         if args.diff:
             fig.savefig("diff_vmat.png")
