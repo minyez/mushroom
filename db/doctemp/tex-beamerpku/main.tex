@@ -1,0 +1,27 @@
+% !TeX TS-program = pdflatex
+% Intended LaTeX compiler: pdflatex
+% dont use ignorenonframe option here
+\documentclass{beamer}
+\usepackage[maxnames=3,style=nature,date=year,url=false,isbn=false,doi=false,articletitle=false]{biblatex}
+\input{etc/pkgscmds}
+\addbibresource{main.bib}
+
+\usetheme{CambridgeUSzmy}
+\author{Min-Ye Zhang}
+\date[\today]{@location, \today}
+\title[Short title]{Long title}
+\institute[CCME, PKU]{College of Chemistry and Molecular Engineering\\ Peking University}
+
+\providecommand{\titleheader}{}
+\renewcommand{\titleheader}{\itshape TMC Group Seminar}
+\hypersetup{
+pdfauthor={Min-Ye Zhang},%
+pdfkeywords={},%
+pdfsubject={},%
+pdflang={English}}
+
+\begin{document}
+\import{frames/}{front}
+\import{frames/}{appendix}
+
+\end{document}

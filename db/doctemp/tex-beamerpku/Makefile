@@ -5,9 +5,9 @@ LATEX = $(shell \
 		  awk '/TS-program =/ {printf("%s", $$5)}' $(PROJNAME).tex \
 		  )
 # subdirectories to include in the tarball
-SUBDIRS = $(wildcard etc part*)
+SUBDIRS = frames etc
 # all tex sources to let watch work
-SOURCES = $(wildcard *.tex part*/*.tex etc/*.tex)
+SOURCES = $(wildcard *.tex etc/*.tex frames/*.tex)
 # the bibliography file
 BIBFILE = $(PROJNAME).bib
 TARBALL = $(PROJNAME).tar.gz

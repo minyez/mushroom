@@ -1,0 +1,78 @@
+% !TeX root = ../main.tex
+% set package here
+\PassOptionsToPackage{usenames,dvipsnames}{xcolor}
+\PassOptionsToPackage{%
+colorlinks=True,linkcolor=,filecolor=,citecolor=Green,urlcolor=Blue,%
+implicit=true,pdfborder={0 0 0}}{hyperref}
+% layout
+\usepackage[font={small,it},skip=1pt]{caption}
+% space between caption and table
+%\captionsetup[table]{belowskip=-6pt}
+\usepackage{float}
+\usepackage{wrapfig}
+% Math
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{wasysym}
+
+\usepackage{graphicx}
+\usepackage{xcolor}
+\providecolor{pkured}{cmyk}{0,1,1,0.45}
+
+\usepackage{textcomp}
+\usepackage{grffile}
+\usepackage{longtable}
+\usepackage{subfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+
+\usepackage{import}%解决相对路径input的问题
+%编译器依赖的字体库导入
+\usepackage{ifxetex}
+\ifxetex%
+  \usepackage{xeCJK}%
+\else%
+  \usepackage[T1]{fontenc}%
+\fi
+
+\usepackage{booktabs}
+
+% biblatex
+\usepackage[maxnames=3,style=nature,date=year,url=false,isbn=false,doi=false,articletitle=false]{biblatex}
+% link doi, issn or isbn to the pages (journal) or title (book)
+\makeatletter
+\ltx@ifpackageloaded{biblatex}%
+{% Do something if biblatex loaded
+    \newbibmacro{string+doiurlisbn}[1]{%
+        \iffieldundef{url}{%
+            \iffieldundef{doi}{%
+                \iffieldundef{isbn}{%
+                    \iffieldundef{issn}{%
+                        #1%
+                    }{%
+                        \href{http://books.google.com/books?vid=ISSN\thefield{issn}}{#1}%
+                    }%
+                }{%
+                    \href{http://books.google.com/books?vid=ISBN\thefield{isbn}}{#1}%
+                }%
+            }{%
+                \href{https://dx.doi.org/\thefield{doi}}{#1}%
+            }%
+        }{%
+            \href{\thefield{url}}{#1}%
+        }%
+    }
+    \DeclareFieldFormat[article,incollection]{pages}{\usebibmacro{string+doiurlisbn}{#1}}
+    \DeclareFieldFormat[book]{title}{\usebibmacro{string+doiurlisbn}{\mkbibemph{#1}}}
+}
+{%
+    % Do something different if not
+}%
+\makeatother
+
+
+% coding related
+%\usepackage[newfloat,cache=true]{minted}
+
+\usepackage{hyperref}
+\usepackage{cleveref}
