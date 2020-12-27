@@ -7,7 +7,7 @@ LATEX = $(shell \
 # subdirectories to include in the tarball
 SUBDIRS = frames etc
 # all tex sources to let watch work
-SOURCES = $(wildcard *.tex etc/*.tex frames/*.tex)
+SOURCES = $(wildcard *.tex) $(wildcard $(patsubst %,%/*.tex,$(SUBDIRS)))
 # the bibliography file
 BIBFILE = $(PROJNAME).bib
 TARBALL = $(PROJNAME).tar.gz

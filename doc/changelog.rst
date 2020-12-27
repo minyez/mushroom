@@ -1,5 +1,9 @@
 Changelog
 =========
+2020-12-27
+----------
+Minor change in document template
+
 2020-12-22
 ----------
 Beamer slides document template
