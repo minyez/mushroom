@@ -176,12 +176,12 @@ class _DBBase:
         """
         return self._get_entry(entry, True)
 
-
 class DBCell(_DBBase):
     """database of crystall structure cells"""
     avail_writers = list(Cell.avail_exporters) + ["w2k",]
     avail_readers = list(Cell.avail_readers) + ["w2k",]
     default_writer = "vasp"
+    assert default_writer in avail_writers
 
     def __init__(self):
         _DBBase.__init__(self, "cell", ["**/*.json", "**/*.cif"])
@@ -189,23 +189,30 @@ class DBCell(_DBBase):
         self.get_cell_path = self.get_entry_path
         self.get_avail_cells = self.get_avail_entries
 
-    def extract(self, cell_entry: Union[str, int], output_path=None, writer=None):
-        """extract the entry from cell database"""
-        self._write(self._read_entry(cell_entry),
+    def _read_cell(self, pcell, reader=None):
+        """read a cell file"""
+        if reader is None:
+            reader = detect(pcell, fail_with_ext=True)
+        if reader not in self.avail_readers:
+            raise ValueError("unsupported format for reading cell: {}".format(reader))
+        if reader == "w2k":
+            return Struct.read(pcell)
+        # default use Cell
+        return Cell.read(pcell, form=reader)
+
+    def convert(self, pcell: Path, output_path=None, reader=None, writer=None):
+        """convert a file in one format of lattice cell to another"""
+        self._write(self._read_cell(pcell, reader=reader),
                     output_path=output_path, writer=writer)
 
-    def _read_entry(self, cell_entry: Union[str, int], reader=None):
-        """read in a database entry and return a cell object"""
+    def extract(self, cell_entry: Union[str, int], output_path=None,
+                reader=None, writer=None):
+        """extract the entry from cell database"""
         pcell = self.get_cell_path(cell_entry)
         if pcell is None:
             raise DBEntryNotFoundError("cell entry {} is not found".format(cell_entry))
-        if reader is None:
-            reader = detect(pcell, fail_with_ext=True)
-        if reader in Cell.avail_readers:
-            return Cell.read(pcell, form=reader)
-        if reader == "w2k":
-            return Struct.read(pcell)
-        raise ValueError("unsupported format for reading cell: {}".format(reader))
+        self._write(self._read_cell(pcell, reader=reader),
+                    output_path=output_path, writer=writer)
 
     def _write(self, cell_object, output_path: Union[str, int] = None, writer=None):
         """write to some format"""
@@ -218,21 +225,18 @@ class DBCell(_DBBase):
             if not writer:
                 raise ValueError("fail to detect a format for writing cell")
         if isinstance(cell_object, Cell):
-            if writer in Cell.avail_exporters:
-                cell_object.write(writer, filename=output_path)
-                return
             if writer == "w2k":
                 Struct.from_cell(cell_object).write(filename=output_path)
                 return
-        elif isinstance(cell_object, Struct):
-            if writer in Cell.avail_exporters:
-                cell_object.get_cell().write(writer, filename=output_path)
-                return
+            cell_object.write(writer, filename=output_path)
+            return
+        if isinstance(cell_object, Struct):
             if writer == "w2k":
                 cell_object.write(filename=output_path)
                 return
+            cell_object.get_cell().write(writer, filename=output_path)
+            return
         raise ValueError("invalid class of input cell object: {}".format(type(cell_object)))
-
 
 class DBWorkflow(_DBBase):
     """database of workflows"""
@@ -310,7 +314,7 @@ class DBDoctemp(_DBBase):
     """database of document template"""
 
     def __init__(self):
-        _DBBase.__init__(self, "doctemp", ["*",], excludes=[".gitignore"])
+        _DBBase.__init__(self, "doctemp", ["*",], excludes=[".gitignore",])
         self.get_doctemp = self.get_entry
         self.get_doctemp_path = self.get_entry_path
 

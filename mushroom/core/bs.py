@@ -96,7 +96,7 @@ class BandStructure(EnergyUnit):
             self._eigen = np.array(eigen, dtype=self._dtype)
             self._weight = np.array(weight, dtype=self._dtype)
         except TypeError as err:
-            _logger.error("failt to convert eigen/weight to ndarray")
+            _logger.error("fail to convert eigen/weight to ndarray")
             raise BandStructureError from err
 
         EnergyUnit.__init__(self, eunit=unit)

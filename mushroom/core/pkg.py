@@ -19,7 +19,7 @@ package_names = {
     "gpaw": "GPAW",
     "abi": "ABINIT",
     "aims": "FHI-aims",
-    "qe": "Quantum Espresso",
+    "qe": "Quantum ESPRESSO",
     "bgw": "BerkeleyGW",
     "cp2k": "CP2k",
     }
@@ -52,6 +52,7 @@ _package_specific_fullnames = {
     "KPOINTS": "vasp",
     "pw.in": "qe",
     "ph.in": "qe",
+    "geometry.in": "aims",
     }
 
 # check consistency

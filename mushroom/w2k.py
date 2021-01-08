@@ -9,6 +9,7 @@ import re
 import numpy as np
 
 from mushroom.core.cell import Cell
+from mushroom.core.typehint import Latt3T3
 from mushroom.core.elements import nuclear_charges
 from mushroom.core.ioutils import grep, print_file_or_iowrapper, get_filename_wo_ext
 from mushroom.core.crystutils import (get_latt_vecs_from_latt_consts,
@@ -65,14 +66,14 @@ def _get_default_rmt(element):
 
 def _read_atm_block(lines):
     """read inequivalent atom block in struct file
-    
+
     Args:
         lines (list of str): the lines of file containing
             information of a particular inequivalent atom
 
             the first line should start with "ATOM", and
             the local rotation matrix is included
-    
+
     Returns:
         atm, pos, rzero, rmt
     """
@@ -101,7 +102,7 @@ def _read_symops(lines):
 
     Args:
         lines (list of str):
-    
+
     Returns:
         dict with two keys, "rotations" and "translations"
     """
@@ -121,7 +122,7 @@ def _read_symops(lines):
 
 def get_casename(dirpath: Union[str, PathLike] = ".", casename: str = None):
     """get the case name of the wien2k calculation under directory `dirpath`
-    
+
     It will first search for .struct file under dirpath and
     return the filename without extension if found.
     Otherwise the name of the directory will be returned
@@ -152,7 +153,7 @@ def search_cplx_input(path: Union[str, PathLike]) -> str:
 
     Args:
         path (PathLike): the path of input file, with extension.
-    
+
     Returns:
         str, the path to the complex input file if found.
              the input path is directed returned, if the path does not have an extension of input
@@ -165,7 +166,7 @@ def search_cplx_input(path: Union[str, PathLike]) -> str:
         if pathc.is_file():
             return str(pathc)
     return str(path)
-    
+
 
 def get_inputs(suffix: str, *suffices, dirpath: Union[str, PathLike] = ".",
                casename: str = None, relative: Union[bool, str, PathLike] = None,
@@ -440,7 +441,7 @@ class Struct:
             rmts[atm] = rmt
         symops = _read_symops(lines[symops_startline:])
         return cls(latt, atms_types, posi_types, npts=npts, symops=symops, rmts=rmts,
-                   isplits=isplits, kind=kind, rzeros=rzeros, rotmats=rotmats, 
+                   isplits=isplits, kind=kind, rzeros=rzeros, rotmats=rotmats,
                    comment=lines[0].strip())
 
     def export(self, scale: float = 1.0) -> str:
@@ -488,7 +489,7 @@ class Struct:
         """write the w2k formatted string to filename
         """
         print_file_or_iowrapper(self.export(scale=scale), f=filename)
-        
+
 
 class In1:
     """class for in1 file
@@ -496,8 +497,8 @@ class In1:
     Args:
         casename (str) :
         efermi (float) : fermi energy in Rydberg unit
-        lmax (int) 
-        lnsmax (int) 
+        lmax (int)
+        lnsmax (int)
         elparams : linearization energy parameters
     """
     def __init__(self, casename: str, efermi: float, rkmax: float, lmax: int,
@@ -632,4 +633,11 @@ def read_energy(penergy: str, penergy_dn: str = None, efermi=None):
         eigen.append(_read_one_energy_file(h, linenums, nbands_min))
     # always Rydberg unit
     return BandStructure(eigen, weight=weights, unit='ry', efermi=efermi), natm_ineq, kpts
+
+class KListBand:
+    """the object to manipulate bandlike klist"""
+    def __init__(self, nkmax: int, denom: int, recp_latt: Latt3T3):
+        self.nkmax = nkmax
+        self.denom = denom
+        self.recp_latt = recp_latt
 

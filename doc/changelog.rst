@@ -1,5 +1,11 @@
 Changelog
 =========
+2021-01-09
+----------
+aims cell reader and exporter, band output reader
+
+``DBCell`` supports cell conversion now.
+
 2020-12-27
 ----------
 Minor change in document template

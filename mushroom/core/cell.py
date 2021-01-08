@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# pylint: disable=bad-whitespace,too-many-lines
+# pylint: disable=too-many-lines,W0707
 """Module that defines classes for crystal cell manipulation"""
 import json
 import string
@@ -81,8 +81,8 @@ When other keyword are parsed, they will be filtered out and no exception will b
 
     _err = CellError
     _dtype = 'float64'
-    avail_exporters = ['vasp', 'abi', 'json', 'qe']
-    avail_readers = ['vasp', 'json', 'cif']
+    avail_exporters = ['vasp', 'abi', 'json', 'qe', 'aims']
+    avail_readers = ['vasp', 'json', 'cif', 'aims']
 
     def __init__(self, latt: Latt3T3, atms: Sequence[str], posi: Sequence[RealVec3D],
                  unit: str = 'ang', sanitize: bool = True,
@@ -125,6 +125,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
             'abi': self.export_abi,
             'json': self.export_json,
             'qe': self.export_qe,
+            'aims': self.export_aims,
             }
         assert set(self.exporters.keys()) == set(self.avail_exporters)
 
@@ -247,8 +248,9 @@ When other keyword are parsed, they will be filtered out and no exception will b
             self.coord_sys = "D"
             self._posi = self._posi - np.floor(self._posi)
             self.coord_sys = "C"
-
-    def Rab_in_rcut(self, rcut, ia, ib, axis=None, sort=True, return_iR=False, return_iR_Rablen=False):
+    # pylint: disable=R0914
+    def Rab_in_rcut(self, rcut, ia, ib, axis=None,
+                    sort=True, return_iR=False, return_iR_Rablen=False):
         """Rab = R + r_a - r_b real space vector within rcut
 
         Args:
@@ -415,8 +417,8 @@ When other keyword are parsed, they will be filtered out and no exception will b
         try:
             assert isinstance(scale, Real)
             assert scale > 0.0
-        except AssertionError:
-            raise self._err("scale must be positive real")
+        except AssertionError as err:
+            raise self._err("scale must be positive real") from err
         self._latt = self._latt * scale
         if self._coord_sys == "C":
             self._posi = self._posi * scale
@@ -434,8 +436,8 @@ When other keyword are parsed, they will be filtered out and no exception will b
             raise CellError("atom should be string, received {}".format(type(atom)))
         try:
             newpos = np.vstack([self._posi, coord])
-        except ValueError:
-            raise self._err("Invalid coordinate: {}".format(coord))
+        except ValueError as err:
+            raise self._err("Invalid coordinate: {}".format(coord)) from err
         if select_dyn is not None:
             self._set_select_dyn({self.natm: select_dyn})
         self._posi = newpos
@@ -974,6 +976,24 @@ When other keyword are parsed, they will be filtered out and no exception will b
         self.unit = uwas
         return '\n'.join(ret)
 
+    def export_aims(self, scale: float = 1.0) -> str:
+        """Export in fhi-aims format"""
+        latt = self._latt * scale
+        was_unit = self.unit
+        self.unit = "ang"
+        atom_tag = "atom_frac"
+        if self.coord_sys == "C":
+            atom_tag = "atom"
+        ret = []
+        ret.append("#\n# {}".format(self.comment))
+        ret.append("# reference: {}\n#".format(self.get_reference()))
+        for posi, atm in zip(self.posi, self.atms):
+            ret.append("{} {:15.9f} {:15.9f} {:15.9f} {}".format(atom_tag, *posi, atm))
+        for l in latt:
+            ret.append("lattice_vector {:15.9f} {:15.9f} {:15.9f}".format(*l))
+        self.unit = was_unit
+        return '\n'.join(ret)
+
     def export_json(self, scale: float = 1.0) -> str:
         """Export in JSON format"""
         latt = self._latt * scale
@@ -1003,6 +1023,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
             'vasp': cls.read_vasp,
             'cif': cls.read_cif,
             'json': cls.read_json,
+            'aims': cls.read_aims,
             }
         try:
             if form is None:
@@ -1015,6 +1036,34 @@ When other keyword are parsed, they will be filtered out and no exception will b
             return readers.get(form)(path)
         except KeyError:
             raise CellError("Unsupported reader format: {}".format(form))
+
+    @classmethod
+    def read_aims(cls, pgeo="geometry.in"):
+        """initialize the cell by reading a geometry file
+
+        Comment and reference are not loaded automatically
+
+        Args:
+            pgeo (str): path to the aims geometry file, default to geometry.in
+        """
+        with open(pgeo, 'r') as h:
+            data = [l.strip() for l in h.readlines()]
+        atms = []
+        posi = []
+        latt = []
+        coord_sys = None
+        for dl in data:
+            words = dl.split()
+            if not words:
+                continue
+            if words[0] in ["atom", "atom_frac"]:
+                if coord_sys is None:
+                    coord_sys = {"atom": "C", "atom_frac": "D"}[words[0]]
+                atms.append(words[-1])
+                posi.append(list(map(float, words[1:4])))
+            if words[0] == "lattice_vector":
+                latt.append(list(map(float, words[1:4])))
+        return cls(latt, atms, posi, unit='ang', coord_sys=coord_sys)
 
     @classmethod
     def read_json(cls, pjson):

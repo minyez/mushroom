@@ -41,6 +41,7 @@ class KPath:
         self._find_ksegs()
         self._x = None
         self._special_x = None
+        self._index_special_x = None
 
     def _find_ksegs(self):
         self._ksegs = find_k_segments(self.kpts)
@@ -66,6 +67,7 @@ class KPath:
             accumu_l += l
         self._x = np.array(xs)
         self._special_x = self._x[ispks]
+        self._index_special_x = np.array(ispks)
 
     @property
     def x(self):

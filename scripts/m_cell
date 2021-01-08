@@ -1,10 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""create a cell and export to various code-specific format
+"""create/read a cell and export to various code-specific format
 
+It can also used to convert
+
+Use `-I` for converting file of one cell format to another
 Use `-c` for creating from predefined sample, stored in `db/cell`.
 Use `-p` for curating available cell samples.
 """
+from os.path import isfile
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from mushroom.db import DBCell
 
@@ -12,17 +16,19 @@ def _parser():
     """parser"""
     p = ArgumentParser(description=__doc__, formatter_class=RawDescriptionHelpFormatter)
     igrp = p.add_mutually_exclusive_group()
-    #igrp.add_argument('-I', dest='input_file', type=str, default=None, help="input file")
+    igrp.add_argument('-I', dest='input_file', type=str,
+                      default=None, help="input file")
     igrp.add_argument('--filter', dest="search", type=str, default=None,
                       help="search and print out cells with file names matching the regex")
-    igrp.add_argument('-c', dest='cell', default=None, 
+    igrp.add_argument('-c', dest='cell', default=None,
                       help="extract predefined sample cell. int or str. see -p")
     igrp.add_argument('-p', dest='show', action="store_true",
                       help="show predefined sample cells")
     #p.add_argument('-a', dest='add_cell', type=str, default=None,
     #               help="add converted input to sample data (JSON format)")
-    p.add_argument('-i', dest='input_format', choices=DBCell.avail_readers, type=str, default=None,
-                   help="format of input file, automatic detection")
+    p.add_argument('-i', dest='input_format', choices=DBCell.avail_readers,
+                   type=str, default=None,
+                   help="format of input file, default use automatic detection")
     p.add_argument('-O', dest='output_path', type=str, default=None,
                    help="output file")
     p.add_argument('-o', dest='output_format', type=str,
@@ -34,18 +40,12 @@ def build_cell():
     """main stream"""
     args = _parser().parse_args()
     cdb = DBCell()
-    #if args.input_file and args.add_cell:
-    #    try:
-    #        c = Cell.read(args.input_file, form=args.input_format)
-    #    except CellError:
-    #        if args.input_file.endswith(".struct") or args.input_format == "w2k":
-    #            c = Struct.read(args.input_file).get_cell()
-    #    if args.output_format in Cell.avail_exporters:
-    #        s = c.export(args.output_format)
-    #    else:
-    #        raise ValueError("adding format {} is not supported".format(args.output_format))
-    #    cdb.add_entry(args.add_sample, s)
-    #    return
+    if args.input_file is not None:
+        if not isfile(args.input_file):
+            raise FileNotFoundError(args.input_file)
+        cdb.convert(args.input_file, output_path=args.output_path,
+                    reader=args.input_format, writer=args.output_format)
+        return
     if args.cell is not None:
         cdb.extract(args.cell, output_path=args.output_path, writer=args.output_format)
         return
@@ -53,7 +53,7 @@ def build_cell():
         for i, s in cdb.filter(args.search):
             print("{:>3d} : {:s}".format(i, s))
         return
-    raise ValueError("specify --filter / -s / -p")
+    raise ValueError("specify -I / --filter / -s / -p")
 
 
 if __name__ == "__main__":
