@@ -164,24 +164,24 @@ def _dict_read_procar(path: str = "PROCAR") -> dict:
 
 # pylint: disable=R0914
 def read_procar(path: str = "PROCAR", filter_k_before: int = 0,
-                filter_k_after: int = None) -> Tuple[BandStructure, np.ndarray]:
+                filter_k_behind: int = None) -> Tuple[BandStructure, np.ndarray]:
     """read PROCAR and return a BandStructure object
 
     Args:
         path (str) : path to the PROCAR file
         filter_k_before (int)
-        filter_k_after (int)
+        filter_k_behind (int)
     """
     d = _dict_read_procar(path=path)
     eigen, occ, weight, kpoints, pwav, prjs = \
         map(d.get, ["eigen", "occ", "weight", "kpoints", "pwav", "prjs"])
-    if filter_k_after is None:
-        filter_k_after = len(kpoints)
-    eigen = eigen[:, filter_k_before:filter_k_after, :]
-    occ = occ[:, filter_k_before:filter_k_after, :]
-    weight = weight[filter_k_before:filter_k_after]
-    kpoints = kpoints[filter_k_before:filter_k_after, :]
-    pwav = pwav[:, filter_k_before:filter_k_after, :, :, :]
+    if filter_k_behind is None:
+        filter_k_behind = len(kpoints)
+    eigen = eigen[:, filter_k_before:filter_k_behind, :]
+    occ = occ[:, filter_k_before:filter_k_behind, :]
+    weight = weight[filter_k_before:filter_k_behind]
+    kpoints = kpoints[filter_k_before:filter_k_behind, :]
+    pwav = pwav[:, filter_k_before:filter_k_behind, :, :, :]
     return BandStructure(eigen, occ, weight, unit='ev', pwav=pwav, prjs=prjs), kpoints
 
 def read_xml(*datakey, path: str = "vasprun.xml") -> dict:
@@ -258,13 +258,13 @@ def _dict_read_eigen(path="EIGENVAL") -> dict:
          "natms": natms,}
     return d
 
-def read_eigen(path="EIGENVAL", filter_k_before=0, filter_k_after=None):
+def read_eigen(path: str="EIGENVAL", filter_k_before: int=0, filter_k_behind: int=None):
     """read band structure from EIGENVAL
 
     Args:
         path (str) : path to EIGENVAL
         filter_k_before (int)
-        filter_k_after (int)
+        filter_k_behind (int)
 
     Returns:
         BandStructure, int, 2d-array
@@ -272,12 +272,12 @@ def read_eigen(path="EIGENVAL", filter_k_before=0, filter_k_after=None):
     d = _dict_read_eigen(path=path)
     eigen, occ, weight, kpoints, natms = \
         map(d.get, ["eigen", "occ", "weight", "kpoints", "natms"])
-    if filter_k_after is None:
-        filter_k_after = len(kpoints)
-    eigen = eigen[:, filter_k_before:filter_k_after, :]
-    occ = occ[:, filter_k_before:filter_k_after, :]
-    weight = weight[filter_k_before:filter_k_after]
-    kpoints = kpoints[filter_k_before:filter_k_after, :]
+    if filter_k_behind is None:
+        filter_k_behind = len(kpoints)
+    eigen = eigen[:, filter_k_before:filter_k_behind, :]
+    occ = occ[:, filter_k_before:filter_k_behind, :]
+    weight = weight[filter_k_before:filter_k_behind]
+    kpoints = kpoints[filter_k_before:filter_k_behind, :]
     return BandStructure(eigen, occ, weight), natms, kpoints
 
 read_poscar = Cell.read_vasp

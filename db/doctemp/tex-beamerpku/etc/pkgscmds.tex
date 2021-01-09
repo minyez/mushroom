@@ -5,7 +5,7 @@
 colorlinks=True,linkcolor=,filecolor=,citecolor=Green,urlcolor=Blue,%
 implicit=true,pdfborder={0 0 0}}{hyperref}
 % layout
-\usepackage[font={small,it},skip=1pt]{caption}
+\usepackage[font={small,},skip=1pt]{caption}
 % space between caption and table
 %\captionsetup[table]{belowskip=-6pt}
 \usepackage{float}
@@ -18,6 +18,10 @@ implicit=true,pdfborder={0 0 0}}{hyperref}
 \usepackage{graphicx}
 \usepackage{xcolor}
 \providecolor{pkured}{cmyk}{0,1,1,0.45}
+% color face for inline verbatim
+\providecolor{verbct}{cmyk}{0,1,1,0.45}
+% background for inline verbatim
+\providecolor{verbbg}{rgb}{0.97,0.97,0.97}
 
 \usepackage{textcomp}
 \usepackage{grffile}
@@ -25,6 +29,8 @@ implicit=true,pdfborder={0 0 0}}{hyperref}
 \usepackage{subfig}
 \usepackage{rotating}
 \usepackage[normalem]{ulem}
+\usepackage{upgreek}
+\usepackage{multirow}
 
 \usepackage{import}%解决相对路径input的问题
 %编译器依赖的字体库导入
@@ -69,10 +75,31 @@ implicit=true,pdfborder={0 0 0}}{hyperref}
     % Do something different if not
 }%
 \makeatother
-
+% small bibliography fontsize
+\renewcommand*{\bibfont}{\small}
 
 % coding related
 %\usepackage[newfloat,cache=true]{minted}
+\usepackage{newverbs}
+% inline verb with facecolor and background
+\newverbcommand{\cbverb}%
+{\begin{lrbox}{\verbbox}\color{verbct}}{\end{lrbox}\colorbox{verbbg}{\box\verbbox}}
+% inline typewriter with facecolor and background
+\newcommand{\cbttt}[1]{%
+\colorbox{verbbg}{\color{verbct}\texttt{#1}}%
+}
+% inline typewriter with facecolor
+\newcommand{\cttt}[1]{%
+{\color{verbct}\texttt{#1}}%
+}
+
+% footnote without marker, useful for footnote below columns and group citation
+\newcommand\blfootnote[1]{%
+  \begingroup
+  \renewcommand\thefootnote{}\footnote{#1}%
+  \addtocounter{footnote}{-1}%
+  \endgroup
+}
 
 \usepackage{hyperref}
-\usepackage{cleveref}
+%\usepackage{cleveref}

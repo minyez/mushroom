@@ -2,9 +2,15 @@ Changelog
 =========
 2021-01-09
 ----------
-aims cell reader and exporter, band output reader
-
 ``DBCell`` supports cell conversion now.
+
+* Keyword argument ``filter_k_after`` changed to ``filter_k_behind``
+* ``m_aims_gap`` supports kpoint filtering.
+* optimize beamer document template
+
+2021-01-08
+----------
+aims cell reader and exporter, band output reader
 
 2020-12-27
 ----------

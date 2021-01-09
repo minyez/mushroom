@@ -13,12 +13,18 @@ def _parser():
                    help="band output files")
     p.add_argument("--unit", default='ev', type=str,
                    help="energy unit")
+    p.add_argument("--rkbf", dest="remove_k_before", type=int, default=0,
+                   help="number of kpoints at first to remove")
+    p.add_argument("--rkbh", dest="remove_k_behind", type=int, default=None,
+                   help="number of kpoints from behind to remove")
     return p
 
 def m_aims_gap():
     """the main stream"""
     args = _parser().parse_args()
-    bs, kpts = read_band_output(*args.out_files, unit=args.unit)
+    bs, kpts = read_band_output(*args.out_files, unit=args.unit,
+                                filter_k_before=args.remove_k_before,
+                                filter_k_behind=args.remove_k_behind)
     display_band_analysis(bs, kpts)
 
 

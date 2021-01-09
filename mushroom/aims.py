@@ -28,7 +28,8 @@ def decode_band_output_line(bstr: str) -> Tuple[List, List, List]:
     except IndexError as err:
         raise ValueError("bad input string for aims band energy: {}".format(bstr)) from err
 
-def read_band_output(bfile, *bfiles, unit: str='ev') -> Tuple[BandStructure, List[RealVec3D]]:
+def read_band_output(bfile, *bfiles, filter_k_before: int=0, filter_k_behind: int=None,
+                     unit: str='ev') -> Tuple[BandStructure, List[RealVec3D]]:
     """read band output files and return a Band structure
 
     Note that all band energies are treated in the same spin channel,
@@ -51,7 +52,10 @@ def read_band_output(bfile, *bfiles, unit: str='ev') -> Tuple[BandStructure, Lis
         occ.extend(np.transpose(data[4::2]))
         ene.extend(np.transpose(data[5::2]))
     kpts = np.array(kpts)
-    occ = np.array([occ,])
-    ene = np.array([ene,])
+    if filter_k_behind is None:
+        filter_k_behind = len(kpts)
+    occ = np.array([occ,])[:, filter_k_before:filter_k_behind, :]
+    ene = np.array([ene,])[:, filter_k_before:filter_k_behind, :]
+    kpts = kpts[filter_k_before:filter_k_behind, :]
     return BandStructure(ene, occ, unit=unit), kpts
 
