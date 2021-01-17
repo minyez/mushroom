@@ -314,7 +314,7 @@ class DBDoctemp(_DBBase):
     """database of document template"""
 
     def __init__(self):
-        _DBBase.__init__(self, "doctemp", ["*",], excludes=[".gitignore",])
+        _DBBase.__init__(self, "doctemp", ["tex-*",], excludes=[".gitignore",".DS_Store"])
         self.get_doctemp = self.get_entry
         self.get_doctemp_path = self.get_entry_path
 

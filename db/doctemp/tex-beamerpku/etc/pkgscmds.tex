@@ -1,9 +1,5 @@
 % !TeX root = ../main.tex
 % set package here
-\PassOptionsToPackage{usenames,dvipsnames}{xcolor}
-\PassOptionsToPackage{%
-colorlinks=True,linkcolor=,filecolor=,citecolor=Green,urlcolor=Blue,%
-implicit=true,pdfborder={0 0 0}}{hyperref}
 % layout
 \usepackage[font={small,},skip=1pt]{caption}
 % space between caption and table
@@ -23,16 +19,6 @@ implicit=true,pdfborder={0 0 0}}{hyperref}
 % background for inline verbatim
 \providecolor{verbbg}{rgb}{0.97,0.97,0.97}
 
-\usepackage{textcomp}
-\usepackage{grffile}
-\usepackage{longtable}
-\usepackage{subfig}
-\usepackage{rotating}
-\usepackage[normalem]{ulem}
-\usepackage{upgreek}
-\usepackage{multirow}
-
-\usepackage{import}%解决相对路径input的问题
 %编译器依赖的字体库导入
 \usepackage{ifxetex}
 \ifxetex%
@@ -41,10 +27,26 @@ implicit=true,pdfborder={0 0 0}}{hyperref}
   \usepackage[T1]{fontenc}%
 \fi
 
+\usepackage{textcomp}
+\usepackage{grffile}
+\usepackage{longtable}
+\usepackage{subfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{upgreek}
+\usepackage{multirow}
+\usepackage{cancel}
+
+\usepackage{import}%解决相对路径input的问题
 \usepackage{booktabs}
+% chemistry package
+\usepackage[version=4]{mhchem}
+\mhchemoptions{layout=staggered-deep}
 
 % biblatex
-\usepackage[maxnames=3,style=nature,date=year,url=false,isbn=false,doi=false,articletitle=false]{biblatex}
+\usepackage[sorting=nyt,%
+maxnames=3,style=nature,date=year,%
+url=false,isbn=false,doi=false,articletitle=false]{biblatex}
 % link doi, issn or isbn to the pages (journal) or title (book)
 \makeatletter
 \ltx@ifpackageloaded{biblatex}%
@@ -100,6 +102,20 @@ implicit=true,pdfborder={0 0 0}}{hyperref}
   \addtocounter{footnote}{-1}%
   \endgroup
 }
+
+% math commands
+\newcommand{\ii}{\mathrm{i}}
+\newcommand{\ee}{\mathrm{e}}
+
+% special characters such as X and tick mark
+\usepackage{pifont}
+\providecommand{\cmark}{}
+\renewcommand{\cmark}{\ding{51}}%
+\providecommand{\xmark}{}
+\renewcommand{\xmark}{\ding{55}}%
+
+\usepackage{tikz}
+\usetikzlibrary{arrows,arrows.meta,math}
 
 \usepackage{hyperref}
 %\usepackage{cleveref}

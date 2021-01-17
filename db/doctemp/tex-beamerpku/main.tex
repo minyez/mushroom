@@ -1,27 +1,38 @@
+% !BIB TS-program = biber
 % !TeX TS-program = pdflatex
 % Intended LaTeX compiler: pdflatex
 % dont use ignorenonframe option here
-\documentclass{beamer}
-\usepackage[maxnames=3,style=nature,date=year,url=false,isbn=false,doi=false,articletitle=false]{biblatex}
+\PassOptionsToPackage{usenames,dvipsnames}{xcolor}
+\PassOptionsToPackage{%
+colorlinks=True,linkcolor=,filecolor=,citecolor=,urlcolor=Gray,%
+pdfborder={0 0 0}}{hyperref}
+\documentclass[presentation]{beamer}
 \input{etc/pkgscmds}
+% copy or link your bib to main.bib
 \addbibresource{main.bib}
 
 \usetheme{CambridgeUSzmy}
-\author{Min-Ye Zhang}
+% title header shown on the top of cover page
+\providecommand{\titleheader}{}
+\renewcommand{\titleheader}{\itshape TMC Group Seminar}
+
+\author[MY Zhang]{Min-Ye Zhang}
 \date[\today]{@location, \today}
 \title[Short title]{Long title}
 \institute[CCME, PKU]{College of Chemistry and Molecular Engineering\\ Peking University}
 
-\providecommand{\titleheader}{}
-\renewcommand{\titleheader}{\itshape TMC Group Seminar}
 \hypersetup{
 pdfauthor={Min-Ye Zhang},%
 pdfkeywords={},%
 pdfsubject={},%
 pdflang={English}}
 
+% ============================
+% add sections and frames here
+% ============================
 \begin{document}
 \import{frames/}{front}
+\section{Introduction}
 \import{frames/}{appendix}
 
 \end{document}
