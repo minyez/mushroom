@@ -74,9 +74,11 @@ class test_energy(ut.TestCase):
         for f, verify in verifies.items():
             print("Testing {}".format(f))
             fpath = dir_energy / f
-            bs, natm_ineq, kpts = read_energy(str(fpath))
+            bs, natm_ineq, kpts, symbols = read_energy(str(fpath))
             self.assertEqual(natm_ineq, verify["natm_ineq"])
             self.assertTrue(np.allclose(kpts, verify["kpts"]))
+            if symbols:
+                self.assertDictEqual(verify["symbols", symbols])
 
 class test_utilities(ut.TestCase):
     """test utilities for wien2k analysis"""
@@ -89,7 +91,7 @@ class test_utilities(ut.TestCase):
                           casename="casename_not_exist")
         self.assertEqual("fake", get_casename(dirpath=self.testdir, casename="fake"))
         self.assertEqual("test", get_casename(pathlib.Path(__file__).parent))
-                          
+
     def test_get_inputs(self):
         """get inputs files"""
         self.assertTupleEqual(get_inputs("struct", dirpath=self.testdir, relative=self.testdir),

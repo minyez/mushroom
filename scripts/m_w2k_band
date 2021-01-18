@@ -5,9 +5,10 @@
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 from mushroom.core.kpoints import KPath
-from mushroom.core.ioutils import decode_float_ends, get_filename_wo_ext
-from mushroom.visual.graceplot import Plot
-from mushroom.w2k import Struct, read_energy, get_inputs
+from mushroom.core.bs import split_apb
+from mushroom.core.ioutils import decode_float_ends, get_filename_wo_ext, greeks
+from mushroom.visual.graceplot import Plot, prefer_gracecolors
+from mushroom.w2k import Struct, read_energy, get_inputs, read_qtl
 
 def _parser():
     """the parser"""
@@ -28,11 +29,21 @@ def _parser():
                    help="figure extension to convert")
     p.add_argument("--fermi", dest="efermi", type=float, default=None,
                    help="Fermi energy")
+    p.add_argument("-s", dest="scale", type=float, default=1.0,
+                   help="scale for the area of partial wave")
+    p.add_argument("--vbmz", dest="vbm_zero", action="store_true",
+                   help="use VBM as energy zero")
+    p.add_argument("--spin", type=int, default=0, choices=[0, 1],
+                   help="spin to draw")
     p.add_argument("-e", dest="energy_range", type=str, default=None,
                    help="energy range, e.g. 'm8~5' for -8.0 to 5.0")
+    p.add_argument("-q", dest="qtl", type=str, default=None,
+                   help="path to the qtl file")
+    p.add_argument("--apb", type=str, default=None,
+                   help="atom-projector-band (apb) string, separated by whitespace")
     return p
 
-
+# pylint: disable=R0914
 def get_bs_kpath(casename, dirpath, energyfile, efermi):
     """return BandStructure and KPath objects"""
     pstruct, penergy, pin1 = get_inputs("struct", "energy", "in1",
@@ -42,27 +53,70 @@ def get_bs_kpath(casename, dirpath, energyfile, efermi):
         penergy = energyfile
     struct = Struct.read(pstruct)
     cell = struct.get_cell()
-    bs, _, kpts = read_energy(penergy, efermi=efermi)
+    bs, _, kpts, symbols = read_energy(penergy, efermi=efermi)
     kp = KPath(kpts, recp_latt=cell.b)
-    bs.unit = "ev"
-    return bs, kp
+    # convert greek letters to latex for grace encoding
+    ksymbols = []
+    if symbols:
+        for _, s in symbols:
+            sc = s.capitalize()
+            if sc in greeks:
+                ksymbols.append("\\"+sc)
+            else:
+                ksymbols.append(sc)
+    return bs, kp, [x[:2].strip() for x in struct.atms_types], ksymbols
 
+def plot_pwav(graph, x, bs, apbs, spin, ref, scale, colors=None):
+    """
+    Args:
+        graph (Graph)
+        x (1d array)
+        bs (BandStructure)
+        spin (int)
+        scale (float)
+        colors (list)
+    """
+    if colors is None:
+        colors = prefer_gracecolors
+    for i, apb in enumerate(apbs.split()):
+        atms, prjs, bands = split_apb(apb)
+        pwav = bs.get_pwav(atms, prjs, bands)[spin, :, :]
+        eigen = bs.get_eigen(bands)[spin, :, :] - ref
+        graph.plot(x, eigen.transpose(), size=pwav.transpose()*scale,
+                   datatype="xysize", color=colors[i%len(colors)],
+                   label="-".join(str(x) for x in apb.split(":")[:2]), ls="none")
 
 def m_w2k_band():
     """main stream"""
     args = _parser().parse_args()
-    bs, kp = get_bs_kpath(args.casename, args.dirpath, args.energyfile, args.efermi)
-
+    bs, kp, atms, symbols = get_bs_kpath(args.casename,
+                                         args.dirpath,
+                                         args.energyfile,
+                                         args.efermi)
+    if args.qtl is not None:
+        pwav, prjs = read_qtl(args.qtl, data_only=True)
+        bs.parse_proj(pwav, atms, prjs)
     p, ax = Plot.subplots()
-    ax.plot(kp.x, bs.eigen[0, :, :].transpose() - bs.efermi, color="k", symbol="none")
+    bs.unit = "ev"
+    ref = bs.efermi
+    if args.vbm_zero:
+        ref = bs.vbm
+    ax.plot(kp.x, bs.eigen[0, :, :].transpose() - ref, color="k", symbol="none")
     ax.x.set_major(grid=True, color="grey", lw=3, ls="dashed")
     ksymbols = None
     if args.ksymbols is not None:
         ksymbols = args.ksymbols
         if len(args.ksymbols) == 1:
             ksymbols = args.ksymbols[0].split()
+    else:
+        # try to use symbols found in the energy file
+        ksymbols = symbols
     ax.x.set_spec(kp.special_x, labels=ksymbols)
     ax.set_xlim(0.0, kp.x[-1] + 0.0001)
+    scale = (kp.x[-1] - kp.x[0]) / len(kp.x) * 36.0 * args.scale
+    if args.apb is not None:
+        plot_pwav(ax, kp.x, bs, args.apb, args.spin, ref, scale)
+
     if args.energy_range is not None:
         try:
             emin, emax = decode_float_ends(args.energy_range)
@@ -72,6 +126,7 @@ def m_w2k_band():
             raise ValueError("invalid energy range", args.energy_range) from err
     else:
         ax.tight_graph(xscale=None)
+
     ax.y.set_label("Energy (eV)")
     # draw zero line for Fermi level
     ax.axhline(0.0, ls="dashed", lw=2)

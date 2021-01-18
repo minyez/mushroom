@@ -21,7 +21,7 @@ greeks_latex = list("\\" + x for x in greeks)
 _logger = create_logger("ioutil")
 del create_logger
 
-# pylint: disable=R0912,R0914
+# pylint: disable=R0912,R0914,R0915
 def grep(pattern, filename, is_binary: bool = False, error_not_found: bool = False,
          from_behind: bool = False, return_group: Union[bool, int, Sequence[int]] = False,
          maxcounts: int = None, maxdepth: int = None, return_linenum: bool = False) -> List:
@@ -149,14 +149,18 @@ def get_file_ext(path: Union[str, os.PathLike, TextIOWrapper], greedy: bool = Tr
         end = m.end()
     return name[end:]
 
-def get_filename_wo_ext(path: Union[str, os.PathLike]) -> str:
+def get_filename_wo_ext(path: Union[str, os.PathLike], dirname=False) -> str:
     """Get the filename without extension
 
     Args:
         path (str): the path of file
+        dirname (bool): if dirname if included
     """
     path = pathlib.Path(path)
-    fn = path.resolve().name
+    if dirname:
+        fn = path.name
+    else:
+        fn = path.resolve().name
     return os.path.splitext(fn)[0]
 
 
@@ -579,10 +583,10 @@ def fortran_write(fortran_format: str, *args, file=stdout):
     python_format = fortran_format
     try:
         print(python_format.format(*args), file=file)
-    except ValueError:
+    except ValueError as err:
         info = "unbalanced Fortran format string ({}) and number of arguments {}".format\
                (fortran_format, len(args))
-        raise ValueError(info)
+        raise ValueError(info) from err
     raise NotImplementedError
 
 

@@ -1,15 +1,14 @@
 # -*- coding: utf-8 -*-
 """classes that manipulate WIEN2k inputs and outputs"""
 import pathlib
-from os import PathLike
 from io import StringIO
-from typing import Sequence, Union
+from typing import Sequence, Union, Tuple
 import re
 
 import numpy as np
 
 from mushroom.core.cell import Cell
-from mushroom.core.typehint import Latt3T3
+from mushroom.core.typehint import Path
 from mushroom.core.elements import nuclear_charges
 from mushroom.core.ioutils import grep, print_file_or_iowrapper, get_filename_wo_ext
 from mushroom.core.crystutils import (get_latt_vecs_from_latt_consts,
@@ -21,6 +20,9 @@ from mushroom.core.bs import BandStructure
 __all__ = [
         "Struct",
         "read_energy",
+        "KList",
+        "InTetra",
+        "In1",
         ]
 
 _logger = create_logger("w2k")
@@ -120,7 +122,7 @@ def _read_symops(lines):
         symops["translations"][i, :] = t
     return symops
 
-def get_casename(dirpath: Union[str, PathLike] = ".", casename: str = None):
+def get_casename(dirpath: Path=".", casename: str=None):
     """get the case name of the wien2k calculation under directory `dirpath`
 
     It will first search for .struct file under dirpath and
@@ -148,11 +150,11 @@ def get_casename(dirpath: Union[str, PathLike] = ".", casename: str = None):
     raise TypeError("{} is not a directory".format(abspath))
 
 
-def search_cplx_input(path: Union[str, PathLike]) -> str:
+def search_cplx_input(path: Path) -> str:
     """check if input file for complex calculation is available.
 
     Args:
-        path (PathLike): the path of input file, with extension.
+        path (Path): the path of input file, with extension.
 
     Returns:
         str, the path to the complex input file if found.
@@ -168,15 +170,15 @@ def search_cplx_input(path: Union[str, PathLike]) -> str:
     return str(path)
 
 
-def get_inputs(suffix: str, *suffices, dirpath: Union[str, PathLike] = ".",
-               casename: str = None, relative: Union[bool, str, PathLike] = None,
+def get_inputs(suffix: str, *suffices, dirpath: Path = ".",
+               casename: str = None, relative: Union[bool, Path] = None,
                search_cplx=True):
     """get path of input files given the suffices
 
     Args:
         suffix and suffices (str): suffices of input files to get
         dirpath (path-like)
-        relative (str) : if set to PathLike, the output will be relative file paths to `relative`.
+        relative (str) : if set to Path, the output will be relative file paths to `relative`.
             If set to true, only the filenames will be returned
             If set to CWD, it will return the filenames relative to current directory
 
@@ -211,8 +213,8 @@ class Struct:
     def __init__(self, latt, atms_types: Sequence[str],
                  posi_types, kind="P", unit="au", coord_sys="D",
                  isplits=None, npts=None, rzeros=None, rmts=None, symops=None,
-                 mode: str = "rela",
-                 rotmats=None, reference: str = None, comment: str = None):
+                 casename: str=None, mode: str="rela",
+                 rotmats=None, reference: str=None, comment: str=None):
         if len(atms_types) != len(posi_types):
             raise ValueError("length of atms_types ({}) and posi_types ({}) are different"\
                              .format(len(atms_types), len(posi_types)))
@@ -221,6 +223,7 @@ class Struct:
         #    assert np.shape(posi_types)[2] == 3
         #except (AssertionError, ValueError):
         #    raise ValueError("invalid shape of posi_types")
+        self.casename = casename
         self.kind = kind
         self.atms_types = atms_types
         self.isplits = isplits
@@ -385,14 +388,22 @@ class Struct:
 
     # pylint: disable=R0914
     @classmethod
-    def read(cls, pstruct: Union[str, PathLike] = None):
+    def read(cls, pstruct: Path = None):
         """Read the object from an existing struct file
 
         Args:
             pstruct (str): path to the file to read as WIEN2k struct
         """
+        def _read_rotmat(l1, l2, l3):
+            l = "".join(x.strip('\n') for x in [l1, l2, l3])
+            elements = list(map(float, [l[10*i:10*(i+1)] for i in range(9)]))
+            return np.array(elements).reshape((3,3))
         if pstruct is None:
-            pstruct = get_casename() + ".struct"
+            casename = get_casename()
+            pstruct = casename + ".struct"
+        else:
+            casename = get_filename_wo_ext(str(pstruct))
+
         pstruct = pathlib.Path(pstruct)
         with pstruct.open("r") as h:
             lines = h.readlines()
@@ -415,7 +426,9 @@ class Struct:
                 s = i
                 new_atom = False
             if l.startswith("LOCAL ROT MATRIX"):
-                rotmats.append(np.loadtxt(StringIO("".join(x[20:] for x in lines[i:i+3]))))
+                rotmats.append(_read_rotmat(lines[i][20:],
+                                            lines[i+1][20:],
+                                            lines[i+2][20:]))
                 atm_blocks.append(tuple([s, i + 2]))
                 new_atom = True
             if l.endswith("SYMMETRY OPERATIONS"):
@@ -442,7 +455,7 @@ class Struct:
         symops = _read_symops(lines[symops_startline:])
         return cls(latt, atms_types, posi_types, npts=npts, symops=symops, rmts=rmts,
                    isplits=isplits, kind=kind, rzeros=rzeros, rotmats=rotmats,
-                   comment=lines[0].strip())
+                   comment=lines[0].strip(), casename=casename)
 
     def export(self, scale: float = 1.0) -> str:
         """export the cell and atomic setup in the wien2k format"""
@@ -511,11 +524,11 @@ class In1:
         self.elparams = elparams
 
     @classmethod
-    def read(cls, pin1: PathLike = None):
+    def read(cls, pin1: Path=None):
         """Return In1 instance by reading an exisiting file
 
         Args:
-            pin1 (PathLike): the path to the in1 file.
+            pin1 (Path): the path to the in1 file.
                 Left as default to automatic detect under CWD
         """
         if pin1 is None:
@@ -558,7 +571,7 @@ class In1:
 
 # pylint: disable=C0301
 # kpoint line format in energy file, wien2k v14.2
-_energy_kpt_line = re.compile(r"([ -]\d\.\d{12}E[+-]\d{2})([ -]\d\.\d{12}E[+-]\d{2})([ -]\d\.\d{12}E[+-]\d{2})([\w\s\d]{10})\s*(\d+)\s+(\d+)\s+(\d+\.\d+)")
+_energy_kpt_line = re.compile(r"([ -]\d\.\d{12}E[+-]\d{2})"*3+r"([\w\s\d]{10})\s*(\d+)\s+(\d+)\s+(\d+\.\d+)")
 
 def _read_efermi_from_second_to_last_el(l):
     """extract the fermi energy from the line containing linearization energy of lapw at large l
@@ -580,7 +593,7 @@ def _read_efermi_from_second_to_last_el(l):
     if efermi > 150: # LAPW
         efermi -= 200.0
     return np.around(efermi, decimals=decimals)
-
+# pylint: disable=R0914
 def read_energy(penergy: str, penergy_dn: str = None, efermi=None):
     """get a BandStructure instance from the wien2k energy file
 
@@ -617,10 +630,16 @@ def read_energy(penergy: str, penergy_dn: str = None, efermi=None):
     kpts = []
     nbands = []
     weights = []
-    for mg in kpt_lines:
+    symbols = []
+    for ik, mg in enumerate(kpt_lines):
         kpts.append(list(map(float, [mg.group(1), mg.group(2), mg.group(3)])))
         nbands.append(int(mg.group(6)))
         weights.append(float(mg.group(7)))
+        try:
+            int(mg.group(4))
+        except ValueError:
+            if mg.group(4).strip():
+                symbols.append((ik, mg.group(4).strip()))
     weights = np.array(weights) / sum(weights)
     nbands_min = min(nbands)
     _logger.debug("minimal nbands = %d", nbands_min)
@@ -632,12 +651,147 @@ def read_energy(penergy: str, penergy_dn: str = None, efermi=None):
                            return_linenum=True)
         eigen.append(_read_one_energy_file(h, linenums, nbands_min))
     # always Rydberg unit
-    return BandStructure(eigen, weight=weights, unit='ry', efermi=efermi), natm_ineq, kpts
+    return BandStructure(eigen, weight=weights, unit='ry', efermi=efermi), natm_ineq, kpts, symbols
 
-class KListBand:
-    """the object to manipulate bandlike klist"""
-    def __init__(self, nkmax: int, denom: int, recp_latt: Latt3T3):
-        self.nkmax = nkmax
-        self.denom = denom
-        self.recp_latt = recp_latt
+class KList:
+    """the object to manipulate klist file, including
+
+    Args:
+        xyzd (int arraylike, (n,4))
+        weight (float arraylike, (n))
+        e1,e2
+        ksym (list of tuple)
+        comment (str)
+    """
+    def __init__(self, xyzd: Sequence[Tuple[int,int,int,int]],
+                 weight: Sequence[float], e1: float, e2: float,
+                 ksym: Sequence[Tuple[int,str]]=None, comment: str=None):
+        self.xyzd = np.array(xyzd)
+        self.weight = np.array(weight)
+        self.e1 = e1
+        self.e2 = e2
+        self.ksym = {}
+        if ksym is not None:
+            for ik, sym in ksym:
+                self.ksym[ik] = sym
+        self.comment = comment
+        self._kpts = None
+        self._nkpt = len(self.xyzd)
+
+    def get_kpts(self):
+        """get the fractional kpoint vectors"""
+        if self._kpts is None:
+            self._kpts = self.xyzd[:,:3] / self.xyzd[:,3]
+        return self._kpts
+
+    def export(self):
+        """export klist as string in the new format"""
+        slist = []
+        # a band-like klist if symbol is not empty
+        bandlike = False
+        if self.ksym:
+            bandlike = True
+        for ik, (x, y, z, d), w in enumerate(zip(self.xyzd, self.weight)):
+            if bandlike:
+                sym = self.ksym.get(ik, "")
+            else:
+                sym = str(ik+1)
+            s = "{:10s}{:10d}{:10d}{:10d}{:10d}{:5.2f}".format(sym, x, y, z, d, w)
+            if ik == 0:
+                s = s + "{:5.2f}{:5.2f}{:s}".format(self.e1, self.e2, self.comment)
+            slist.append(s)
+        return "\n".join(slist)
+
+    @classmethod
+    def read(cls, pklist: Path):
+        """read a klist file and return a KList object"""
+        raise NotImplementedError
+
+class InTetra:
+    """int file for qtl/tetra"""
+    def __init__(self):
+        pass
+
+# pylint: disable=R0912
+def read_qtl(pqtl: Path, data_only: False):
+    """read qtl file and return a BandStructure object
+
+    Args:
+        pqtl (Paht): path to the qtl file
+        data_only (bool): when set True, only the pwav data and prjs will be returned
+            instead of the BandStructure object
+    Note:
+        only SPIN=1 is supported now
+
+    """
+    def _read_one_band_block_between_iline(lines, natm):
+        nkpt = len(lines)//(natm+1)
+        nprj = len(lines[0].split()) - 3
+        eig = np.zeros((nkpt,))
+        pwav = np.zeros((nkpt, natm, nprj))
+        for ik in range(nkpt):
+            eig[ik] = float(lines[ik*(natm+1)+natm].split()[0])
+            for ia in range(natm):
+                l = lines[ik*(natm+1)+ia]
+                pwav[ik, ia, :] = list(map(float, l.split()[3:]))
+        return nkpt, eig, pwav
+
+    if pqtl is None:
+        casename = get_casename()
+        pqtl = casename + ".qtl"
+    else:
+        casename = get_filename_wo_ext(str(pqtl))
+    with open(pqtl, 'r') as h:
+        h.readline()
+        h.readline()
+        # read fermi energy and natom and multiplicity
+        efermi = float(h.readline().split()[-1])
+        matched = re.search(r"SPIN=(\d)   NAT=(\s+\d+)", h.readline())
+        if matched is None:
+            raise ValueError("fail to get spin and atoms from qtl {}".format(pqtl))
+        nspin = int(matched.group(1))
+        if nspin > 1:
+            raise NotImplementedError("ispin>1 is not supported!")
+        natm = int(matched.group(2))
+        # read projectors and multipilicty
+        atlines = []
+        for _ in range(natm):
+            atlines.append(h.readline())
+        mults = [int(re.search(r"MULT=(\s+\d+)", x).group(1)) for x in atlines]
+        # remove the first which is total
+        prjs = atlines[0].split()[-1].split(',')[1:]
+        nprj = len(prjs)
+        enes = h.readlines()
+    # starting index of BAND block (excluding BAND)
+    ibls = []
+    for i, s in enumerate(enes):
+        if s.startswith(" BAND"):
+            ibls.append(i+1)
+    nbands = len(ibls)
+    list_eigen = []
+    list_pwav = []
+    for i, ibst in enumerate(ibls):
+        if i < nbands - 1:
+            nkpt, e, p = _read_one_band_block_between_iline(enes[ibst:ibls[i+1]], natm)
+        else:
+            nkpt, e, p = _read_one_band_block_between_iline(enes[ibst:], natm)
+        list_eigen.append(e)
+        list_pwav.append(p)
+    eigen = np.zeros((1, nkpt, nbands))
+    pwav = np.zeros((1, nkpt, nbands, natm, nprj))
+    for ib, (e, p) in enumerate(zip(list_eigen, list_pwav)):
+        eigen[0, :, ib] = e
+        pwav[0, :, ib, :, :] = p
+    # consider multiplicity
+    for iat, mult in enumerate(mults):
+        pwav[:, :, :, iat, :] *= mult
+    # process projectors:
+    # angular number to its corresponding name
+    # lower letter
+    prjs_new = []
+    for p in prjs:
+        prjs_new.append({"0": "s", "1": "p", "2": "d", "3": "f"}.get(p, p.lower()))
+    if data_only:
+        return pwav, prjs_new
+    return BandStructure(eigen, unit="ry", pwav=pwav, prjs=prjs_new)
 

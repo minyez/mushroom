@@ -55,6 +55,10 @@ class BandStructure(EnergyUnit):
     shape with the required arguments.
     Exception will be raised if their shapes are inconsistent.
 
+    If no occ is parsed and efermi is parsed, the occupation number
+    will be calculated according to zero-temperature occupation,
+    i.e. occupied (1.0) if eigen < efermi
+
     Args:
         eigen (array-like) : the energy (eigenvalues) of all bands to be considered
 
@@ -129,7 +133,14 @@ class BandStructure(EnergyUnit):
         self._vbm = None
         self._cbm = None
         self._band_width = None
-        if occ is not None:
+        # compute occupations from eigen and efermi
+        # NOTE: zero temperature is used here
+        if occ is None:
+            if efermi is not None:
+                occ = np.zeros(self.eigen.shape)
+                occ[eigen < efermi] = 1.0
+                self.set_occupations(occ)
+        else:
             self.set_occupations(occ)
 
         _logger.info("Read bandstructure. Dimensions")

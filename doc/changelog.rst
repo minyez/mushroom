@@ -1,5 +1,11 @@
 Changelog
 =========
+2021-01-18
+----------
+qtl reader and pwav plot for w2k
+
+* allow computing occupation by efermi in bs if occ is absent
+
 2021-01-09
 ----------
 ``DBCell`` supports cell conversion now.
