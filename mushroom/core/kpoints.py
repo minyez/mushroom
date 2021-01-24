@@ -30,7 +30,7 @@ class KPath:
             If parsed, it will be used to convert the kpts to Cartisian coordiantes.
     """
 
-    def __init__(self, kpts, recp_latt=None):
+    def __init__(self, kpts, recp_latt=None, unify_x: bool=False):
         self._nkpts = len(kpts)
         if np.shape(kpts) != (self._nkpts, 3):
             raise ValueError("bad shape of parsed kpoints")
@@ -39,6 +39,7 @@ class KPath:
             self.kpts = np.matmul(kpts, recp_latt)
         self._ksegs = None
         self._find_ksegs()
+        self._unify_x = unify_x
         self._x = None
         self._special_x = None
         self._index_special_x = None
@@ -66,6 +67,8 @@ class KPath:
             xs.extend(x)
             accumu_l += l
         self._x = np.array(xs)
+        if self._unify_x:
+            self._x /= self._x[-1]
         self._special_x = self._x[ispks]
         self._index_special_x = np.array(ispks)
 

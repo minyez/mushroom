@@ -27,10 +27,12 @@ def _parser():
                    help="number of kpoints at first to remove")
     p.add_argument("--savefig", dest="fig_ext", type=str, default=None,
                    help="figure extension to convert")
-    p.add_argument("--fermi", dest="efermi", type=float, default=None,
+    p.add_argument("--ef", dest="efermi", type=float, default=None,
                    help="Fermi energy")
     p.add_argument("-s", dest="scale", type=float, default=1.0,
                    help="scale for the area of partial wave")
+    p.add_argument("--unifyx", action="store_true",
+                   help="unify abscissa (x)")
     p.add_argument("--vbmz", dest="vbm_zero", action="store_true",
                    help="use VBM as energy zero")
     p.add_argument("--spin", type=int, default=0, choices=[0, 1],
@@ -44,7 +46,7 @@ def _parser():
     return p
 
 # pylint: disable=R0914
-def get_bs_kpath(casename, dirpath, energyfile, efermi):
+def get_bs_kpath(casename, dirpath, energyfile, efermi, unify_x=False):
     """return BandStructure and KPath objects"""
     pstruct, penergy, pin1 = get_inputs("struct", "energy", "in1",
                                         casename=casename,
@@ -53,8 +55,10 @@ def get_bs_kpath(casename, dirpath, energyfile, efermi):
         penergy = energyfile
     struct = Struct.read(pstruct)
     cell = struct.get_cell()
+    # set to angstrom unit for standard and possible comparison with VASP/GPAW/abinit results
+    cell.unit = "ang"
     bs, _, kpts, symbols = read_energy(penergy, efermi=efermi)
-    kp = KPath(kpts, recp_latt=cell.b)
+    kp = KPath(kpts, recp_latt=cell.b, unify_x=unify_x)
     # convert greek letters to latex for grace encoding
     ksymbols = []
     if symbols:
@@ -92,7 +96,7 @@ def m_w2k_band():
     bs, kp, atms, symbols = get_bs_kpath(args.casename,
                                          args.dirpath,
                                          args.energyfile,
-                                         args.efermi)
+                                         args.efermi, unify_x=args.unifyx)
     if args.qtl is not None:
         pwav, prjs = read_qtl(args.qtl, data_only=True)
         bs.parse_proj(pwav, atms, prjs)

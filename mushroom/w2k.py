@@ -10,12 +10,14 @@ import numpy as np
 from mushroom.core.cell import Cell
 from mushroom.core.typehint import Path
 from mushroom.core.elements import nuclear_charges
-from mushroom.core.ioutils import grep, print_file_or_iowrapper, get_filename_wo_ext
+from mushroom.core.ioutils import (grep, print_file_or_iowrapper,
+                                   get_filename_wo_ext, get_file_ext)
 from mushroom.core.crystutils import (get_latt_vecs_from_latt_consts,
                                       atms_from_sym_nat,
                                       get_latt_consts_from_latt_vecs)
 from mushroom.core.logger import create_logger
 from mushroom.core.bs import BandStructure
+from mushroom.core.dos import DensityOfStates
 
 __all__ = [
         "Struct",
@@ -257,6 +259,9 @@ class Struct:
         atms = atms_from_sym_nat(atms_types, natm_types)
         self._cell = Cell(latt, atms, posi, unit=unit, coord_sys=coord_sys,
                           reference=reference, comment=comment)
+        # This multiplicity is already handled by the crystal system identifier
+        # no sure if this is correct
+        self._mults = natm_types
         self._cell.move_atoms_to_first_lattice()
         # reset units and coordinate system
         self._cell.unit = "au"
@@ -368,6 +373,11 @@ class Struct:
         return self._cell.latt
 
     @property
+    def mults(self):
+        """multipicilty of non-equivalent atoms."""
+        return self._mults
+
+    @property
     def ntypes(self):
         """number of atomic types"""
         return len(self.atms_types)
@@ -407,8 +417,8 @@ class Struct:
         pstruct = pathlib.Path(pstruct)
         with pstruct.open("r") as h:
             lines = h.readlines()
-
-        ntypes = int(lines[1].split()[2])
+        # the first line: (A4,23X,I3)
+        ntypes = int(lines[1][27:30])
         kind = lines[1][:4].strip()
         latt_consts = map(lambda i: float(lines[3][10*i:10*i+10]), range(6))
         mode = lines[2][13:].strip()
@@ -651,7 +661,8 @@ def read_energy(penergy: str, penergy_dn: str = None, efermi=None):
                            return_linenum=True)
         eigen.append(_read_one_energy_file(h, linenums, nbands_min))
     # always Rydberg unit
-    return BandStructure(eigen, weight=weights, unit='ry', efermi=efermi), natm_ineq, kpts, symbols
+    return BandStructure(eigen, weight=weights, unit='ry', efermi=efermi), \
+           natm_ineq, np.array(kpts), symbols
 
 class KList:
     """the object to manipulate klist file, including
@@ -712,7 +723,7 @@ class InTetra:
     def __init__(self):
         pass
 
-# pylint: disable=R0912
+# pylint: disable=R0912,R0915
 def read_qtl(pqtl: Path, data_only: False):
     """read qtl file and return a BandStructure object
 
@@ -735,12 +746,12 @@ def read_qtl(pqtl: Path, data_only: False):
                 l = lines[ik*(natm+1)+ia]
                 pwav[ik, ia, :] = list(map(float, l.split()[3:]))
         return nkpt, eig, pwav
-
     if pqtl is None:
         casename = get_casename()
         pqtl = casename + ".qtl"
     else:
         casename = get_filename_wo_ext(str(pqtl))
+    _logger.info("Reading qtl: %s", pqtl)
     with open(pqtl, 'r') as h:
         h.readline()
         h.readline()
@@ -762,6 +773,8 @@ def read_qtl(pqtl: Path, data_only: False):
         prjs = atlines[0].split()[-1].split(',')[1:]
         nprj = len(prjs)
         enes = h.readlines()
+    _logger.info("> mults: %r", mults)
+    _logger.info(">  prjs: %r", prjs)
     # starting index of BAND block (excluding BAND)
     ibls = []
     for i, s in enumerate(enes):
@@ -784,7 +797,7 @@ def read_qtl(pqtl: Path, data_only: False):
         pwav[0, :, ib, :, :] = p
     # consider multiplicity
     for iat, mult in enumerate(mults):
-        pwav[:, :, :, iat, :] *= mult
+        pwav[:, :, :, iat, :] = pwav[:, :, :, iat, :]*mult
     # process projectors:
     # angular number to its corresponding name
     # lower letter
@@ -794,4 +807,63 @@ def read_qtl(pqtl: Path, data_only: False):
     if data_only:
         return pwav, prjs_new
     return BandStructure(eigen, unit="ry", pwav=pwav, prjs=prjs_new)
+
+def read_dos(pdos1: Path, *pdos: Path, unit: str=None,
+             mults: Sequence[int]=None) -> DensityOfStates:
+    """read one or more dos(ev) files and return a DensityOfStates object
+
+    Args:
+        pdos1 (Path): path to dos1(ev) file
+        pdos (Path): path to extra dos(ev) files when many projection were requested
+        unit (str): if not set, the unit will be detected by getting the extension of
+            pdos1
+        mults (tuple of int): multiplicity of atoms
+    """
+    def _load_dos_atms_prjs(fn, n):
+        # n is the columns to exclude for projectors
+        data = np.loadtxt(fn, unpack=True)
+        with open(fn, 'r') as h:
+            h.readline()
+            h.readline()
+            # atom:projector in dos. 1 for the comment symbol
+            atms_prjs = h.readline().split()[n+1:]
+        return data, atms_prjs
+    if unit is None:
+        ext = get_file_ext(pdos1)
+        if ext.startswith("dos1ev"):
+            unit = "ev"
+        else:
+            unit = "ry"
+    data, atms_prjs = _load_dos_atms_prjs(pdos1, 2)
+    # extra dos files
+    if pdos:
+        for p in pdos:
+            dp, app = _load_dos_atms_prjs(p, 1)
+            # remove the energy column
+            data = np.stack([data, dp[1:,:]])
+            atms_prjs.extend(app)
+    # in dos(ev), efermi is fixed to 0.0
+    egrid = data[0,:]
+    tdos = data[1,:].reshape((1, len(egrid)))
+    # return if no projected dos are found
+    if len(atms_prjs) == 0:
+        return DensityOfStates(egrid, tdos, efermi=0.0)
+    # reshape the projected DOS by atoms and projectors
+    atms = []
+    prjs = []
+    for ap in atms_prjs:
+        a, p = ap.split(":")
+        if a not in atms:
+            atms.append(a)
+        if p not in prjs:
+            prjs.append(p)
+    if mults is None:
+        mults = np.ones(len(atms))
+    pdos = np.zeros((1, len(egrid), len(atms), len(prjs)))
+    for iap, ap in enumerate(atms_prjs):
+        a, p = ap.split(":")
+        ia = atms.index(a)
+        pdos[0, :, ia, prjs.index(p)] = data[2+iap] * mults[ia]
+    return DensityOfStates(egrid, tdos, efermi=0.0, unit=unit,
+                           pdos=pdos, atms=atms, prjs=prjs)
 

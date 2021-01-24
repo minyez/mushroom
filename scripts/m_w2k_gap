@@ -1,0 +1,48 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""obtain band gap from WIEN2k energy file
+"""
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
+
+from mushroom.core.bs import display_band_analysis, display_transition_energies
+from mushroom.w2k import read_energy, get_inputs
+
+def _parser():
+    """the parser"""
+    p = ArgumentParser(description=__doc__, formatter_class=RawDescriptionHelpFormatter)
+    p.add_argument("-c", dest="casename", type=str, default=None,
+                   help="casename")
+    p.add_argument("-p", dest="dirpath", type=str, default=".",
+                   help="path to the directory containg inputs and outputs")
+    p.add_argument("-f", dest="energyfile", type=str, default=None,
+                   help="path of energy file")
+#    p.add_argument("-u", dest="unit", type=str, default="ev", choices=["ev","au","ry","ha"],
+#                   help="unit of energy")
+    p.add_argument("-t", dest="trans", type=str, default=None, nargs="+",
+                   help="transitions of interest, in the form of 'ivk:ick'")
+    p.add_argument("--ef", dest="efermi", type=float, default=None,
+                   help="fermi energy in Ry")
+    p.add_argument("--removek", type=int, default=0,
+                   help="number of kpoints at first to remove")
+    p.add_argument("-D", dest="debug", action="store_true",
+                   help="debug mode")
+    return p
+
+def m_w2k_gap():
+    """the main stream"""
+    args = _parser().parse_args()
+    penergy = get_inputs("struct", casename=args.casename,
+                         dirpath=args.dirpath, relative="CWD")[0]
+    if args.energyfile is not None:
+        penergy = args.energyfile
+    bs, _, kpts, _ = read_energy(penergy, efermi=args.efermi)
+    if args.debug:
+        print(bs.occ)
+        print(bs.ivbm, bs.icbm)
+        print(kpts)
+    display_band_analysis(bs, kpts)
+    if args.trans is not None:
+        display_transition_energies(args.trans, bs, kpts)
+
+if __name__ == "__main__":
+    m_w2k_gap()

@@ -1,0 +1,32 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""compute the band gap from vasp output
+"""
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
+
+from mushroom.core.bs import display_band_analysis, display_transition_energies
+from mushroom.vasp import read_eigen
+
+def _parser():
+    """the parser"""
+    p = ArgumentParser(description=__doc__, formatter_class=RawDescriptionHelpFormatter)
+    p.add_argument("-v", dest="eigenval", type=str, default="EIGENVAL",
+                   help="EIGENVAL file to read band data")
+    p.add_argument("--removek", type=int, default=0,
+                   help="number of kpoints at first to remove")
+    p.add_argument("-t", dest="trans", type=str, default=None, nargs="+",
+                   help="transitions of interest, in the form of 'ivk:ick'")
+    p.add_argument("-D", dest="debug", action="store_true",
+                   help="debug mode")
+    return p
+
+def m_vasp_gap():
+    """the main stream"""
+    args = _parser().parse_args()
+    bs, _, kpts = read_eigen(args.eigenval, filter_k_before=args.removek)
+    display_band_analysis(bs, kpts)
+    if args.trans is not None:
+        display_transition_energies(args.trans, bs, kpts)
+
+if __name__ == "__main__":
+    m_vasp_gap()

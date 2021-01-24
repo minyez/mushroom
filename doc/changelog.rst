@@ -1,5 +1,13 @@
 Changelog
 =========
+2021-01-24
+----------
+w2k/gap band/dos plotting scripts
+
+* (w2k) dos reader
+* (graceplot) change page background default to fill
+* (bs) transition energy between any bands and kpoints
+
 2021-01-18
 ----------
 qtl reader and pwav plot for w2k

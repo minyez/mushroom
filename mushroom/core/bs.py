@@ -138,7 +138,7 @@ class BandStructure(EnergyUnit):
         if occ is None:
             if efermi is not None:
                 occ = np.zeros(self.eigen.shape)
-                occ[eigen < efermi] = 1.0
+                occ[self.eigen < efermi] = 1.0
                 self.set_occupations(occ)
         else:
             self.set_occupations(occ)
@@ -611,6 +611,26 @@ class BandStructure(EnergyUnit):
         cb = np.argmin(self.vbm_sp_kp, axis=1)
         return tuple(zip(vb, cb))
 
+    def get_transition(self, ivk: int, ick: int,
+                       ivb=None, icb=None,
+                       ispin: int=0):
+        """get the transition energy between particular transition in a spin channel
+
+        Args:
+            ivk,ick (int): the kpoint index of valence and conduction band
+            ivb,icb (int,str): the band index of valence and conduction band
+            ispin (int): the spin channel
+        """
+        if ivb is None or ivb == "":
+            ivb = "vbm"
+        if icb is None or icb == "":
+            icb = "cbm"
+        ivb = self._convert_band_iden(ivb)
+        icb = self._convert_band_iden(icb)
+        vb = self.eigen[ispin, ivk, ivb]
+        cb = self.eigen[ispin, ick, icb]
+        return cb - vb
+
     def kavg_gap(self):
         """direct band gap averaged over kpoints
 
@@ -908,6 +928,7 @@ def split_apb(apb: str):
 
     return a, p, b
 
+# pylint: disable=C0301
 def display_band_analysis(bs: BandStructure, kpts):
     """display analysis of band structure"""
     try:
@@ -918,7 +939,10 @@ def display_band_analysis(bs: BandStructure, kpts):
         was_unit = bs.unit
         bs.unit = "ev"
         unit = "eV"
+        ivb = bs.ivbm[2]
+        icb = bs.icbm[2]
         ik_vb, ik_cb = bs.fund_trans()[0]
+        print("> band edge between band index {:3d} -> {:3d}".format(ivb, icb))
         if bs.is_gap_direct():
             print("> fundamental gap = {:8.5f} {}".format(eg_dir, unit))
             print(">>   ik={:<3d} ({:7.5f},{:7.5f},{:7.5f})"
@@ -934,4 +958,49 @@ def display_band_analysis(bs: BandStructure, kpts):
         bs.unit = was_unit
     except BandStructureError as err:
         raise BandStructureError("fail to display band analysis") from err
+
+def display_transition_energies(trans: Sequence[str], bs: BandStructure, kpts):
+    """display the transitions
+
+    Args:
+        trans (list of str): "ivk:ick:ivb:icb", the last two can be omitted
+    """
+    def _decode_itrans(s):
+        itrans = [x.strip() for x in s.split(":")]
+        if len(itrans) == 2:
+            ivk, ick = list(map(int, itrans))
+            ivb = None
+            icb = None
+        elif len(itrans) == 3:
+            ivk, ick = list(map(int, itrans[:2]))
+            try:
+                ivb = int(itrans[2])
+            except ValueError:
+                ivb = itrans[2]
+            icb = None
+        else:
+            ivk, ick = list(map(int, itrans[:2]))
+            try:
+                ivb = int(itrans[2])
+            except ValueError:
+                ivb = itrans[2]
+            try:
+                icb = int(itrans[3])
+            except ValueError:
+                icb = itrans[3]
+        return ivk, ick, ivb, icb
+    try:
+        was_unit = bs.unit
+        bs.unit = "ev"
+        print("> Transition energies (eV):")
+        print(">> {:5s} {:29s}    {:29s}".format("E", "kpt_v", "kpt_c"))
+        for t in trans:
+            ivk, ick, ivb, icb = _decode_itrans(t)
+            et = bs.get_transition(ivk, ick, ivb=ivb, icb=icb)
+            print(">> {:5.3f} {:<3d} ({:7.5f},{:7.5f},{:7.5f}) -> {:<3d} ({:7.5f},{:7.5f},{:7.5f})"
+                  .format(et, ivk, *kpts[ivk, :], ick, *kpts[ick, :]))
+        unit = "eV"
+        bs.unit = was_unit
+    except BandStructureError as err:
+        raise BandStructureError("fail to display transition energies") from err
 
