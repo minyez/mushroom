@@ -6,6 +6,7 @@ self-energy correction extractor
 
 * change default axis bar linewidth to 3.0
 * addition of BandStructure by a real number
+* more cell entries in database
 
 2021-01-24
 ----------
