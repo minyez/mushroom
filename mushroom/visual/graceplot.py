@@ -1390,7 +1390,7 @@ class _Bar(_BaseOutput):
         'bar_switch': (bool, Switch.ON, '{:s}'),
         'color': (int, Color.BLACK, '{:d}'),
         'linestyle': (int, LineStyle.SOLID, '{:d}'),
-        'linewidth': (float, 1.5, '{:3.1f}'),
+        'linewidth': (float, 3.0, '{:3.1f}'),
         }
 
 class Bar(_Bar):

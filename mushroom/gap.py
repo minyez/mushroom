@@ -192,6 +192,7 @@ class Eqpev:
         self._peqpev = peqpev
         self._method = method.lower()
         data = np.loadtxt(peqpev)
+        # number of (irreducible) kpoints
         nkpts = int(data[-1, 0])
         nbandsgw = int(data[-1, 1] - data[0, 1]) + 1
         self._ibandsgw = np.array(data[0:nbandsgw+1, 1], dtype='int')
@@ -223,6 +224,11 @@ class Eqpev:
         return self._method
 
     @property
+    def ibandsgw(self):
+        """the index of bands where GW is calculated"""
+        return self._ibandsgw
+
+    @property
     def ibzkpts(self):
         """coordinates of irreducible kpoints"""
         return self._ibzkpts
@@ -241,22 +247,42 @@ class Eqpev:
         return BandStructure(e, occ, weight, unit="ev", efermi=0.0)
 
     def get_KS_bandstructure(self):
-        """get Kohn-Sham band structure"""
+        """get Kohn-Sham band structure
+
+        Returns:
+            BandStructure object
+        """
         if self._ks_bs is None:
             self._ks_bs = self._get_bandstructure("ks")
         return self._ks_bs
 
     def get_QP_bandstructure(self):
-        """get quasi-particle band structure"""
+        """get quasi-particle band structure
+
+        Returns:
+            BandStructure object
+        """
         if self._qp_bs is None:
             self._qp_bs = self._get_bandstructure("qp")
         return self._qp_bs
 
     def get_HF_bandstructure(self):
-        """get Hartree-Fock band structure"""
+        """get Hartree-Fock band structure
+
+        Returns:
+            BandStructure object
+        """
         if self._hf_bs is None:
             self._hf_bs = self._get_bandstructure("hf")
         return self._hf_bs
+
+    def get_degw(self):
+        """get the self-energy correction
+
+        Returns:
+            array
+        """
+        return self._degw
 
 class Vmat:
     """analyze Coulomb matrix vmat binary data (2e-201117)

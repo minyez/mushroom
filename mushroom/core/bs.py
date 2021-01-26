@@ -4,6 +4,8 @@
 import re
 from collections.abc import Iterable
 from typing import Sequence, Union
+from copy import deepcopy
+from numbers import Real
 
 import numpy as np
 
@@ -271,7 +273,7 @@ class BandStructure(EnergyUnit):
         None, if neither occupation nor explicit fermi energy was parsed
         '''
         if self._efermi is None:
-            self._efermi = self.vbm
+            return self.vbm
         return self._efermi
 
     @property
@@ -774,6 +776,43 @@ class BandStructure(EnergyUnit):
             eres (float): resolution of energy for grouping bands
         """
         raise NotImplementedError
+
+    def __add__(self, y: Real):
+        if isinstance(y, Real):
+            if y == 0.0:
+                return self
+            newbs = deepcopy(self)
+            newbs._eigen = newbs._eigen + y
+            newbs._efermi = None
+            return newbs
+        raise TypeError("expected a Real, got {}".format(type(y)))
+
+    def __sub__(self, y):
+        if isinstance(y, type(self)):
+            newbs = deepcopy(self)
+            if y.nbands < newbs.nbands:
+                raise ValueError("y should have bands no fewer than self, but {} < {}"
+                                 .format(y.nbands, self.nbands))
+            if y.nkpts != newbs.nkpts:
+                raise ValueError("y should have the same kpoints as self, but {} != {}"
+                                 .format(y.nkpts, self.nkpts))
+            if y.nspins != newbs.nspins:
+                raise ValueError("y should have the same spins as self, but {} != {}"
+                                 .format(y.nspins, self.nspins))
+            was_unit = y.unit
+            y.unit = self.unit
+            newbs._eigen = newbs._eigen - y._eigen[:,:,:newbs.nbands]
+            y.unit = was_unit
+        elif isinstance(y, Real):
+            if y == 0.0:
+                return self
+            newbs = deepcopy(self)
+            newbs._eigen = newbs._eigen - y
+        else:
+            raise TypeError("expected BandStructure or float, got {}".format(type(y)))
+        # must reset Fermi energy in this case
+        newbs._efermi = None
+        return newbs
 
     #def get_dos(self, emin=None, emax=None, nedos=3000, smearing="Gaussian", sigma=0.05):
     #    """Generate a Dos object on a energy grid by smearing the band structure

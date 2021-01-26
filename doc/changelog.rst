@@ -1,5 +1,12 @@
 Changelog
 =========
+2021-01-26
+----------
+self-energy correction extractor
+
+* change default axis bar linewidth to 3.0
+* addition of BandStructure by a real number
+
 2021-01-24
 ----------
 w2k/gap band/dos plotting scripts

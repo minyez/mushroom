@@ -724,7 +724,7 @@ class InTetra:
         pass
 
 # pylint: disable=R0912,R0915
-def read_qtl(pqtl: Path, data_only: False):
+def read_qtl(pqtl: Path, data_only: bool=False):
     """read qtl file and return a BandStructure object
 
     Args:
@@ -732,7 +732,7 @@ def read_qtl(pqtl: Path, data_only: False):
         data_only (bool): when set True, only the pwav data and prjs will be returned
             instead of the BandStructure object
     Note:
-        only SPIN=1 is supported now
+        only SPIN=1 is supported now, i.e. you can only parse on qtl file
 
     """
     def _read_one_band_block_between_iline(lines, natm):

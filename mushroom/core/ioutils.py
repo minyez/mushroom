@@ -469,7 +469,7 @@ def get_str_indices_by_iden(container, iden=None):
         return list(OrderedDict.fromkeys(ret).keys())
     return ret
 
-def print_file_or_iowrapper(s, f=None, mode='w'):
+def print_file_or_iowrapper(*s, f=None, mode='w'):
     """print string s to file handler f
     Args:
         s (str) :
@@ -483,7 +483,7 @@ def print_file_or_iowrapper(s, f=None, mode='w'):
         h = f
     if f is None:
         h = stdout
-    print(s, file=h)
+    print(*s, file=h, sep='')
     if isinstance(f, str):
         h.close()
 

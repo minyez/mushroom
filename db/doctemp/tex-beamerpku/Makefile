@@ -1,4 +1,5 @@
 PROJNAME = main
+PDFNAME = ZhangMY-slides-$(shell date +"%Y%m%d")
 MAKE = gmake
 LATEXMK = latexmk
 LATEX = $(shell \
@@ -20,7 +21,10 @@ WAIT_SETTLE = #-s 1 # waiting time in watchman
 
 .PHONY: default clean veryclean watch dist
 
-default: $(PROJNAME).pdf
+default: $(PDFNAME).pdf
+
+$(PDFNAME).pdf: $(PROJNAME).pdf
+	cp $< $@
 
 dist: $(TARBALL)
 

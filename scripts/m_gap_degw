@@ -1,0 +1,109 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""obtain the self-energy correction from GAP2 GW calculation
+
+It can be achieved either by directly reading eqpeV file, or
+compare two .energy files from GW and DFT calculations.
+"""
+from sys import argv
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
+
+import numpy as np
+from mushroom.w2k import read_energy, read_qtl
+from mushroom.gap import Eqpev
+from mushroom.core.bs import BandStructure
+from mushroom.core.dos import split_ap
+from mushroom.core.data import export_2d_data
+from mushroom.core.ioutils import print_file_or_iowrapper
+
+def obtain_degw_by_energies(gwe: str, dfte: str, shift: float=0.0):
+    """obtain the self-energy correction from two energy file"""
+    gwbs, _, gwkpts, _ = read_energy(gwe)
+    dftbs, _, dftkpts, _ = read_energy(dfte)
+    if not np.allclose(gwkpts, dftkpts):
+        raise ValueError("kpoints in two files are not close to each other. Check the files")
+    diff = gwbs - dftbs
+    diff.unit ="ev"
+    return dftbs + shift, diff.eigen
+
+def obtain_degw_by_eqpev(eqpev: str, shift: float=0.0):
+    """obtain the self-energy correction from eqpeV file"""
+    eqpev = Eqpev(eqpev)
+    return eqpev.get_KS_bandstructure() + shift, eqpev.get_degw(), eqpev.ibandsgw[0]-1
+
+def _parser():
+    """parser"""
+    p = ArgumentParser(description=__doc__, formatter_class=RawDescriptionHelpFormatter)
+    g = p.add_mutually_exclusive_group()
+    g.add_argument("--diff", type=str, nargs=2, default=None,
+                   help="path to two energy files for comparison, first for DFT and second for GW")
+    g.add_argument("-e", dest="eqpev", type=str, default=None,
+                   help="path to eqpeV file")
+    p.add_argument("-o", dest="output", type=str, default="degw.dat",
+                   help="path to output file")
+    p.add_argument("-q", dest="qtl", type=str, default=None,
+                   help="path to the qtl file")
+    p.add_argument("--shift", type=float, default=0.0,
+                   help="shift of KS energy in the same unit of file")
+    p.add_argument("--ap", type=str, default=None,
+                   help="atom-projector (ap) string, separated by whitespace")
+    return p
+
+# pylint: disable=R0914
+def write_degw_data(ene: BandStructure, degw, band_st: int=0, ap=None,
+                    qtl: BandStructure=None, output: str=None):
+    """write degw data"""
+    # NOTE use the first spin channel only
+    degw = degw[0, :, :]
+    nkpts, nbands = np.shape(degw)
+    e = ene.eigen[0, :nkpts, :nbands]
+    ncols = 2
+    if ap is None:
+        ap = []
+        if qtl is None:
+            raise ValueError("qtl must be parsed for atom-projector data")
+    ncols = 2 + len(ap)
+    with open(output, 'w') as h:
+        # write header
+        s = ["# "+" ".join(argv),
+             "#unit:eV nbands:{:d} nkpts:{:d}".format(nbands, nkpts),
+             "#KS degw {}".format(" ".join(ap))]
+        print_file_or_iowrapper("\n".join(s), f=h)
+        for ib in range(nbands):
+            data = np.zeros((nkpts, ncols))
+            data[:, 0] = e[:, ib]
+            data[:, 1] = degw[:, ib]
+            for ia, _ap in enumerate(ap):
+                data[:, 2+ia] = qtl.get_pwav(*split_ap(_ap))[0, :nkpts, band_st+ib]
+            s = ["#Band {}".format(ib+1)] + export_2d_data(data)
+            print_file_or_iowrapper("\n".join(s), f=h)
+
+def m_gap_degw():
+    """the main stream"""
+    args = _parser().parse_args()
+
+    # band_st is the starting index of degw data, used for qtl when eqpeV is parsed
+    if args.diff is not None:
+        ene, degw = obtain_degw_by_energies(*args.diff, shift=args.shift)
+        band_st = 0
+    elif args.eqpev is not None:
+        ene, degw, band_st = obtain_degw_by_eqpev(args.eqpev, shift=args.shift)
+    else:
+        raise ValueError("please specify either --diff or --eqp")
+    ene.unit = "ev"
+    qtl = None
+    if args.qtl is not None:
+        qtl = read_qtl(args.qtl)
+        qtl.unit = "ev"
+
+    # write data
+    ap = None
+    if args.ap is not None:
+        ap = args.ap.split()
+    write_degw_data(ene, degw, band_st=band_st, ap=ap,
+                    qtl=qtl, output=args.output)
+
+
+if __name__ == "__main__":
+    m_gap_degw()
+
