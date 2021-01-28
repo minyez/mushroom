@@ -3,6 +3,7 @@
 """draw band from wien2k output and export to a grace file
 """
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
+import numpy as np
 
 from mushroom.core.kpoints import KPath
 from mushroom.core.bs import split_apb
@@ -33,6 +34,8 @@ def _parser():
                    help="scale for the area of partial wave")
     p.add_argument("--unifyx", action="store_true",
                    help="unify abscissa (x)")
+    p.add_argument("--area", dest="prop_area", action="store_true",
+                   help="area proportional to partial wave instead of diameter")
     p.add_argument("--vbmz", dest="vbm_zero", action="store_true",
                    help="use VBM as energy zero")
     p.add_argument("--spin", type=int, default=0, choices=[0, 1],
@@ -70,7 +73,7 @@ def get_bs_kpath(casename, dirpath, energyfile, efermi, unify_x=False):
                 ksymbols.append(sc)
     return bs, kp, [x[:2].strip() for x in struct.atms_types], ksymbols
 
-def plot_pwav(graph, x, bs, apbs, spin, ref, scale, colors=None):
+def plot_pwav(graph, x, bs, apbs, spin, ref, scale, colors=None, prop_area=False):
     """
     Args:
         graph (Graph)
@@ -79,6 +82,7 @@ def plot_pwav(graph, x, bs, apbs, spin, ref, scale, colors=None):
         spin (int)
         scale (float)
         colors (list)
+        prop_area (bool)
     """
     if colors is None:
         colors = prefer_gracecolors
@@ -86,9 +90,21 @@ def plot_pwav(graph, x, bs, apbs, spin, ref, scale, colors=None):
         atms, prjs, bands = split_apb(apb)
         pwav = bs.get_pwav(atms, prjs, bands)[spin, :, :]
         eigen = bs.get_eigen(bands)[spin, :, :] - ref
-        graph.plot(x, eigen.transpose(), size=pwav.transpose()*scale,
-                   datatype="xysize", color=colors[i%len(colors)],
-                   label="-".join(str(x) for x in apb.split(":")[:2]), ls="none")
+        kwargs = {
+            "datatype": "xysize",
+            "color": colors[i%len(colors)],
+            "label": "-".join(str(x) for x in apb.split(":")[:2]),
+            "ls": "none",
+            }
+        if prop_area:
+            graph.plot(x, eigen.transpose(),
+                       size=np.sqrt(pwav.transpose())*scale,
+                       **kwargs)
+        else:
+            graph.plot(x, eigen.transpose(),
+                       size=pwav.transpose()*scale,
+                       **kwargs)
+
 
 def m_w2k_band():
     """main stream"""
@@ -119,7 +135,8 @@ def m_w2k_band():
     ax.set_xlim(0.0, kp.x[-1] + 0.0001)
     scale = (kp.x[-1] - kp.x[0]) / len(kp.x) * 36.0 * args.scale
     if args.apb is not None:
-        plot_pwav(ax, kp.x, bs, args.apb, args.spin, ref, scale)
+        plot_pwav(ax, kp.x, bs, args.apb, args.spin, ref, scale,
+                  prop_area=args.prop_area)
 
     if args.energy_range is not None:
         try:

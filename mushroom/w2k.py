@@ -9,7 +9,7 @@ import numpy as np
 
 from mushroom.core.cell import Cell
 from mushroom.core.typehint import Path
-from mushroom.core.elements import nuclear_charges
+from mushroom.core.elements import get_atomic_number
 from mushroom.core.ioutils import (grep, print_file_or_iowrapper,
                                    get_filename_wo_ext, get_file_ext)
 from mushroom.core.crystutils import (get_latt_vecs_from_latt_consts,
@@ -31,7 +31,6 @@ _logger = create_logger("w2k")
 del create_logger
 
 npt_default = 781
-rzero_default = 0.0001
 rzero_default_elements = {}
 rmt_default = 1.8
 rmt_default_elements = {
@@ -49,8 +48,11 @@ def _get_default_rzero(element):
     """
     rzero = rzero_default_elements.get(element, None)
     if rzero is None:
-        _logger.warning("unknown element for R0, use default %f", rzero_default)
-        return rzero_default
+        Z = get_atomic_number(element)
+        if Z >= 30:
+            rzero = 0.00005
+        else:
+            rzero = 0.0001
     return rzero
 
 def _get_default_rmt(element):
@@ -485,7 +487,7 @@ class Struct:
                                                                         self.isplits)):
             posi = self._cell.get_atm_posi(at)
             mult = len(posi)
-            Z = nuclear_charges.get(re.sub(r"[\d ]", "", at))
+            Z = get_atomic_number(at)
             slist_atm = ["ATOM{:4d}: X={:10.8f} Y={:10.8f} Z={:10.8f}".format(iat+1,
                                                                               *posi[0, :]),
                          "{:10s}MULT={:2d}{:10s}ISPLIT={:2d}".format("", mult, "", isplit),]

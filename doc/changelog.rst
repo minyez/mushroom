@@ -1,5 +1,9 @@
 Changelog
 =========
+2021-01-28
+----------
+option to draw projected band with prop. area
+
 2021-01-26
 ----------
 self-energy correction extractor

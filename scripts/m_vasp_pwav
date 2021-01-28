@@ -9,6 +9,7 @@ For atom-projector-band (apb) string, see ``mushroom.core.bs.split_apb``
 """
 from sys import argv
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
+import numpy as np
 
 from mushroom.core.logger import create_logger
 from mushroom.core.cell import Cell
@@ -35,6 +36,8 @@ def _parser():
                    help="path of agr file to export")
     p.add_argument("--removek", type=int, default=0,
                    help="number of kpoints at first to remove")
+    p.add_argument("--area", dest="prop_area", action="store_true",
+                   help="area proportional to partial wave instead of diameter")
     p.add_argument("--apb", type=str, default=None,
                    help="atom-projector-band (apb) string, separated by whitespace")
     p.add_argument("-s", dest="scale", type=float, default=1.0,
@@ -47,7 +50,8 @@ def _parser():
                    help="energy range, e.g. 'm8~5' for -8.0 to 5.0")
     return p
 
-def plot_pwav(graph, x, bs, apbs, spin, scale, colors=None):
+# pylint: disable=R0914
+def plot_pwav(graph, x, bs, apbs, spin, scale, colors=None, prop_area=False):
     """
     Args:
         graph (Graph)
@@ -56,6 +60,7 @@ def plot_pwav(graph, x, bs, apbs, spin, scale, colors=None):
         spin (int)
         scale (float)
         colors (list)
+        prop_area (bool)
     """
     if colors is None:
         colors = prefer_gracecolors
@@ -64,9 +69,20 @@ def plot_pwav(graph, x, bs, apbs, spin, scale, colors=None):
             atms, prjs, bands = split_apb(apb)
             pwav = bs.get_pwav(atms, prjs, bands)[spin, :, :]
             eigen = bs.get_eigen(bands)[spin, :, :] - bs.efermi
-            graph.plot(x, eigen.transpose(), size=pwav.transpose()*scale,
-                       datatype="xysize", color=colors[i%len(colors)],
-                       label="-".join(str(x) for x in apb.split(":")[:2]), ls="none")
+            kwargs = {
+                "datatype": "xysize",
+                "color": colors[i%len(colors)],
+                "label": "-".join(str(x) for x in apb.split(":")[:2]),
+                "ls": "none",
+                }
+            if prop_area:
+                graph.plot(x, eigen.transpose(),
+                           size=np.sqrt(pwav.transpose())*scale,
+                           **kwargs)
+            else:
+                graph.plot(x, eigen.transpose(),
+                           size=pwav.transpose()*scale,
+                           **kwargs)
             print("#atom-projector-band:{}".format(apb), file=pwav_dat)
             print("\n".join(export_2d_data(pwav)), file=pwav_dat, end="\n\n")
 
@@ -98,7 +114,8 @@ def m_vasp_pwav():
     ax.axhline(0.0, ls="dashed")
 
     if args.apb is not None:
-        plot_pwav(ax, kp.x, bs, args.apb, args.spin, scale)
+        plot_pwav(ax, kp.x, bs, args.apb, args.spin, scale,
+                  prop_area=args.prop_area)
 
     # set limits
     if args.energy_range is not None:

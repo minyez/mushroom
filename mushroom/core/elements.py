@@ -1,28 +1,29 @@
 # -*- coding: utf-8 -*-
-import string
+"""element facilities"""
 from typing import Union
+from re import sub
 
-# pylint: disable=bad-continuation,bad-whitespace,line-too-long
+# pylint: disable=line-too-long
 element_symbols = ('X' , # pseudo atom
-                'H' , 'He', 
-                'Li', 'Be', 'B' , 'C' , 'N' , 'O' , 'F' , 'Ne', 
-                'Na', 'Mg', 'Al', 'Si', 'P' , 'S' , 'Cl', 'Ar', 
-                'K' , 'Ca', 
-                'Sc', 'Ti', 'V' , 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn', 
-                'Ga', 'Ge', 'As', 'Se', 'Br', 'Kr', 
-                'Rb', 'Sr', 
-                'Y' , 'Zr', 'Nb', 'Mo', 'Tc', 'Ru', 'Rh', 'Pd', 'Ag', 'Cd', 
-                'In', 'Sn', 'Sb', 'Te', 'I' , 'Xe', 
-                'Cs', 'Ba', 
-                'La', 
-                'Ce', 'Pr', 'Nd', 'Pm', 'Sm', 'Eu', 'Gd', 'Tb', 'Dy', 'Ho', 'Er', 'Tm', 'Yb', 'Lu', 
-                'Hf', 'Ta', 'W' , 'Re', 'Os', 'Ir', 'Pt', 'Au', 'Hg', 
-                'Tl', 'Pb', 'Bi', 'Po', 'At', 'Rn', 
-                'Fr', 'Ra', 
-                'Ac', 
-                'Th', 'Pa', 'U' , 'Np', 'Pu', #'Am', 'Cm', 'Bk', 'Cf', 'Es', 'Fm', 'Md', 'No', 'Lr', 
-                # 'Rf', 'Db', 'Sg', 'Bh', 'Hs', 'Mt', 'Ds', 'Rg', 'Cn', 
-                # 'Nh', 'Fl', 'Mc', 'Lv', 'Ts', 'Og', 
+                'H' , 'He',
+                'Li', 'Be', 'B' , 'C' , 'N' , 'O' , 'F' , 'Ne',
+                'Na', 'Mg', 'Al', 'Si', 'P' , 'S' , 'Cl', 'Ar',
+                'K' , 'Ca',
+                'Sc', 'Ti', 'V' , 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn',
+                'Ga', 'Ge', 'As', 'Se', 'Br', 'Kr',
+                'Rb', 'Sr',
+                'Y' , 'Zr', 'Nb', 'Mo', 'Tc', 'Ru', 'Rh', 'Pd', 'Ag', 'Cd',
+                'In', 'Sn', 'Sb', 'Te', 'I' , 'Xe',
+                'Cs', 'Ba',
+                'La',
+                'Ce', 'Pr', 'Nd', 'Pm', 'Sm', 'Eu', 'Gd', 'Tb', 'Dy', 'Ho', 'Er', 'Tm', 'Yb', 'Lu',
+                'Hf', 'Ta', 'W' , 'Re', 'Os', 'Ir', 'Pt', 'Au', 'Hg',
+                'Tl', 'Pb', 'Bi', 'Po', 'At', 'Rn',
+                'Fr', 'Ra',
+                'Ac',
+                'Th', 'Pa', 'U' , 'Np', 'Pu', #'Am', 'Cm', 'Bk', 'Cf', 'Es', 'Fm', 'Md', 'No', 'Lr',
+                # 'Rf', 'Db', 'Sg', 'Bh', 'Hs', 'Mt', 'Ds', 'Rg', 'Cn',
+                # 'Nh', 'Fl', 'Mc', 'Lv', 'Ts', 'Og',
                 )
 
 nuclear_charges = {s: i for i, s in enumerate(element_symbols)}
@@ -33,6 +34,8 @@ def get_atomic_number(e: Union[str, int]):
     Args:
         e (str or int): the symbol or atomic number of element
             if e is a int, it will check the validity of the number.
+            if e is a str, it will first remove any space and numbers within,
+                then capitalize it before search
 
     Returns:
         int, atomic number of the element
@@ -42,17 +45,18 @@ def get_atomic_number(e: Union[str, int]):
         if e < len(element_symbols):
             an = e
     if isinstance(e, str):
-        an = nuclear_charges.get(e, None)
+        e = sub(r"[\d ]", "", e)
+        an = nuclear_charges.get(e.capitalize(), None)
     if an is None:
         raise ValueError("invalid element {}".format(e))
     return an
 
 # ====================================================
-# Standard atomic weight, or relative atomic mass of the element 
+# Standard atomic weight, or relative atomic mass of the element
 # Data from NIST database 144, last update January 2015
 # https://physics.nist.gov/cgi-bin/Compositions/stand_alone.pl
 # The data is double-checked with Wolfram Language ElementData (WLE)
-# In case that an atomic-weight interval is met in NIST, 
+# In case that an atomic-weight interval is met in NIST,
 # the data in WLE is used instead and noted below.
 # All data are accurate to 6 decimals, if available
 # WLE data used: H, Li, B, C, N, O, Mg, Si, S, Cl, Br, Tl
@@ -73,7 +77,7 @@ atomic_weights = (0.0,
 204.38    , 207.2    , 208.98040, 209    , 210      , 222    ,
 223       , 226      ,
 227       ,
-232.0377  , 231.03588, 238.02891, 237    , 244 
+232.0377  , 231.03588, 238.02891, 237    , 244
 )   # End at Pu
 
 # ====================================================
@@ -105,13 +109,13 @@ atomic_weights = (0.0,
 #         chemFormula (str) : the chemical formula of the system which reflects the total numbers of each element
 #             in the molecule or the unit cell of crystal.
 #         debug (bool) : the flag to switch on debug mode.
-        
+
 #     Returns:
 #         atomType (list of str) : the types of elements in the system.
 #         natomList (list of int) : the numbers of atoms for each type of element correspondent to the atomType.
 #         compositions (int) : the number of compositions in the system.
 #     '''
-    
+
 #     atomType = []
 #     natomList = []
 
@@ -147,14 +151,14 @@ atomic_weights = (0.0,
 #             _strNatom += _charEle
 #         else:
 #             raise TypeError("Invalid character for chemical formula.")
-            
+
 #         # save the last element
 #         if i == (len(chemFormula)-1):
 #             atomType.append(_symbol)
 #             natomList.append(int(_strNatom))
 
-#     compositions = len(atomType) 
-        
+#     compositions = len(atomType)
+
 #     if debug:
 #         print(atomType, natomList)
 
