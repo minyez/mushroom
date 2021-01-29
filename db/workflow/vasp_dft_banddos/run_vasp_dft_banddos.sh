@@ -14,11 +14,11 @@ workdir="banddos"
 function run_vasp_dft_banddos_help () {
   cat << EOF
 Usage:
-  $1 [calc | -r] : run
-  $1 dry | -d    : dry run
-  $1 data        : extract data
+  $1  calc | -r  : run
+  $1   dry | -d  : dry run
+  $1  data       : extract data
   $1 clean       : cleanup working directories
-  $1 help | -h   : print this help message
+  $1 [help | -h] : print this help message
 EOF
 }
 
@@ -36,7 +36,8 @@ function __setup_inputs () {
     incar_add_npar_kpar "$npar" "$kpar" "$1/$d"
   done
   if [[ -n "$iband" ]] || [[ -n "$kpuse" ]]; then
-    cp INCAR.parchg "$1/INCAR.parchg"
+    sed "s/_encut_/$encut/g;s/_ediff_/$ediff/g;s/_prec_/$prec/g;s/_ispin_/$ispin/g;s/_sigma_/$sigma/g" \
+      INCAR.parchg > "$1/INCAR.parchg"
     if [[ -n "$iband" ]]; then
       incar_change_tag "IBAND" "$iband" "$1/INCAR.parchg"
     fi
@@ -51,10 +52,14 @@ function __setup_inputs () {
 }
 
 function __run_single () {
-    cp "INCAR.$1" INCAR
-    cp "KPOINTS.$1" KPOINTS
-    $vaspcmd > "out.$1" 2>&1
-    backup_results "$1"
+  __run_single_noback "$1"
+  backup_results "$1"
+}
+
+function __run_single_noback () {
+  cp "INCAR.$1" INCAR
+  cp "KPOINTS.$1" KPOINTS
+  $vaspcmd > "out.$1" 2>&1
 }
 
 function run_vasp_dft_banddos_calc () {
@@ -88,9 +93,16 @@ function run_vasp_dft_banddos_calc () {
       cd parchg || exit 1
       ln -s ../../POSCAR POSCAR
       ln -s ../../POTCAR POTCAR
-      cp ../INCAR.parchg INCAR
-      cp ../KPOINTS KPOINTS
-      __run_single parchg
+      # partial charge does not do SCF calculation
+      cp ../WAVECAR .
+      cp ../INCAR.parchg .
+      cp ../KPOINTS KPOINTS.parchg
+      __run_single_noback parchg
+      # rename all PARCHG.BBBB.KKKK to BK.BBBB.KKKK.chgcar
+      # so that VESTA can directly read it
+      for pc in PARCHG.[0-9]*; do
+        mv "$pc" "KB${pc#PARCHG}.chgcar"
+      done
       cd ..
     fi
 
@@ -108,14 +120,20 @@ function run_vasp_dft_banddos_data () {
 }
 
 function run_vasp_dft_banddos_clean () {
-  rm -rf dft_band dft_dos
+  clean=$(confirm 0 "Are you sure to clean the working directory: $workdir?")
+  if (( clean == 1 )); then
+    rm -rf banddos
+    echo "$workdir removed. Hope you will not regret :D"
+  else
+    echo "$workdir kept. See you."
+  fi
 }
 
 # ===== control function =====
 function run_vasp_dft_banddos () {
   opts=("$@")
   if (( $# == 0 )); then
-    run_vasp_dft_banddos_calc
+    run_vasp_dft_banddos_help "$0"
   else
     case "${opts[0]}" in
       "help" | "-h" ) run_vasp_dft_banddos_help "$0" ;;

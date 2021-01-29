@@ -1,5 +1,9 @@
 Changelog
 =========
+2021-01-29
+----------
+fix banddos script when parchg is required
+
 2021-01-28
 ----------
 option to draw projected band with prop. area
@@ -8,7 +12,9 @@ option to draw projected band with prop. area
 ----------
 self-energy correction extractor
 
-* change default axis bar linewidth to 3.0
+Other change:
+
+* default axis bar linewidth to 3.0
 * addition of BandStructure by a real number
 * more cell entries in database
 

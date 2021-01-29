@@ -8,7 +8,7 @@ function warning_chgwav_change () {
   chgwav1=$1
   chgwav2=$2
   if [[ -n $(diff -q "$chgwav1" "$chgwav2") ]]; then
-    echo "WARNING!!! CHGCAR/WAVECAR might change during calculation"
+    echo "WARNING!!! CHGCAR/WAVECAR might have changed during calculation"
   fi
 }
 
@@ -88,6 +88,8 @@ function outcar_nbands () {
 function eigen_outcar_vbcb_ik () {
   # get the vb and cb eigen values at ik from eigenvalue file
   #
+  # use python script m_vasp_gap to get a better curation of gap information
+  #
   # 1 arguments: index of k
   # 2 arguments: eigen file and index of k
   # 3 or more arguments:
@@ -112,7 +114,7 @@ function eigen_outcar_vbcb_ik () {
 }
 
 function outcar_qpc_vb_cb () {
-  # get the QP correction of VBM and CBM
+  # get the QP correction of VBM and CBM. This is for a quick check
   # $1: OUTCAR file
   # $2: index of kpoints
   # returns: qpc (VB), qpc (CB), unscaled QPC (VB), unscaled QPC (CB)

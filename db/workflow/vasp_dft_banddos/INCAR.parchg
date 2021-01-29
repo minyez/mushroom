@@ -1,4 +1,9 @@
-# DFT SCF
+# Compute partial charge
+# read WAVECAR from SCF and does not do real calculation
+LWAVE = .FALSE.
+ISTART = 1
+ALGO = Nothing
+
 LREAL = .FALSE.
 EDIFF = _ediff_
 ENCUT = _encut_
@@ -12,3 +17,4 @@ LPARD = T
 # decomposed to band and kpoint
 LSEPB = T
 LSEPK = T
+# required bands and kpoints below

@@ -156,3 +156,25 @@ function largest_div_below_sqrt () {
     fi
   done
 }
+
+function confirm () {
+  # ask for confirmation
+  # $1: default value, 1 for Yes, otherwise No
+  # $2: help message
+  de="$1"
+  if (( de == 1 )); then
+    msg="[Y/n]"
+  else
+    de=0
+    msg="[y/N]"
+  fi
+  echo "$2? $msg"
+  read -r answer
+  if [[ "$answer" == "y" ]] || [[ "$answer" == "Y" ]]; then
+    echo 1
+  elif [[ "$answer" == "n" ]] || [[ "$answer" == "N" ]]; then
+    echo 0
+  else
+    echo "$de"
+  fi
+}
