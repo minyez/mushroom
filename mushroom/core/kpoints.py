@@ -63,7 +63,7 @@ class KPath:
             if i > 0:
                 if st == self._ksegs[i-1][1]:
                     skip = 1
-            x = accumu_l + np.linalg.norm(self.kpts[st+skip:ed+1, :] - self.kpts[st, :], axis=1)
+            x = accumu_l + np.linalg.norm(self.kpts[st:ed+1, :] - self.kpts[st, :], axis=1)[skip:]
             xs.extend(x)
             accumu_l += l
         self._x = np.array(xs)
@@ -173,13 +173,14 @@ def find_k_segments(kpts):
         # a new segment when direction of delta vector changes
         # i.e. dot product is not 1 any more
         if not np.isclose(dotprod[ed-2], 1.):
-            if ed - st >= 2:
-                ksegs.append((st, ed-1))
+            ksegs.append((st, ed-1))
             st = ed - 1
-        # meet same point, skip it
-        if np.isclose(dotprod[ed-2], 0.):
-            st += 1
-            ed += 1
+            # introduce a gap if the adjacent points are the same,
+            # or the next segment starts from a new point
+            if np.allclose(deltak[ed-1,:], 0.) or \
+                    (ed < nkpts - 1 and not np.isclose(dotprod[ed-1], 1.)):
+                st += 1
+                ed += 1
         ed += 1
     if ed - st >= 2:
         ksegs.append((st, ed-1))

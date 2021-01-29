@@ -1,5 +1,12 @@
 Changelog
 =========
+2021-01-30
+----------
+Fix line segments searching when ``klist_band`` like kpoints are parsed.
+
+In order to do this, mechanisms in ``find_k_segments`` and ``compute_x``
+of KPath object have changed.
+
 2021-01-29
 ----------
 fix banddos script when parchg is required
