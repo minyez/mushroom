@@ -16,12 +16,13 @@ from io import TextIOWrapper, StringIO
 from shutil import which
 from collections.abc import Iterable
 from copy import deepcopy
-from typing import Union
+from typing import Union, List, Tuple
 from numpy import shape, absolute, loadtxt
 
 from mushroom.core.data import Data
+from mushroom.core.typehint import Path
 from mushroom.core.ioutils import (greeks, open_textio, grep,
-                                   get_file_ext)
+                                   get_file_ext, cycler)
 from mushroom.core.logger import create_logger
 
 __all__ = [
@@ -2471,7 +2472,7 @@ class Graph(_Graph):
         o = DrawLine(start, end, ig=self._index, loctype=loctype, **kwargs)
         self._objects.append(o)
 
-    def arrow(self, start, end, color=None, lw=None, ls=None, arrow=Arrow.END,
+    def arrow(self, start, end, color=None, lw=None, ls=None, arrow="end",
               at=None, length=None, layout=None, loctype=None, **kwargs):
         o = DrawLine(start, end, ig=self._index, color=color, lw=lw, ls=ls,
                      arrow=arrow, at=at, length=length, layout=layout, loctype=loctype,
@@ -2873,6 +2874,18 @@ class Plot:
         p = Plot(1, 2)
         return p
 
+    @classmethod
+    def read(cls, pagr: Path):
+        """generate Plot object by reading an agr file.
+
+        Args:
+            pagr (Pathlike): path to the agr file
+        """
+        def _read_dataset(lines):
+            """lines: the lines from @type to the last data point, i.e. before &"""
+        with open(pagr, 'r') as h:
+            lines = h.readlines()
+        raise NotImplementedError
 
 def extract_data_from_agr(pagr):
     """extract all data from agr file
@@ -2926,24 +2939,16 @@ def _run_gracebat(agr, figname, device):
     p = subprocess.Popen(cmds, stdin=subprocess.PIPE)
     p.stdin.write(agr.encode())
 
-#def run_eps2eps(filename, outeps=None):
-#    """run eps2eps to clean up eps/ps file"""
-#    exe = which("eps2eps")
-#    if exe is None:
-#        raise FileNotFoundError("eps2eps is not found in PATH")
-#    if outeps is None:
-#        outeps = filename + "_cleaned"
-#    cmds = [exe, filename, outeps]
-#    subprocess.check_call(cmds)
-#
-#def run_convert(src, dst, remove_src=False, **kwargs):
-#    exe = which("convert")
-#    if exe is None:
-#        raise FileNotFoundError("convert is not found in PATH")
-#    cmds = [exe, src, dst]
-#    if kwargs:
-#        cmds.extend(map(str, ["-"+k, v]) for k, v in kwargs.items())
-#    subprocess.check_call(cmds)
-#    if remove_src:
-#        remove(src)
+def merge_datasets(base: Graph, *graphs: Graph, colors: Union[List, Tuple]=None):
+    """merge datasets in graphs to the base graph
+
+    If color is left as None, colors of datasets in base and graphs will remain.
+    Otherwise datasets in base will
+
+    Args:
+        base (Graph): the base graph
+        graphs (Graph): the graphs whose datasets will be merged into the base
+        colors (list or tuple): the color to redraw
+    """
+    raise NotImplementedError
 

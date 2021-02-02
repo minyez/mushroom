@@ -1,5 +1,9 @@
 Changelog
 =========
+2021-02-02
+----------
+Band specification in gap degw
+
 2021-01-30
 ----------
 Fix line segments searching when ``klist_band`` like kpoints are parsed.
@@ -96,7 +100,7 @@ special functions, etc
 
    * Hypergeometric function 2F2
    * rising factor
-   * general combination number 
+   * general combination number
 
 [test]
 ^^^^^^
@@ -145,7 +149,7 @@ Extract commit message from change log
 
 2020-09-21
 ----------
-``_set`` backend method for graceplot objects 
+``_set`` backend method for graceplot objects
 
 2020-09-18
 ----------

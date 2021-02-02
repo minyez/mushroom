@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+# pylint: disable=C0116
 """test io utitlies"""
 from io import StringIO
 import os
@@ -8,9 +9,9 @@ import unittest as ut
 from mushroom.core.ioutils import (split_comma, decode_int_range, decode_float_ends, grep,
                                    get_dirpath, get_file_ext, get_filename_wo_ext,
                                    get_cwd_name, get_matched_files, trim_after,# trim_comment,
-                                   trim_before, trim_both_sides, conv_string)
+                                   trim_before, trim_both_sides, conv_string,
+                                   cycler)
 
-# pylint: disable=C0116
 class test_string_decoding(ut.TestCase):
     """string decoding"""
     def test_decode_float_ends(self):
@@ -167,6 +168,12 @@ class test_file_path(ut.TestCase):
         self.assertTupleEqual(("test_ioutils.py",),
                               get_matched_files(regex=r".*ioutils.*", relative=True))
 
+class test_number(ut.TestCase):
+    """test number related utilities"""
+    def test_cycler(self):
+        lt = ["abc", "def", "123"]
+        self.assertEqual(0, cycler(len(lt), lt, return_int=True))
+        self.assertEqual("def", cycler(len(lt)+1, lt))
 
 #   trim_comment,
 

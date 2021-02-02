@@ -1,8 +1,10 @@
 Package identifier
 ==================
 
-Prefices of package-specific scripts and workflows
-
+Prefices or identifiers of package-specific scripts
+and workflows are listed below.
+The identifier is a mnemonic for the package and
+no more than 4-letter long.
 
 +------------------+------------+
 | Package          | Identifier |
@@ -14,8 +16,7 @@ Prefices of package-specific scripts and workflows
 | FHI-aims         | ``aims``   |
 | Quantum-ESPRESSO | ``qe``     |
 | BerkeleyGW       | ``bgw``    |
-| GAP2c            | ``g2c``    |
+| GAP2c            | ``gap``    |
 | CP2k             | ``cp2k``   |
 +------------------+------------+
-
 

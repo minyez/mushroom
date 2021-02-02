@@ -8,7 +8,7 @@ from io import TextIOWrapper, StringIO
 from collections import OrderedDict
 from collections.abc import Iterable, Callable
 from sys import stdout
-from typing import List, Union, Sequence
+from typing import List, Union, Sequence, Tuple
 
 from mushroom.core.logger import create_logger
 from mushroom.core.typehint import TextIO
@@ -500,6 +500,18 @@ def print_file_or_iowrapper(*s, f=None, mode='w'):
 #            / sigma
 #            / np.sqrt(2.0 * PI)
 #        )
+
+def cycler(i: int, lt: Union[List, Tuple], return_int=False):
+    """cycle the index according to the length of list/tuple
+
+    Args:
+        i (int)
+        lt (list or tuple)
+    """
+    i = i%len(lt)
+    if return_int:
+        return i
+    return lt[i]
 
 
 def split_comma(s, convert: Callable = None) -> List:

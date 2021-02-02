@@ -43,6 +43,10 @@ def _parser():
                    help="path to output file")
     p.add_argument("-q", dest="qtl", type=str, default=None,
                    help="path to the qtl file")
+    p.add_argument("-b", dest="ibands", type=int, nargs="+", default=None,
+                   help="index of ibands to dump degw")
+#    p.add_argument("-k", dest="ikpts", type=int, nargs="+", default=None,
+#                   help="index of kpoints to dump degw")
     p.add_argument("--shift", type=float, default=0.0,
                    help="shift of KS energy in the same unit of file")
     p.add_argument("--ap", type=str, default=None,
@@ -51,17 +55,21 @@ def _parser():
 
 # pylint: disable=R0914
 def write_degw_data(ene: BandStructure, degw, band_st: int=0, ap=None,
-                    qtl: BandStructure=None, output: str=None):
+                    ibands=None, ikpts=None, qtl: BandStructure=None, output: str=None):
     """write degw data"""
     # NOTE use the first spin channel only
     degw = degw[0, :, :]
     nkpts, nbands = np.shape(degw)
+    if ibands is None:
+        ibands = list(range(nbands))
+    else:
+        ibands = [ib-band_st for ib in ibands]
     e = ene.eigen[0, :nkpts, :nbands]
     ncols = 2
     if ap is None:
         ap = []
-        if qtl is None:
-            raise ValueError("qtl must be parsed for atom-projector data")
+    elif qtl is None:
+        raise ValueError("qtl must be parsed for atom-projector data")
     ncols = 2 + len(ap)
     with open(output, 'w') as h:
         # write header
@@ -69,13 +77,13 @@ def write_degw_data(ene: BandStructure, degw, band_st: int=0, ap=None,
              "#unit:eV nbands:{:d} nkpts:{:d}".format(nbands, nkpts),
              "#KS degw {}".format(" ".join(ap))]
         print_file_or_iowrapper("\n".join(s), f=h)
-        for ib in range(nbands):
+        for ib in ibands:
             data = np.zeros((nkpts, ncols))
             data[:, 0] = e[:, ib]
             data[:, 1] = degw[:, ib]
             for ia, _ap in enumerate(ap):
                 data[:, 2+ia] = qtl.get_pwav(*split_ap(_ap))[0, :nkpts, band_st+ib]
-            s = ["#Band {}".format(ib+1)] + export_2d_data(data)
+            s = ["#Band {}".format(band_st+ib+1)] + export_2d_data(data)
             print_file_or_iowrapper("\n".join(s), f=h)
 
 def m_gap_degw():
@@ -89,7 +97,7 @@ def m_gap_degw():
     elif args.eqpev is not None:
         ene, degw, band_st = obtain_degw_by_eqpev(args.eqpev, shift=args.shift)
     else:
-        raise ValueError("please specify either --diff or --eqp")
+        raise ValueError("please specify either --diff or -e")
     ene.unit = "ev"
     qtl = None
     if args.qtl is not None:
@@ -100,7 +108,7 @@ def m_gap_degw():
     ap = None
     if args.ap is not None:
         ap = args.ap.split()
-    write_degw_data(ene, degw, band_st=band_st, ap=ap,
+    write_degw_data(ene, degw, band_st=band_st, ap=ap, ibands=args.ibands,
                     qtl=qtl, output=args.output)
 
 
