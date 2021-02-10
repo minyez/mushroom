@@ -1,8 +1,11 @@
 % !TeX TS-program = pdflatex
+% !BIB TS-program = biber
 % Intended LaTeX compiler: pdflatex
 \documentclass[a4paper,12pt]{report}
-% NOTE: import necessary packages and write custom commands in pkgscmds.tex
-\input{etc/pkgscmds}
+% NOTE: import necessary packages in pkgs.tex
+\input{etc/pkgs}
+% NOTE: write custom commands in cmds.tex
+\input{etc/cmds}
 %\addbibresource{main.bib}
 
 \begin{document}
@@ -15,5 +18,5 @@
 % appendix
 \import{appendix/}{appendix}
 
-%\printbibliography[title=References]
+%\printbibliography[title=References,heading=bibintoc]
 \end{document}

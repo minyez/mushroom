@@ -1,7 +1,10 @@
 % !TeX root = ../main.tex
 % set package here
 \PassOptionsToPackage{usenames,dvipsnames}{xcolor}
-\PassOptionsToPackage{colorlinks=True,linkcolor=,filecolor=,citecolor=Green,urlcolor=Blue,pdfborder={0 0 0}}{hyperref}
+\PassOptionsToPackage{colorlinks=True,%
+linkcolor=,filecolor=,%
+citecolor=VioletRed,urlcolor=Blue,%
+pdfborder={0 0 0}}{hyperref}
 % layout
 \usepackage[margin=1cm,bmargin=2cm]{geometry}
 \usepackage[font={small},skip=1pt]{caption}
@@ -11,15 +14,22 @@
 % Math
 \usepackage{amsmath}
 \usepackage{amssymb}
-\usepackage{wasysym}
+%\usepackage{wasysym}
 \usepackage{graphicx}
 \usepackage{xcolor}
-
+% Tabular
 \usepackage{grffile}
-\usepackage{longtable}
-\usepackage{subfig}
-\usepackage{rotating}
-\usepackage[normalem]{ulem}
+\usepackage{booktabs}
+%\usepackage{multirow}
+%\usepackage{longtable}
+%\usepackage{rotating}
+
+% subfig and subcaption
+%\usepackage{subfig}
+%\usepackage{subcaption}
+%\captionsetup{subrefformat=parens}
+
+%\usepackage[normalem]{ulem}
 
 \usepackage{import}%解决相对路径input的问题
 %编译器依赖的字体库导入
@@ -30,7 +40,8 @@
   \usepackage[T1]{fontenc}%
 \fi
 
-\usepackage{booktabs}
+% coding related
+%\usepackage[newfloat,cache=true]{minted}
 
 % biblatex
 \usepackage[maxnames=3,style=nature,date=year,url=false,isbn=false,doi=false,articletitle=false]{biblatex}
@@ -65,9 +76,6 @@
 }%
 \makeatother
 
-
-% coding related
-%\usepackage[newfloat,cache=true]{minted}
-
 \usepackage{hyperref}
-\usepackage{cleveref}
+%\usepackage{cleveref}
+

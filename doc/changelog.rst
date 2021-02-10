@@ -4,6 +4,8 @@ Changelog
 ----------
 Kickoff argcomplete for scripts
 
+Improve latex project template
+
 2021-02-02
 ----------
 Band specification in gap degw
