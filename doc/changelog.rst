@@ -1,5 +1,9 @@
 Changelog
 =========
+2021-02-10
+----------
+Kickoff argcomplete for scripts
+
 2021-02-02
 ----------
 Band specification in gap degw

@@ -15,7 +15,8 @@ Any suggestions concerning code style, feature, etc, are totally welcome.
 
 - Python >= 3.7
 - NumPy
-- Spglib
+- SciPy (for special functions)
+- Spglib (for symmtery detection)
 - PyCIFRW (for reading cif)
 - BeautifulSoup4 (for scrapper and XML parser)
 - Bash >= 4.4 (for using workflow scripts)
@@ -28,6 +29,10 @@ conda install -c conda-forge -n myenv --file requirements.txt
 ```
 
 Note that in this case you may need to set your virtual environment `myenv` first.
+
+There is also optional depedencies declared in `requirements_optional.txt`
+
+- argcomplete (for completing scripts arguments from command line)
 
 ## Installation
 

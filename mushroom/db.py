@@ -214,7 +214,8 @@ class DBCell(_DBBase):
         self._write(self._read_cell(pcell, reader=reader),
                     output_path=output_path, writer=writer)
 
-    def _write(self, cell_object, output_path: Union[str, int] = None, writer=None):
+    def _write(self, cell_object, output_path: Union[str, int]=None,
+               writer=None):
         """write to some format"""
         if writer is None:
             if output_path is None:

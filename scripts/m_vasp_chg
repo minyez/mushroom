@@ -6,7 +6,7 @@ The script will do the following:
     - write a cube file for visualization (.cube file in the same path)
 
 If VESTA is used to visualize, the cube is unnecessary as
-CHGCAR file can directly read and the periodicity is correctly handled.
+CHGCAR file can be directly read and the periodicity is correctly handled.
 """
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from mushroom.vasp import read_chg

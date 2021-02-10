@@ -12,6 +12,11 @@ from os.path import isfile
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from mushroom.db import DBCell
 
+try:
+    from argcomplete import autocomplete
+except ImportError:
+    autocomplete = None
+
 def _parser():
     """parser"""
     p = ArgumentParser(description=__doc__, formatter_class=RawDescriptionHelpFormatter)
@@ -34,6 +39,8 @@ def _parser():
     p.add_argument('-o', dest='output_format', type=str,
                    choices=DBCell.avail_writers,
                    default=None, help="output format")
+    if autocomplete is not None:
+        autocomplete(p)
     return p
 
 def build_cell():
