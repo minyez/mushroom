@@ -1,5 +1,14 @@
 Changelog
 =========
+2021-03-02
+----------
+transition energy for aims, logger in w2k dos
+
+[improve]
+^^^^^^^^^
+* (workflow) VASP shell module
+* (workflow) support LDA+U tags in dft banddos script of VASP
+
 2021-02-10
 ----------
 Kickoff argcomplete for scripts
@@ -82,7 +91,7 @@ adopt vmat reader for Intel executable
 * abscissa rescale in band plot
 
 [improve]
-^^^^^
+^^^^^^^^^
 * nbyte_recl parameter of Vmat object (``gap``)
 
 [doc]

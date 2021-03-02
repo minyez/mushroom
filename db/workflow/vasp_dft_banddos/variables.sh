@@ -23,3 +23,8 @@ kpuse=""
 # TODO multiplier for DOS kmesh. not work yet
 kmult_dos=2
 
+# LDA+U setting
+# only LDAUTYPE=2 is used, hence ispin=2 is imposed and only U-J matters.
+# note that LASPH will be also switched on
+ldaul=""
+ldauu=""

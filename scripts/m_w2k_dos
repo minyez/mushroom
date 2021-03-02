@@ -5,10 +5,14 @@
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 from mushroom.w2k import Struct, read_dos, get_inputs
+from mushroom.core.logger import create_logger
 from mushroom.core.dos import split_ap
 from mushroom.core.data import export_2d_data
 from mushroom.core.ioutils import decode_float_ends, get_filename_wo_ext
 from mushroom.visual.graceplot import Plot, prefer_gracecolors
+
+_logger = create_logger("w2k_dos")
+del create_logger
 
 def _parser():
     """the parser"""
@@ -29,8 +33,8 @@ def _parser():
                    help="atom-projector (ap) string, separated by whitespace")
     p.add_argument("--savefig", dest="fig_ext", type=str, default=None,
                    help="figure extension to convert")
-    p.add_argument("--vbmz", dest="vbm_zero", action="store_true",
-                   help="use VBM as energy zero")
+#    p.add_argument("--vbmz", dest="vbm_zero", action="store_true",
+#                   help="use VBM as energy zero")
     return p
 
 def plot_pdos(graph, dos, aps, spin=None, colors=None):
@@ -59,6 +63,7 @@ def m_w2k_dos():
     pstruct = get_inputs("struct", casename=args.casename, dirpath=args.dirpath,
                          relative="CWD")[0]
     struct = Struct.read(pstruct)
+    _logger.info("reading dos from atms: %r", args.dosfile)
     dos = read_dos(*args.dosfile, unit=args.unit, mults=struct.mults)
     # plot to ev unit
     dos.unit = "ev"
@@ -84,6 +89,8 @@ def m_w2k_dos():
 
     if dos.has_pdos and args.ap is not None:
         dos.atms = [x[:2].strip() for x in struct.atms_types]
+        _logger.info("available atms: %r", dos.atms)
+        _logger.info("available prjs: %r", dos.prjs)
         plot_pdos(ax, dos, args.ap)
 
     p.write(file=args.output)

@@ -36,7 +36,7 @@ def _parser():
     p = ArgumentParser(description=__doc__, formatter_class=RawDescriptionHelpFormatter)
     g = p.add_mutually_exclusive_group()
     g.add_argument("--diff", type=str, nargs=2, default=None,
-                   help="path to two energy files for comparison, first for DFT and second for GW")
+                   help="path to two energy files for comparison, first for GW and second for DFT")
     g.add_argument("-e", dest="eqpev", type=str, default=None,
                    help="path to eqpeV file")
     p.add_argument("-o", dest="output", type=str, default="degw.dat",

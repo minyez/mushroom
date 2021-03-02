@@ -329,21 +329,24 @@ function incar_change_tag () {
   # change a one-line tag of INCAR.
   # $1: tag to change (uppercase)
   # $2: value to set
-  # $3: INCAR to modify
-  # $4: output path for the modified INCAR
+  #
+  # optional:
+  # $3: INCAR to modify; default INCAR
+  # $4: output path for the modified INCAR; default $3, i.e. on-site change
+  #
   case $# in
+    0|1 ) echo "Error! specify tag and value"; exit 1;;
     2 ) tag="$1"; value="$2"; incar="INCAR"; unset incarout;;
     3 ) tag="$1"; value="$2"; incar="$3"; unset incarout;;
-    4 ) tag="$1"; value="$2"; incar="$3"; incarout="$4";;
-    * ) echo "Error! specify tag and value"; exit 1;;
+    * ) tag="$1"; value="$2"; incar="$3"; incarout="$4";;
   esac
-  if grep "$tag =" "$incar"; then
-    n=$(grep -n "$tag = " "$incar" | awk '{print $1}')
+  if (grep "${tag}[ ]*=" "$incar" > /dev/null 2>&1); then
+    n=$(grep -n "${tag}[ ]*=" "$incar" | awk '{print $1}')
     n="${n%%:*}"
     if [[ -z ${incarout+1} ]]; then
-      sed -i -e "/$tag = /a $tag = $value" -e "${n}d" "$incar"
+      sed -i -e "/${tag}[ ]*=/a $tag = $value" -e "${n}d" "$incar"
     else
-      sed -e "/$tag = /a $tag = $value" -e "${n}d" "$incar" > "$incarout"
+      sed -e "/${tag}[ ]*=/a $tag = $value" -e "${n}d" "$incar" > "$incarout"
     fi
   else
     if [[ -z ${incarout+1} ]]; then
@@ -356,18 +359,28 @@ function incar_change_tag () {
 }
 
 function incar_delete_tag () {
-  # delete tag in INCAR
+  # delete one-line tag in INCAR
+  #
+  # $1: tag to delete (uppercase)
+  #
+  # optional:
+  # $2: INCAR to modify; default INCAR
+  # $3: output path for the modified INCAR; default as $2
+  #
+  # Note:
+  #   the whole line will be deleted, therefore do not write two tags in the same line
+  #
   case $# in
+    0 ) echo "Error! must specify tag"; exit 1;;
     1 ) tag="$1"; incar="INCAR"; unset incarout;;
-    2 ) tag="$1"; incar="$3"; unset incarout;;
-    3 ) tag="$1"; incar="$3"; incarout="$4";;
-    * ) echo "Error! specify tag and value"; exit 1;;
+    2 ) tag="$1"; incar="$2"; unset incarout;;
+    * ) tag="$1"; incar="$2"; incarout="$3";;
   esac
-  if grep "$tag =" "$incar"; then
+  if (grep "${tag}[ ]*=" "$incar" > /dev/null 2>&1); then
     if [[ -z ${incarout+1} ]]; then
-      sed -i "/$tag = /d" "$incar"
+      sed -i "/${tag}[ ]*=/d" "$incar"
     else
-      sed "/$tag = /d" "$incar" > "$incarout"
+      sed "/${tag}[ ]*=/d" "$incar" > "$incarout"
     fi
   else
     # tag to delete is not found.
@@ -379,15 +392,24 @@ function incar_delete_tag () {
 }
 
 function incar_add_npar_kpar () {
+  # add NPAR and KPAR tags to INCAR
+  # $1: NPAR to set
+  # $2: KPAR to set
+  #
+  # optional:
+  # $3: output path for the modified INCAR; default as $2
+  #
   case $# in
-    2 ) npar="$1"; kpar="$2"; incar="INCAR" ;;
-    * ) npar="$1"; kpar="$2"; incar="$3" ;;
+    0|1 ) echo "Error! must specify npar and kpar"; exit 1;;
+    2 ) npar="$1"; kpar="$2"; incar="INCAR"; incarout="" ;;
+    3 ) npar="$1"; kpar="$2"; incar="INCAR"; incarout="" ;;
+    * ) npar="$1"; kpar="$2"; incar="$3"; incarout="$4" ;;
   esac
   if (( npar != 1 )); then
-    incar_change_tag "NPAR" "$npar" "$incar"
+    incar_change_tag "NPAR" "$npar" "$incar" "$incarout"
   fi
   if (( kpar != 1 )); then
-    incar_change_tag "KPAR" "$kpar" "$incar"
+    incar_change_tag "KPAR" "$kpar" "$incar" "$incarout"
   fi
 }
 

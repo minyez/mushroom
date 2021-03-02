@@ -820,6 +820,9 @@ def read_dos(pdos1: Path, *pdos: Path, unit: str=None,
         unit (str): if not set, the unit will be detected by getting the extension of
             pdos1
         mults (tuple of int): multiplicity of atoms
+
+    TODO:
+        read Fermi level from the first dos file
     """
     def _load_dos_atms_prjs(fn, n):
         # n is the columns to exclude for projectors

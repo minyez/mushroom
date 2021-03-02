@@ -29,15 +29,29 @@ function __setup_inputs () {
     INCAR.dos > "$1/INCAR.dos"
   sed "s/_encut_/$encut/g;s/_ediff_/$ediff/g;s/_prec_/$prec/g;s/_ispin_/$ispin/g" \
     INCAR.band > "$1/INCAR.band"
+  sed "s/_encut_/$encut/g;s/_ediff_/$ediff/g;s/_prec_/$prec/g;s/_ispin_/$ispin/g;s/_sigma_/$sigma/g" \
+    INCAR.parchg > "$1/INCAR.parchg"
+
+  # set LDA+U
+  # TODO: can be moved to the vasp module
+  if [[ -n "$ldauu" ]] && [[ -n "$ldaul" ]]; then
+    for suffix in scf dos band parchg; do
+      incar_change_tag "LASPH"    "T"      "$1/INCAR.$suffix"
+      incar_change_tag "LDAU"     "T"      "$1/INCAR.$suffix"
+      incar_change_tag "LDAUU"    "$ldauu" "$1/INCAR.$suffix"
+      incar_change_tag "LDAUL"    "$ldaul" "$1/INCAR.$suffix"
+      incar_change_tag "LDAUTYPE" 2        "$1/INCAR.$suffix"
+    done
+  fi
+
   # add NPAR and KPAR
   kpar=$(largest_div_below_sqrt "$np")
   npar=$(( np / kpar ))
   for d in INCAR.scf INCAR.dos INCAR.band; do
     incar_add_npar_kpar "$npar" "$kpar" "$1/$d"
   done
+
   if [[ -n "$iband" ]] || [[ -n "$kpuse" ]]; then
-    sed "s/_encut_/$encut/g;s/_ediff_/$ediff/g;s/_prec_/$prec/g;s/_ispin_/$ispin/g;s/_sigma_/$sigma/g" \
-      INCAR.parchg > "$1/INCAR.parchg"
     if [[ -n "$iband" ]]; then
       incar_change_tag "IBAND" "$iband" "$1/INCAR.parchg"
     fi

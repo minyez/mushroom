@@ -4,7 +4,7 @@
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 from mushroom.aims import read_band_output
-from mushroom.core.bs import display_band_analysis
+from mushroom.core.bs import display_band_analysis, display_transition_energies
 
 def _parser():
     """the parser"""
@@ -13,6 +13,8 @@ def _parser():
                    help="band output files")
     p.add_argument("--unit", default='ev', type=str,
                    help="energy unit")
+    p.add_argument("-t", dest="trans", type=str, default=None, nargs="+",
+                   help="transitions of interest, in the form of 'ivk:ick'")
     p.add_argument("--rkbf", dest="remove_k_before", type=int, default=0,
                    help="number of kpoints at first to remove")
     p.add_argument("--rkbh", dest="remove_k_behind", type=int, default=None,
@@ -26,6 +28,8 @@ def m_aims_gap():
                                 filter_k_before=args.remove_k_before,
                                 filter_k_behind=args.remove_k_behind)
     display_band_analysis(bs, kpts)
+    if args.trans is not None:
+        display_transition_energies(args.trans, bs, kpts)
 
 
 if __name__ == "__main__":
