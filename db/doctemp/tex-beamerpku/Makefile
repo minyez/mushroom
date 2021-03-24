@@ -1,9 +1,9 @@
 PROJNAME = main
-PDFNAME = ZhangMY-slides-$(shell date +"%Y%m%d")
+PDFNAME = ZhangMY-$(shell date +"%Y%m%d")-slides
 MAKE = gmake
 LATEXMK = latexmk
 LATEX = $(shell \
-		  awk '/TS-program =/ {printf("%s", $$5)}' $(PROJNAME).tex \
+		  awk '/TeX TS-program =/ {printf("%s", $$5)}' $(PROJNAME).tex \
 		  )
 # subdirectories to include in the tarball
 SUBDIRS = frames etc

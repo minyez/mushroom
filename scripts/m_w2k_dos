@@ -29,8 +29,8 @@ def _parser():
                    help="path of agr file to export projected density of states")
     p.add_argument("-e", dest="energy_range", type=str, default=None,
                    help="energy range, e.g. 'm8~5' for -8.0 to 5.0")
-    p.add_argument("--ap", type=str, default=None,
-                   help="atom-projector (ap) string, separated by whitespace")
+    p.add_argument("--ap", type=str, default=None, nargs="+",
+                   help="atom-projector (ap) string")
     p.add_argument("--savefig", dest="fig_ext", type=str, default=None,
                    help="figure extension to convert")
 #    p.add_argument("--vbmz", dest="vbm_zero", action="store_true",
@@ -48,7 +48,7 @@ def plot_pdos(graph, dos, aps, spin=None, colors=None):
         colors = prefer_gracecolors
     pdos_dat = open('pdos.dat', 'w')
     egrid = dos.egrid
-    for i, ap in enumerate(aps.split()):
+    for i, ap in enumerate(aps):
         atms, prjs = split_ap(ap)
         pdos = dos.get_pdos(ispin=spin, atm=atms, prj=prjs)
         graph.plot(egrid-dos.efermi, pdos, color=colors[i%len(colors)], symbol="none",

@@ -2,6 +2,10 @@
 # -*- coding: utf-8 -*-
 """draw projected density of states from vasp output DOSCAR and export to an XmGrace plot.
 
+Note:
+    Plot is already shifted such that Fermi-energy is zero.
+    Exported data is not shifted.
+
 TODO: plot spin-up and spin-down
 """
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
@@ -11,21 +15,24 @@ from mushroom.core.dos import split_ap
 from mushroom.core.data import export_2d_data
 from mushroom.core.ioutils import decode_float_ends, get_filename_wo_ext
 from mushroom.visual.graceplot import Plot, prefer_gracecolors
-from mushroom.vasp import read_doscar
+from mushroom.vasp import read_doscar, read_xml
 
 def _parser():
     """the parser"""
     p = ArgumentParser(description=__doc__, formatter_class=RawDescriptionHelpFormatter)
-    p.add_argument("-d", dest="doscar", type=str, default="DOSCAR",
+    g = p.add_mutually_exclusive_group()
+    g.add_argument("-d", dest="doscar", type=str, default="DOSCAR",
                    help="DOSCAR file to read")
+    g.add_argument("-x", dest="vasprunxml", type=str, default=None,
+                   help="vasprun.xml file")
     p.add_argument("-o", dest="output", type=str, default="plotpdos.agr",
                    help="path of agr file to export projected density of states")
     p.add_argument("--pos", dest="poscar", type=str, default="POSCAR",
                    help="POSCAR structure file to read atoms")
     p.add_argument("-e", dest="energy_range", type=str, default=None,
                    help="energy range, e.g. 'm8~5' for -8.0 to 5.0")
-    p.add_argument("--ap", type=str, default=None,
-                   help="atom-projector (ap) string, separated by whitespace")
+    p.add_argument("--ap", type=str, default=None, nargs="+",
+                   help="atom-projector (ap) string")
     p.add_argument("--savefig", dest="fig_ext", type=str, default=None,
                    help="figure extension to convert")
     return p
@@ -39,25 +46,38 @@ def plot_pdos(graph, dos, aps, spin=None, colors=None):
     """
     if colors is None:
         colors = prefer_gracecolors
-    pdos_dat = open('pdos.dat', 'w')
-    egrid = dos.egrid
-    for i, ap in enumerate(aps.split()):
-        atms, prjs = split_ap(ap)
-        pdos = dos.get_pdos(ispin=spin, atm=atms, prj=prjs)
-        graph.plot(egrid-dos.efermi, pdos, color=colors[i%len(colors)], symbol="none",
-                   label="-".join(str(x) for x in ap.split(":")))
-        print("#atom-projector:{}".format(ap), file=pdos_dat)
-        print("\n".join(export_2d_data([egrid, pdos], transpose=True)),
-              file=pdos_dat, end="\n\n")
-    pdos_dat.close()
+    with open('pdos.dat', 'w') as pdos_dat:
+        print("#fermi-energy: {}".format(dos.efermi), file=pdos_dat)
+        egrid = dos.egrid
+        for i, ap in enumerate(aps):
+            atms, prjs = split_ap(ap)
+            pdos = dos.get_pdos(ispin=spin, atm=atms, prj=prjs)
+            graph.plot(egrid-dos.efermi, pdos, color=colors[i%len(colors)], symbol="none",
+                       label="-".join(str(x) for x in ap.split(":")))
+            print("#atom-projector:{}".format(ap), file=pdos_dat)
+            print("\n".join(export_2d_data([egrid, pdos], transpose=True)),
+                  file=pdos_dat, end="\n\n")
+
+def plot_tdos(graph, dos):
+    """
+    plot total density of states
+    """
+    graph.plot(dos.egrid - dos.efermi, dos.get_dos(), color="k", symbol="none", label="Total")
+    with open('tdos.dat', 'w') as tdos_dat:
+        print("#fermi-energy: {}".format(dos.efermi), file=tdos_dat)
+        print("\n".join(export_2d_data([dos.egrid, dos.get_dos()], transpose=True)),
+              file=tdos_dat)
 
 def m_vasp_pdos():
     """main stream"""
     args = _parser().parse_args()
     read_pdos = args.ap is not None
-    dos = read_doscar(args.doscar, read_pdos=read_pdos)
+    if args.vasprunxml is None:
+        dos = read_doscar(args.doscar, read_pdos=read_pdos)
+    else:
+        raise NotImplementedError
     p, ax = Plot.subplots()
-    ax.plot(dos.egrid - dos.efermi, dos.get_dos(), color="k", symbol="none", label="Total")
+    plot_tdos(ax, dos)
     if args.energy_range is not None:
         try:
             emin, emax = decode_float_ends(args.energy_range)

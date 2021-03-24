@@ -30,32 +30,30 @@ function __setup_incars () {
     INCAR.pbe > "$1/INCAR.pbe"
   sed "s/_encut_/$encut/g;s/_ediff_/$ediff/g;s/_prec_/$prec/g;s/_hfscreen_/$hfscreen/g;" \
     INCAR.hf > "$1/INCAR.hf"
-  #sed "s/PRECFOCK = Normal/PRECFOCK = Fast/g" "$workdir/INCAR.hf" > "$workdir/INCAR.coarse"
-  incar_change_tag "PRECFOCK" "Fast" "$1/INCAR.hf" "$1/INCAR.coarse"
   if (( lthomas != 0 )); then
     s="AEXX = 1.0\nAGGAC = 1.0\nALDAC = 1.0\nLTHOMAS = T"
-    echo -e "$s" >> "$1/INCAR.coarse"
     echo -e "$s" >> "$1/INCAR.hf"
   fi
   if (( use_damp != 0 )); then
-    incar_change_tag "ALGO" "Damped" "$1/INCAR.coarse"
     incar_change_tag "ALGO" "Damped" "$1/INCAR.hf"
+  fi
+  if [[ -n "$aexx" ]]; then
+    incar_change_tag "AEXX" "$aexx" "$1/INCAR.hf"
   fi
   # parallel setup
   kpar=$(largest_div_below_sqrt "$np")
   npar=$((np / kpar))
-  if (( np != 1 )); then
-    for d in INCAR.pbe INCAR.coarse INCAR.hf; do
-      incar_change_tag "NPAR" "$npar" "$1/$d"
-      incar_change_tag "KPAR" "$kpar" "$1/$d"
-    done
-  fi
+  for d in INCAR.pbe INCAR.hf; do
+    incar_add_npar_kpar "$npar" "$kpar" "$1/$d"
+  done
 
   if [ -f CHGCAR.hf ]; then
-    for d in INCAR.pbe INCAR.coarse INCAR.hf; do
+    for d in INCAR.pbe INCAR.hf; do
       incar_change_tag "ICHARG" "11" "$1/$d"
     done
   fi
+  #sed "s/PRECFOCK = Normal/PRECFOCK = Fast/g" "$workdir/INCAR.hf" > "$workdir/INCAR.coarse"
+  incar_change_tag "PRECFOCK" "Fast" "$1/INCAR.hf" "$1/INCAR.coarse"
 }
 
 function run_vasp_hf_band_calc () {

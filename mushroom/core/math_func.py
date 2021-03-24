@@ -3,8 +3,12 @@
 from numbers import Real
 from typing import Sequence
 import numpy as np
-from scipy import special
+try:
+    from scipy import special
+except ImportError:
+    special = None
 from mushroom.core.typehint import RealVec3D
+from mushroom.core.ioutils import raise_no_module
 
 def solid_angle(xyz: Sequence[RealVec3D], polar_positive=True):
     """compute the solid angles from Cartisian coordinates
@@ -39,6 +43,7 @@ def sph_harm(l: Sequence[int], m: Sequence[int], theta: Sequence[float], phi: Se
         l,m (int): angular and azimuthal angular momentum quanta
         theta, phi (array): polar and azimuthal angles
     """
+    raise_no_module(special, "SciPy")
     return special.sph_harm(m, l, phi, theta)
 
 def sph_harm_xyz(l: Sequence[int], m: Sequence[int], xyz: Sequence[RealVec3D]):
@@ -48,6 +53,7 @@ def sph_harm_xyz(l: Sequence[int], m: Sequence[int], xyz: Sequence[RealVec3D]):
         xyz (array-like,(n,3)): Cartisian coordinates
         theta, phi (array): polar and azimuthal angles
     """
+    raise_no_module(special, "SciPy")
     theta, phi = solid_angle(xyz, polar_positive=True)
     return sph_harm(l, m, theta, phi)
 
@@ -61,6 +67,7 @@ def rising_factor(N: Real, k: Real):
     Args:
         N, k (Real)
     """
+    raise_no_module(special, "SciPy")
     return special.gamma(np.add(N, k)) / special.gamma(N)
 
 def general_comb(N: Real, k: Real):
@@ -69,6 +76,7 @@ def general_comb(N: Real, k: Real):
     The combintation number C(N, k) is defined as
         C(N, k) = N!/k!/(N-k)! = rising_factor(N-k+1, k)/Gamma(k+1)
     """
+    raise_no_module(special, "SciPy")
     return rising_factor(np.subtract(N, k)+1, k) / special.gamma(np.add(k, 1))
 
 def hyp2f2_1f1_series(a1: int, a2: int, b1: int, b2: int, x: Sequence[Real], scale=1.0):
@@ -89,6 +97,7 @@ def hyp2f2_1f1_series(a1: int, a2: int, b1: int, b2: int, x: Sequence[Real], sca
         x (1d-array)
         scale (float or 1d-array)
     """
+    raise_no_module(special, "SciPy")
     upper = a2 - b2
     if upper < 0:
         raise ValueError("a2 is smaller than b2, {} < {}".format(a2, b2))

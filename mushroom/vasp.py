@@ -8,10 +8,13 @@ from typing import Tuple
 import pathlib
 
 import numpy as np
-from bs4 import BeautifulSoup
+try:
+    from bs4 import BeautifulSoup
+except ImportError:
+    BeautifulSoup = None
 
 from mushroom.core.logger import create_logger
-from mushroom.core.ioutils import conv_string
+from mushroom.core.ioutils import conv_string, raise_no_module
 from mushroom.core.dos import DensityOfStates
 from mushroom.core.bs import BandStructure
 from mushroom.core.pw import PWBasis
@@ -206,6 +209,7 @@ def read_xml(*datakey, path: str = "vasprun.xml") -> dict:
         _logger.warning("no identifier specified in XML")
         return objects
     with open(path, 'rb') as h:
+        raise_no_module(BeautifulSoup, "BeautifulSoup")
         xml = BeautifulSoup(h.read(), 'xml')
     for key in datakey:
         try:
@@ -213,6 +217,9 @@ def read_xml(*datakey, path: str = "vasprun.xml") -> dict:
         except KeyError as err:
             raise ValueError("datakey {} is not supported for vasp xml parser".format(key)) from err
     return objects
+
+def __read_xml_dos(xml: BeautifulSoup):
+    """get the density of states from xml"""
 
 def __read_xml_kpoints(xml: BeautifulSoup):
     """get the kpoints from xml"""

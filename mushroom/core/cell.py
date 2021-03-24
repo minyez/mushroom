@@ -30,7 +30,7 @@ from mushroom.core.crystutils import (get_latt_consts_from_latt_vecs,
                                       sym_nat_from_atms,
                                       axis_list)
 from mushroom.core.ioutils import (grep, get_str_indices, open_textio,
-                                   trim_comment, get_file_ext,
+                                   trim_comment, get_file_ext, raise_no_module,
                                    print_file_or_iowrapper)
 from mushroom.core.logger import create_logger
 from mushroom.core.typehint import Latt3T3, RealVec3D, Path
@@ -46,12 +46,6 @@ class CellError(Exception):
 
 _logger = create_logger("cell")
 del create_logger
-
-def _raise_no_spglib(msg=None):
-    if spglib is None:
-        if msg is None:
-            msg = ""
-        raise ImportError("require spglib {}".format(msg))
 
 class Cell(LengthUnit):
     """Cell structure class
@@ -494,7 +488,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
         return sc
 
     def __spglib_convert(self, funcname, **kwargs):
-        _raise_no_spglib()
+        raise_no_module(spglib, "Spglib")
         was_c = self.coord_sys == "C"
         if was_c:
             self.coord_sys = "D"

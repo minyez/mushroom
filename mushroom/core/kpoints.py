@@ -10,6 +10,7 @@ except ImportError:
     spglib = None
 
 from mushroom.core.logger import create_logger
+from mushroom.core.ioutils import raise_no_module
 
 __all__ = [
         "KPath",
@@ -137,6 +138,7 @@ class MPGrid:
         """get the irreducible grid points"""
         if self._spgcell is None:
             raise ValueError("need cell to compute irreducible kpoints")
+        raise_no_module(spglib, "Spglib")
         return spglib.get_ir_reciprocal_mesh(self._kdivs, self._spgcell,
                                              is_shift=self._shift)
 

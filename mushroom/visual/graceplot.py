@@ -2185,7 +2185,7 @@ class Graph(_Graph):
             st = "logarithmic"
         if st.startswith("rec"):
             st = "reciprocal"
-        axes.set(scale=st.caplitalize())
+        axes.set(scale=st.capitalize())
 
     def set_yscale(self, scale_type: str):
         """set scale of y axis

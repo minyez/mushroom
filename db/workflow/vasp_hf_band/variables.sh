@@ -13,6 +13,8 @@ ediff=1E-06
 prec="Accurate"
 # screening
 hfscreen=0
+# AEXX value for HF mixing ratio
+aexx=
 lthomas=0
 # use ALGO=Damped
 use_damp=0

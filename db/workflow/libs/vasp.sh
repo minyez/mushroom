@@ -340,6 +340,9 @@ function incar_change_tag () {
     3 ) tag="$1"; value="$2"; incar="$3"; unset incarout;;
     * ) tag="$1"; value="$2"; incar="$3"; incarout="$4";;
   esac
+  if [[ -z "$incarout" ]]; then
+    unset incarout
+  fi
   if (grep "${tag}[ ]*=" "$incar" > /dev/null 2>&1); then
     n=$(grep -n "${tag}[ ]*=" "$incar" | awk '{print $1}')
     n="${n%%:*}"
@@ -402,7 +405,7 @@ function incar_add_npar_kpar () {
   case $# in
     0|1 ) echo "Error! must specify npar and kpar"; exit 1;;
     2 ) npar="$1"; kpar="$2"; incar="INCAR"; incarout="" ;;
-    3 ) npar="$1"; kpar="$2"; incar="INCAR"; incarout="" ;;
+    3 ) npar="$1"; kpar="$2"; incar="$3"; incarout="" ;;
     * ) npar="$1"; kpar="$2"; incar="$3"; incarout="$4" ;;
   esac
   if (( npar != 1 )); then

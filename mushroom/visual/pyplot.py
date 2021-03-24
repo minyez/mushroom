@@ -1,10 +1,17 @@
 # -*- coding: utf-8 -*-
 """wrapper and help functions for matplotlib.pyplot"""
-import matplotlib as mpl
-import matplotlib.pyplot as plt
+try:
+    import matplotlib as mpl
+    import matplotlib.pyplot as plt
+except ImportError:
+    mpl = None
+    plt = None
+
+from mushroom.core.ioutils import raise_no_module
 
 def rc_gracify(transparent: bool = False, dpi: int = 300):
     """setup rcParams to mimic the style of XmGrace"""
+    raise_no_module(plt, "matplotlib")
     plt.rcParams["font.family"] = ["serif",] + plt.rcParams["font.family"]
     plt.rcParams["font.serif"] = ["Times New Roman",] + plt.rcParams["font.serif"]
     plt.rcParams["font.sans-serif"] = ["Helvetica",] + plt.rcParams["font.sans-serif"]

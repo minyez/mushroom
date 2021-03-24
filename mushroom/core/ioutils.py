@@ -633,3 +633,12 @@ def open_textio(f: TextIO, mode: str = 'r'):
     finally:
         f.close()
 
+def raise_no_module(mod, modname: str, msg: str=None):
+    """
+    Raise when a module is not found (set to None) when it is required
+    """
+    if mod is None:
+        if msg is None:
+            raise ModuleNotFoundError("require {}".format(modname))
+        raise ModuleNotFoundError("require {}: {}".format(modname, msg))
+

@@ -136,7 +136,10 @@ class test_file_path(ut.TestCase):
     """test of utilities related to file and path"""
     def test_get_cwd_name(self):
         """get cwd name"""
-        os.chdir(os.path.dirname(__file__))
+        try:
+            os.chdir(os.path.dirname(__file__))
+        except FileNotFoundError:
+            pass
         self.assertEqual("test", get_cwd_name())
 
     def test_dirpath(self):
@@ -164,7 +167,10 @@ class test_file_path(ut.TestCase):
 
     def test_get_matched_files(self):
         """get match files"""
-        os.chdir(os.path.dirname(__file__))
+        try:
+            os.chdir(os.path.dirname(__file__))
+        except FileNotFoundError:
+            pass
         self.assertTupleEqual(("test_ioutils.py",),
                               get_matched_files(regex=r".*ioutils.*", relative=True))
 

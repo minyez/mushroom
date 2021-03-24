@@ -49,8 +49,8 @@ def _parser():
 #                   help="index of kpoints to dump degw")
     p.add_argument("--shift", type=float, default=0.0,
                    help="shift of KS energy in the same unit of file")
-    p.add_argument("--ap", type=str, default=None,
-                   help="atom-projector (ap) string, separated by whitespace")
+    p.add_argument("--ap", type=str, default=None, nargs="+",
+                   help="atom-projector (ap) string")
     return p
 
 # pylint: disable=R0914
@@ -105,10 +105,7 @@ def m_gap_degw():
         qtl.unit = "ev"
 
     # write data
-    ap = None
-    if args.ap is not None:
-        ap = args.ap.split()
-    write_degw_data(ene, degw, band_st=band_st, ap=ap, ibands=args.ibands,
+    write_degw_data(ene, degw, band_st=band_st, ap=args.ap, ibands=args.ibands,
                     qtl=qtl, output=args.output)
 
 

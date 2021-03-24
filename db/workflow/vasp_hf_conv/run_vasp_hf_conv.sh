@@ -46,6 +46,8 @@ function run_vasp_hf_conv_calc () {
   if (( $# == 1 )); then
     dry=1
   fi
+  kpar=$(largest_div_below_sqrt "$np")
+  npar=$((np / kpar))
 
   for ie in "${!encuts[@]}"; do
     encut="${encuts[ie]}"
@@ -61,16 +63,21 @@ function run_vasp_hf_conv_calc () {
           INCAR.pbe > "$workdir/INCAR.pbe"
         sed "s/_encut_/$encut/g;s/_ediff_/$ediff/g;s/_prec_/$prec/g;s/_hfscreen_/$hfscreen/g;" \
           INCAR.hf > "$workdir/INCAR.hf"
-        sed "s/PRECFOCK = Normal/PRECFOCK = Fast/g" "$workdir/INCAR.hf" > "$workdir/INCAR.coarse"
+        for d in INCAR.pbe INCAR.hf; do
+          incar_add_npar_kpar "$npar" "$kpar" "$workdir/$d"
+        done
+        if [[ -n "$aexx" ]]; then
+          incar_change_tag "AEXX" "$aexx" "$workdir/INCAR.hf"
+        fi
         if (( lthomas != 0 )); then
-          s="AEXX = 1.0 ; AGGAC = 1.0 ; ALDAC = 1.0 ; LTHOMAS = T"
-          echo "$s" >> "$workdir/INCAR.coarse"
+          s="AGGAC = 1.0 ; ALDAC = 1.0 ; LTHOMAS = T"
           echo "$s" >> "$workdir/INCAR.hf"
+          incar_change_tag "AEXX" 1.0 "$workdir/INCAR.hf"
         fi
         if (( use_damp != 0 )); then
-          incar_change_tag "ALGO" "Damped" "$workdir/INCAR.coarse"
           incar_change_tag "ALGO" "Damped" "$workdir/INCAR.hf"
         fi
+        sed "s/PRECFOCK = Normal/PRECFOCK = Fast/g" "$workdir/INCAR.hf" > "$workdir/INCAR.coarse"
         cat > "$workdir/KPOINTS.scf" << EOF
 kpoints for hf convergence
 0
@@ -126,3 +133,4 @@ function run_vasp_hf_conv () {
 }
 
 run_vasp_hf_conv "$@"
+

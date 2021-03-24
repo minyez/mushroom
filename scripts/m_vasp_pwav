@@ -38,8 +38,8 @@ def _parser():
                    help="number of kpoints at first to remove")
     p.add_argument("--area", dest="prop_area", action="store_true",
                    help="area proportional to partial wave instead of diameter")
-    p.add_argument("--apb", type=str, default=None,
-                   help="atom-projector-band (apb) string, separated by whitespace")
+    p.add_argument("--apb", type=str, default=None, nargs="+",
+                   help="atom-projector-band (apb) string")
     p.add_argument("-s", dest="scale", type=float, default=1.0,
                    help="scale for the area of partial wave")
     p.add_argument("--spin", type=int, default=0, choices=[0, 1],
@@ -57,6 +57,7 @@ def plot_pwav(graph, x, bs, apbs, spin, scale, colors=None, prop_area=False):
         graph (Graph)
         x (1d array)
         bs (BandStructure)
+        apbs (list)
         spin (int)
         scale (float)
         colors (list)
@@ -65,7 +66,7 @@ def plot_pwav(graph, x, bs, apbs, spin, scale, colors=None, prop_area=False):
     if colors is None:
         colors = prefer_gracecolors
     with open('pwav.dat', 'w') as pwav_dat:
-        for i, apb in enumerate(apbs.split()):
+        for i, apb in enumerate(apbs):
             atms, prjs, bands = split_apb(apb)
             pwav = bs.get_pwav(atms, prjs, bands)[spin, :, :]
             eigen = bs.get_eigen(bands)[spin, :, :] - bs.efermi

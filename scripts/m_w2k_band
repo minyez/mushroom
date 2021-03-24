@@ -44,7 +44,7 @@ def _parser():
                    help="energy range, e.g. 'm8~5' for -8.0 to 5.0")
     p.add_argument("-q", dest="qtl", type=str, default=None,
                    help="path to the qtl file")
-    p.add_argument("--apb", type=str, default=None,
+    p.add_argument("--apb", type=str, default=None, nargs="+",
                    help="atom-projector-band (apb) string, separated by whitespace")
     return p
 
@@ -86,7 +86,7 @@ def plot_pwav(graph, x, bs, apbs, spin, ref, scale, colors=None, prop_area=False
     """
     if colors is None:
         colors = prefer_gracecolors
-    for i, apb in enumerate(apbs.split()):
+    for i, apb in enumerate(apbs):
         atms, prjs, bands = split_apb(apb)
         pwav = bs.get_pwav(atms, prjs, bands)[spin, :, :]
         eigen = bs.get_eigen(bands)[spin, :, :] - ref

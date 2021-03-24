@@ -2,9 +2,13 @@
 """this module defines the object to process .cif files"""
 import os
 import re
-import CifFile
+try:
+    import CifFile
+except ImportError:
+    CifFile = None
 
 from mushroom.core.crystutils import get_latt_vecs_from_latt_consts, get_all_atoms_from_symops
+from mushroom.core.ioutils import raise_no_module
 from mushroom.core.data import conv_estimate_number, closest_frac
 from mushroom.core.logger import create_logger
 
@@ -21,7 +25,10 @@ class Cif:
     def __init__(self, pcif):
         if not os.path.isfile(pcif):
             raise FileNotFoundError(pcif)
+        raise_no_module(CifFile, "PyCIFRW", "CifFile")
         # data block
+        if CifFile is None:
+            raise ModuleNotFoundError("install PyCIFRW before using Cif")
         self._blk = CifFile.ReadCif(pcif, scantype="flex").first_block()
         self.__init_inequiv()
         self.__init_symmetry_operations()
@@ -65,7 +72,7 @@ class Cif:
         rots = []
         trans = []
         try:
-            symmetry_key = "_symmetry_equiv_pos_as_xyz" 
+            symmetry_key = "_symmetry_equiv_pos_as_xyz"
             symmetry_loop = self._blk.GetLoop(symmetry_key)
         except KeyError:
             symmetry_key = "_space_group_symop_operation_xyz"
@@ -131,7 +138,7 @@ class Cif:
         by performing symmetry operations on all inequivalent atoms
 
         Returns:
-            two list, symbols and positions of all atoms, 
+            two list, symbols and positions of all atoms,
             shape (n,) and (n,3) with n the total number of atoms
         """
         if self.atms is None or self.posi is None:
@@ -179,7 +186,7 @@ def decode_equiv_pos_string(s):
     Obviously, x, x' and t are treated as a column vector
 
     Args:
-        s (str): a symmetry operation string found in 
+        s (str): a symmetry operation string found in
             _symmetry_equiv_pos_as_xyz item of a CIF file.
 
     Returns:

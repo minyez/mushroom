@@ -3,13 +3,18 @@
 """test math functions"""
 import unittest as ut
 import numpy as np
-from scipy import special
+try:
+    from scipy import special
+except ImportError:
+    special = None
 from mushroom.core.math_func import hyp2f2_1f1_series, rising_factor, general_comb
 
 class test_math_func(ut.TestCase):
     """test math functions"""
     def test_hyp2f2_1f1_series_negax(self):
         """test computing hypergeometric function 2F2 from sum of 1F1 series"""
+        if special is None:
+            return
         x = np.array([-1.0, -2.0, -3.0])
         hyp2f2s = {
             (0.5, 3.0, 1.5, 3.0): 0.5*special.erf(np.sqrt(-x))/np.sqrt(-x/np.pi),
@@ -25,6 +30,8 @@ class test_math_func(ut.TestCase):
 
     def test_rising_fator(self):
         """test rising factor"""
+        if special is None:
+            return
         N = [2, 3, 4, 5]
         rfs = {
             0: [1.0, 1.0, 1.0, 1.0],
@@ -37,6 +44,8 @@ class test_math_func(ut.TestCase):
 
     def test_general_comb(self):
         """test general combination number"""
+        if special is None:
+            return
         N = [2, 3, 4, 5, 6]
         values = {
             0: [1.0,] * len(N),

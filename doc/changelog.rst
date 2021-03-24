@@ -1,5 +1,17 @@
 Changelog
 =========
+2021-03-24
+----------
+skip missing package exception unless called
+
+* Refresh beamer template
+
+[improve]
+^^^^^^^^^
+* (scripts) also export total DOS with ``m_vasp_dos``
+* (scripts) ``apb`` and ``ap`` options are now lists
+* (workflow) VASP shell module, add AEXX tag in variables for hf
+
 2021-03-02
 ----------
 transition energy for aims, logger in w2k dos

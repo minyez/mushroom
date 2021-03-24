@@ -4,6 +4,7 @@ DIST_FILES = mushroom \
 			db \
 			scripts \
 			requirements.txt \
+			requirements_optional.txt \
 			LICENSE \
 			TODO.md \
 			README.md \
