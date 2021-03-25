@@ -1,5 +1,9 @@
 Changelog
 =========
+2021-03-25
+----------
+Fix error in solid angles
+
 2021-03-24
 ----------
 skip missing package exception unless called

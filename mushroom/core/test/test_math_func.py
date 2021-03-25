@@ -7,10 +7,42 @@ try:
     from scipy import special
 except ImportError:
     special = None
-from mushroom.core.math_func import hyp2f2_1f1_series, rising_factor, general_comb
+from mushroom.core.math_func import hyp2f2_1f1_series, rising_factor, general_comb,\
+                                    solid_angle, sph_harm, sph_harm_xyz
 
 class test_math_func(ut.TestCase):
     """test math functions"""
+    def test_solid_angle(self):
+        """solid angle"""
+        self.assertTupleEqual(solid_angle([1, 0, 0]), (0.5*np.pi, 0.0))
+        self.assertTupleEqual(solid_angle([1, 0, 0], polar_positive=False),
+                              (0.0, 0.0))
+        self.assertTupleEqual(solid_angle([1, 1, 0]), (0.5*np.pi, 0.25*np.pi))
+        self.assertTupleEqual(solid_angle([1, 1, 0], polar_positive=False),
+                              (0.0, 0.25*np.pi))
+        self.assertTupleEqual(solid_angle([1, 0, 1]), (0.25*np.pi, 0.0))
+        self.assertTupleEqual(solid_angle([1, 0, 1], polar_positive=False),
+                              (-0.25*np.pi, 0.0))
+        self.assertTupleEqual(solid_angle([0, 1, -1]), (0.75*np.pi, 0.5*np.pi))
+        self.assertTupleEqual(solid_angle([0, 1, -1], polar_positive=False),
+                              (0.25*np.pi, 0.5*np.pi))
+        self.assertTupleEqual(solid_angle([0, 0, 2]), (0, 0))
+        self.assertTupleEqual(solid_angle([0, 0, 2], polar_positive=False),
+                              (-0.5*np.pi, 0))
+
+    def test_sph_harm(self):
+        """spherical harmonics"""
+        self.assertEqual(np.sqrt(0.25/np.pi), sph_harm(0, 0, 0, 0))
+        self.assertAlmostEqual(0.0, sph_harm(3, 0, np.pi/2, 0))
+        self.assertAlmostEqual(-0.41766548929847102656-0.22817169672557974236j,
+                               sph_harm(4, 1, 0.5, 0.5))
+        self.assertAlmostEqual(-0.030776222708993890287+0.021055146776944193288j,
+                               sph_harm(10, 2, 0.5, -0.3))
+
+    def test_sph_harm_xyz(self):
+        """spherical harmonics"""
+        self.assertAlmostEqual(0.32569524293385786878, sph_harm_xyz(6, 2, [1, 0, 0]))
+
     def test_hyp2f2_1f1_series_negax(self):
         """test computing hypergeometric function 2F2 from sum of 1F1 series"""
         if special is None:

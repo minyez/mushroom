@@ -16,9 +16,10 @@ def solid_angle(xyz: Sequence[RealVec3D], polar_positive=True):
     use numpy.angle function
 
     Args:
-        xyz (array-like,(n,3)): Cartisian coordinates
+        xyz (array-like, (,3) or (n,3)): Cartisian coordinates
         polar_positive (bool): if True, the polar angle will fall in [0, pi].
             Otherwise [-pi/2,pi/2]
+            with 0 or -pi/2 corresponds to the positive z-axis
 
     Returns:
         Polar angle, theta, (n,) array
@@ -26,12 +27,17 @@ def solid_angle(xyz: Sequence[RealVec3D], polar_positive=True):
     """
     xyz = np.array(xyz)
     shape = xyz.shape
-    if len(shape) != 2 or shape[-1] != 3:
+    if len(shape) not in [1, 2] or shape[-1] != 3:
         raise TypeError("invalid shape of Cartisian: {}".format(shape))
-    xy = xyz[:, 0] + 1.0j * xyz[:, 1]
-    r = np.absolute(xy)
+    if len(shape) == 2:
+        xy = xyz[:, 0] + 1.0j * xyz[:, 1]
+        r = np.absolute(xy)
+        theta = np.angle(r + xyz[:, 2] * 1.0j)
+    else:
+        xy = xyz[0] + 1.0j * xyz[1]
+        r = np.absolute(xy)
+        theta = -np.angle(r + xyz[2] * 1.0j)
     phi = np.angle(xy)
-    theta = np.angle(r + xyz[:, 2] * 1.0j)
     if polar_positive:
         theta += np.pi / 2.0
     return theta, phi
@@ -80,7 +86,7 @@ def general_comb(N: Real, k: Real):
     return rising_factor(np.subtract(N, k)+1, k) / special.gamma(np.add(k, 1))
 
 def hyp2f2_1f1_series(a1: int, a2: int, b1: int, b2: int, x: Sequence[Real], scale=1.0):
-    """compute generalized hypergeometric function 2F2 from finite series of 1F1
+    '''compute generalized hypergeometric function 2F2 from finite series of 1F1
 
     2F2(a1,a2;b1,b2;x) = \sum_n (a1)_n(a2)_n/(b1)_n(b2)_n * x^n/n!
 
@@ -96,7 +102,7 @@ def hyp2f2_1f1_series(a1: int, a2: int, b1: int, b2: int, x: Sequence[Real], sca
         a1, a2, b1, b2 (int)
         x (1d-array)
         scale (float or 1d-array)
-    """
+    '''
     raise_no_module(special, "SciPy")
     upper = a2 - b2
     if upper < 0:
