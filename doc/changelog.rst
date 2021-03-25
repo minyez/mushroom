@@ -4,6 +4,8 @@ Changelog
 ----------
 Fix error in solid angles
 
+Fix symops for spglib fallback in ``Cell``
+
 2021-03-24
 ----------
 skip missing package exception unless called

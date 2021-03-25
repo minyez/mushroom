@@ -510,8 +510,8 @@ When other keyword are parsed, they will be filtered out and no exception will b
         """
         elemental = {"rotations": np.diag((1.,1.,1.)), "translations": np.zeros(3)}
         try:
-            _raise_no_spglib()
-        except ImportError:
+            raise_no_module(spglib, "Spglib")
+        except ModuleNotFoundError:
             return elemental
 
         was_c = self.coord_sys == "C"
