@@ -22,7 +22,7 @@ from numpy import shape, absolute, loadtxt
 from mushroom.core.data import Data
 from mushroom.core.typehint import Path
 from mushroom.core.ioutils import (greeks, open_textio, grep,
-                                   get_file_ext, cycler)
+                                   get_file_ext)
 from mushroom.core.logger import create_logger
 
 __all__ = [
@@ -307,6 +307,33 @@ class _IntMap:
     def get(cls, marker):
         return _get_int_const(cls.__name__, cls.pair, marker)
 
+class StyleCycler:
+    """cycle among choices of styles
+
+    TODO:
+        maybe better to use generator?
+    """
+    def __init__(self, styles: Union[Iterable, int]):
+        if isinstance(styles, dict):
+            self._len = len(styles)
+            self._indices = list(styles.keys())
+        elif isinstance(styles, (list, tuple)):
+            self._len = len(styles)
+            self._indices = list(range(self._len))
+        else:
+            self._indices = styles
+            self._len = styles
+        self._styles = styles
+        self._now = -1
+
+    def get(self):
+        """get the style"""
+        self._now = (self._now+1) % self._len
+        if isinstance(self._styles, int):
+            s = self._now
+        else:
+            s = self._styles[self._indices[self._now]]
+        return s
 
 class Color:
     """Predefined color constant"""
@@ -2034,6 +2061,7 @@ class Graph(_Graph):
         self._subtitle = SubTitle(subtitle=subtitle, fontsize=stsize, color=stc)
         self._if_xtick_set = False
         self._if_ytick_set = False
+        self._color_cycler = StyleCycler(plot_colormap.n)
         self._xaxes = Axes('x')
         self._yaxes = Axes('y')
         #self._altxaxes = _Axes('altx', switch=Switch.OFF)
@@ -2267,6 +2295,8 @@ class Graph(_Graph):
         only for the first set
         """
         # check if multiple y data are parsed
+        if 'color' not in kwargs:
+            kwargs['color'] = self._color_cycler.get()
         if len(shape(ys)) == 2:
             n = self.ndata
             # check error in keyword arguments as well

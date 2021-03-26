@@ -8,7 +8,7 @@ from itertools import product
 from numpy import array_equal
 from mushroom.visual.graceplot import (_ColorMap, Color, Font, Symbol,
                                        Graph, View, World, Label, Axis,
-                                       Plot, Dataset,
+                                       Plot, Dataset, StyleCycler,
                                        encode_string, extract_data_from_agr)
 
 class test_string_encoder(ut.TestCase):
@@ -42,6 +42,31 @@ class test_string_encoder(ut.TestCase):
     def test_super_and_subscript(self):
         """encoding super and subscript at the same prefix"""
 
+class test_StyleCycler(ut.TestCase):
+    """test the cycler"""
+    def test_int(self):
+        """integer cycle"""
+        n = 3
+        sc = StyleCycler(n)
+        for i in range(20):
+            self.assertEqual(sc.get(), i%n)
+
+    def test_list(self):
+        """list cycle"""
+        l = ["a", "b", 2, "c"]
+        n = len(l)
+        sc = StyleCycler(l)
+        for i in range(20):
+            self.assertEqual(sc.get(), l[i%n])
+
+    def test_dict(self):
+        """dict cycle"""
+        l = {"a": 1, "b": 2, 2: 3, "c": 4}
+        n = len(l)
+        keys = list(l.keys())
+        sc = StyleCycler(l)
+        for i in range(20):
+            self.assertEqual(sc.get(), l[keys[i%n]])
 
 class test_ColorMap(ut.TestCase):
     """test colormap utilites"""

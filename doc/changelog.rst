@@ -1,5 +1,9 @@
 Changelog
 =========
+2021-03-26
+----------
+Quick grace plotter, color cycler in graceplot
+
 2021-03-25
 ----------
 Fix error in solid angles
