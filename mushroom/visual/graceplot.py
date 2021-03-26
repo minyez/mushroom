@@ -2061,7 +2061,8 @@ class Graph(_Graph):
         self._subtitle = SubTitle(subtitle=subtitle, fontsize=stsize, color=stc)
         self._if_xtick_set = False
         self._if_ytick_set = False
-        self._color_cycler = StyleCycler(plot_colormap.n)
+        # exclude white
+        self._color_cycler = StyleCycler(list(range(1, plot_colormap.n)))
         self._xaxes = Axes('x')
         self._yaxes = Axes('y')
         #self._altxaxes = _Axes('altx', switch=Switch.OFF)
