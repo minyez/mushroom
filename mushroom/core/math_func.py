@@ -76,6 +76,13 @@ def rising_factor(N: Real, k: Real):
     raise_no_module(special, "SciPy")
     return special.gamma(np.add(N, k)) / special.gamma(N)
 
+def gamma_negahalf(n):
+    """compute gamma function at negative half integer, Gamma(1/2-n)"""
+    g = np.sqrt(np.pi) * (-2)**n
+    for i in range(n):
+        g /= 2*i + 1
+    return g
+
 def general_comb(N: Real, k: Real):
     """comupte a general combination number by Gamma function and rising factor
 

@@ -1,5 +1,12 @@
 Changelog
 =========
+2021-04-07
+----------
+Special function Gamma(1/2-n) and tests.
+
+New template for STEM book reading,
+improved report template.
+
 2021-03-26
 ----------
 Quick grace plotter, color cycler in graceplot

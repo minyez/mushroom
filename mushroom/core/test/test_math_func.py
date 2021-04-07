@@ -8,7 +8,7 @@ try:
 except ImportError:
     special = None
 from mushroom.core.math_func import hyp2f2_1f1_series, rising_factor, general_comb,\
-                                    solid_angle, sph_harm, sph_harm_xyz
+                                    solid_angle, sph_harm, sph_harm_xyz, gamma_negahalf
 
 class test_math_func(ut.TestCase):
     """test math functions"""
@@ -29,6 +29,15 @@ class test_math_func(ut.TestCase):
         self.assertTupleEqual(solid_angle([0, 0, 2]), (0, 0))
         self.assertTupleEqual(solid_angle([0, 0, 2], polar_positive=False),
                               (-0.5*np.pi, 0))
+
+    def test_gamma_negahalf(self):
+        """test Gamma(0.5-n)"""
+        ns = np.array([0, 1, 2, 3, 4, 5])
+        results = np.array([1.0, -2.0, 4.0/3.0, -8.0/15.0, 16.0/105.0, -32.0/945.0]) * \
+                np.sqrt(np.pi)
+        for n, gnh in zip(ns, results):
+            print(gnh)
+            self.assertAlmostEqual(gnh, gamma_negahalf(n))
 
     def test_sph_harm(self):
         """spherical harmonics"""

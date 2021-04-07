@@ -6,14 +6,16 @@
 \input{etc/pkgs}
 % NOTE: write custom commands in cmds.tex
 \input{etc/cmds}
+\newcommand{\booktitle}{Book Name}
+\newcommand{\bookauthor}{Book Author}
 %\addbibresource{main.bib}
+% TODO of this template
+% 1. set global figure directory
+% 2. index and glossary
 
 \begin{document}
-\title{Title}
+\title{Notes and Exercise Solutions of Book \\ \textit{\booktitle} \\ by \\ \bookauthor}
 \author{Min-Ye Zhang\thanks{stevezhang@pku.edu.cn}}
-
-% emphasis on progress
-\import{changelog/}{whatsnew}
 
 % front matter
 \maketitle
@@ -22,11 +24,14 @@
 \clearpage
 
 % import each part
-\import{part01/}{part01}
-% appendix
+\part{Notes}
+\import{ch01-note/}{main}
+\part{Exercises}
+\import{ch01-exer/}{main}
+
+% appendix part
 \begin{appendices}
-\import{appendix/}{appendix}
-\import{changelog/}{changelog}
+\import{appendix/}{changelog}
 \end{appendices}
 
 %\printbibliography[title=References,heading=bibintoc]
