@@ -968,16 +968,15 @@ def split_apb(apb: str):
     return a, p, b
 
 # pylint: disable=C0301
-def display_band_analysis(bs: BandStructure, kpts):
+def display_band_analysis(bs: BandStructure, kpts, unit="eV"):
     """display analysis of band structure"""
     try:
+        was_unit = bs.unit
+        bs.unit = unit.lower()
         eg_ind = bs.fund_gap()[0]
         direct_gaps = bs.direct_gaps()[0]
         eg_dir = np.min(direct_gaps)
         ik_eg_dir = np.argmin(direct_gaps)
-        was_unit = bs.unit
-        bs.unit = "ev"
-        unit = "eV"
         ivb = bs.ivbm[2]
         icb = bs.icbm[2]
         ik_vb, ik_cb = bs.fund_trans()[0]
@@ -998,7 +997,7 @@ def display_band_analysis(bs: BandStructure, kpts):
     except BandStructureError as err:
         raise BandStructureError("fail to display band analysis") from err
 
-def display_transition_energies(trans: Sequence[str], bs: BandStructure, kpts):
+def display_transition_energies(trans: Sequence[str], bs: BandStructure, kpts, unit: str="eV"):
     """display the transitions
 
     Args:
@@ -1030,15 +1029,14 @@ def display_transition_energies(trans: Sequence[str], bs: BandStructure, kpts):
         return ivk, ick, ivb, icb
     try:
         was_unit = bs.unit
-        bs.unit = "ev"
-        print("> Transition energies (eV):")
+        bs.unit = unit.lower()
+        print("> Transition energies ({}):".format(unit))
         print(">> {:5s} {:29s}    {:29s}".format("E", "kpt_v", "kpt_c"))
         for t in trans:
             ivk, ick, ivb, icb = _decode_itrans(t)
             et = bs.get_transition(ivk, ick, ivb=ivb, icb=icb)
             print(">> {:5.3f} {:<3d} ({:7.5f},{:7.5f},{:7.5f}) -> {:<3d} ({:7.5f},{:7.5f},{:7.5f})"
                   .format(et, ivk, *kpts[ivk, :], ick, *kpts[ick, :]))
-        unit = "eV"
         bs.unit = was_unit
     except BandStructureError as err:
         raise BandStructureError("fail to display transition energies") from err

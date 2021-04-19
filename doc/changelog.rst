@@ -1,5 +1,14 @@
 Changelog
 =========
+2021-04-19
+----------
+Improvement for STEM reading template.
+
+[fix]
+^^^^^
+* (bs) add unit option for displaying band/te
+* (scripts) print head of dielectric matrix for q!=0
+
 2021-04-07
 ----------
 Special function Gamma(1/2-n) and tests.

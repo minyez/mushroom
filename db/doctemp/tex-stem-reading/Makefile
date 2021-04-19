@@ -14,13 +14,15 @@ SOURCES = $(wildcard *.tex) $(wildcard $(patsubst %,%/*.tex,$(SUBDIRS)))
 BIBFILE = $(PROJNAME).bib
 TARBALL = $(PROJNAME).tar.gz
 # files to cleanup
-AUXSUFFICES = blg,aux,log,out,odt,dvi,dls,fdb_latexmk,synctex.gz,bbl,toc,run.xml,vrb,nav,snm,bcf,fls
+AUXSUFFICES = blg,aux,log,out,odt,dvi,dls,fdb_latexmk,synctex.gz,bbl,toc,run.xml,vrb,nav,snm,bcf,fls,idx,ind,ilg
+
+LATEXOPTION = "-synctex=1 -interaction=nonstopmode -shell-escape "
 
 # for watching change of tex files
 WATCHMAN = watchman-make
 WAIT_SETTLE = #-s 1 # waiting time in watchman
 
-.PHONY: default clean veryclean watch dist cleanall
+.PHONY: default clean veryclean watch dist cleanall fig
 
 default: $(PDFNAME)
 
@@ -30,18 +32,23 @@ $(PDFNAME): $(PROJNAME).pdf
 	cp $< $@
 
 $(PROJNAME).pdf: $(SOURCES)
+	make fig
 	$(LATEXMK) -pdf -pdflatex=$(LATEX) -bibtex -f $(PROJNAME).tex \
-		-latexoption="-synctex=1 -interaction=nonstopmode -shell-escape "
+		-latexoption=$(LATEXOPTION)
 
-$(TARBALL): $(PROJNAME).tex $(BIBFILE) $(SUBDIRS) $(PROJNAME).pdf Makefile
+$(TARBALL): $(PROJNAME).tex $(BIBFILE) $(SUBDIRS) $(PROJNAME).pdf $(PDFNAME) Makefile
 	mkdir -p $(PROJNAME)/
-	rsync -qazruL --inplace --exclude="*.o" --exclude=".DS_Store" $^ $(PROJNAME)/
+	rsync -qazruL --inplace --exclude="*.{$(AUXSUFFICES)}" \
+		--exclude=".DS_Store" $^ $(PROJNAME)/
 	tar -zcvf $@ $(PROJNAME)/
 	rm -rf $(PROJNAME)/
 	
 veryclean: clean
 	rm -f $(PROJNAME).pdf $(PDFNAME)
 	rm -rf $(TARBALL)
+
+fig:
+	cd figures; make
 
 clean:
 	rm -f *.{$(AUXSUFFICES)} *-blx.bib

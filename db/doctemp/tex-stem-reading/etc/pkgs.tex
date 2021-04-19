@@ -5,18 +5,34 @@
 linkcolor=,filecolor=,%
 citecolor=VioletRed,urlcolor=Blue,%
 pdfborder={0 0 0}}{hyperref}
-% layout
+
+% Layout
 \usepackage[margin=1cm,bmargin=2cm]{geometry} % a wide layout
 \usepackage[font={small},skip=1pt]{caption}
 \usepackage{parskip}
+
+% STEM
+\usepackage{amsmath,amssymb}
+%\usepackage{wasysym}
+%\usepackage{physics}
+
+% Text
+%\usepackage[normalem]{ulem}
+
+% Figures
 \usepackage{float}
 \usepackage{wrapfig}
-% Math
-\usepackage{amsmath}
-\usepackage{amssymb}
-%\usepackage{wasysym}
+%\usepackage{overpic} % text over pictures
 \usepackage{graphicx}
+% path to search figures, each in a brace and endswith /
+\graphicspath{{figures/}}
+% subfigure and captions
+%\usepackage{subcaption}
+%\captionsetup{subrefformat=parens}
+
+% Color
 \usepackage{xcolor}
+
 % Tabular
 \usepackage{grffile}
 \usepackage{booktabs}
@@ -24,26 +40,24 @@ pdfborder={0 0 0}}{hyperref}
 %\usepackage{longtable}
 %\usepackage{rotating}
 
-% appendices environment
+% Appendices environment
 \usepackage[toc,page]{appendix}
 
-% subcaption
-%\usepackage{subcaption}
-%\captionsetup{subrefformat=parens}
-%\usepackage{overpic}
+% 解决相对路径input的问题
+\usepackage{import}
 
-%\usepackage[normalem]{ulem}
-
-\usepackage{import}%解决相对路径input的问题
-%编译器依赖的字体库导入
+% 编译器依赖的字体库导入
 \usepackage{ifxetex}
 \ifxetex%
-  \usepackage{xeCJK}%
+\usepackage{xeCJK}%
 \else%
-  \usepackage[T1]{fontenc}%
+\usepackage[T1]{fontenc}%
+% pdflatex 下的简易中文环境. 字体支持少, 对此有要求的话还是用 xelatex
+\usepackage{CJKutf8}%
+\newcommand{\chinese}[2][gkai]{\begin{CJK*}{UTF8}{#1}#2\end{CJK*}}%
 \fi
 
-% coding related
+% === Coding related ===
 %\usepackage[newfloat,cache=true]{minted}
 %\definecolor{codebg}{rgb}{0.97,0.97,0.97}
 %\setminted{mathescape,autogobble,breaklines,bgcolor=codebg,%
@@ -51,6 +65,7 @@ pdfborder={0 0 0}}{hyperref}
 \makeatletter
 \ltx@ifpackageloaded{minted}%
 {% Do something if minted loaded
+%Rename the listing environment
 \ifxetex%
 \renewcommand{\listingscaption}{清单}%
 \renewcommand{\listoflistingscaption}{清单列表}%
@@ -60,8 +75,8 @@ pdfborder={0 0 0}}{hyperref}
 }%
 \makeatother
 
-% biblatex
-\usepackage[maxnames=3,style=phys,date=year,url=false,isbn=false,doi=false]{biblatex}
+% === Bibliogrphay by biblatex ===
+%\usepackage[maxnames=3,style=phys,date=year,url=false,isbn=false,doi=false]{biblatex}
 %articletitle=false
 % link doi, issn or isbn to the pages (journal) or title (book)
 \makeatletter
@@ -113,6 +128,33 @@ pdfborder={0 0 0}}{hyperref}
     % Do something different if not
 }%
 \makeatother
+
+% === make indices ===
+%\usepackage{imakeidx}
+%\makeindex[columns=2, title=Index, intoc]
+%% use \index{},\printindex
+%% use intoc to make index appear in TOC
+%% add \printindex at last to show the index
+
+% === make glossaries ===
+%\usepackage[acronym,toc]{glossaries}
+%\makeglossaries
+% change style, style=list,altlist,listgroup,listhypergroup
+%\glossarystyle{style}
+% term example:
+%\newglossaryentry{latex}%
+%{
+%        name=latex,
+%        description={A mark up language specially suited for
+%scientific documents}
+%}
+% acronym example:
+%\newacronym{gcd}{GCD}{Greatest Common Divisor}
+%
+% use \gls{}, \Gls{}, \glspl{}, \Glspl{} to print the term in lower/capital and single/plural
+% add \printglossary[title=Glossary,toctile=Glossary] at last to show the glossary
+% use \acrlong{}, \acrshort{}, \acrfull{} to print the acronym in "Aha Bba", "AB" and "Aha Bba (AB)" forms.
+% add \printglossary[type=\acronymtype] at last to show the acronyms
 
 \usepackage{hyperref}
 %\usepackage{cleveref}

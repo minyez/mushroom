@@ -1,4 +1,4 @@
-.PHONY: default clean
+.PHONY: default clean veryclean
 
 GRACEBAT = gracebat -hardcopy -hdevice EPS -pipe
 # clean up grace eps if eps2eps can be found

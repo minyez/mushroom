@@ -38,14 +38,18 @@ def print_eps_omega(eps: Eps, iomega):
     epsdata = eps.get_eps(iomega)
     print("Is epsilon(iomega={:d}) Hermitian? {}"
           .format(iomega, eps.is_hermitian(iomega)))
+    print("                  long-wavelength? {}"
+          .format(eps.is_q0))
+    s = "epshead"
     if eps.is_q0:
-        print("E_macro (NLF) = {}".format(epsdata[0, 0]))
-        epsdata = eps.get(iomega)
-        # if the raw data is related to the inverse, print emac data with local field
-        if eps.kind == "invm1":
-            print("         (LF) = {}".format(1.0/(epsdata[0, 0]+1.0)))
-        elif eps.kind == "inv":
-            print("         (LF) = {}".format(1.0/epsdata[0, 0]))
+        s = "E_macro"
+    print("{} (NLF) = {}".format(s, epsdata[0, 0]))
+    epsdata = eps.get(iomega)
+    # if the raw data is related to the inverse, print emac data with local field
+    if eps.kind == "invm1":
+        print("         (LF) = {}".format(1.0/(epsdata[0, 0]+1.0)))
+    elif eps.kind == "inv":
+        print("         (LF) = {}".format(1.0/epsdata[0, 0]))
 
 def _parser():
     """parser"""
