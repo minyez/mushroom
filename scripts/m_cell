@@ -23,12 +23,12 @@ def _parser():
     igrp = p.add_mutually_exclusive_group()
     igrp.add_argument('-I', dest='input_file', type=str,
                       default=None, help="input file")
-    igrp.add_argument('--filter', dest="search", type=str, default=None,
+    igrp.add_argument('-f', dest="search", type=str, default=None,
                       help="search and print out cells with file names matching the regex")
     igrp.add_argument('-c', dest='cell', default=None,
                       help="extract predefined sample cell. int or str. see -p")
-    igrp.add_argument('-p', dest='show', action="store_true",
-                      help="show predefined sample cells")
+    igrp.add_argument('-l', dest='show', action="store_true",
+                      help="list predefined sample cells")
     #p.add_argument('-a', dest='add_cell', type=str, default=None,
     #               help="add converted input to sample data (JSON format)")
     p.add_argument('-i', dest='input_format', choices=DBCell.avail_readers,
@@ -60,7 +60,7 @@ def build_cell():
         for i, s in cdb.filter(args.search):
             print("{:>3d} : {:s}".format(i, s))
         return
-    raise ValueError("specify -I / --filter / -s / -p")
+    raise ValueError("specify search/cell argument. See help")
 
 
 if __name__ == "__main__":

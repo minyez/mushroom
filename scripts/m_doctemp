@@ -32,7 +32,7 @@ def _parser():
                         help="the name/index of document template to add")
     g.add_argument("--filter", dest='search', type=str, default=None,
                    help="search available templates with regex")
-    g.add_argument("-p", dest='print', action="store_true",
+    g.add_argument("-l", dest='print', action="store_true",
                    help="print available document templates")
     if autocomplete is not None:
         #all_entries = dbdt.get_avail_entries()

@@ -1,5 +1,11 @@
 Changelog
 =========
+2021-05-05
+----------
+Machine file generation in w2k.
+
+More option in pkgs.tex of TeX document template.
+
 2021-04-19
 ----------
 Improvement for STEM reading template.

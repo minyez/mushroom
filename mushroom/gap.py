@@ -158,12 +158,32 @@ class Eps:
             cache (bool)
         """
         rawdata = self.get(iomega)
-        if self._kind == "inv":
+        if self.kind == "inv":
             eps = np.linalg.inv(rawdata)
-        elif self._kind == "invm1":
+        elif self.kind == "invm1":
             eps = np.linalg.inv(rawdata+np.diag([1.0+0.0j,]*self.msize))
-        elif self._kind == "eps":
+        elif self.kind == "eps":
             eps = rawdata
+        else:
+            raise ValueError("kind is not applicable")
+        return eps
+
+    def get_inveps(self, iomega: int):
+        """get the inverse of dielectric matrix elements at frequency point iomega
+
+        Args:
+            iomega (int)
+        """
+        rawdata = self.get(iomega)
+        if self.kind == "invm1":
+            eps = rawdata+np.diag([1.0+0.0j,]*self.msize)
+        elif self.kind == "eps":
+            eps = np.linalg.inv(rawdata)
+        # nothing to do if kind is "inv"
+        elif self.kind == "inv":
+            eps = rawdata
+        else:
+            raise ValueError("kind is not applicable")
         return eps
 
 class Eqpev:
