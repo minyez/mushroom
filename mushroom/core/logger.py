@@ -18,33 +18,31 @@ try:
     stream_level = get_logging_level(stream_level)
 except ImportError:
     stream_level = logging.INFO
-try:
-    from mushroom.__config__ import log_to_file
-except ImportError:
-    log_to_file = True
-try:
-    from mushroom.__config__ import log_to_stream
-except ImportError:
-    log_to_stream = False
-try:
-    from mushroom.__config__ import logfile_mode
-except ImportError:
-    logfile_mode = 'w'
 
+def _set_handler(flevel, slevel):
+    """set the mode and log level of handler and stream logger
 
-logfile = "mushroom.log"
+    Args:
+        fmode (str): io mode of file logger
+        """
+    try:
+        from mushroom.__config__ import logfile_mode
+    except ImportError:
+        logfile_mode = 'w'
+    file_hand = logging.FileHandler("mushroom.log", mode=logfile_mode)
+    stream_hand = logging.StreamHandler()
+    fform = logging.Formatter(fmt='%(asctime)s - %(name)7s:%(levelname)8s - %(message)s',
+                              datefmt='%Y-%m-%d %H:%M:%S')
+    sform = logging.Formatter(fmt='%(name)7s:%(levelname)8s - %(message)s')
 
-_root_hand = logging.FileHandler(logfile, mode=logfile_mode)
-_stream_hand = logging.StreamHandler()
-_root_form = logging.Formatter(fmt='%(asctime)s - %(name)7s:%(levelname)8s - %(message)s',
-                               datefmt='%Y-%m-%d %H:%M:%S')
-_stream_form = logging.Formatter(fmt='%(name)7s:%(levelname)8s - %(message)s')
+    file_hand.setFormatter(fform)
+    file_hand.setLevel(flevel)
+    stream_hand.setFormatter(sform)
+    stream_hand.setLevel(slevel)
+    return file_hand, stream_hand
 
-_root_hand.setFormatter(_root_form)
-_root_hand.setLevel(log_level)
-_stream_hand.setFormatter(_stream_form)
-_stream_hand.setLevel(stream_level)
-
+# global handler
+_fhand, _shand = _set_handler(log_level, stream_level)
 
 def create_logger(name: str, level: str = None,
                   f_handler: bool = None, s_handler: bool = None) -> logging.Logger:
@@ -58,18 +56,28 @@ def create_logger(name: str, level: str = None,
         s_handler (bool) : if write to the stream handler (stdout)
             None to use custom variable ``log_to_stream``
     """
+    try:
+        from mushroom.__config__ import log_to_file
+    except ImportError:
+        log_to_file = True
+    try:
+        from mushroom.__config__ import log_to_stream
+    except ImportError:
+        log_to_stream = False
+
     logger = logging.getLogger(name)
-    if level is not None:
-        logger.setLevel(get_logging_level(level))
-    else:
+
+    if level is None:
         logger.setLevel(log_level)
+    else:
+        logger.setLevel(get_logging_level(level))
     if f_handler is None:
         f_handler = log_to_file
     if f_handler:
-        logger.addHandler(_root_hand)
+        logger.addHandler(_fhand)
     if s_handler is None:
         s_handler = log_to_stream
     if s_handler:
-        logger.addHandler(_stream_hand)
+        logger.addHandler(_shand)
     return logger
 

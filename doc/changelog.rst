@@ -1,5 +1,11 @@
 Changelog
 =========
+2021-05-08
+----------
+Improve the appendix part in tex doctemp
+
+Refactor the logger
+
 2021-05-05
 ----------
 Machine file generation in w2k.
