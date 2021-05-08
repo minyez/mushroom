@@ -25,7 +25,14 @@
 % front matter
 \maketitle
 \clearpage
+\begingroup
+% disable link color in TOC
+\hypersetup{linkcolor=black}
+% add a pdf bookmark to TOC
+\hypertarget{toc}{}%
+\bookmark[dest=toc]{\contentsname}
 \tableofcontents
+\endgroup
 \clearpage
 
 % import each part

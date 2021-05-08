@@ -2,7 +2,8 @@
 % set package here
 \PassOptionsToPackage{usenames,dvipsnames}{xcolor}
 \PassOptionsToPackage{colorlinks=True,%
-linkcolor=,filecolor=,%
+%linkcolor=,%used to disable color for TOC, but later solved by adding a group around tableofcontents command
+filecolor=,%
 citecolor=VioletRed,urlcolor=Blue,%
 pdfborder={0 0 0}}{hyperref}
 
@@ -10,6 +11,8 @@ pdfborder={0 0 0}}{hyperref}
 \usepackage[margin=1cm,bmargin=2cm]{geometry} % a wide layout
 \usepackage[font={small},skip=1pt]{caption}
 \usepackage{parskip}
+%%% for adding PDF bookmark
+\usepackage{bookmark}
 
 % STEM
 \usepackage{amsmath,amssymb}

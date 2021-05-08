@@ -2,9 +2,9 @@ Changelog
 =========
 2021-05-08
 ----------
-Improve the appendix part in tex doctemp
+Improve toc and appendix part in tex doctemp
 
-Refactor the logger
+* Refactor the logger.
 
 2021-05-05
 ----------
