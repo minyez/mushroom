@@ -6,6 +6,9 @@
 %\captionsetup[table]{belowskip=-6pt}
 \usepackage{float}
 \usepackage{wrapfig}
+\usepackage{graphicx}
+% path to search figures, each in a brace and endswith /
+\graphicspath{{figures/}}
 % Math
 \usepackage{amsmath}
 \usepackage{amssymb}
@@ -115,6 +118,8 @@ url=false,isbn=false,doi=false,articletitle=false]{biblatex}
 \renewcommand{\cmark}{\ding{51}}%
 \providecommand{\xmark}{}
 \renewcommand{\xmark}{\ding{55}}%
+\providecommand{\wipmark}{}
+\renewcommand{\wipmark}{\ding{45}}%
 
 \usepackage{tikz}
 \usetikzlibrary{arrows,arrows.meta,math}

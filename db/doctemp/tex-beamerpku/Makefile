@@ -6,7 +6,7 @@ LATEX = $(shell \
 		  awk '/TeX TS-program =/ {printf("%s", $$5)}' $(PROJNAME).tex \
 		  )
 # subdirectories to include in the tarball
-SUBDIRS = frames etc
+SUBDIRS = frames etc figures
 # all tex sources to let watch work
 SOURCES = $(wildcard *.tex) $(wildcard $(patsubst %,%/*.tex,$(SUBDIRS)))
 # the bibliography file
@@ -19,16 +19,19 @@ AUXSUFFICES = blg,aux,log,out,odt,dvi,dls,fdb_latexmk,synctex.gz,bbl,toc,run.xml
 WATCHMAN = watchman-make
 WAIT_SETTLE = #-s 1 # waiting time in watchman
 
-.PHONY: default clean veryclean watch dist
+.PHONY: default clean veryclean watch dist fig
 
 default: $(PDFNAME).pdf
 
 $(PDFNAME).pdf: $(PROJNAME).pdf
 	cp $< $@
 
+fig:
+	cd figures; $(MAKE)
+
 dist: $(TARBALL)
 
-$(PROJNAME).pdf: $(SOURCES)
+$(PROJNAME).pdf: fig $(SOURCES)
 	$(LATEXMK) -pdf -pdflatex=$(LATEX) -bibtex -f $(PROJNAME).tex \
 		-latexoption="-synctex=1 -interaction=nonstopmode -shell-escape "
 
@@ -37,9 +40,11 @@ $(TARBALL): $(PROJNAME).tex $(BIBFILE) $(SUBDIRS) $(PROJNAME).pdf
 	rsync -qazruL --inplace $^ $(PROJNAME)/
 	tar -zcvf $@ $(PROJNAME)/
 	rm -rf $(PROJNAME)/
-	
+
 veryclean: clean
 	rm -f $(PROJNAME).pdf
+
+cleanall: veryclean
 
 clean:
 	rm -f *.{$(AUXSUFFICES)} *-blx.bib

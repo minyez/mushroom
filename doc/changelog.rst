@@ -1,5 +1,9 @@
 Changelog
 =========
+2021-05-12
+----------
+Improve beamer doctemp
+
 2021-05-08
 ----------
 Improve toc and appendix part in tex doctemp
