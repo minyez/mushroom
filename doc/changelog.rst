@@ -1,5 +1,9 @@
 Changelog
 =========
+2021-05-18
+----------
+add equation of states
+
 2021-05-12
 ----------
 Improve beamer doctemp
