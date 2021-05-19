@@ -13,6 +13,7 @@ SOURCES = $(wildcard *.tex) $(wildcard $(patsubst %,%/*.tex,$(SUBDIRS)))
 # the bibliography file
 BIBFILE = $(PROJNAME).bib
 TARBALL = $(PROJNAME).tar.gz
+EXTRASRCS =
 # files to cleanup
 AUXSUFFICES = blg,aux,log,out,odt,dvi,dls,fdb_latexmk,synctex.gz,bbl,toc,run.xml,vrb,nav,snm,bcf,fls,idx,ind,ilg
 
@@ -36,13 +37,13 @@ $(PROJNAME).pdf: $(SOURCES)
 	$(LATEXMK) -pdf -pdflatex=$(LATEX) -bibtex -f $(PROJNAME).tex \
 		-latexoption=$(LATEXOPTION)
 
-$(TARBALL): $(PROJNAME).tex $(BIBFILE) $(SUBDIRS) $(PROJNAME).pdf $(PDFNAME) Makefile
+$(TARBALL): $(PROJNAME).tex $(BIBFILE) $(SUBDIRS) $(PROJNAME).pdf $(PDFNAME) $(EXTRASRCS) Makefile
 	mkdir -p $(PROJNAME)/
 	rsync -qazruL --inplace --exclude="*.{$(AUXSUFFICES)}" \
 		--exclude=".DS_Store" $^ $(PROJNAME)/
 	tar -zcvf $@ $(PROJNAME)/
 	rm -rf $(PROJNAME)/
-	
+
 veryclean: clean
 	rm -f $(PROJNAME).pdf $(PDFNAME)
 	rm -rf $(TARBALL)

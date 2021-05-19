@@ -1,4 +1,4 @@
-PDFNAME = myproject.pdf
+PDFNAME = myproject
 
 PROJNAME = main
 MAKE = gmake
@@ -12,7 +12,8 @@ SUBDIRS = $(wildcard etc part* appendix)
 SOURCES = $(wildcard *.tex) $(wildcard $(patsubst %,%/*.tex,$(SUBDIRS)))
 # the bibliography file
 BIBFILE = $(PROJNAME).bib
-TARBALL = $(PROJNAME).tar.gz
+TARBALL = $(PDFNAME).tar.gz
+EXTRASRCS =
 # files to cleanup
 AUXSUFFICES = blg,aux,log,out,odt,dvi,dls,fdb_latexmk,synctex.gz,bbl,toc,run.xml,vrb,nav,snm,bcf,fls
 
@@ -22,25 +23,25 @@ WAIT_SETTLE = #-s 1 # waiting time in watchman
 
 .PHONY: default clean veryclean watch dist cleanall
 
-default: $(PDFNAME)
+default: $(PDFNAME).pdf
 
 dist: $(TARBALL)
 
-$(PDFNAME): $(PROJNAME).pdf
+$(PDFNAME).pdf: $(PROJNAME).pdf
 	cp $< $@
 
 $(PROJNAME).pdf: $(SOURCES)
 	$(LATEXMK) -pdf -pdflatex=$(LATEX) -bibtex -f $(PROJNAME).tex \
 		-latexoption="-synctex=1 -interaction=nonstopmode -shell-escape "
 
-$(TARBALL): $(PROJNAME).tex $(BIBFILE) $(SUBDIRS) $(PROJNAME).pdf Makefile
+$(TARBALL): $(PROJNAME).tex $(BIBFILE) $(SUBDIRS) $(PROJNAME).pdf $(PDFNAME).pdf Makefile $(EXTRASRCS)
 	mkdir -p $(PROJNAME)/
 	rsync -qazruL --inplace --exclude="*.o" --exclude=".DS_Store" $^ $(PROJNAME)/
 	tar -zcvf $@ $(PROJNAME)/
 	rm -rf $(PROJNAME)/
-	
+
 veryclean: clean
-	rm -f $(PROJNAME).pdf $(PDFNAME)
+	rm -f $(PROJNAME).pdf $(PDFNAME).pdf
 	rm -rf $(TARBALL)
 
 clean:

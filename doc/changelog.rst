@@ -1,5 +1,9 @@
 Changelog
 =========
+2021-05-19
+----------
+minor improve makefile
+
 2021-05-18
 ----------
 add equation of states
