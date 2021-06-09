@@ -487,6 +487,35 @@ def print_file_or_iowrapper(*s, f=None, mode='w'):
     if isinstance(f, str):
         h.close()
 
+def readtext_split_emptyline(fn):
+    """read all text, and split the file string by empty line
+
+    Args:
+        fn (PathLike or TextIOWrapper): filepath or a file object which supports readlines
+
+    Return:
+        list of strings
+    """
+    strings = []
+    with open_textio(fn, 'r') as h:
+        lines = h.readlines()
+    # only one line, manually check it
+    if len(lines) == 1:
+        if lines[0].strip() != "":
+            return lines
+        return strings
+    # find index of empty line
+    # -1 refers to the dummy line before the first
+    indices_empty = [-1,] + [i for i, line in enumerate(lines) if line.strip() == ""] \
+            + [len(lines),]
+    n = len(indices_empty)
+    for i in range(n-1):
+        st = indices_empty[i]
+        ed = indices_empty[i+1]
+        if ed - st > 1:
+            strings.append("".join(lines[st+1:ed]))
+    return strings
+
 #class Smearing:
 #    """class with different smearing schemes implemented as static method
 #    """

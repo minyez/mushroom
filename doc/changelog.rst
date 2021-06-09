@@ -1,8 +1,10 @@
 Changelog
 =========
-2021-05-19
+2021-06-09
 ----------
-minor improve makefile
+improve quick grace plot to parse NXY data
+
+minor improve in beamer template and grace object
 
 2021-05-18
 ----------

@@ -10,6 +10,7 @@ from mushroom.core.ioutils import (split_comma, decode_int_range, decode_float_e
                                    get_dirpath, get_file_ext, get_filename_wo_ext,
                                    get_cwd_name, get_matched_files, trim_after,# trim_comment,
                                    trim_before, trim_both_sides, conv_string,
+                                   readtext_split_emptyline,
                                    cycler)
 
 class test_string_decoding(ut.TestCase):
@@ -130,6 +131,21 @@ class test_trim(ut.TestCase):
         self.assertEqual("=0.9725 (", \
             trim_both_sides(string, r"=", r"\(", include_pattern=True))
 
+
+class test_textio_operations(ut.TestCase):
+    """test textio"""
+    def test_readtext_split_emptyline(self):
+        """test readtext"""
+        tests = (
+            ("abc\n\ndef\n\nghi", 3, ["abc\n", "def\n", "ghi"]),
+            ("\n\nabc\n\ndef\n\nghi \n", 3, ["abc\n", "def\n", "ghi \n"]),
+            ("\n\nabc\n\ndef\n \n", 2, ["abc\n", "def\n"]),
+            ("\n\nabc\ncba\n\ndef\n \n", 2, ["abc\ncba\n", "def\n"]),
+            )
+        for s, n, correct in tests:
+            strings = readtext_split_emptyline(StringIO(s))
+            self.assertEqual(len(strings), n)
+            self.assertListEqual(strings, correct)
 
 
 class test_file_path(ut.TestCase):

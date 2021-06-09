@@ -446,7 +446,7 @@ class LineStyle(_IntMap):
     pair = {
         "none" : NONE,
         "solid": SOLID, "-": SOLID,
-        "dotted": DOTTED, "..": DOTTED,
+        "dotted": DOTTED, "..": DOTTED, ":": DOTTED,
         "dashed": DASHED, "--": DASHED,
         "longdashed": LONGDASHED, "---": LONGDASHED,
         "dotdashed": DOTDASHED, ".-": DOTDASHED,

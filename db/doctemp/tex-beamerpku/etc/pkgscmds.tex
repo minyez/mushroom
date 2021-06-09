@@ -1,20 +1,35 @@
 % !TeX root = ../main.tex
 % set package here
-% layout
+
+%% layout
 \usepackage[font={small,},skip=1pt]{caption}
 % space between caption and table
 %\captionsetup[table]{belowskip=-6pt}
 \usepackage{float}
+%\usepackage{enumitem} % for item spacing control, but will lose the label in my template, for unknown reason
 \usepackage{wrapfig}
 \usepackage{graphicx}
+\usepackage{subfig}
+\usepackage{booktabs}
 % path to search figures, each in a brace and endswith /
 \graphicspath{{figures/}}
-% Math
+\usepackage{appendixnumberbeamer} % count appendix pages independently
+\usepackage{etaremune}
+% footnote
+\setlength{\footnotesep}{0.2cm} % spacing between footnotes
+% Beamer itemize
+\settowidth{\leftmargini}{\usebeamertemplate{itemize item}}
+\addtolength{\leftmargini}{\labelsep}
+% 解决相对路径input的问题
+\usepackage{import}
+
+%% Math
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{wasysym}
+%\usepackage{physics}
 
-\usepackage{graphicx}
+%% color
 \usepackage{xcolor}
 \providecolor{pkured}{cmyk}{0,1,1,0.45}
 % color face for inline verbatim
@@ -22,7 +37,7 @@
 % background for inline verbatim
 \providecolor{verbbg}{rgb}{0.97,0.97,0.97}
 
-%编译器依赖的字体库导入
+%%编译器依赖的字体库导入
 \usepackage{ifxetex}
 \ifxetex%
   \usepackage{xeCJK}%
@@ -30,19 +45,19 @@
   \usepackage[T1]{fontenc}%
 \fi
 
+%% tables
 \usepackage{textcomp}
 \usepackage{grffile}
 \usepackage{longtable}
-\usepackage{subfig}
 \usepackage{rotating}
+\usepackage{multirow}
+
+%% font style
 \usepackage[normalem]{ulem}
 \usepackage{upgreek}
-\usepackage{multirow}
 \usepackage{cancel}
 
-\usepackage{import}%解决相对路径input的问题
-\usepackage{booktabs}
-% chemistry package
+%% chemistry
 \usepackage[version=4]{mhchem}
 \mhchemoptions{layout=staggered-deep}
 
@@ -83,7 +98,7 @@ url=false,isbn=false,doi=false,articletitle=false]{biblatex}
 % small bibliography fontsize
 \renewcommand*{\bibfont}{\small}
 
-% coding related
+%% coding related
 %\usepackage[newfloat,cache=true]{minted}
 \usepackage{newverbs}
 % inline verb with facecolor and background
@@ -98,21 +113,47 @@ url=false,isbn=false,doi=false,articletitle=false]{biblatex}
 {\color{verbct}\texttt{#1}}%
 }
 
+%% Extra commands
+% layout setup
+
 % footnote without marker, useful for footnote below columns and group citation
+% https://tex.stackexchange.com/questions/30720/footnote-without-a-marker
 \newcommand\blfootnote[1]{%
   \begingroup
-  \renewcommand\thefootnote{}\footnote{#1}%
-  \addtocounter{footnote}{-1}%
+%% old version
+%  \renewcommand\thefootnote{}\footnote{#1}%
+%  \addtocounter{footnote}{-1}%
+%% new version
+  \renewcommand\thefootnote{\fnsymbol{footnote}}%
+  \renewcommand\thempfootnote{\fnsymbol{mpfootnote}}%
+  \footnotetext[0]{#1}%
   \endgroup
 }
 
-% math commands
+% change the template to remove the indentation
+% https://tex.stackexchange.com/questions/455917/how-to-remove-footnote-marker-number-in-beamer
+% with this, simply \footnote will introduce a marker outside the footnote region.
+% so if you want to have mixed number and unnumbered footnotes, comment the following out
+% otherwise, stick to \blfotenote
+\setbeamertemplate{footnote}{%
+  \parindent 1em\noindent%
+  \raggedright
+  \insertfootnotetext\par%
+}
+
+%% math commands
 \newcommand{\ii}{\mathrm{i}}
 \newcommand{\ee}{\mathrm{e}}
+\newcommand{\half}{\frac{1}{2}}
+\newcommand{\bvec}[1]{\mathbf{#1}}
 \newcommand{\argmin}{\mathop{\mathrm{argmin}}}
 \newcommand{\argmax}{\mathop{\mathrm{argmax}}}
 
-% special characters such as X and tick mark
+%% slide show command
+%% show #3 in color 2 only in overlay #1
+\newcommand{\coloronly}[3]{{\only<#1>{\color{#2}}#3}}
+
+%% special characters such as X and tick mark
 \usepackage{pifont}
 \providecommand{\cmark}{}
 \renewcommand{\cmark}{\ding{51}}%
@@ -125,4 +166,4 @@ url=false,isbn=false,doi=false,articletitle=false]{biblatex}
 \usetikzlibrary{arrows,arrows.meta,math}
 
 \usepackage{hyperref}
-%\usepackage{cleveref}
+\usepackage{cleveref}
