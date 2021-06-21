@@ -1593,7 +1593,8 @@ When other keyword are parsed, they will be filtered out and no exception will b
         '''
         ha = a/2
         if primitive:
-            latt = [[ha, -ha/SQRT3, c/3], [0.0, 2*ha/SQRT3, c/3], [-ha, -ha/SQRT3, c/3]]
+            # obtained from spglib primitize
+            latt = [[ha, ha/SQRT3, c/3], [-ha, ha/SQRT3, c/3], [0.0, -2*ha/SQRT3, c/3]]
             atms = [str(atom1), str(atom2), str(atom3), str(atom3)]
             posi = [[0.0, 0.0, 0.0],
                     [0.5, 0.5, 0.5],
@@ -1609,11 +1610,11 @@ When other keyword are parsed, they will be filtered out and no exception will b
                     [0., 0., 1/2],
                     [2/3, 1/3, 5/6],
                     [0., 0., u], #O
+                    [0., 0., 1-u],
                     [2/3, 1/3, 1/3-u],
                     [2/3, 1/3, 1/3+u],
                     [1/3, 2/3, 2/3-u],
-                    [1/3, 2/3, 2/3+u],
-                    [1.0-u, 1.0-u, 1.0-u]]
+                    [1/3, 2/3, 2/3+u]]
         kwargs.pop("coord_sys", None)
         if "comment" not in kwargs:
             kwargs.update({"comment": "Delafossite {}{}{}2".format(atom1, atom2, atom3)})
