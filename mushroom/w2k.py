@@ -585,26 +585,34 @@ class In1:
 # kpoint line format in energy file, wien2k v14.2
 _energy_kpt_line = re.compile(r"([ -]\d\.\d{12}E[+-]\d{2})"*3+r"([\w\s\d]{10})\s*(\d+)\s+(\d+)\s+(\d+\.\d+)")
 
-def _read_efermi_from_second_to_last_el(l):
+def _read_efermi_from_second_to_last_el(l, round_digit: int=1):
     """extract the fermi energy from the line containing linearization energy of lapw at large l
 
     Such energy is usually set to 0.2 Ry below the Fermi level.
-    here use the second to the last
+    here use the second to the last.
 
     Args:
         l (str): the line containing linearization energy at angular momenta,
             usually the first lines of case.energy
+        round_digit (int): last digit to round the fermi energy,
+            default to the second to the last digit. Used for better resolve VB and CB
     """
+    _logger.info("Reading fermi energy from text: %s", l)
     efermi = 0.0
     nel = l.count('.')
     if len(l) % nel != 0:
         raise ValueError("bad-formatted el string")
     width = len(l) // nel
-    decimals = width - l.index('.') - 1
+    decimals = width - l.index('.') - 1 - round_digit
     efermi = float(l[-2*width:-width]) + 0.2
     if efermi > 150: # LAPW
         efermi -= 200.0
-    return np.around(efermi, decimals=decimals)
+    _logger.info("> nr. excpetions = %d", nel)
+    _logger.info("> E_F = %f", efermi)
+    efermi = np.around(efermi, decimals=decimals)
+    _logger.info("> E_F (rounded %d) = %f", decimals, efermi)
+    return efermi
+
 # pylint: disable=R0914
 def read_energy(penergy: str, penergy_dn: str = None, efermi=None):
     """get a BandStructure instance from the wien2k energy file
