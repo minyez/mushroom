@@ -11,12 +11,12 @@ DIST_TARBALL = dist/$(PROJ)-$(VERSION).tar.gz
 DIST_TARBALL_TEST = dist/$(PROJ)-$(VERSION)-test.tar.gz
 SED = gsed
 CHANGELOG_FILE = ./doc/changelog.rst
-GIT_TODAY_CHANGE = $(strip $(shell awk "/$$(date +"%Y-%m-%d")/" $(CHANGELOG_FILE)))
-GIT = git
+#GIT_TODAY_CHANGE = $(strip $(shell awk "/$$(date +"%Y-%m-%d")/" $(CHANGELOG_FILE)))
+#GIT = git
 
 include .objects
 
-.PHONY: default distrc push clean remote pytest test commit amend version dist
+.PHONY: default distrc push clean remote pytest test version dist
 
 default: pytest
 
@@ -40,21 +40,21 @@ remote: $(DIST_TARBALL)
 remotetest: $(DIST_TARBALL_TEST)
 	scripts/dist_rsync.py --test
 
-commit:
-ifeq ($(GIT_TODAY_CHANGE),)
-	@echo "Today's change log is not found in $(CHANGELOG_FILE). Please update!"; exit 1
-else
-	@echo "(Review the message. Delete this message for commit)" > $(MESSAGE_FILE)
-	@$(AWK) "/$$(date +"%Y-%m-%d")/,EOF" $(CHANGELOG_FILE) | sed -e '0,/^-\+/d' -e '/^\^\+/d' -e '/[0-9]\{4\}-/Q' >> $(MESSAGE_FILE)
-	$(MAKE) pytest
-	@$(GIT) add $(CHANGELOG_FILE)
-	@$(GIT) commit -t $(MESSAGE_FILE)
-endif
-	rm -f $(MESSAGE_FILE); touch $(MESSAGE_FILE)
+#commit:
+#ifeq ($(GIT_TODAY_CHANGE),)
+#	@echo "Today's change log is not found in $(CHANGELOG_FILE). Please update!"; exit 1
+#else
+#	@echo "(Review the message. Delete this message for commit)" > $(MESSAGE_FILE)
+#	@$(AWK) "/$$(date +"%Y-%m-%d")/,EOF" $(CHANGELOG_FILE) | sed -e '0,/^-\+/d' -e '/^\^\+/d' -e '/[0-9]\{4\}-/Q' >> $(MESSAGE_FILE)
+#	$(MAKE) pytest
+#	@$(GIT) add $(CHANGELOG_FILE)
+#	@$(GIT) commit -t $(MESSAGE_FILE)
+#endif
+#	rm -f $(MESSAGE_FILE); touch $(MESSAGE_FILE)
 
-amend: pytest
-	@$(GIT) add $(CHANGELOG_FILE)
-	$(GIT) commit --amend
+#amend: pytest
+#	@$(GIT) add $(CHANGELOG_FILE)
+#	$(GIT) commit --amend
 
 push:
 	@$(GIT) push origin master
