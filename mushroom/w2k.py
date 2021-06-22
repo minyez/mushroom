@@ -585,7 +585,7 @@ class In1:
 # kpoint line format in energy file, wien2k v14.2
 _energy_kpt_line = re.compile(r"([ -]\d\.\d{12}E[+-]\d{2})"*3+r"([\w\s\d]{10})\s*(\d+)\s+(\d+)\s+(\d+\.\d+)")
 
-def _read_efermi_from_second_to_last_el(l, round_digit: int=1):
+def _read_efermi_from_second_to_last_el(l, shift_to_last_digit: int=1):
     """extract the fermi energy from the line containing linearization energy of lapw at large l
 
     Such energy is usually set to 0.2 Ry below the Fermi level.
@@ -594,23 +594,23 @@ def _read_efermi_from_second_to_last_el(l, round_digit: int=1):
     Args:
         l (str): the line containing linearization energy at angular momenta,
             usually the first lines of case.energy
-        round_digit (int): last digit to round the fermi energy,
-            default to the second to the last digit. Used for better resolve VB and CB
+        shift_to_last_digit (int): float added to the detected EF,
+            a work around to avoid gap detection in the same band
     """
-    _logger.info("Reading fermi energy from text: %s", l)
+    _logger.debug("Reading fermi energy from text: %s", l)
     efermi = 0.0
     nel = l.count('.')
     if len(l) % nel != 0:
         raise ValueError("bad-formatted el string")
     width = len(l) // nel
-    decimals = width - l.index('.') - 1 - round_digit
+    decimals = width - l.index('.') - 1
     efermi = float(l[-2*width:-width]) + 0.2
     if efermi > 150: # LAPW
         efermi -= 200.0
     _logger.info("> nr. excpetions = %d", nel)
-    _logger.info("> E_F = %f", efermi)
-    efermi = np.around(efermi, decimals=decimals)
-    _logger.info("> E_F (rounded %d) = %f", decimals, efermi)
+    _logger.info("> read E_F = %f", efermi)
+    efermi += shift_to_last_digit * (10 ** (-decimals))
+    _logger.info(">  set E_F = %f", efermi)
     return efermi
 
 # pylint: disable=R0914
