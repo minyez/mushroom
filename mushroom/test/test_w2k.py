@@ -78,11 +78,12 @@ class test_energy(ut.TestCase):
             self.assertEqual(natm_ineq, verify["natm_ineq"])
             self.assertTrue(np.allclose(kpts, verify["kpts"]))
             if symbols:
-                self.assertDictEqual(verify["symbols", symbols])
+                self.assertDictEqual(verify["symbols"], symbols)
 
 class test_utilities(ut.TestCase):
     """test utilities for wien2k analysis"""
-    testdir = pathlib.Path(__file__).parent / "wien2k_testdir"
+    dirname = "w2k_testdir"
+    testdir = pathlib.Path(__file__).parent.resolve() / dirname
 
     def test_get_casename(self):
         """get the casename"""
@@ -104,13 +105,13 @@ class test_utilities(ut.TestCase):
         os.chdir(self.testdir.parent)
         self.assertTupleEqual(get_inputs("struct", "in1",
                                          dirpath=self.testdir, relative="CWD"),
-                              ("wien2k_testdir/fake.struct", "wien2k_testdir/fake.in1",))
+                              (f"{self.dirname}/fake.struct", f"{self.dirname}/fake.in1",))
 
     # pylint: disable=C0301
     def test_read_efermi_from_el(self):
         """test reading efermi"""
         s = "198.98000200.44970  0.44970  0.44970  0.44970  0.44970  0.44970  0.44970  0.44970  0.44970  0.44970  0.44970  0.44970  0.00000"
-        self.assertEqual(0.6497, _read_efermi_from_second_to_last_el(s))
+        self.assertAlmostEqual(0.64971, _read_efermi_from_second_to_last_el(s))
 
 class test_in1(ut.TestCase):
     """test reading in1 """

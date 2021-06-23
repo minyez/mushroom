@@ -185,6 +185,10 @@ When other keyword are parsed, they will be filtered out and no exception will b
 
     def _check_input_consistency(self):
         try:
+            _logger.debug("check consistency")
+            _logger.debug("> latt: %r", self._latt)
+            _logger.debug("> atms: %r", self._atms)
+            _logger.debug("> posi: %r", self._posi)
             assert self._coord_sys in ["C", "D"]
             assert np.shape(self._latt) == (3, 3)
             assert self.natm > 0

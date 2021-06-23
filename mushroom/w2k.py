@@ -8,6 +8,7 @@ import re
 import numpy as np
 
 from mushroom.core.cell import Cell
+from mushroom.core.constants import SQRT3
 from mushroom.core.typehint import Path
 from mushroom.core.elements import get_atomic_number
 from mushroom.core.ioutils import (grep, print_file_or_iowrapper,
@@ -176,7 +177,7 @@ def search_cplx_input(path: Path) -> str:
 
 def get_inputs(suffix: str, *suffices, dirpath: Path = ".",
                casename: str = None, relative: Union[bool, Path] = None,
-               search_cplx=True):
+               search_cplx=True) -> Tuple:
     """get path of input files given the suffices
 
     Args:
@@ -209,12 +210,13 @@ class Struct:
     """object for generating struct files
 
     Args:
+        latt_consts (6-member tuple): the lattice constants, i.e. a b c alpha beta gamma
         atms_types: symbols of each type of nonequivalent atoms
         posi_types: direct positions of atoms of each type in atms_types
             atms_types and posi_types should have the same length
     """
     # pylint: disable=R0912,R0914,R0915
-    def __init__(self, latt, atms_types: Sequence[str],
+    def __init__(self, latt_consts, atms_types: Sequence[str],
                  posi_types, kind="P", unit="au", coord_sys="D",
                  isplits=None, npts=None, rzeros=None, rmts=None, symops=None,
                  casename: str=None, mode: str="rela",
@@ -238,32 +240,40 @@ class Struct:
             self.rotmats = []
             for i, _ in enumerate(atms_types):
                 self.rotmats.append(np.diag([1.0, 1.0, 1.0]))
-        posi = []
-        natm_types = []
-        if kind == "F":
-            for p in posi_types:
-                posi.extend([*p, *np.add(p, [0.0, 0.5, 0.5]),
-                             *np.add(p, [0.5, 0.0, 0.5]), *np.add(p, [0.5, 0.5, 0.0]),
-                            ])
-                natm_types.append(len(p)*4)
-        elif kind == "I":
-            for p in posi_types:
-                posi.extend([*p, *np.add(p, [0.5, 0.5, 0.5]),
-                            ])
-                natm_types.append(len(p)*2)
-        elif kind in ["P", "H", "R"]:
-            for p in posi_types:
-                posi.extend(p)
-                natm_types.append(len(p))
+        # the following latt determination are adapted from latgen.f
+        # where the reciprocal lattice is calculated first, and then
+        # transform to real space with gbass.f
+        if kind == "H":
+            # recp: [2/SQRT(3), 0, 0], [1/SQRT(3),1,0], [0,0,1]
+            latt = [[latt_consts[0], 0, 0],
+                    [-latt_consts[0]/2, latt_consts[1]*SQRT3/2, 0],
+                    [0, 0, latt_consts[2]]]
+        elif kind == "R":
+            # recp: [1/SQRT(3), -1, 1], [1/SQRT(3),1,1], [-2/SQRT(3),0,1]
+            latt = [[latt_consts[0]/2, latt_consts[1]/2/SQRT3, latt_consts[2]/3],
+                    [-latt_consts[0]/2, latt_consts[1]/2/SQRT3, latt_consts[2]/3],
+                    [0.0, -latt_consts[1]/SQRT3, latt_consts[2]/3]]
+        elif kind == "B":
+            # recp:[[0, 1, 1], [1, 0, 1], [1, 1, 0]]
+            latt = np.multiply([[-1, 1, 1], [1, -1, 1], [1, 1, -1]], latt_consts[0]/2)
+        elif kind in ["CXY", "CYZ", "CXZ"]:
+            raise NotImplementedError("C kind of struct is not implemented")
+        elif kind == "F":
+            # recp:[[-1, 1, 1], [1, -1, 1], [1, 1, -1]]
+            latt = np.multiply([[0, 1, 1], [1, 0, 1], [1, 1, 0]], latt_consts[0]/2)
+        elif kind in ["P", "S"]:
+            # primitive case, generate latt directly
+            latt = get_latt_vecs_from_latt_consts(*latt_consts)
         else:
             raise ValueError("Unsupported lattice type {}".format(kind))
+        posi = []
+        for x in posi_types:
+            posi.extend(x)
         posi = np.round(posi, decimals=8)
-        atms = atms_from_sym_nat(atms_types, natm_types)
+        self._mults = [len(x) for x in posi_types]
+        atms = atms_from_sym_nat(atms_types, self._mults)
         self._cell = Cell(latt, atms, posi, unit=unit, coord_sys=coord_sys,
                           reference=reference, comment=comment)
-        # This multiplicity is already handled by the crystal system identifier
-        # no sure if this is correct
-        self._mults = natm_types
         self._cell.move_atoms_to_first_lattice()
         # reset units and coordinate system
         self._cell.unit = "au"
@@ -394,7 +404,7 @@ class Struct:
         posi_types = []
         for a in atms_types:
             posi_types.append(cell.get_atm_posi(a))
-        return cls(cell.latt, atms_types, posi_types, unit=cell.unit,
+        return cls(cell.latt_consts, atms_types, posi_types, unit=cell.unit,
                    reference=cell.get_reference(), comment=cell.comment,
                    coord_sys=cell.coord_sys, symops=cell.get_symops())
 
@@ -422,9 +432,8 @@ class Struct:
         # the first line: (A4,23X,I3)
         ntypes = int(lines[1][27:30])
         kind = lines[1][:4].strip()
-        latt_consts = map(lambda i: float(lines[3][10*i:10*i+10]), range(6))
+        latt_consts = tuple(map(lambda i: float(lines[3][10*i:10*i+10]), range(6)))
         mode = lines[2][13:].strip()
-        latt = get_latt_vecs_from_latt_consts(*latt_consts)
 
         atm_blocks = []
         rotmats = []
@@ -465,7 +474,7 @@ class Struct:
             rzeros[atm] = rzero
             rmts[atm] = rmt
         symops = _read_symops(lines[symops_startline:])
-        return cls(latt, atms_types, posi_types, npts=npts, symops=symops, rmts=rmts,
+        return cls(latt_consts, atms_types, posi_types, npts=npts, symops=symops, rmts=rmts,
                    isplits=isplits, kind=kind, rzeros=rzeros, rotmats=rotmats,
                    comment=lines[0].strip(), casename=casename)
 

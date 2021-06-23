@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Utilities for processing crystall-related quantities"""
 from copy import deepcopy
-from typing import List, Iterable
+from typing import List, Iterable, Tuple
 import numpy as np
 from numpy import cos, sin
 from mushroom.core.typehint import Latt3T3
@@ -23,10 +23,10 @@ def get_latt_vecs_from_latt_consts(a: float, b: float, c: float,
                                    alpha: float = 90.,
                                    beta: float = 90.,
                                    gamma: float = 90.,
-                                   decimals: int = 6) -> List[List[float]]:
+                                   decimals: int = 6) -> Latt3T3:
     """Convert lattice constants to lattice vectors in right-hand system
 
-    Note that by now a1 is forced along x axis, a1, a2 is forced on the xOy plane, i.e.
+    Note that by now a1 is forced along x axis, and (a1,a2) is forced on the xOy plane, i.e.
         a1_y = a1_z = a2_z = 0
 
     Args:
@@ -55,12 +55,12 @@ def get_latt_vecs_from_latt_consts(a: float, b: float, c: float,
     return np.round([a1, a2, a3], decimals=decimals)
 
 
-def get_latt_consts_from_latt_vecs(latt):
+def get_latt_consts_from_latt_vecs(latt) -> Tuple[float]:
     """Convert lattice vectors in right-hand system to lattice constants
 
     Args:
         latt (2d-array): lattice vectors, shape (3,3)
-    
+
     Returns:
         6 floats, a, b, c, alpha, beta, gamma (in degree)
     """
@@ -177,7 +177,7 @@ def periodic_duplicates_in_cell(direct_coord):
 
 
 def atms_from_sym_nat(sym: Iterable[str], nat: Iterable[int]) -> List[str]:
-    """Generate ``atom`` list for ``Cell`` initilization from list of atomic symbols 
+    """Generate ``atom`` list for ``Cell`` initilization from list of atomic symbols
     and number of atoms
 
     Args :
