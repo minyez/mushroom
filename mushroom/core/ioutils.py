@@ -176,7 +176,8 @@ def get_matched_files(regex: str = None, dirpath=".", relative=False) -> tuple:
     Directories are excluded and only files will be returned.
 
     Args:
-        regex (regex): the regular expression to match the filename
+        regex (regex): the regular expression to match the filename.
+            If None is parsed, all files will be returned.
         dirpath (str): the directory to search
         relative (bool): if True, the path relative to cwd are returned.
             Otherwise returns the absolute path.
@@ -193,7 +194,7 @@ def get_matched_files(regex: str = None, dirpath=".", relative=False) -> tuple:
             if regex is not None:
                 if re.search(regex, f.name) is None:
                     continue
-                fns.append(f.resolve())
+            fns.append(f.resolve())
     if relative:
         return tuple(str(f.relative_to(cwd)) for f in fns)
     return tuple(str(f) for f in fns)

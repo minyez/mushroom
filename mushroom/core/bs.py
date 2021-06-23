@@ -140,7 +140,7 @@ class BandStructure(EnergyUnit):
         if occ is None:
             if efermi is not None:
                 occ = np.zeros(self.eigen.shape)
-                occ[self.eigen < efermi] = 1.0
+                occ[self.eigen <= efermi] = 1.0
                 self.set_occupations(occ)
         else:
             self.set_occupations(occ)
@@ -584,18 +584,22 @@ class BandStructure(EnergyUnit):
         """
         return self.cbm_sp_kp - self.vbm_sp_kp
 
-    def direct_gap(self):
-        """The minimal direct gap between VBM and CBM of each spin-kpt channel
+    def direct_gap_sp(self):
+        """The minimal direct gap between VBM and CBM of each spin channel
 
         float, shape (nspins,)
         """
         return np.min(self.direct_gaps(), axis=1)
 
+    def direct_gap(self):
+        """The minimal direct gap between VBM and CBM, float"""
+        return np.min(self.direct_gap_sp())
+
     def is_gap_direct(self) -> bool:
         """True if the bandstructure belongs to a direct gap material"""
-        return all(self.fund_gap() >= self.direct_gap())
+        return all(self.fund_gap_sp() >= self.direct_gap())
 
-    def fund_gap(self):
+    def fund_gap_sp(self):
         """Fundamental gap for each spin channel.
 
         float, shape (nspins,)
@@ -604,14 +608,28 @@ class BandStructure(EnergyUnit):
         """
         return self.cbm_sp - self.vbm_sp
 
-    def fund_trans(self):
-        """Transition responsible for the fundamental gap
+    def fund_gap(self):
+        """Fundamental gap, float"""
+        return self.cbm - self.vbm
+
+    def fund_trans_sp(self):
+        """Transition responsible for the fundamental gap in each spin channel
 
         int, shape (nspins, 2)
         """
         vb = np.argmax(self.vbm_sp_kp, axis=1)
-        cb = np.argmin(self.vbm_sp_kp, axis=1)
+        cb = np.argmin(self.cbm_sp_kp, axis=1)
         return tuple(zip(vb, cb))
+
+    def fund_trans(self):
+        """Transition responsible for the fundamental gap
+
+        int, shape (2, 2), [0,:]: (vbm spin, vbm k), [1,:]: (cbm spin, cbm k)
+        """
+        shape = (self._nspins, self._nkpts)
+        vb = np.unravel_index(np.argmax(self.vbm_sp_kp, axis=None), shape)
+        cb = np.unravel_index(np.argmin(self.cbm_sp_kp, axis=None), shape)
+        return tuple((vb, cb))
 
     def get_transition(self, ivk: int, ick: int,
                        ivb=None, icb=None,
@@ -970,16 +988,17 @@ def split_apb(apb: str):
 # pylint: disable=C0301
 def display_band_analysis(bs: BandStructure, kpts, unit="eV"):
     """display analysis of band structure"""
+    if bs.nspins != 1:
+        raise NotImplementedError("spin-polarized BS analysis")
     try:
         was_unit = bs.unit
         bs.unit = unit.lower()
-        eg_ind = bs.fund_gap()[0]
+        eg_ind = bs.fund_gap()
         direct_gaps = bs.direct_gaps()[0]
         eg_dir = np.min(direct_gaps)
         ik_eg_dir = np.argmin(direct_gaps)
-        ivb = bs.ivbm[2]
-        icb = bs.icbm[2]
-        ik_vb, ik_cb = bs.fund_trans()[0]
+        ivb, ik_vb = bs.ivbm[2], bs.ivbm[1]
+        icb, ik_cb = bs.icbm[2], bs.icbm[1]
         print("> band edge between band index {:3d} -> {:3d}".format(ivb, icb))
         if bs.is_gap_direct():
             print("> fundamental gap = {:8.5f} {}".format(eg_dir, unit))
@@ -1003,6 +1022,8 @@ def display_transition_energies(trans: Sequence[str], bs: BandStructure, kpts, u
     Args:
         trans (list of str): "ivk:ick:ivb:icb", the last two can be omitted
     """
+    if bs.nspins != 1:
+        raise NotImplementedError("spin-polarized BS analysis")
     def _decode_itrans(s):
         itrans = [x.strip() for x in s.split(":")]
         if len(itrans) == 2:

@@ -64,9 +64,14 @@ class test_BS_no_projection(ut.TestCase):
         self.assertTupleEqual((nspins,), np.shape(bs.cbm_sp))
         self.assertTupleEqual((), np.shape(bs.cbm))
         self.assertTupleEqual((nspins, nkpts), np.shape(bs.direct_gaps()))
-        self.assertTupleEqual((nspins,), np.shape(bs.direct_gap()))
-        self.assertTupleEqual((nspins,), np.shape(bs.fund_gap()))
-        self.assertTupleEqual((nspins, 2), np.shape(bs.fund_trans()))
+        self.assertTupleEqual((nspins,), np.shape(bs.direct_gap_sp()))
+        # direct_gap is a float
+        self.assertTupleEqual((), np.shape(bs.direct_gap()))
+        self.assertTupleEqual((nspins,), np.shape(bs.fund_gap_sp()))
+        # fund_gap is a float
+        self.assertTupleEqual((), np.shape(bs.fund_gap()))
+        self.assertTupleEqual((nspins, 2), np.shape(bs.fund_trans_sp()))
+        self.assertTupleEqual((2, 2), np.shape(bs.fund_trans()))
         self.assertTupleEqual((nspins,), np.shape(bs.kavg_gap()))
         # empty properties when initialized without projections
         self.assertTrue(bs.atms is None)
@@ -111,8 +116,26 @@ class test_BS_no_projection(ut.TestCase):
         weight = np.ones(nkp)
         bs = BS(eigen, occ, weight)
         self.assertTrue(np.array_equal(bs.direct_gaps(), np.ones((nsp, nkp))*gap))
-        self.assertTrue(np.array_equal(bs.direct_gap(), np.ones((nsp,))*gap))
+        self.assertTrue(np.array_equal(bs.direct_gap_sp(), np.ones((nsp,))*gap))
+        self.assertEqual(bs.direct_gap(), gap)
         self.assertTrue(bs.is_gap_direct())
+
+    def test_reading_in_good_eigen(self):
+        good = 0
+        datadir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
+
+        for path in get_matched_files(r'BandStructure_eigen_[\d]+\.json', datadir):
+            with open(path, 'r') as f:
+                j = json.load(f)
+            shape = j.pop("shape")
+            self.assertTupleEqual(np.shape(j["eigen"]), tuple(shape))
+            nsp, nkp, nb = shape[:3]
+            bs = BS(j["eigen"], efermi=j["efermi"])
+            self.assertEqual(bs.fund_gap(), j["fund_gap"])
+            self.assertListEqual(bs.ivbm.tolist(), j["ivbm"])
+            self.assertListEqual(bs.icbm.tolist(), j["icbm"])
+            good += 1
+        print("Processed {} good band structure eigenvalues".format(good))
 
 
 class test_BS_projection(ut.TestCase):
@@ -122,7 +145,7 @@ class test_BS_projection(ut.TestCase):
 
     def test_reading_in_good_projection(self):
         good = 0
-        for path in get_matched_files(self.datadir, r'Bandstructure_proj_[\d]+\.json'):
+        for path in get_matched_files(r'BandStructure_proj_[\d]+\.json', self.datadir):
             with open(path, 'r') as f:
                 j = json.load(f)
             shape = j.pop("shape")
@@ -146,7 +169,6 @@ class test_BS_projection(ut.TestCase):
                 self.assertTupleEqual((nsp, nkp, 2), bs.get_pwav(0, 0, (0, 1)).shape)
             good += 1
         print("Processed {} good band structure projections".format(good))
-
 
     # pylint: disable=R0914
     def test_get_pwav(self):
