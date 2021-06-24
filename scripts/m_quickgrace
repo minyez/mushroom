@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""draw grace plot quickly from data file, using np.loadtxt
+"""draw grace plot quickly from data files, using np.loadtxt
 
-Column index starts from 0
+Column index starts from 0. Allow dataset separated by empty lines.
+Note that the generated file is rough.
 
-Allow dataset separated by empty lines
-
-Caveat: single file and single graph only; all data will be read; xy only
+Caveat:
+  - single graph only
+  - all data will be read and processed later
+  - xy only
+  - legend is not meaningful and needs to be modified manually
 """
 from io import StringIO
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
@@ -19,7 +22,7 @@ from mushroom.visual.graceplot import Plot
 def _parser():
     """the parser"""
     p = ArgumentParser(description=__doc__, formatter_class=RawDescriptionHelpFormatter)
-    p.add_argument("data_file", help="files to plot")
+    p.add_argument("data_files", help="files to plot", nargs="+", type=str)
     g = p.add_mutually_exclusive_group()
     g.add_argument("-x", dest="ix", type=int, help="xcol", default=0)
     g.add_argument("--xy", nargs="+", type=str, help="xcol:ycol")
@@ -32,28 +35,30 @@ def m_quickgrace():
     args = _parser().parse_args()
     fig, ax = Plot.subplots(1, 1)
 
-    datastrings = readtext_split_emptyline(args.data_file)
+    for fn in args.data_files:
+        datastrings = readtext_split_emptyline(fn)
 
-    for s in datastrings:
-        data_cols = np.loadtxt(StringIO(s), unpack=True)
-        ncols = len(data_cols)
-        if ncols == 1:
-            ax.plot(list(range(1, len(data_cols[0]))), data_cols[0])
-        else:
+        for s in datastrings:
+            data_cols = np.loadtxt(StringIO(s), unpack=True)
+            ncols = len(data_cols)
+            if ncols == 1:
+                ax.plot(list(range(1, len(data_cols[0]))), data_cols[0])
+                continue
             if args.xy is not None:
                 for xy in args.xy:
                     ix, iy = tuple(map(int, xy.split(':')))
                     ax.plot(data_cols[ix], data_cols[iy], label=xy)
-            else:
-                for iy in range(ncols):
-                    if iy == args.ix:
-                        continue
-                    ax.plot(data_cols[args.ix], data_cols[iy], label="{}:{}".format(args.ix, iy))
+                continue
+            for iy in range(ncols):
+                # skip plotting against itself
+                if iy == args.ix:
+                    continue
+                ax.plot(data_cols[args.ix], data_cols[iy], label="{}:{}".format(args.ix, iy))
 
     fig.tight_graph()
     output = args.output
     if output is None:
-        output = get_filename_wo_ext(args.data_file) + "_quickgp.agr"
+        output = get_filename_wo_ext(args.data_files[0]) + "_quickgp.agr"
     fig.write(output)
 
 
