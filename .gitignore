@@ -33,7 +33,8 @@ dist/
 prototype/
 
 # workflow database
-db/workflow/vasp_*/vasp.sh
+db/workflow/*/vasp.sh
+db/workflow/*/w2k.sh
 db/workflow/*/common.sh
 !db/workflow/libs/*.sh
 

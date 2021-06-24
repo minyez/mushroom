@@ -69,6 +69,7 @@ $(DIST_TARBALL): $(DIST_FILES)
 		--exclude="*.log" \
 		--exclude=".git*" \
 		--exclude="vasp_*/vasp.sh" \
+		--exclude="w2k_*/w2k.sh" \
 		--exclude="*_*/common.sh" \
 		--exclude=".pytest_cache" \
 		-zcvf $(shell basename $@) $(PROJ)
@@ -84,6 +85,7 @@ $(DIST_TARBALL_TEST): $(DIST_FILES) prototype
 		--exclude="*.log" \
 		--exclude=".git*" \
 		--exclude="vasp_*/vasp.sh" \
+		--exclude="w2k_*/w2k.sh" \
 		--exclude="*_*/common.sh" \
 		--exclude=".pytest_cache" \
 		-zcvf $(shell basename $@) $(PROJ)

@@ -4,12 +4,21 @@ _PI=3.141592653589793
 _HA2EV=27.21138602
 _AU2ANG=0.52917721067
 
+# TODO precision as argument?
 function ev2ha () {
-  echo "$1 $_HA2EV" | awk '{printf("%f\n", $1/$2)}'
+  echo "$1 $_HA2EV" | awk '{printf("%.10f\n", $1/$2)}'
+}
+
+function ev2ry () {
+  echo "$1 $_HA2EV" | awk '{printf("%.10f\n", $1/$2*2.0)}'
 }
 
 function ha2ev () {
-  echo "$1 $_HA2EV" | awk '{printf("%f\n", $1*$2)}'
+  echo "$1 $_HA2EV" | awk '{printf("%.10f\n", $1*$2)}'
+}
+
+function ry2ev () {
+  echo "$1 $_HA2EV" | awk '{printf("%.10f\n", $1*$2/2.0)}'
 }
 
 function comment_datetime () {

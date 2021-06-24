@@ -25,7 +25,7 @@ Usage:
 EOF
 }
 
-function run_template_calc () {
+function run_template_run () {
   reqs=()
   raise_missing_prereq "${reqs[@]}"
   dry=0
@@ -58,16 +58,16 @@ function run_template_clean () {
 function run_template () {
   opts=("$@")
   if (( $# == 0 )); then
-    run_template_calc
+    run_template_run
   else
     case "${opts[0]}" in
       "help" | "-h" ) run_template_help "$0" ;;
-      "calc" | "-r" ) run_template_calc ;;
-      "dry" | "-d" ) run_template_calc "dry" ;;
+      "run" | "-r" ) run_template_run ;;
+      "dry" | "-d" ) run_template_run "dry" ;;
       "data" ) run_template_data "${opts[@]:1}" ;;
       "plot" | "-p" ) run_template_plot "${opts[@]:1}" ;;
       "clean" ) run_template_clean ;;
-      *) echo "Error: unknown options " "${opts[0]}"; \
+      *) echo "Error: unimplemented option ${opts[0]}"; \
         run_template_help "$0"; return 1 ;;
     esac
   fi

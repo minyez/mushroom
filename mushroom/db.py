@@ -39,13 +39,15 @@ class _DBBase:
         name (str) : relative path for databse in mushroom. otherwise
         glob_regex (Iterable)
     """
-    def __init__(self, name: str, glob_regex: Iterable, excludes: Iterable = None):
+    def __init__(self, name: str, glob_regex: Iterable, excludes: Iterable = None,
+                 dir_only: bool = False):
         name = pathlib.Path(name)
         if name.is_absolute():
             self._db_path = name
         else:
             self._db_path = mushroom_db_home / name
         self._excludes = []
+        self._dir_only = dir_only
         if excludes is not None:
             for ex in excludes:
                 self._excludes.extend(self._db_path.glob(ex))
@@ -69,7 +71,9 @@ class _DBBase:
             d = []
             for regex in self._glob:
                 d.extend(str(x.relative_to(self._db_path))
-                         for x in self._db_path.glob(regex) if x not in self._excludes)
+                         for x in self._db_path.glob(regex)
+                         if x not in self._excludes and
+                         not (self._dir_only and not x.is_dir()))
             # remove cwd
             if "." in d:
                 i = d.index(".")
@@ -243,7 +247,7 @@ class DBWorkflow(_DBBase):
     """database of workflows"""
 
     def __init__(self):
-        _DBBase.__init__(self, "workflow", ["*_*",])
+        _DBBase.__init__(self, "workflow", ["*_*",], dir_only=True)
         self._libs = self._db_path / "libs"
         self.get_workflow = self.get_entry
         self.get_workflow_path = self.get_entry_path
