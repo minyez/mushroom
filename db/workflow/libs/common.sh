@@ -122,29 +122,28 @@ function triple_prod () {
 
 function estimate_npw () {
   # estimate the maximum number of plane waves
-  # $1: ENCUT in eV
-  # $2: volume of crystal, in Angstrom^3
-  if (( $# != 2 )); then
-    exit 1
+  # $1: ENCUT
+  # $2: volume of crystal
+  # $3: unit,    "au": ENCUT in Ha, volume in Bohr
+  #              "ry": ENCUT in Ry, volume in Bohr
+  #         otherwise: ENCUT in eV, volume in Angstrom^3
+  case $# in
+    0|1 ) echo "Error! must encut and volume"; exit 1;;
+    2 ) encut="$1"; vol="$2"; unit="evang" ;;
+    * ) encut="$1"; vol="$2"; unit="$3" ;;
+  esac
+  if [[ "$unit" == "au" ]]; then
+    echo "$encut $vol $_PI" | awk \
+      '{printf("%d\n", 0.5 + (2.0*$1)**1.5 * $2 / 6.0 / $3**2)}'
+  elif [[ "$unit" == "ry" ]]; then
+    echo "$encut $vol $_PI" | awk \
+      '{printf("%d\n", 0.5 + ($1)**1.5 * $2 / 6.0 / $3**2)}'
+  else
+    echo "$encut $_HA2EV $_AU2ANG $vol $_PI" | awk \
+      '{printf("%d\n", 0.5 + (2.0*$1/$2)**1.5 / $3**3 * $4 / 6.0 / $5**2)}'
   fi
-  encut=$1
-  vol=$2
-  echo "$encut $_HA2EV $_AU2ANG $vol $_PI" | awk \
-    '{printf("%d\n", 0.5 + (2.0*$1/$2)**1.5 / $3**3 * $4 / 6.0 / $5**2)}'
 }
 
-function estimate_npw_au () {
-  # estimate the maximum number of plane waves with atomic unit input
-  # $1: ENCUT in Ha
-  # $2: volume of crystal, in Bohr^3
-  if (( $# != 2 )); then
-    exit 1
-  fi
-  encut=$1
-  vol=$2
-  echo "$encut $vol $_PI" | awk \
-    '{printf("%d\n", 0.5 + (2.0)**1.5 / $1**3 * $2 / 6.0 / $3**2)}'
-}
 function largest_div_below_sqrt () {
   # get the largest divider of integer n below its square root
   num=$1
@@ -163,12 +162,12 @@ function confirm () {
   # $2: help message
   de="$1"
   if (( de == 1 )); then
-    msg="[Y/n]"
+    msg="$2? [Y/n]"
   else
     de=0
-    msg="[y/N]"
+    msg="$2? [y/N]"
   fi
-  echo "$2? $msg"
+  echo -n "$msg "
   read -r answer
   if [[ "$answer" == "y" ]] || [[ "$answer" == "Y" ]]; then
     echo 1
