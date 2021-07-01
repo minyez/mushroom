@@ -28,10 +28,12 @@ class test_struct(ut.TestCase):
             for k, v in verify.items():
                 objv = s.__getattribute__(k)
                 msg = "error testing {}: {}, {}".format(k, objv, v)
-                if isinstance(v, (int, float)):
+                if isinstance(v, (int, float, str)):
                     self.assertEqual(objv, v, msg=msg)
+                elif k == "atms_types":
+                    self.assertListEqual(objv, v)
                 elif isinstance(v, list):
-                    self.assertTrue(np.array_equal(objv, v), msg)
+                    self.assertIsNone(np.testing.assert_allclose(objv, v), msg)
             tf = tempfile.NamedTemporaryFile()
             with open(tf.name, 'w') as h:
                 s.write(h)

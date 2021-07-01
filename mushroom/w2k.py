@@ -101,7 +101,10 @@ def _read_atm_block(lines):
     npt = int(l[15:20])
     rzero = float(l[25:36])
     rmt = float(l[40:53])
-    return atm, posi, npt, rzero, rmt, isplit
+
+    l = "".join(lines[mult+2+i][20:].strip('\n') for i in range(3))
+    rotmat = np.array([float(l[10*i:10*(i+1)]) for i in range(9)]).reshape((3,3))
+    return atm, posi, npt, rzero, rmt, isplit, rotmat
 
 
 def _read_symops(lines):
@@ -416,10 +419,6 @@ class Struct:
         Args:
             pstruct (str): path to the file to read as WIEN2k struct
         """
-        def _read_rotmat(l1, l2, l3):
-            l = "".join(x.strip('\n') for x in [l1, l2, l3])
-            elements = list(map(float, [l[10*i:10*(i+1)] for i in range(9)]))
-            return np.array(elements).reshape((3,3))
         if pstruct is None:
             casename = get_casename()
             pstruct = casename + ".struct"
@@ -429,34 +428,21 @@ class Struct:
         pstruct = pathlib.Path(pstruct)
         with pstruct.open("r") as h:
             lines = h.readlines()
-        # the first line: (A4,23X,I3)
+        # the second: (A4,23X,I3), containing spacegroup information
         ntypes = int(lines[1][27:30])
         kind = lines[1][:4].strip()
+        # lattice constants, 6F10.6
         latt_consts = tuple(map(lambda i: float(lines[3][10*i:10*i+10]), range(6)))
+        # relativity mode: RELA or something else
         mode = lines[2][13:].strip()
 
         atm_blocks = []
         rotmats = []
         new_atom = True
         # divide lines into block of atoms and symmetry operations
-        for i, line in enumerate(lines):
-            if i < 4:
-                continue
-            l = line.strip()
-            if l.startswith("ATOM") and new_atom:
-                s = i
-                new_atom = False
-            if l.startswith("LOCAL ROT MATRIX"):
-                rotmats.append(_read_rotmat(lines[i][20:],
-                                            lines[i+1][20:],
-                                            lines[i+2][20:]))
-                atm_blocks.append(tuple([s, i + 2]))
-                new_atom = True
-            if l.endswith("SYMMETRY OPERATIONS"):
-                symops_startline = i
-                break
-        if len(atm_blocks) != ntypes:
-            raise ValueError("number of atom types read is inconsistent with the file head")
+        # each atom block: n (mult) + 2 (mult&isplit, npt&r0&RMT&Z0) + 3 (rotmat)
+
+        atomline_index = 4
 
         atms_types = []
         posi_types = []
@@ -464,16 +450,20 @@ class Struct:
         npts = {}
         rzeros = {}
         rmts = {}
-
-        for s, l in atm_blocks:
-            atm, p, npt, rzero, rmt, isplit = _read_atm_block(lines[s:l+1])
+        for _ in range(ntypes):
+            mult = int(lines[atomline_index+1][15:17])
+            atm, p, npt, rzero, rmt, isplit, rotmat = \
+                    _read_atm_block(lines[atomline_index:atomline_index+mult+6])
             atms_types.append(atm)
             posi_types.append(p)
+            rotmats.append(rotmat)
             isplits.append(isplit)
             npts[atm] = npt
             rzeros[atm] = rzero
             rmts[atm] = rmt
-        symops = _read_symops(lines[symops_startline:])
+            atomline_index += mult + 5
+
+        symops = _read_symops(lines[atomline_index:])
         return cls(latt_consts, atms_types, posi_types, npts=npts, symops=symops, rmts=rmts,
                    isplits=isplits, kind=kind, rzeros=rzeros, rotmats=rotmats,
                    comment=lines[0].strip(), casename=casename)
