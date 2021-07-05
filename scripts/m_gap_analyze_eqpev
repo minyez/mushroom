@@ -2,13 +2,10 @@
 # -*- coding: utf-8 -*-
 """analyze GAP eqpeV data from casename.eqpeV_GW and casename.eqpeV_GW0
 """
-from argparse import ArgumentParser, RawDescriptionHelpFormatter
-from mushroom.core.display import one_line_center_banner
-from mushroom.core.bs import display_band_analysis, display_transition_energies
-from mushroom.gap import Eqpev
 
 def _parser():
     """the parser"""
+    from argparse import ArgumentParser, RawDescriptionHelpFormatter
     p = ArgumentParser(description=__doc__, formatter_class=RawDescriptionHelpFormatter)
     p.add_argument("-c", dest="casename", type=str, default=None,
                    help="casename")
@@ -22,14 +19,21 @@ def _parser():
                    choices=["g0w0", "gw0", "ks", "hf", "qp"], help="path of eqpev file")
     p.add_argument("--nohead", dest="removehead", action="store_true",
                    help="remove header when display")
+    p.add_argument("--occ", dest="occ_thres", type=float, default=0.01,
+                   help="occupation threshold passed to Eqpev object")
     return p
 
 def m_gap_analyze_eqpev():
     """the main stream"""
     args = _parser().parse_args()
+
+    from mushroom.core.display import one_line_center_banner
+    from mushroom.core.bs import display_band_analysis, display_transition_energies
+    from mushroom.gap import Eqpev
+
     if args.eqpevfile is not None:
         eqpev = Eqpev(peqpev=args.eqpevfile, dirpath=args.dirpath,
-                      casename=args.casename)
+                      casename=args.casename, occ_thres=args.occ_thres)
         method = args.method
         if args.method in ["g0w0", "gw0", "qp"]:
             method = "qp"
@@ -41,7 +45,7 @@ def m_gap_analyze_eqpev():
     else:
         if args.method in ["g0w0", "ks", "qp", "hf"]:
             eqpev = Eqpev(dirpath=args.dirpath, casename=args.casename,
-                          method='g0w0')
+                          method='g0w0', occ_thres=args.occ_thres)
             qpbs, qpinfo = eqpev.get_QP_bandstructure, \
                            "{} band structure".format(eqpev.method.upper())
             bs, info = {"g0w0": (qpbs, qpinfo), "qp": (qpbs, qpinfo),
@@ -50,7 +54,7 @@ def m_gap_analyze_eqpev():
                        .get(args.method, (None, None))
         else:
             eqpev = Eqpev(dirpath=args.dirpath, casename=args.casename,
-                          method='gw0')
+                          method='gw0', occ_thres=args.occ_thres)
             bs = eqpev.get_QP_bandstructure
             info = "GW0 band structure"
     if not args.removehead:

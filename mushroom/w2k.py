@@ -633,7 +633,7 @@ def read_energy(penergy: str, penergy_dn: str = None, efermi=None):
         eigen = []
         lines = fp.readlines()
         for ln in ln_kpts:
-            _logger.debug("starting k-line %d: %s", ln, lines[ln])
+            _logger.debug("starting k-line %d: %s", ln, lines[ln].strip('\n'))
             s = StringIO("".join(lines[ln+1:ln+1+nb]))
             eigen.append(np.loadtxt(s, usecols=[1,]))
         return np.array(eigen)

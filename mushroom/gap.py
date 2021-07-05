@@ -187,11 +187,23 @@ class Eps:
         return eps
 
 class Eqpev:
-    """quasiparticle data object"""
+    """quasiparticle data object
+
+    Args:
+        peqpev (str or PathLike): path to eqpeV file
+        dirpath (str or PathLike): path to the directory containing eqpeV file.
+            default to pwd
+        casename (str): case name of struct file. Default to detect by struct file under dirpath
+        method (str): the GW method used to get the eqpeV file, g0w0 or gw0
+        occ_thres (float): the threshold value to determine the occupation number of the state.
+            This is used in cases that numerical error leads to small positive band energy for
+            states under VBM.
+    """
     _head_lines = 10
     # pylint: disable=R0914
     def __init__(self, peqpev: Path = None, dirpath: Path = ".",
-                 casename: str = None, method: str = 'g0w0'):
+                 casename: str = None, method: str = 'g0w0',
+                 occ_thres: float = 0.01):
         if casename is None:
             casename = get_casename(dirpath)
         dirpath = pathlib.Path(dirpath)
@@ -215,6 +227,7 @@ class Eqpev:
         # number of (irreducible) kpoints
         nkpts = int(data[-1, 0])
         nbandsgw = int(data[-1, 1] - data[0, 1]) + 1
+        self._occ_thres = occ_thres
         self._ibandsgw = np.array(data[0:nbandsgw+1, 1], dtype='int')
         self._eks = np.reshape(data[:, 2], (1, nkpts, nbandsgw), order="C")
         self._eqp = np.reshape(data[:, 3], (1, nkpts, nbandsgw), order="C")
@@ -240,7 +253,7 @@ class Eqpev:
 
     @property
     def method(self) -> str:
-        """method used to calculate this eps file"""
+        """method used to calculate this eqpeV file"""
         return self._method
 
     @property
@@ -262,7 +275,7 @@ class Eqpev:
         e = {"qp": self._eqp, "ks": self._eks, "hf": self._ehf}
         assert kind in e
         e = e[kind]
-        occ = 1.0 * (e < 0.009)
+        occ = 1.0 * (e <= self._occ_thres)
         weight = [1.0,] * self.nibzkpts
         return BandStructure(e, occ, weight, unit="ev", efermi=0.0)
 
