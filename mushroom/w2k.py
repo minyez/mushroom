@@ -828,6 +828,10 @@ def read_dos(pdos1: Path, *pdos: Path, unit: str=None,
             pdos1
         mults (tuple of int): multiplicity of atoms
 
+    Note:
+        Fermi energy is usually set to 0.000 in dos files. Therefore zero Fermi energy
+        is hard coded in this function at present.
+
     TODO:
         read Fermi level from the first dos file
     """
@@ -840,9 +844,11 @@ def read_dos(pdos1: Path, *pdos: Path, unit: str=None,
             # atom:projector in dos. 1 for the comment symbol
             atms_prjs = h.readline().split()[n+1:]
         return data, atms_prjs
+    efermi = 0.0000
     if unit is None:
         ext = get_file_ext(pdos1)
-        if ext.startswith("dos1ev"):
+        #if ext.startswith("dos1ev"):
+        if re.match(r"dos[1-9]ev", ext):
             unit = "ev"
         else:
             unit = "ry"
@@ -852,14 +858,18 @@ def read_dos(pdos1: Path, *pdos: Path, unit: str=None,
         for p in pdos:
             dp, app = _load_dos_atms_prjs(p, 1)
             # remove the energy column
-            data = np.stack([data, dp[1:,:]])
+            _logger.debug(" shape of DOS data array:")
+            _logger.debug("        data: %r", np.shape(data))
+            _logger.debug("       extra: %r (energy column excluded)", np.shape(dp[1:,:]))
+            data = np.concatenate([data, dp[1:,:]])
+            _logger.debug("concat. data: %r", np.shape(data))
             atms_prjs.extend(app)
     # in dos(ev), efermi is fixed to 0.0
     egrid = data[0,:]
     tdos = data[1,:].reshape((1, len(egrid)))
     # return if no projected dos are found
     if len(atms_prjs) == 0:
-        return DensityOfStates(egrid, tdos, efermi=0.0)
+        return DensityOfStates(egrid, tdos, efermi=efermi)
     # reshape the projected DOS by atoms and projectors
     atms = []
     prjs = []
@@ -876,6 +886,6 @@ def read_dos(pdos1: Path, *pdos: Path, unit: str=None,
         a, p = ap.split(":")
         ia = atms.index(a)
         pdos[0, :, ia, prjs.index(p)] = data[2+iap] * mults[ia]
-    return DensityOfStates(egrid, tdos, efermi=0.0, unit=unit,
+    return DensityOfStates(egrid, tdos, efermi=efermi, unit=unit,
                            pdos=pdos, atms=atms, prjs=prjs)
 
