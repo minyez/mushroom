@@ -128,6 +128,12 @@ class test_in1(ut.TestCase):
             fpath = dir_in1 / f
             s = In1.read(str(fpath))
             for k, v in verify.items():
+                if k == "lmax_at":
+                    self.assertListEqual(v, [s.lmax_at(iat) for iat in range(s.ntypes)])
+                    continue
+                if k == "ndiff_at":
+                    self.assertListEqual(v, [s.ndiff_at(iat) for iat in range(s.ntypes)])
+                    continue
                 objv = s.__getattribute__(k)
                 msg = "error testing {}: {}, {}".format(k, objv, v)
                 if isinstance(v, (str, int, float)):

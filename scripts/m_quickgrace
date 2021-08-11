@@ -28,6 +28,8 @@ def _parser():
     g.add_argument("--xy", nargs="+", type=str, help="xcol:ycol")
     p.add_argument("-o", dest="output", type=str, default=None,
                    help="output arg filename")
+    g.add_argument("-d", dest="delimiter", type=str, default=None,
+                   help="delimiter")
     return p
 
 def m_quickgrace():
@@ -39,7 +41,7 @@ def m_quickgrace():
         datastrings = readtext_split_emptyline(fn)
 
         for s in datastrings:
-            data_cols = np.loadtxt(StringIO(s), unpack=True)
+            data_cols = np.loadtxt(StringIO(s), unpack=True, delimiter=args.delimiter)
             ncols = len(data_cols)
             if ncols == 1:
                 ax.plot(list(range(1, len(data_cols[0]))), data_cols[0])

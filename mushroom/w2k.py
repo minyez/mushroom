@@ -525,60 +525,162 @@ class In1:
         lnsmax (int)
         elparams : linearization energy parameters
     """
-    def __init__(self, casename: str, efermi: float, rkmax: float, lmax: int,
-                 lnsmax: int, *elparams):
+    cont2bool = {"CONT": True, "STOP": False}
+    bool2cont = {True: "CONT", False: "STOP"}
+
+    def __init__(self, casename: str, switch: str, efermi: float,
+                 rkmax: float, lmax: int, lnsmax: int,
+                 elparams: Sequence, kvec_info: str):
+        self.switch = switch
         self.casename = casename
-        self.efermi = efermi
+        self.efermi = float(efermi)
         self.rkmax = rkmax
         self.lmax = lmax
         self.lnsmax = lnsmax
         self.elparams = elparams
+        # temporary string to store the k-vector line
+        self.kvec_info = kvec_info
 
+    def have_el(self, iat: int, l: int):
+        """Chek if there is trial energies for l channel of atom iat
+
+        Args:
+            iat (int)
+            l (int)
+
+        Return:
+            bool
+        """
+        elparam = self.elparams[iat]
+        return l in elparam["els"]
+
+    @property
+    def ntypes(self):
+        """the number of atomic types"""
+        return len(self.elparams)
+
+    def lmax_at(self, iat):
+        """the maximal l of etrial for atom iat
+
+        Return:
+            int, the max l of linearzation energies of atom iat
+        """
+        elparam = self.elparams[iat]
+        return max(elparam["els"].keys())
+
+    def ndiff_at(self, iat):
+        """the number of exceptions of linearzation energies for atom iat in all l channels
+        """
+        return sum(len(x) for x in self.elparams[iat]["els"].values())
+
+    # pylint: disable=R0914
     @classmethod
-    def read(cls, pin1: Path=None):
+    def read(cls, pin1: Path):
         """Return In1 instance by reading an exisiting file
 
         Args:
             pin1 (Path): the path to the in1 file.
-                Left as default to automatic detect under CWD
         """
-        if pin1 is None:
-            casename = get_casename()
-            pin1 = get_inputs("in1", casename=casename, search_cplx=True)
-        else:
-            casename = get_filename_wo_ext(str(pin1))
+        def _read_el_block(lines):
+            """Read the block of linearzation energy for atom
+
+            Returns:
+                dict, which has three keys
+                    "etrial": float, the global linearizaiton energy for the atom
+                    "napw": int, the global APW/LAPW switch for the atom
+                    "els": dict, linearizaiton energies for each l
+                        {l1: [[e1, einc1, cont1, napw1],
+                              [e2, einc2, cont2, napw2], ...],
+                         l2: ...}
+                    where e and einc are floats, cont bool and napw int
+            """
+            elparam = {}
+            etrial, n, napw = lines[0].split()[:3]
+            elparam["etrial"] = float(etrial)
+            elparam["napw"] = int(napw)
+            n = int(n)
+            if n != len(lines) - 1:
+                raise ValueError("Inconsistent El block: need {}, parsed {}"
+                                 .format(n, len(lines) - 1))
+            els = {}
+            for line in lines[1:]:
+                l, e, einc, cont, napw = line.split()[:5]
+                l = int(l)
+                if l not in els:
+                    els[l] = []
+                els[l].append([float(e), float(einc), cls.cont2bool[cont], int(napw)])
+            elparam["els"] = els
+            return elparam
+
+        casename = get_filename_wo_ext(str(pin1))
         if isinstance(pin1, str):
             pin1 = pathlib.Path(pin1)
         with pin1.open('r') as h:
             w2klines = h.readlines()
-        #switch = w2klines[0][:5]
-        matched = re.search(r"EF=(-?\d*\.\d+)", w2klines[0])
+        switch = w2klines[0][:5]
+        matched = re.search(r"EF=(\s*-?\d*\.\d+)", w2klines[0])
         if matched is None:
             raise ValueError("Fail to find Fermi energy from in1")
         efermi = float(matched.group(1))
-        matched = re.match(r"([-\d\s.]+)", w2klines[1])
-        if matched is None:
-            raise ValueError("Fail to find RKmax, Lmax and LNSmax from in1")
-        rkmax, lmax, lnsmax = map(float, matched.group(1).split())
+        #matched = re.match(r"([\d\s.]+)", w2klines[1])
+        #if matched is None:
+        #    raise ValueError("Fail to find RKmax, Lmax and LNSmax from in1")
+        rkmax, lmax, lnsmax = map(float, w2klines[1].split()[:3])
         lmax = int(lmax)
         lnsmax = int(lnsmax)
 
-        # TODO read linearization energies
         elparams = []
-        #i = 2
-        #while i < len(w2klines):
-        #    line = re.match(r"([-\w\d\s.]+)", w2klines[i]).group()
-        #    if line.startswith("K-VECTORS FROM UNIT"):
-        #        break
-        #    words = line.split()
-        #    if len(words) == 3:
-        #        ndiff = int(words[1])
-        #        atomEl = _read_el_block(w2klines[i : i + ndiff + 1])
-        #        elparams.append(atomEl)
-        #        i += ndiff
-        #    i += 1
-        return cls(casename, efermi, rkmax, lmax, lnsmax, *elparams)
+        i = 2
+        while i < len(w2klines):
+            #line = re.match(r"([-\w\d\s.]+)", w2klines[i]).group()
+            line = w2klines[i]
+            if line.startswith("K-VECTORS FROM UNIT"):
+                kvec_info = line.strip()
+                break
+            words = line.split()
+            ndiff = int(words[1])
+            el = _read_el_block(w2klines[i : i + ndiff + 1])
+            elparams.append(el)
+            i += ndiff + 1
+        return cls(casename, switch, efermi,
+                   rkmax, lmax, lnsmax,
+                   elparams, kvec_info)
 
+    def add_el(self, iat: int, l: int,
+               e: float = 0.30, einc: float = 0.005,
+               cont: bool = True, napw: int = 1):
+        """add angular momentum channel
+
+        Args:
+            iat (int): index of atom type
+            l (int): angular momentum
+            e, einc (float): linearizaiton energy and its searching stepsize
+            cont (bool): continuation flag, True for CONT
+            napw (int): LAPW/APW flag
+        """
+        els = self.elparams[iat]["els"]
+        if l not in els:
+            els[l] = []
+        els[l].append([e, einc, cont, napw])
+
+    def export(self):
+        """export to the wien2k format string"""
+        slist = ["{:5s}  EF={:s}".format(self.switch, str(self.efermi)),
+                 "{:6.2f} {:8d} {:4d}".format(self.rkmax, self.lmax, self.lnsmax)]
+        for elparam in self.elparams:
+            els = []
+            for l, el in elparam["els"].items():
+                els.extend(["{:2d}{:8.2f}{:11.3f} {:4s}{:2d}"
+                            .format(l, e, einc, self.bool2cont[c], napw)
+                            for e, einc, c, napw in el])
+            slist.append("{:6.2f} {:4d} {:2d}".format(elparam["etrial"], len(els), elparam["napw"]))
+            slist.extend(els)
+        slist.append(self.kvec_info)
+        return "\n".join(slist)
+
+    def write(self, filename=None):
+        """write the w2k formatted string to filename"""
+        print_file_or_iowrapper(self.export(), f=filename)
 
 # pylint: disable=C0301
 # kpoint line format in energy file, wien2k v14.2
