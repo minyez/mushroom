@@ -470,13 +470,14 @@ def get_str_indices_by_iden(container, iden=None):
         return list(OrderedDict.fromkeys(ret).keys())
     return ret
 
-def print_file_or_iowrapper(*s, f=None, mode='w'):
+def print_file_or_iowrapper(*s, f=None, mode='w', **kwargs):
     """print string s to file handler f
     Args:
         s (str) :
         f (str or TextIOWrapper) : the filename or file object where
             the string is exported. If not set, stdout will be used.
         mode (s) : only used when s is str
+        kwargs: keyword arguments parsed to ``print``
     """
     if isinstance(f, str):
         h = open(f, mode)
@@ -484,7 +485,7 @@ def print_file_or_iowrapper(*s, f=None, mode='w'):
         h = f
     if f is None:
         h = stdout
-    print(*s, file=h, sep='')
+    print(*s, file=h, **kwargs)
     if isinstance(f, str):
         h.close()
 

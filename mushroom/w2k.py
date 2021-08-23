@@ -474,8 +474,11 @@ class Struct:
                  "{:<4s}LATTICE,NONEQUIV.ATOMS:{:3d}".format(self.kind, self.ntypes),
                  "MODE OF CALC={}".format(self.mode_calc.upper()),]
         latt_consts_form = "{:10.6f}" * 6
-        a1, a2, a3, angle1, angle2, angle3 = get_latt_consts_from_latt_vecs(self.latt)
-        slist.append(latt_consts_form.format(a1*scale, a2*scale, a3*scale, angle1, angle2, angle3))
+        latt_consts = np.array(get_latt_consts_from_latt_vecs(self.latt))
+        latt_consts[:3] = latt_consts[:3] * scale
+        _logger.info("scaled lattice constants before rounding: %r", latt_consts)
+        # rounding to 5 decimal to avoid symmetry breaking with error in last digit
+        slist.append(latt_consts_form.format(*np.round(latt_consts, decimals=5)))
         self._cell.move_atoms_to_first_lattice()
         # write each inequiv atoms
         for iat, (at, rotmat, npt, rzero, rmt, isplit) in enumerate(zip(self.atms_types,

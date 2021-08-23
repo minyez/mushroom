@@ -95,14 +95,14 @@ def general_comb(N: Real, k: Real):
 def hyp2f2_1f1_series(a1: int, a2: int, b1: int, b2: int, x: Sequence[Real], scale=1.0):
     '''compute generalized hypergeometric function 2F2 from finite series of 1F1
 
-    2F2(a1,a2;b1,b2;x) = \sum_n (a1)_n(a2)_n/(b1)_n(b2)_n * x^n/n!
+    2F2(a1,a2;b1,b2;x) = \\sum_n (a1)_n(a2)_n/(b1)_n(b2)_n * x^n/n!
 
     2F2 is computed from a finite sum of Kummer's confluent hypergeometric function 1F1.
     This is only possible when b2>a2.
 
-    2F2(a1,a2;b1,b2;x) = exp(x)\sum^{b-d}_{n=0} (b-d,n)(a+n-1,n)/(c+n-1,n)/(d+n-1,n)
+    2F2(a1,a2;b1,b2;x) = exp(x)\\sum^{b-d}_{n=0} (b-d,n)(a+n-1,n)/(c+n-1,n)/(d+n-1,n)
                          1F1(a1+n;b1+n;-x) x^n/n!
-                       = \sum^{b-d}_{n=0} (b-d,n)(a+n-1,n)/(c+n-1,n)/(d+n-1,n)
+                       = \\sum^{b-d}_{n=0} (b-d,n)(a+n-1,n)/(c+n-1,n)/(d+n-1,n)
                          1F1(b1-a1;b1+n;x) x^n/n!
 
     Args:
