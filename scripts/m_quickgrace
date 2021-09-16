@@ -3,13 +3,14 @@
 """draw grace plot quickly from data files, using np.loadtxt
 
 Column index starts from 0. Allow dataset separated by empty lines.
+Support multiple data files.
 Note that the generated file is rough.
 
-Caveat:
+Current caveat:
   - single graph only
   - all data will be read and processed later
-  - xy only
-  - legend is not meaningful and needs to be modified manually
+  - only support index-y or xy. no xyz or xysize
+  - automatic legend is not meaningful and needs to be modified manually
 """
 from io import StringIO
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
@@ -23,19 +24,25 @@ def _parser():
     """the parser"""
     p = ArgumentParser(description=__doc__, formatter_class=RawDescriptionHelpFormatter)
     p.add_argument("data_files", help="files to plot", nargs="+", type=str)
+    p.add_argument("-t", dest="title", type=str,
+                   help="title that will be parsed to the first graph", default=None)
     g = p.add_mutually_exclusive_group()
     g.add_argument("-x", dest="ix", type=int, help="xcol", default=0)
     g.add_argument("--xy", nargs="+", type=str, help="xcol:ycol")
+    gs = p.add_mutually_exclusive_group()
+    gs.add_argument("--sort", action="store_true",
+                   help="sort: X not supported, Y for cols=1")
     p.add_argument("-o", dest="output", type=str, default=None,
                    help="output arg filename")
-    g.add_argument("-d", dest="delimiter", type=str, default=None,
-                   help="delimiter")
+    p.add_argument("-d", dest="delimiter", type=str, default=None,
+                   help="delimiter parsed to numpy.loadtxt")
     return p
 
 def m_quickgrace():
     """main stream"""
     args = _parser().parse_args()
     fig, ax = Plot.subplots(1, 1)
+    ax.set_title(title=args.title)
 
     for fn in args.data_files:
         datastrings = readtext_split_emptyline(fn)
@@ -43,19 +50,25 @@ def m_quickgrace():
         for s in datastrings:
             data_cols = np.loadtxt(StringIO(s), unpack=True, delimiter=args.delimiter)
             ncols = len(data_cols)
+            kwargs = {"comment": fn}
             if ncols == 1:
-                ax.plot(list(range(1, len(data_cols[0]))), data_cols[0])
+                if args.sort:
+                    data_cols.sort()
+                ax.plot(list(range(1, len(data_cols[0]))), data_cols[0],
+                        **kwargs)
                 continue
             if args.xy is not None:
                 for xy in args.xy:
                     ix, iy = tuple(map(int, xy.split(':')))
-                    ax.plot(data_cols[ix], data_cols[iy], label=xy)
+                    ax.plot(data_cols[ix], data_cols[iy], label=xy,
+                            **kwargs)
                 continue
             for iy in range(ncols):
                 # skip plotting against itself
                 if iy == args.ix:
                     continue
-                ax.plot(data_cols[args.ix], data_cols[iy], label="{}:{}".format(args.ix, iy))
+                ax.plot(data_cols[args.ix], data_cols[iy], label="{}:{}".format(args.ix, iy),
+                        **kwargs)
 
     fig.tight_graph()
     output = args.output

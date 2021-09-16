@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """draw band structure from vasp output and export to an XmGrace plot.
-
-vbm is used as Fermi-energy
 """
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from mushroom.core.cell import Cell
@@ -31,6 +29,8 @@ def _parser():
                    help="figure extension to convert")
     p.add_argument("-e", dest="energy_range", type=str, default=None,
                    help="energy range (y-axis), e.g. 'm8~5' for -8.0 to 5.0")
+    p.add_argument("--vbmz", dest="vbm_zero", action="store_true",
+                   help="use VBM as energy zero")
     return p
 
 def m_vasp_band():
@@ -44,8 +44,11 @@ def m_vasp_band():
     display_band_analysis(bs, kpts)
     if args.data_only:
         return
+    ref = 0.0
+    if args.vbm_zero:
+        ref = bs.efermi
     kp = KPath(kpts, c.b)
-    ax.plot(kp.x, bs.eigen[0, :, :].transpose() - bs.efermi, color="k", symbol="none")
+    ax.plot(kp.x, bs.eigen[0, :, :].transpose() - ref, color="k", symbol="none")
     ax.x.set_major(grid=True, color="grey", lw=3, ls="dashed")
     ksymbols = None
     if args.ksymbols is not None:

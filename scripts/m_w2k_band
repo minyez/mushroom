@@ -36,8 +36,11 @@ def _parser():
                    help="unify abscissa (x)")
     p.add_argument("--area", dest="prop_area", action="store_true",
                    help="area proportional to partial wave instead of diameter")
-    p.add_argument("--vbmz", dest="vbm_zero", action="store_true",
+    g = p.add_mutually_exclusive_group()
+    g.add_argument("--vbmz", dest="vbm_zero", action="store_true",
                    help="use VBM as energy zero")
+    g.add_argument("--ferz", dest="fermi_zero", action="store_true",
+                   help="use Fermi energy as energy zero")
     p.add_argument("--spin", type=int, default=0, choices=[0, 1],
                    help="spin to draw")
     p.add_argument("-e", dest="energy_range", type=str, default=None,
@@ -118,7 +121,9 @@ def m_w2k_band():
         bs.parse_proj(pwav, atms, prjs)
     p, ax = Plot.subplots()
     bs.unit = "ev"
-    ref = bs.efermi
+    ref = 0.0
+    if args.fermi_zero:
+        ref = bs.efermi
     if args.vbm_zero:
         ref = bs.vbm
     ax.plot(kp.x, bs.eigen[0, :, :].transpose() - ref, color="k", symbol="none")
