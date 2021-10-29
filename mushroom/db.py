@@ -192,6 +192,7 @@ class DBCell(_DBBase):
         self.get_cell = self.get_entry
         self.get_cell_path = self.get_entry_path
         self.get_avail_cells = self.get_avail_entries
+        self.read_format = None
 
     def _read_cell(self, pcell, reader=None):
         """read a cell file"""
@@ -201,6 +202,8 @@ class DBCell(_DBBase):
             raise ValueError("unsupported format for reading cell: {}".format(reader))
         if reader == "w2k":
             return Struct.read(pcell)
+        # will use the reader format as fallback when export format is unknown
+        self.read_format = reader
         # default use Cell
         return Cell.read(pcell, form=reader)
 
@@ -226,9 +229,11 @@ class DBCell(_DBBase):
                 writer = self.default_writer
                 _logger.debug("use default cell writer: %s", writer)
             else:
-                writer = detect(output_path, fail_with_ext=True)
+                writer = detect(output_path)
             if not writer:
-                raise ValueError("fail to detect a format for writing cell")
+                _logger.debug("fail to detect a format for writing cell, fallback to reader: %s",
+                              self.read_format)
+                writer = self.read_format
         if isinstance(cell_object, Cell):
             if writer == "w2k":
                 Struct.from_cell(cell_object).write(filename=output_path)
