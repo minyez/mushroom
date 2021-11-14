@@ -31,6 +31,8 @@ def _parser():
                       help="list predefined sample cells")
     #p.add_argument('-a', dest='add_cell', type=str, default=None,
     #               help="add converted input to sample data (JSON format)")
+    p.add_argument('--prim', dest='primitize', action="store_true",
+                   help="primitize the cell (spglib required)")
     p.add_argument('-i', dest='input_format', choices=DBCell.avail_readers,
                    type=str, default=None,
                    help="format of input file, default use automatic detection")
@@ -51,10 +53,12 @@ def build_cell():
         if not isfile(args.input_file):
             raise FileNotFoundError(args.input_file)
         cdb.convert(args.input_file, output_path=args.output_path,
-                    reader=args.input_format, writer=args.output_format)
+                    reader=args.input_format, writer=args.output_format,
+                    primitize=args.primitize)
         return
     if args.cell is not None:
-        cdb.extract(args.cell, output_path=args.output_path, writer=args.output_format)
+        cdb.extract(args.cell, output_path=args.output_path, writer=args.output_format,
+                    primitize=args.primitize)
         return
     if args.show or args.search:
         for i, s in cdb.filter(args.search):
