@@ -20,7 +20,7 @@ except ImportError:
     symprec = 1.0E-5
 from mushroom.core.constants import PI, SQRT3
 from mushroom.core.cif import Cif
-from mushroom.core.elements import nuclear_charges
+from mushroom.core.elements import get_atomic_number, get_atomic_mass
 from mushroom.core.unit import LengthUnit
 from mushroom.core.pkg import detect
 from mushroom.core.crystutils import (get_latt_consts_from_latt_vecs,
@@ -75,7 +75,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
 
     _err = CellError
     _dtype = 'float64'
-    avail_exporters = ['vasp', 'abi', 'json', 'qe', 'aims']
+    avail_exporters = ['vasp', 'abi', 'json', 'qe', 'qe_alat', 'aims']
     avail_readers = ['vasp', 'json', 'cif', 'aims']
 
     def __init__(self, latt: Latt3T3, atms: Sequence[str], posi: Sequence[RealVec3D],
@@ -119,9 +119,10 @@ When other keyword are parsed, they will be filtered out and no exception will b
             'abi': self.export_abi,
             'json': self.export_json,
             'qe': self.export_qe,
+            'qe_alat': self.export_qe_alat,
             'aims': self.export_aims,
             }
-        assert set(self.exporters.keys()) == set(self.avail_exporters)
+        assert all([x in self.exporters for x in self.avail_exporters])
 
     def __eq__(self, cell):
         unit = cell.unit
@@ -889,16 +890,57 @@ When other keyword are parsed, they will be filtered out and no exception will b
         return e(scale=scale)
 
     def export_qe(self, scale: float = 1.0) -> str:
-        """Export in Quantum espresso format"""
-        unit = self.unit
+        """Export in Quantum Espresso format
+        """
         cs = self.coord_sys
-        self.unit = "ang"
-        slist = ["ATOMIC_POSITIONS {crystal}",]
-        for atm, pos in zip(self.atms, self.posi):
-            slist.append("{:<2s}{:19.16f}{:19.16f}{:19.16f}".format(atm, *pos))
-        slist.append("CELL_PARAMETERS {angstrom}")
+        self.coord_sys = "D"
+        slist = ["&SYSTEM",
+                 "  ibrav = 0,",
+                 "  nat = {:d},".format(self.natm),
+                 "  ntyp = {:d},".format(len(self.atom_types)),
+                 "/"]
+        slist.append("ATOMIC_SPECIES")
+        for symbol in self.atom_types:
+            slist.append("  {s:<2s}  {m:f}  {s:s}.upf".format(s=symbol, m=get_atomic_mass(symbol)))
+        slist.append("CELL_PARAMETERS {}".format(unit))
         for i in range(3):
-            slist.append("{:19.16f}{:19.16f}{:19.16f}".format(*(self.latt[i, :] * scale)))
+            slist.append(" {:19.16f} {:19.16f} {:19.16f}".format(*(self.latt[i, :] * scale)))
+        slist.append("ATOMIC_POSITIONS crystal")
+        for atm, pos in zip(self.atms, self.posi):
+            # high precision for correct symmetry
+            slist.append("  {:<2s} {:19.16f} {:19.16f} {:19.16f}".format(atm, *pos))
+        unit = "angstrom"
+        if self.unit in ["au", "bohr"]:
+            unit = "bohr"
+        self.coord_sys = cs
+        return "\n".join(slist)
+
+    def export_qe_alat(self, scale: float = 1.0) -> str:
+        """Export in Quantum Espresso format, using celldm and alat
+
+        Note that since only using celldm, the unit is fixed to bohr
+        """
+        cs = self.coord_sys
+        unit = self.unit
+        # since using celldm, unit must be fixed to Bohr
+        self.unit = "bohr"
+        self.coord_sys = "D"
+        slist = ["&SYSTEM",
+                 "  ibrav = 0,",
+                 "  celldm(1)= {:f},".format(self.alen[0]*scale),
+                 "  nat = {:d},".format(self.natm),
+                 "  ntyp = {:d},".format(len(self.atom_types)),
+                 "/"]
+        slist.append("ATOMIC_SPECIES")
+        for symbol in self.atom_types:
+            slist.append("  {s:<2s}  {m:f}  {s:s}.upf".format(s=symbol, m=get_atomic_mass(symbol)))
+        slist.append("CELL_PARAMETERS alat")
+        for i in range(3):
+            slist.append(" {:19.16f} {:19.16f} {:19.16f}".format(*(self.latt[i, :]/self.alen[0])))
+        slist.append("ATOMIC_POSITIONS crystal")
+        for atm, pos in zip(self.atms, self.posi):
+            # high precision for correct symmetry
+            slist.append("  {:<2s} {:19.16f} {:19.16f} {:19.16f}".format(atm, *pos))
         self.unit = unit
         self.coord_sys = cs
         return "\n".join(slist)
@@ -925,7 +967,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
         ret.append(form[:-1].format(*self._latt.flatten()))
         # nuclear charge of each atom type
         form = "znucl " + " {:d}" * len(syms)
-        ret.append(form.format(*map(nuclear_charges.__getitem__, syms)))
+        ret.append(form.format(*map(get_atomic_number, syms)))
         # type of each atom
         form = "typat" + " {:d}" * self.natm
         ret.append(form.format(*self.type_index(start=1)))

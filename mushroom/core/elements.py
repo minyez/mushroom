@@ -80,6 +80,23 @@ atomic_weights = (0.0,
 232.0377  , 231.03588, 238.02891, 237    , 244
 )   # End at Pu
 
+def get_atomic_weight(e: Union[str, int]):
+    """get the atomic weight of the element
+
+    Args:
+        e (str or int): the symbol or atomic number of element
+            if e is a int, it will check the validity of the number.
+            if e is a str, it will first remove any space and numbers within,
+                then capitalize it before search
+
+    Returns:
+        float, atomic number of the element
+    """
+    an = get_atomic_number(e)
+    return atomic_weights[an]
+
+# alias of get_atomic_weight
+get_atomic_mass = get_atomic_weight
 # ====================================================
 
 # def common_molar_mass_calculator(chemFormula):

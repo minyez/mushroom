@@ -240,6 +240,15 @@ def select_dyn_flag_from_axis(axis, relax: bool = False) -> List[bool]:
         flag[a-1] = not flag[a-1]
     return flag
 
+def brav_from_latt_consts(a: float, b: float, c: float,
+                          alpha: float, beta: float, gamma: float,
+                          decimals: int = 6):
+    """determine the type of Bravais lattice from the lattice constants
+
+    Returns:
+        string, tuple. string
+    """
+    raise NotImplementedError
 
 def axis_list(axis) -> tuple:
     """Generate axis indices from ``axis``
