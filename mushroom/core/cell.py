@@ -26,7 +26,7 @@ from mushroom.core.pkg import detect
 from mushroom.core.crystutils import (get_latt_consts_from_latt_vecs,
                                       periodic_duplicates_in_cell,
                                       select_dyn_flag_from_axis,
-                                      atms_from_sym_nat, get_vol, get_recp_latt,
+                                      atms_from_sym_nat, get_recp_latt,
                                       sym_nat_from_atms,
                                       axis_list)
 from mushroom.core.ioutils import (grep, get_str_indices, open_textio,
@@ -196,12 +196,10 @@ When other keyword are parsed, they will be filtered out and no exception will b
             assert np.shape(self._posi) == (self.natm, 3)
         except AssertionError:
             raise self._err("Invalid cell setup")
-        # ? switch automatically, or let the user deal with it
-        try:
-            assert self.vol > 0
-        except AssertionError:
-            raise self._err(
-                "Left-handed system found (vol<0). Switch two vector.")
+        # check left-handed system.
+        # FIXME there may be inconsistencies in mushroom output
+        if self._cross_prod < 0:
+            _logger.warning("found left-handed system.")
 
     def _switch_two_atom_index(self, iat1, iat2):
         """switch the index of atoms with index iat1 and iat2
@@ -718,10 +716,19 @@ When other keyword are parsed, they will be filtered out and no exception will b
         return [_dict[_a] for _a in self._atms]
 
     @property
+    def _cross_prod(self) -> float:
+        """the cross product of the lattice vectors.
+
+        Essentially the volume of the cell.
+        The difference is that the cross product can be negative for left-handed system.
+        """
+        return np.linalg.det(self._latt)
+
+    @property
     def vol(self) -> float:
         """Volume of the cell
         """
-        return get_vol(self._latt)
+        return abs(self._cross_prod)
 
     @property
     def natm(self) -> int:
@@ -902,7 +909,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
         slist.append("ATOMIC_SPECIES")
         for symbol in self.atom_types:
             slist.append("  {s:<2s}  {m:f}  {s:s}.upf".format(s=symbol, m=get_atomic_mass(symbol)))
-        slist.append("CELL_PARAMETERS {}".format(unit))
+        slist.append("CELL_PARAMETERS {}".format(self.unit))
         for i in range(3):
             slist.append(" {:19.16f} {:19.16f} {:19.16f}".format(*(self.latt[i, :] * scale)))
         slist.append("ATOMIC_POSITIONS crystal")

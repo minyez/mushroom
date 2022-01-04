@@ -11,13 +11,9 @@ from mushroom.core.logger import create_logger
 _logger = create_logger("cryutil")
 del create_logger
 
-def get_vol(latt: Latt3T3):
-    """get the volume with the lattice vectors"""
-    return np.linalg.det(latt)
-
 def get_recp_latt(latt: Latt3T3):
     """get the reciprocal lattice vectors from the real vectors"""
-    return np.cross(latt[(1, 2, 0), :], latt[(2, 0, 1), :]) / get_vol(latt) * 2.0E0 * PI
+    return np.cross(latt[(1, 2, 0), :], latt[(2, 0, 1), :]) / np.linalg.det(latt) * 2.0E0 * PI
 
 def get_latt_vecs_from_latt_consts(a: float, b: float, c: float,
                                    alpha: float = 90.,
