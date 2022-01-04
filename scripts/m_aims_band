@@ -1,0 +1,85 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""extract the band energies from aims output"""
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
+
+from mushroom.aims import read_band_output
+from mushroom.core.bs import display_band_analysis
+from mushroom.core.cell import Cell
+from mushroom.core.kpoints import KPath
+from mushroom.core.ioutils import get_filename_wo_ext, decode_float_ends
+from mushroom.visual.graceplot import Plot
+
+def _parser():
+    """the parser"""
+    p = ArgumentParser(description=__doc__, formatter_class=RawDescriptionHelpFormatter)
+    p.add_argument("out_files", nargs="+", type=str, help="band output files")
+    p.add_argument("--unit", default='ev', type=str, help="energy unit")
+    p.add_argument("-o", dest="output", type=str, default="plotband.agr",
+                   help="path of agr file to export")
+    p.add_argument("--data", dest="data_only", action="store_true",
+                   help="only extract and print data, do not plot")
+    p.add_argument("-t", dest="trans", type=str, default=None, nargs="+",
+                   help="transitions of interest, in the form of 'ivk:ick'")
+    p.add_argument("--rkbf", dest="remove_k_before", type=int, default=0,
+                   help="number of kpoints at first to remove")
+    p.add_argument("--rkbh", dest="remove_k_behind", type=int, default=None,
+                   help="number of kpoints from behind to remove")
+    p.add_argument("--pos", dest="geometry", default='geometry.in', type=str,
+                   help="geometry.in file")
+    p.add_argument("--sym", dest="ksymbols", type=str, default=None, nargs="+",
+                   help="Symbols of high symmetry points")
+    p.add_argument("--savefig", dest="fig_ext", type=str, default=None,
+                   help="figure extension to convert")
+    p.add_argument("-e", dest="energy_range", type=str, default=None,
+                   help="energy range (y-axis), e.g. 'm8~5' for -8.0 to 5.0")
+    p.add_argument("--vbmz", dest="vbm_zero", action="store_true",
+                   help="use VBM as energy zero")
+    p.add_argument("--ef", dest="efermi", type=float, default=None,
+                   help="Fermi energy")
+    return p
+
+def m_aims_gap():
+    """the main stream"""
+    args = _parser().parse_args()
+    p, ax = Plot.subplots(1, 1, background=False)
+    bs, kpts = read_band_output(*args.out_files, unit=args.unit,
+                                filter_k_before=args.remove_k_before,
+                                filter_k_behind=args.remove_k_behind)
+    c = Cell.read(args.geometry, form="aims")
+
+    display_band_analysis(bs, kpts)
+    if args.data_only:
+        return
+    ref = 0.0
+    if args.vbm_zero:
+        ref = bs.efermi
+
+    kp = KPath(kpts, c.b)
+    ax.plot(kp.x, bs.eigen[0, :, :].transpose() - ref, color="k", symbol="none")
+    ax.x.set_major(grid=True, color="grey", lw=3, ls="dashed")
+    ksymbols = None
+    if args.ksymbols is not None:
+        ksymbols = args.ksymbols
+        if len(args.ksymbols) == 1:
+            ksymbols = args.ksymbols[0].split()
+    ax.x.set_spec(kp.special_x, labels=ksymbols)
+    if args.energy_range is not None:
+        try:
+            emin, emax = decode_float_ends(args.energy_range)
+            ax.set_ylim(ymin=emin, ymax=emax)
+        except ValueError as err:
+            raise ValueError("invalid energy range", args.energy_range) from err
+    ax.set_xlim(0.0, kp.x[-1] + 0.0001)
+    ax.set_ylim(-6, 6)
+    ax.y.set_major(major=4)
+    ax.y.set_label("Energy (eV)")
+    # draw zero line
+    ax.axhline(0.0, ls="dashed")
+    p.write(file=args.output)
+    if args.fig_ext is not None:
+        p.savefig(get_filename_wo_ext(args.output) + "." + args.fig_ext)
+
+if __name__ == "__main__":
+    m_aims_gap()
+

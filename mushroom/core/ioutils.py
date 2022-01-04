@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""this module defines some common used utilities"""
+"""this module defines some common used utilities for file and string I/O"""
 import os
 import pathlib
 import re
@@ -78,6 +78,7 @@ def grep(pattern, filename, is_binary: bool = False, error_not_found: bool = Fal
         maxcounts = size
     if maxdepth is None:
         maxdepth = size
+    # FIXME: any side effect when parsing a Iterable?
     if from_behind:
         container = reversed(container)
     for i, l in enumerate(container):
@@ -221,9 +222,36 @@ def trim_after(string: str, regex: str, include_pattern=False) -> str:
     return string
 
 
-def trim_comment(string: str) -> str:
+def trim_comment(string: str, comment_regex=r'[\#\!]') -> str:
     """remove comments, starting with # or !"""
-    return trim_after(string, r'[\#\!]')
+    return trim_after(string, comment_regex)
+
+
+def readlines_remove_comment(filename, comment_regex=r'[\#\!]',
+                             keep_empty_lines=True, trim_leading_space=False):
+    """read lines of a file
+
+    Args:
+        filename (path-like, StringIO)
+        comment_regex (regex): regular expression parsed to ``trim_comment``
+        keep_empty_lines (bool): exclude empty lines after comments are trimmed
+        trim_starting_space (bool): trim out starting spaces including whitespace, tab, etc
+
+    Returns:
+        list, each member being a line without trailing \\n"""
+    lines = []
+    tc = "\n"
+    if trim_leading_space:
+        tc = None
+    with open_textio(filename) as h:
+        l = h.readline()
+        while l:
+            _l = l.strip(tc)
+            _l = trim_after(_l, comment_regex)
+            if _l.strip() or keep_empty_lines:
+                lines.append(_l)
+            l = h.readline()
+    return lines
 
 
 def trim_before(string: str, regex: str, include_pattern=False) -> str:
