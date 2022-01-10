@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """extract the band energies from aims output"""
+from typing import List
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 from mushroom.aims import read_band_output
@@ -19,16 +20,12 @@ def _parser():
                    help="path of agr file to export")
     p.add_argument("--data", dest="data_only", action="store_true",
                    help="only extract and print data, do not plot")
-    p.add_argument("-t", dest="trans", type=str, default=None, nargs="+",
-                   help="transitions of interest, in the form of 'ivk:ick'")
     p.add_argument("--rkbf", dest="remove_k_before", type=int, default=0,
                    help="number of kpoints at first to remove")
     p.add_argument("--rkbh", dest="remove_k_behind", type=int, default=None,
                    help="number of kpoints from behind to remove")
     p.add_argument("--pos", dest="geometry", default='geometry.in', type=str,
                    help="geometry.in file")
-    p.add_argument("--sym", dest="ksymbols", type=str, default=None, nargs="+",
-                   help="Symbols of high symmetry points")
     p.add_argument("--savefig", dest="fig_ext", type=str, default=None,
                    help="figure extension to convert")
     p.add_argument("-e", dest="energy_range", type=str, default=None,
@@ -37,7 +34,37 @@ def _parser():
                    help="use VBM as energy zero")
     p.add_argument("--ef", dest="efermi", type=float, default=None,
                    help="Fermi energy")
+    g = p.add_mutually_exclusive_group()
+    g.add_argument("--sym", dest="ksymbols", type=str, default=None, nargs="+",
+                   help="Symbols of high symmetry points, overwrite control")
+    g.add_argument("--sym-cf", dest="ksymbols_cf", type=str, default=None,
+                   help="read ksymbols in band output fromm the path to the control file")
     return p
+
+def handle_control_ksymbol(pcontrol: str) -> List:
+    """get the ksymbol list from the control file
+
+    Args:
+        pcontrol (str): path to the control file"""
+    from mushroom.aims import Control
+    c = Control.read(pcontrol)
+    bands = c.output.get("band", [])
+    if not bands:
+        raise ValueError("control containing no output band tag: {}".format(pcontrol))
+    sym_ksegs = [x[3:5] for x in bands]
+    err = ValueError("ksymbols in control are incomplete! use --sym option instead")
+    sym = [*sym_ksegs[0]]
+    if None in sym:
+        raise err
+    for st, ed in sym_ksegs[1:]:
+        if st is None or ed is None:
+            raise err
+        if not st == sym[-1]:
+            sym[-1] = "{}|{}".format(sym[-1], st)
+        sym.append(ed)
+    print("Extracted symbols: {}".format(sym))
+    return sym
+
 
 def m_aims_gap():
     """the main stream"""
@@ -63,6 +90,8 @@ def m_aims_gap():
         ksymbols = args.ksymbols
         if len(args.ksymbols) == 1:
             ksymbols = args.ksymbols[0].split()
+    if args.ksymbols_cf is not None:
+        ksymbols = handle_control_ksymbol(args.ksymbols_cf)
     ax.x.set_spec(kp.special_x, labels=ksymbols)
     if args.energy_range is not None:
         try:
@@ -70,7 +99,7 @@ def m_aims_gap():
             ax.set_ylim(ymin=emin, ymax=emax)
         except ValueError as err:
             raise ValueError("invalid energy range", args.energy_range) from err
-    ax.set_xlim(0.0, kp.x[-1] + 0.0001)
+    ax.set_xlim(0.0, kp.x[-1]*1.001)
     ax.set_ylim(-6, 6)
     ax.y.set_major(major=4)
     ax.y.set_label("Energy (eV)")

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """FHI-aims related"""
-from typing import Tuple, List
+from typing import Tuple, List, Dict
 import numpy as np
 
 from mushroom.core.logger import create_logger
@@ -66,9 +66,16 @@ def read_band_output(bfile, *bfiles, filter_k_before: int=0, filter_k_behind: in
     return BandStructure(ene, occ, unit=unit), kpts
 
 class Control:
-    """aims control file
+    """object to handle aims control
 
-    Note that global flags after species are excluded.
+    The arguments are all dictionaries.
+    Keys are all strings.
+    Value of general tags are also string.
+    Value of output tags are
+
+    Args:
+        general (dict)
+        output (dict)
     """
 
     species_subtag = ["nucleus", "mass", "l_hartree", "cut_pot", "basis_dep_cutoff", "radial_base",
@@ -78,7 +85,17 @@ class Control:
     basis_tag = ["hydro", "ion_occ", "valence", "ionic"]
     abf_tag = ["for_aux"]
 
-    def __init__(self, pcontrol="control.in"):
+    def __init__(self, tags: Dict = None, output: Dict = None, species: Dict = None):
+        self.tags = tags
+        self.output = output
+        self.species = species
+
+    @classmethod
+    def read(cls, pcontrol="control.in"):
+        """Read aims control file and return an control object
+
+        Note that global flags after species are excluded.
+        """
         def _read_species_block(lines):
             """read in species block"""
             # TODO handling basis construction
@@ -86,29 +103,38 @@ class Control:
             d = {}
             return {elem: d}
         def _read_output(lines):
-            """read output tags"""
+            """read output tags
+
+            each element of lines is (linenum, linetext)"""
             d = {}
-            for t in lines:
-                if len(t) == 0:
-                    _logger.warning("detect empty output tag")
-                    continue
-                if len(t) == 1:
-                    d[t[0]] = True
-                elif len(t) == 2:
-                    d[t[0]] = t[1]
+            warn = "bad output tag on line %"
+            for i, l in lines:
+                words = l.split()
+                otag, ovalue = words[0], words[1:]
+                if not ovalue:
+                    d[otag] = True
+                elif len(words) == 1:
+                    d[otag] = words[1]
                 else:
-                    if t[0] == 'band':
+                    if otag == 'band':
                         d['band'] = d.get('band', [])
-                        d['band'].append(t[1:])
+                        if len(ovalue) in [7, 9]:
+                            kpts = list(map(float, ovalue[:6]))
+                            try:
+                                kseg = [kpts[:3], kpts[3:], int(ovalue[6]), ovalue[7], ovalue[8]]
+                            except IndexError:
+                                kseg = [kpts[:3], kpts[3:], int(ovalue[6]), None, None]
+                            d['band'].append(kseg)
+                        else:
+                            _logger.warning(warn, i)
                     else:
-                        d[t[0]] = t[1:]
+                        d[otag] = ovalue
             return d
 
         _logger.info("Reading control file: %s", pcontrol)
         _ls = readlines_remove_comment(pcontrol, keep_empty_lines=False, trim_leading_space=True)
-        # original lines
-        self._lines = _ls
-        self.tags = {}
+        tags = {}
+        # line number of each specie header
         species_ln = grep(r'species', _ls, return_linenum=True)
         if species_ln[1]:
             for s, i in zip(*species_ln):
@@ -123,22 +149,31 @@ class Control:
             ed = species_region[i+1]
             species.update(_read_species_block(_ls[st:ed]))
 
-        # read other global setup
+        # read other setup, including general tags and output tags
         i = 0
         output = []
         while i < len(_ls[:species_region[0]]):
-            tagv = _ls[i].split()
-            tag = tagv[0]
-            tagv = tagv[1:]
-            i += 1
-            if tag == 'output':
-                output.append(tagv)
-                continue
-            if len(tagv) == 1:
-                self.tags[tag] = tagv[0]
+            tagkv = _ls[i].split(maxsplit=1)
+            tagk, tagv = tagkv[0], tagkv[1:]
+            if tagk == 'output':
+                if not tagv:
+                    _logger.warning("empty output tag on line: %d", i+1)
+                else:
+                    # add line number for debugging
+                    output.append((i+1, tagkv[1]))
             else:
-                self.tags[tag] = tagv
-
-        self.tags["species"] = species
-        self.tags["output"] = _read_output(output)
+                # single keyword without value
+                # NOTE I am not sure if there is any single keyword without value in aims,
+                #      though put here for safety
+                if tagv:
+                    tagv = tagkv[1]
+                else:
+                    tagv = ".true."
+                tags[tagk] = tagv
+            i += 1
+        output = _read_output(output)
+        _logger.debug("tags: %r", tags)
+        _logger.debug("output: %r", output)
+        _logger.debug("species: %r", species)
+        return cls(tags, output, species)
 
