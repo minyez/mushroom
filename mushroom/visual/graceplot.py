@@ -2051,8 +2051,8 @@ class Graph(_Graph):
                         fixedpoint_switch=Switch.get(fp), fixedpoint_type=fpt, fixedpoint_xy=fpxy,
                         fixedpoint_format=fpform, fixedpoint_prec=fpprec)
         self._world = World()
-        self._if_xlim_set = any([xmin, xmax])
-        self._if_ylim_set = any([ymin, ymax])
+        self._if_xlim_set = False
+        self._if_ylim_set = False
         self.set_lim(xmin, ymin, xmax, ymax)
         self._stackworld = StackWorld()
         self._view = View()
@@ -2125,6 +2125,9 @@ class Graph(_Graph):
                     xscale: float = 1.1, yscale: float = 1.1):
         """make the graph looks tight by adopting x/y min/max as axis extremes
 
+        Note:
+            once limit has been manually set on some axis, e.g. by set_xlim or set_ylim,
+            this axis will not be rescaled
         Args:
             nxticks, nyticks (int)
             xscale, yscale (float): if set None, the corresponding axis will not be scaled
@@ -2133,10 +2136,10 @@ class Graph(_Graph):
         xmax = None
         ymin = None
         ymax = None
-        if xscale is not None:
+        if xscale is not None and not self._if_xlim_set:
             xmin = self.xmin()-absolute(self.xmin())*(xscale-1.0)
             xmax = self.xmax()+absolute(self.xmax())*(xscale-1.0)
-        if yscale is not None:
+        if yscale is not None and not self._if_ylim_set:
             ymin = self.min()-absolute(self.min())*(yscale-1.0)
             ymax = self.max()+absolute(self.max())*(yscale-1.0)
 
@@ -2234,6 +2237,8 @@ class Graph(_Graph):
 
     def set_lim(self, xmin=None, ymin=None, xmax=None, ymax=None):
         """set the limits (world) of graph"""
+        self._if_xlim_set = any([xmin, xmax])
+        self._if_ylim_set = any([ymin, ymax])
         pre = self._world.get_world()
         for i, v in enumerate([xmin, ymin, xmax, ymax]):
             if v is not None:

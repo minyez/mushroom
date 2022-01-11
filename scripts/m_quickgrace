@@ -16,8 +16,8 @@ from io import StringIO
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 import numpy as np
 
-from mushroom.core.ioutils import get_filename_wo_ext
-from mushroom.core.ioutils import readtext_split_emptyline
+from mushroom.core.ioutils import get_filename_wo_ext, readtext_split_emptyline
+from mushroom.core.ioutils import decode_float_ends
 from mushroom.visual.graceplot import Plot
 
 def _parser():
@@ -26,6 +26,14 @@ def _parser():
     p.add_argument("data_files", help="files to plot", nargs="+", type=str)
     p.add_argument("-t", dest="title", type=str,
                    help="title that will be parsed to the first graph", default=None)
+    p.add_argument("--xl", dest="xlabel", type=str, help="x label", default=None)
+    p.add_argument("--xr", dest="xrange", type=str, default=None,
+                   help="x range, e.g. 'm8~5' for -8.0 to 5.0")
+    p.add_argument("--yl", dest="ylabel", type=str, help="y label", default=None)
+    p.add_argument("--yr", dest="yrange", type=str, default=None,
+                   help="same as --xr, for y range")
+    p.add_argument("-s", dest="symbol", type=str, help="symbol for all datasets", default="none")
+
     g = p.add_mutually_exclusive_group()
     g.add_argument("-x", dest="ix", type=int, help="xcol", default=0)
     g.add_argument("--xy", nargs="+", type=str, help="xcol:ycol")
@@ -33,9 +41,21 @@ def _parser():
     gs.add_argument("--sort", action="store_true",
                    help="sort: X not supported, Y for cols=1")
     p.add_argument("-o", dest="output", type=str, default=None,
-                   help="output arg filename")
+                   help="output agr filename")
     p.add_argument("-d", dest="delimiter", type=str, default=None,
                    help="delimiter parsed to numpy.loadtxt")
+    leg = p.add_mutually_exclusive_group()
+    leg.add_argument("--l-add-fn", dest="leg_add_fn", action="store_true",
+                     help="add filename to legend")
+    leg.add_argument("--l-fn-only", dest="leg_fn_only", action="store_true",
+                     help="only use filename as legend")
+    leg.add_argument("--l-exp", dest="leg_explicit", type=str, nargs="+", default=None,
+                     help="explicit legend; match number of datasets, default if missing")
+    try:
+        from argcomplete import autocomplete
+        autocomplete(p)
+    except ImportError:
+        pass
     return p
 
 def m_quickgrace():
@@ -43,6 +63,13 @@ def m_quickgrace():
     args = _parser().parse_args()
     fig, ax = Plot.subplots(1, 1)
     ax.set_title(title=args.title)
+    ax.set_xlabel(args.xlabel)
+    ax.set_ylabel(args.ylabel)
+
+    def get_explict_legend():
+        if args.leg_explicit is not None:
+            for leg in args.leg_explicit:
+                yield leg
 
     for fn in args.data_files:
         datastrings = readtext_split_emptyline(fn)
@@ -50,7 +77,7 @@ def m_quickgrace():
         for s in datastrings:
             data_cols = np.loadtxt(StringIO(s), unpack=True, delimiter=args.delimiter)
             ncols = len(data_cols)
-            kwargs = {"comment": fn}
+            kwargs = {"comment": fn, "symbol": args.symbol}
             if ncols == 1:
                 if args.sort:
                     data_cols.sort()
@@ -67,8 +94,19 @@ def m_quickgrace():
                 # skip plotting against itself
                 if iy == args.ix:
                     continue
-                ax.plot(data_cols[args.ix], data_cols[iy], label="{}:{}".format(args.ix, iy),
-                        **kwargs)
+                label = get_explict_legend()
+                if label is None:
+                    label = "{}:{}".format(args.ix, iy)
+                if args.leg_add_fn:
+                    label = "{}:{}:{}".format(fn, args.ix, iy)
+                if args.leg_fn_only:
+                    label = fn
+                ax.plot(data_cols[args.ix], data_cols[iy], label=label, **kwargs)
+
+    if args.xrange is not None:
+        ax.set_xlim(*decode_float_ends(args.xrange))
+    if args.yrange is not None:
+        ax.set_ylim(*decode_float_ends(args.yrange))
 
     fig.tight_graph()
     output = args.output
