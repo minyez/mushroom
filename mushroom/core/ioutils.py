@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# pylint: disable=C0209
 """this module defines some common used utilities for file and string I/O"""
 import os
 import pathlib
@@ -494,7 +495,7 @@ def get_str_indices_by_iden(container, iden=None):
                     ret.append(i)
             elif isinstance(i, str):
                 ret.extend(get_str_indices(container, i))
-    if ret != []:
+    if ret:
         return list(OrderedDict.fromkeys(ret).keys())
     return ret
 
@@ -606,11 +607,13 @@ def decode_float_ends(s: str, m_minus=True) -> List:
             If set False, ValueError will be raised if m is matched
 
     Returns:
+        list, including two floats
     """
     start = None
     end = None
-    float_ends = re.compile(r"(m)?([+-]?[.\d]+)?~(m)?([+-]?[.\d]+)?")
+    float_ends = re.compile(r"(m)?([+-]?[.\d]+)?[:~](m)?([+-]?[.\d]+)?")
     matched = float_ends.fullmatch(s)
+    _logger.debug("decoding float ends: %s, matched? %r", s, matched)
     if matched:
         is_start_minus, start, is_end_minus, end = map(matched.group, range(1, 5))
         if not m_minus and (is_start_minus or is_start_minus):

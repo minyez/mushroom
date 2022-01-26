@@ -985,9 +985,9 @@ class _Frame(_BaseOutput, _IntMap):
         'linestyle': (int, LineStyle.SOLID, "{:d}"),
         'linewidth': (float, 1.0, "{:3.1f}"),
         'color': (int, Color.BLACK, "{:d}"),
-        'pattern': (int, 1, "{:d}"),
+        'pattern': (int, Pattern.NONE, "{:d}"),
         'background_color': (int, Color.WHITE, "{:d}"),
-        'background_pattern': (int, 0, "{:d}"),
+        'background_pattern': (int, Pattern.NONE, "{:d}"),
         }
 
 
@@ -2301,7 +2301,7 @@ class Graph(_Graph):
         only for the first set
         """
         # check if multiple y data are parsed
-        if 'color' not in kwargs:
+        if 'color' not in kwargs or kwargs['color'] is None:
             kwargs['color'] = self._color_cycler.get()
         if len(shape(ys)) == 2:
             n = self.ndata

@@ -10,7 +10,9 @@ Current caveat:
   - single graph only
   - all data will be read and processed later
   - only support index-y or xy. no xyz or xysize
-  - automatic legend is not meaningful and needs to be modified manually
+
+Note:
+    linewidth, color and symbol will be set for all datasets
 """
 from io import StringIO
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
@@ -30,27 +32,31 @@ def _parser():
     p.add_argument("--xr", dest="xrange", type=str, default=None,
                    help="x range, e.g. 'm8~5' for -8.0 to 5.0")
     p.add_argument("--yl", dest="ylabel", type=str, help="y label", default=None)
+    p.add_argument("--lw", dest="linewidth", type=float, default=None, help="line width")
+    p.add_argument("-c", dest="color", type=str, help="color code", default=None)
     p.add_argument("--yr", dest="yrange", type=str, default=None,
                    help="same as --xr, for y range")
-    p.add_argument("-s", dest="symbol", type=str, help="symbol for all datasets", default="none")
-
-    g = p.add_mutually_exclusive_group()
-    g.add_argument("-x", dest="ix", type=int, help="xcol", default=0)
-    g.add_argument("--xy", nargs="+", type=str, help="xcol:ycol")
-    gs = p.add_mutually_exclusive_group()
-    gs.add_argument("--sort", action="store_true",
-                   help="sort: X not supported, Y for cols=1")
+    p.add_argument("-s", dest="symbol", type=str, help="symbol", default="none")
     p.add_argument("-o", dest="output", type=str, default=None,
                    help="output agr filename")
     p.add_argument("-d", dest="delimiter", type=str, default=None,
                    help="delimiter parsed to numpy.loadtxt")
-    leg = p.add_mutually_exclusive_group()
-    leg.add_argument("--l-add-fn", dest="leg_add_fn", action="store_true",
-                     help="add filename to legend")
-    leg.add_argument("--l-fn-only", dest="leg_fn_only", action="store_true",
-                     help="only use filename as legend")
-    leg.add_argument("--l-exp", dest="leg_explicit", type=str, nargs="+", default=None,
-                     help="explicit legend; match number of datasets, default if missing")
+    # data column options
+    d = p.add_mutually_exclusive_group()
+    d.add_argument("-x", dest="ix", type=int, help="xcol", default=0)
+    d.add_argument("--xy", nargs="+", type=str, help="xcol:ycol")
+    # sort options
+    s = p.add_mutually_exclusive_group()
+    s.add_argument("--sort", action="store_true",
+                   help="sort: X not supported, Y for cols=1")
+    # legend options
+    l = p.add_mutually_exclusive_group()
+    l.add_argument("--l-add-fn", dest="leg_add_fn", action="store_true",
+                   help="add filename to legend")
+    l.add_argument("--l-fn-only", dest="leg_fn_only", action="store_true",
+                   help="only use filename as legend")
+    l.add_argument("--l-exp", dest="leg_explicit", type=str, nargs="+", default=None,
+                   help="explicit legend; match number of datasets, default if missing")
     try:
         from argcomplete import autocomplete
         autocomplete(p)
@@ -77,7 +83,8 @@ def m_quickgrace():
         for s in datastrings:
             data_cols = np.loadtxt(StringIO(s), unpack=True, delimiter=args.delimiter)
             ncols = len(data_cols)
-            kwargs = {"comment": fn, "symbol": args.symbol}
+            kwargs = {"comment": fn, "symbol": args.symbol, "lw": args.linewidth,
+                      "color": args.color}
             if ncols == 1:
                 if args.sort:
                     data_cols.sort()
