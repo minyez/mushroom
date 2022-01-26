@@ -76,8 +76,8 @@ class Control:
     Value of general tags are also string.
 
     Args:
-        general (dict)
-        output (dict)
+        tags (dict): general tags
+        output (dict): tag controlling output
         species (dict)
     """
 
@@ -108,6 +108,29 @@ class Control:
             self.species.append(s)
             self._if_species_changed = True
 
+    def export(self):
+        """export the control object to a string"""
+        slist = []
+        # normal tags
+        slist.extend(f"{k} {v}" for k, v in self.tags.items())
+        # output tags
+        for k, v in self.output.items():
+            if k != 'band':
+                if v is True:
+                    slist.append(f"output {k}")
+                else:
+                    slist.append(f"output {k} {v}")
+            else:
+                for kseg in v:
+                    if kseg[-1] is None:
+                        kstr = ' '.join(str(x) for x in kseg[:5])
+                    else:
+                        kstr = ' '.join(str(x) for x in kseg)
+                    slist.append(f"output {k} {kstr}")
+        # species information
+        slist.extend(s.export() for s in self.species)
+        return "\n".join(slist)
+
     @classmethod
     def read(cls, pcontrol="control.in"):
         """Read aims control file and return an control object
@@ -125,6 +148,7 @@ class Control:
             _logger.warning("No species tag is found in control")
 
         # read all species information
+        # delegate the reading to the Species object
         species_region = [*species_ln[1], len(_ls)]
         species = []
         for i, st in enumerate(species_region[:-1]):
@@ -141,7 +165,6 @@ class Control:
                 if not tagv:
                     _logger.warning("empty output tag, ignore")
                 else:
-                    # add line number for debugging
                     output.append(tagkv[1])
             else:
                 # single keyword without value
@@ -162,7 +185,12 @@ class Control:
 def _read_output(lines):
     """read output tags in aims control file
 
-    each element of lines is the text without output tag"""
+    each element of lines is the text without output tag
+
+    Note:
+        For output tags like 'band', there can be multiple entries.
+        Currently only 'band' of these tags are supported.
+    """
     d = {}
     warn = "bad output tag line: %s"
     for l in lines:
@@ -203,13 +231,64 @@ class Species:
                          "innermost_max", "logarithmic", "include_min_basis", "pure_gauss",
                          "basis_acc", "cite_reference"]
     angular_grids_tag = ["angular_grids", "outer_grid", "division"]
-    basis_tag = ["hydro", "ion_occ", "valence", "ionic", "gaussian", "sto"]
+    basis_tag = ["valence", "ion_occ", "hydro", "ionic", "gaussian", "sto"]
 
     def __init__(self, elem: str, tags: dict = None, basis: dict = None, abf: dict = None):
         self.elem = elem
         self.tags = tags
         self.basis = basis
         self.abf = abf
+
+    def _export_basis(self, basis):
+        """export the basis set configuration
+
+        The order follows the ``basis_tag`` class attribute
+
+        Args:
+            basis (str): either 'basis' or 'abf'."""
+        slist = []
+        if basis == 'basis':
+            basis = self.basis
+            prefix = ''
+        elif basis == 'abf':
+            basis = self.abf
+            prefix = 'for_aux '
+        else:
+            raise ValueError(f"invalid basis export tag: {basis}")
+        for bt in self.basis_tag:
+            if bt not in basis:
+                continue
+            if bt != 'gaussian':
+                for b in basis[bt]:
+                    slist.append(f"{prefix}{bt} {b}")
+            else:
+                for b in basis[bt]:
+                    n = b.split()[1]
+                    # pGTO
+                    if int(n) == 1:
+                        slist.append(f"{prefix}{bt} {b}")
+                    # cGTO
+                    else:
+                        cgto = b.split()
+                        slist.append(f"{prefix}{bt} {cgto[0]} {cgto[1]}")
+                        for i in range(int(n)):
+                            slist.append(f"{cgto[2*i+2]:>17s}  {cgto[2*i+3]:>13s}")
+        return "\n".join(slist)
+
+    def export(self):
+        """export the species to a string"""
+        slist = [f"species  {self.elem}"]
+        for t in self.tags:
+            if t in self.species_basic_tag:
+                slist.append(f"  {t}  {self.tags[t]}")
+            if t == 'angular_grids':
+                slist.append(f"  {t}  {self.tags[t]['method']}")
+                for div in self.tags[t]['division']:
+                    slist.append(f"    division  {div}")
+                slist.append(f"    outer_grid  {self.tags[t]['outer_grid']}")
+        slist.append(self._export_basis('basis'))
+        slist.append(self._export_basis('abf'))
+        return "\n".join(slist)
 
     # pylint: disable=R0912,R0914,R0915
     @classmethod
@@ -223,7 +302,7 @@ class Species:
             raise ValueError(f"Invalid species head {_ls[0]}") from _e
         except AssertionError as _e:
             raise ValueError(f"Unknown species: {elem}") from _e
-        _logger.debug("handling species: %s", elem)
+        _logger.info("handling species: %s", elem)
         tags = {}
         basis = {}
         abf = {}
@@ -253,7 +332,6 @@ class Species:
                 basis_dict = abf
                 basis_key = 'abf'
                 tagk, tagv = tagv.strip().split(maxsplit=1)
-                _logger.debug("for_aux basis: %s, %s", tagk, tagv)
             if tagk in cls.basis_tag:
                 if tagk not in basis_dict:
                     basis_dict[tagk] = []
@@ -262,7 +340,7 @@ class Species:
                     # pGTO
                     if int(vals[1]) == 1:
                         basis_dict[tagk].append(tagv)
-                        _logger.debug("append pGTO to %s: %s", basis_key, tagv)
+                        _logger.debug("append pGTO %s: %s", basis_key, tagv)
                     # cGTO
                     else:
                         # head plus the following vals[1] _ls
@@ -271,10 +349,10 @@ class Species:
                             cgtos.extend(x.split())
                         basis_dict[tagk].append(" ".join(cgtos))
                         i += int(vals[1])
-                        _logger.debug("append cGTO to %s: %s", basis_key, " ".join(cgtos))
+                        _logger.debug("append cGTO %s: %s", basis_key, " ".join(cgtos))
                 else:
                     basis_dict[tagk].append(tagv)
-                    _logger.debug("append %s to %s: %s", tagk, basis_key, tagv)
+                    _logger.debug("append %s %s: %s", tagk, basis_key, tagv)
             i += 1
         return cls(elem, tags, basis, abf)
 
