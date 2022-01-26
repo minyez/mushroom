@@ -180,3 +180,6 @@ get_atomic_mass = get_atomic_weight
 #         print(atomType, natomList)
 
 #     return atomType, natomList, compositions
+
+l_channels = ['s', 'p', 'd', 'f', 'g', 'h', 'i']
+

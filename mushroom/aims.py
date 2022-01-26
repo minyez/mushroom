@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """FHI-aims related"""
 import os
-from typing import Tuple, List, Dict
+from typing import Tuple, List, Dict, Union
 from io import StringIO
 import numpy as np
 
@@ -9,7 +9,7 @@ from mushroom.core.logger import create_logger
 from mushroom.core.typehint import RealVec3D
 from mushroom.core.bs import BandStructure
 from mushroom.core.ioutils import readlines_remove_comment, grep
-from mushroom.core.elements import element_symbols, get_atomic_number
+from mushroom.core.elements import element_symbols, get_atomic_number, l_channels
 
 _logger = create_logger("aims")
 del create_logger
@@ -88,6 +88,75 @@ class Control:
         self._if_species_changed = False
         self._elements = [s.elem for s in self.species]
 
+    def get_species(self, elem: Union[int, str]) -> int:
+        """get the species object of element in the control"""
+        if isinstance(elem, str):
+            try:
+                elem = self.elements.index(elem)
+            except ValueError as _e:
+                raise ValueError(f"species {elem} is not found in control") from _e
+        return self.species[elem]
+
+    def add_basis(self, elem, *args, **kwargs):
+        """add basis to speices of element ``elem``
+
+        Args:
+            elem (str or int): name of element, or its index in the control
+            args and kwargs: parsed to the Species.add_basis method
+        """
+        s = self.get_species(elem)
+        s.add_basis(*args, **kwargs)
+
+    def add_abf(self, elem, *args, **kwargs):
+        """add abf to speices of element ``elem``
+
+        Args:
+            elem (str or int): name of element, or its index in the control
+            args and kwargs: parsed to the Species.add_abf method
+        """
+        s = self.get_species(elem)
+        s.add_abf(*args, **kwargs)
+
+    def modify_basis(self, elem, *args, **kwargs):
+        """modify basis in speices of element ``elem``
+
+        Args:
+            elem (str or int): name of element, or its index in the control
+            args and kwargs: parsed to the Species.modify_basis method
+        """
+        s = self.get_species(elem)
+        s.modify_basis(*args, **kwargs)
+
+    def modify_abf(self, elem, *args, **kwargs):
+        """modify ABFs in speices of element ``elem``
+
+        Args:
+            elem (str or int): name of element, or its index in the control
+            args and kwargs: parsed to the Species.modify_abf method
+        """
+        s = self.get_species(elem)
+        s.modify_abf(*args, **kwargs)
+
+    def delete_basis(self, elem, *args, **kwargs):
+        """modify basis in speices of element ``elem``
+
+        Args:
+            elem (str or int): name of element, or its index in the control
+            args and kwargs: parsed to the Species.delete_basis method
+        """
+        s = self.get_species(elem)
+        s.delete_basis(*args, **kwargs)
+
+    def delete_abf(self, elem, *args, **kwargs):
+        """modify basis in speices of element ``elem``
+
+        Args:
+            elem (str or int): name of element, or its index in the control
+            args and kwargs: parsed to the Species.delete_abf method
+        """
+        s = self.get_species(elem)
+        s.delete_abf(*args, **kwargs)
+
     @property
     def elements(self):
         """the element name of the species"""
@@ -103,7 +172,7 @@ class Control:
             if error_replace:
                 raise ValueError(info)
             _logger.warning("%s, will replace", info)
-            self.species[self.elements.find(s.elem)] = s
+            self.species[self.elements.index(s.elem)] = s
         else:
             self.species.append(s)
             self._if_species_changed = True
@@ -239,23 +308,98 @@ class Species:
         self.basis = basis
         self.abf = abf
 
-    def _export_basis(self, basis):
+    @classmethod
+    def _add_basis_common(cls, basis: dict, btype: str, bparam: str):
+        """add basis function to basis dictionary.
+
+        The basis is defined by its type ``btype`` and a string with
+        all required parameters ``bparam``.
+        """
+        if btype not in cls.basis_tag:
+            raise ValueError(f"Invalid basis type: {btype}")
+        if btype not in basis:
+            basis[btype] = [bparam,]
+        else:
+            basis[btype].append(bparam)
+
+    def add_basis(self, btype: str, bparam: str):
+        """add basis function"""
+        self._add_basis_common(self.basis, btype, bparam)
+
+    def add_abf(self, btype: str, bparam: str):
+        """add ABF"""
+        self._add_basis_common(self.abf, btype, bparam)
+
+    @classmethod
+    def _modify_basis_common(cls, basis: dict, btype: str, index: int, bparam: str,
+                             l_channel: str = None):
+        """modify the basis function in basis dictionary
+
+        Args:
+            basis, btype and bparam: same to _add_basis_common.
+                If bparam is set to None, the basis will be deleted.
+            index: the index of the basis function to modify
+            l_channel (str): name of l channel, i.e. s, p, d, f, etc.
+                If not None, the index will counted within the particular l channel
+        """
+        if btype not in cls.basis_tag:
+            raise ValueError(f"Invalid basis type: {btype}")
+        if btype not in basis:
+            raise ValueError(f"No {btype} type basis found in parsed basis dictionary")
+        # the basis type list to be modified
+        b = basis[btype]
+        if l_channel is None:
+            indices = list(range(len(b)))
+        else:
+            # l at column 2: hydro, valence, ion_occ, ionic
+            if btype in ["hydro", "valence", "ion_occ", "ionic"]:
+                indices = [i for i, v in enumerate(b) if v.split()[1] == l_channel]
+            # l at column 1: gaussian in angular momentum
+            elif btype in ["gaussian",]:
+                indices = [i for i, v in enumerate(b)
+                           if l_channels[int(v.split()[0])] == l_channel]
+            else:
+                raise NotImplementedError
+        try:
+            index = indices[index]
+        except IndexError as _e:
+            info = f"basis of index {index} is not available"
+            if l_channel is not None:
+                info = f"basis of index {index} in {l_channel} is not available"
+            raise IndexError(info) from _e
+        if bparam is None:
+            del b[index]
+        else:
+            b[index] = bparam
+
+    def modify_basis(self, btype: str, index: int, bparam: str, l_channel: str = None):
+        """modify basis function"""
+        self._modify_basis_common(self.basis, btype, index, bparam, l_channel)
+
+    def delete_basis(self, btype: str, index: int, l_channel: str = None):
+        """delete basis function"""
+        self._modify_basis_common(self.basis, btype, index, None, l_channel)
+
+    def modify_abf(self, btype: str, index: int, bparam: str, l_channel: str = None):
+        """modify ABF"""
+        self._modify_basis_common(self.abf, btype, index, bparam, l_channel)
+
+    def delete_abf(self, btype: str, index: int, l_channel: str = None):
+        """delete ABF"""
+        self._modify_basis_common(self.abf, btype, index, None, l_channel)
+
+    @classmethod
+    def _export_basis_common(cls, basis: dict, prefix: str):
         """export the basis set configuration
 
         The order follows the ``basis_tag`` class attribute
 
         Args:
-            basis (str): either 'basis' or 'abf'."""
+            basis (dict)
+            prefix (str): added just before the tag of ``basis_tag``
+        """
         slist = []
-        if basis == 'basis':
-            basis = self.basis
-            prefix = ''
-        elif basis == 'abf':
-            basis = self.abf
-            prefix = 'for_aux '
-        else:
-            raise ValueError(f"invalid basis export tag: {basis}")
-        for bt in self.basis_tag:
+        for bt in cls.basis_tag:
             if bt not in basis:
                 continue
             if bt != 'gaussian':
@@ -275,6 +419,14 @@ class Species:
                             slist.append(f"{cgto[2*i+2]:>17s}  {cgto[2*i+3]:>13s}")
         return "\n".join(slist)
 
+    def _export_basis(self):
+        """export the basis to a string"""
+        return self._export_basis_common(self.basis, '')
+
+    def _export_abf(self):
+        """export the ABFs to a string"""
+        return self._export_basis_common(self.abf, 'for_aux ')
+
     def export(self):
         """export the species to a string"""
         slist = [f"species  {self.elem}"]
@@ -286,8 +438,8 @@ class Species:
                 for div in self.tags[t]['division']:
                     slist.append(f"    division  {div}")
                 slist.append(f"    outer_grid  {self.tags[t]['outer_grid']}")
-        slist.append(self._export_basis('basis'))
-        slist.append(self._export_basis('abf'))
+        slist.append(self._export_basis())
+        slist.append(self._export_abf())
         return "\n".join(slist)
 
     # pylint: disable=R0912,R0914,R0915
