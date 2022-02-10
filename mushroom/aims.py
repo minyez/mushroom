@@ -86,7 +86,8 @@ class Control:
         self.output = output
         self.species = species
         self._if_species_changed = False
-        self._elements = [s.elem for s in self.species]
+        if self.species is not None:
+            self._elements = [s.elem for s in self.species]
 
     def get_species(self, elem: Union[int, str]) -> int:
         """get the species object of element in the control"""
@@ -96,6 +97,49 @@ class Control:
             except ValueError as _e:
                 raise ValueError(f"species {elem} is not found in control") from _e
         return self.species[elem]
+
+    def update_tag(self, tag, value):
+        """update the value of tag
+
+        Args:
+            tag (str): the tag to be updated
+            value (str-able): the new value of the tag
+                If set to None, the tag will be deleted
+        """
+        if value or value is False:
+            try:
+                v = {True: ".true.", False: ".false."}.get(value, str(value))
+                self.tags[tag] = v
+                _logger.info("tag '%s' updated to: %s", tag, v)
+            except ValueError as _e:
+                raise ValueError(f"cannot turn value into string: {value}") from _e
+        else:
+            try:
+                _logger.info("removed tag '%s', original value: %s", tag, self.tags.pop(tag))
+            except KeyError as _e:
+                _logger.info("tag '%s' to remove is not defined, skip", tag)
+
+    def update_output(self, output_tag, value):
+        """update the output tag value
+
+        Args:
+            output_tag (str): the output tag to be updated
+            value (str-able): the new value of the output tag
+                set to False or None to delete the tag
+        """
+        if value:
+            try:
+                v = {True: ""}.get(value, str(value))
+                self.output[output_tag] = v
+                _logger.info("output tag '%s' updated to: %s", output_tag, v)
+            except ValueError as _e:
+                raise ValueError(f"cannot turn value into string: {value}") from _e
+        else:
+            try:
+                _logger.info("removed output 'tag' %s, original value: %s", output_tag,
+                             self.output.pop(output_tag))
+            except KeyError as _e:
+                _logger.info("output tag '%s' to remove is not defined, skip", output_tagtag)
 
     def add_basis(self, elem, *args, **kwargs):
         """add basis to speices of element ``elem``
@@ -179,10 +223,11 @@ class Control:
 
     def export(self):
         """export the control object to a string"""
-        slist = []
+        slist = ["# normal tags"]
         # normal tags
         slist.extend(f"{k} {v}" for k, v in self.tags.items())
         # output tags
+        slist.append("# output tags")
         for k, v in self.output.items():
             if k != 'band':
                 if v is True:
@@ -199,6 +244,11 @@ class Control:
         # species information
         slist.extend(s.export() for s in self.species)
         return "\n".join(slist)
+
+    def write(self, pcontrol):
+        """write the control content to file ``pcontrol``"""
+        with open(pcontrol, 'w', encoding='utf-8') as h:
+            print(self.export(), file=h)
 
     @classmethod
     def read(cls, pcontrol="control.in"):
@@ -229,12 +279,12 @@ class Control:
         output = []
         while i < len(_ls[:species_region[0]]):
             tagkv = _ls[i].split(maxsplit=1)
-            tagk, tagv = tagkv[0], tagkv[1:]
+            tagk, tagv = tagkv[0], tagkv[1]
             if tagk == 'output':
-                if not tagv:
-                    _logger.warning("empty output tag, ignore")
+                if tagv:
+                    output.append(tagv)
                 else:
-                    output.append(tagkv[1])
+                    _logger.warning("empty output tag, ignore")
             else:
                 # single keyword without value
                 # NOTE I am not sure if there is any single keyword without value in aims,
@@ -267,8 +317,8 @@ def _read_output(lines):
         otag, ovalue = words[0], words[1:]
         if not ovalue:
             d[otag] = True
-        elif len(words) == 1:
-            d[otag] = words[1]
+        elif len(ovalue) == 1:
+            d[otag] = ovalue[0]
         else:
             if otag == 'band':
                 d['band'] = d.get('band', [])
@@ -331,7 +381,7 @@ class Species:
         self._add_basis_common(self.abf, btype, bparam)
 
     @classmethod
-    def _modify_basis_common(cls, basis: dict, btype: str, index: int, bparam: str,
+    def _modify_basis_common(cls, basis: dict, btype: str, index: Union[int, str], bparam: str,
                              l_channel: str = None):
         """modify the basis function in basis dictionary
 
@@ -360,6 +410,11 @@ class Species:
                            if l_channels[int(v.split()[0])] == l_channel]
             else:
                 raise NotImplementedError
+        if isinstance(index, str):
+            try:
+                index = int(index)
+            except ValueError as _e:
+                raise ValueError(f"invalid index: {index}") from _e
         try:
             index = indices[index]
         except IndexError as _e:
@@ -372,19 +427,19 @@ class Species:
         else:
             b[index] = bparam
 
-    def modify_basis(self, btype: str, index: int, bparam: str, l_channel: str = None):
+    def modify_basis(self, btype: str, index: Union[int, str], bparam: str, l_channel: str = None):
         """modify basis function"""
         self._modify_basis_common(self.basis, btype, index, bparam, l_channel)
 
-    def delete_basis(self, btype: str, index: int, l_channel: str = None):
+    def delete_basis(self, btype: str, index: Union[int, str], l_channel: str = None):
         """delete basis function"""
         self._modify_basis_common(self.basis, btype, index, None, l_channel)
 
-    def modify_abf(self, btype: str, index: int, bparam: str, l_channel: str = None):
+    def modify_abf(self, btype: str, index: Union[int, str], bparam: str, l_channel: str = None):
         """modify ABF"""
         self._modify_basis_common(self.abf, btype, index, bparam, l_channel)
 
-    def delete_abf(self, btype: str, index: int, l_channel: str = None):
+    def delete_abf(self, btype: str, index: Union[int, str], l_channel: str = None):
         """delete ABF"""
         self._modify_basis_common(self.abf, btype, index, None, l_channel)
 
@@ -429,7 +484,8 @@ class Species:
 
     def export(self):
         """export the species to a string"""
-        slist = [f"species  {self.elem}"]
+        slist = ["### Start species ###",
+                 f"species  {self.elem}"]
         for t in self.tags:
             if t in self.species_basic_tag:
                 slist.append(f"  {t}  {self.tags[t]}")
@@ -440,7 +496,13 @@ class Species:
                 slist.append(f"    outer_grid  {self.tags[t]['outer_grid']}")
         slist.append(self._export_basis())
         slist.append(self._export_abf())
+        slist.append("###   End species ###")
         return "\n".join(slist)
+
+    def write(self, pspecies):
+        """write the species content to file ``pspecies``"""
+        with open(pspecies, 'w', encoding='utf-8') as h:
+            print(self.export(), file=h)
 
     # pylint: disable=R0912,R0914,R0915
     @classmethod
