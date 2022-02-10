@@ -15,6 +15,49 @@ from mushroom.core.logger import create_logger
 _logger = create_logger("cif")
 del create_logger
 
+class _CifFile:
+    """
+    Object to handle the file conforming the format of crystallographic information file (CIF)
+
+    This includes parsing loops and values by reading file (read class method)
+    and dump data to file (write method)
+
+    About the structure of a CIF file.
+    Each CIF file can contain several data blocks. Each block starts with a string like 'data_xxxx'.
+    Data are stored in items, standing individually or in loop.
+    The item name must starts with an underscore.
+
+    The loop starts with a single 'loop_', followed by names of containing items, each as a line.
+    The first line that does not start with an underscore is treated as the start of the data entries.
+    The data entries stops at a new line, loop or item.
+
+    This object is intended to replace the external CifFile object.
+    The main reason is to remove the PyCIFRW dependency.
+
+    The object accepts any number of data blocks.
+    Each block is a dict, containing three keys:
+        name: a string, charactering the data block
+        items: a dict, the simple key-value pair in CIF
+        loops: a list, each member is a dict containing "keys" (a list) and "values" (list of lists)
+    """
+    def __init__(self, *blks):
+        pass
+
+    def _export(self):
+        """export the content as a string"""
+        slist = []
+        return '\n'.join(slist)
+
+    def write(self, pcif):
+        """write the CIF content to a file"""
+        with open(pcif, 'w') as _h:
+            print(self._export(), file=_h)
+
+    @classmethod
+    def read(cls, pcif):
+        """read the CIF file"""
+        raise NotImplementedError
+
 class Cif:
     """Class to read CIF files and initialize atomic data by PyCIFRW
 
@@ -22,14 +65,12 @@ class Cif:
         pcif (str): the path to cif file
     """
 
-    def __init__(self, pcif):
+    def __init__(self, pcif, scantype="flex"):
         if not os.path.isfile(pcif):
             raise FileNotFoundError(pcif)
         raise_no_module(CifFile, "PyCIFRW", "CifFile")
         # data block
-        if CifFile is None:
-            raise ModuleNotFoundError("install PyCIFRW before using Cif")
-        self._blk = CifFile.ReadCif(pcif, scantype="flex").first_block()
+        self._blk = CifFile.ReadCif(pcif, scantype=scantype).first_block()
         self.__init_inequiv()
         self.__init_symmetry_operations()
         self._latt = None
@@ -226,5 +267,4 @@ def decode_equiv_pos_string(s):
             # deal with fractional number x/y
             trans[i] = float(st[0]) / float(st[-1])
     return rot, trans
-
 
