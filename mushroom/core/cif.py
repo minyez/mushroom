@@ -5,20 +5,16 @@ import os
 import re
 from typing import List
 from io import StringIO
-try:
-    import CifFile
-except ImportError:
-    CifFile = None
 
 from mushroom.core.crystutils import get_latt_vecs_from_latt_consts, get_all_atoms_from_symops
-from mushroom.core.ioutils import raise_no_module, open_textio
+from mushroom.core.ioutils import open_textio
 from mushroom.core.data import conv_estimate_number, closest_frac
 from mushroom.core.logger import create_logger
 
 _logger = create_logger("cif")
 del create_logger
 
-class _CifFile:
+class CifFile:
     """
     Object to handle the file conforming the format of crystallographic information file (CIF)
 
@@ -68,7 +64,7 @@ class _CifFile:
 
         See CifBlk object for the arguments
         """
-        blk = _CifBlk(name, items, loops)
+        blk = CifBlk(name, items, loops)
         return cls(blk)
 
     @classmethod
@@ -78,12 +74,12 @@ class _CifFile:
             lines = h.readlines()
         # search data block
         blks_st = [i for i, l in enumerate(lines) if l.startswith("data_")]
-        blks = [_CifBlk.read(StringIO(''.join(lines[st:blks_st[i+1]])))
+        blks = [CifBlk.read(StringIO(''.join(lines[st:blks_st[i+1]])))
                 for i, st in enumerate(blks_st[:-1])]
-        blks.append(_CifBlk.read(StringIO(''.join(lines[blks_st[-1]:]))))
+        blks.append(CifBlk.read(StringIO(''.join(lines[blks_st[-1]:]))))
         return cls(*blks)
 
-class _CifBlk:
+class CifBlk:
     """Object to handle CIF data block
 
     Each block is a dict, containing three keys:
@@ -125,11 +121,13 @@ class _CifBlk:
         Returns:
             an iterator
         """
+        ds = []
         for loop in self._loops:
             if key in loop["keys"]:
-                for entry in len(loop["values"]):
+                for entry in loop["values"]:
                     d = dict(zip(loop["keys"], entry))
-                    yield d
+                    ds.append(d)
+        return ds
 
     @property
     def items(self):
@@ -147,10 +145,11 @@ class _CifBlk:
         """read the CIF block"""
         with open_textio(pcifblk) as h:
             # strip and filter empty lines
-            lines = [l.strip() for l in h.readlines() if l and not l.startswith("#")]
+            lines = [l.strip() for l in h.readlines() if l.strip() and not l.startswith("#")]
 
         def _handle_multiline_value(st):
             """st: the line index containing the starting semicolon"""
+            _logger.debug("handling multi-line, starting line %d", st)
             _l = lines[st]
             # if the first column is a keyword ("_"), remove it since we only need value
             if _l.startswith("_"):
@@ -186,8 +185,12 @@ class _CifBlk:
                 except ValueError:
                     k = l
                     i += 1
-                    if v.startswith(";"):
-                        i, v = _handle_multiline_value(i+1)
+                    try:
+                        l = lines[i]
+                    except IndexError:
+                        break
+                    if l.startswith(";"):
+                        i, v = _handle_multiline_value(i)
                     else:
                         v = l
                 items[k] = v
@@ -248,9 +251,8 @@ class Cif:
     def __init__(self, pcif, scantype="flex"):
         if not os.path.isfile(pcif):
             raise FileNotFoundError(pcif)
-        raise_no_module(CifFile, "PyCIFRW", "CifFile")
         # data block
-        self._blk = CifFile.ReadCif(pcif, scantype=scantype).first_block()
+        self._blk = CifFile.read(pcif).first_block()
         self.__init_inequiv()
         self.__init_symmetry_operations()
         self._latt = None
@@ -268,10 +270,10 @@ class Cif:
         posi_ineq = []
         atms_ineq = []
         natoms_per_ineq = []
-        for l in self._blk.GetLoop("_atom_site_fract_x"):
+        for l in self._blk.get_loop("_atom_site_fract_x"):
             posOne = []
             for a in ["_atom_site_fract_x", "_atom_site_fract_y", "_atom_site_fract_z"]:
-                p = conv_estimate_number(l.__getattribute__(a))
+                p = conv_estimate_number(l[a])
                 # deal with approximate value of fractions
                 _logger.debug("read %s: %s", a, p)
                 try:
@@ -281,9 +283,9 @@ class Cif:
                 _logger.debug("cloest fraction: %s", p)
                 posOne.append(p)
             posi_ineq.append(posOne)
-            natoms_per_ineq.append(int(l._atom_site_symmetry_multiplicity))
+            natoms_per_ineq.append(int(l["_atom_site_symmetry_multiplicity"]))
             # remove chemical valence
-            atms_ineq.append(re.sub(r"[\d]+[+-]?", "", l._atom_site_type_symbol))
+            atms_ineq.append(re.sub(r"[\d]+[+-]?", "", l["_atom_site_type_symbol"]))
         self.posi_ineq = posi_ineq
         self.atms_ineq = atms_ineq
         self.natm_ineq = natoms_per_ineq
@@ -295,13 +297,13 @@ class Cif:
         trans = []
         try:
             symmetry_key = "_symmetry_equiv_pos_as_xyz"
-            symmetry_loop = self._blk.GetLoop(symmetry_key)
+            symmetry_loop = self._blk.get_loop(symmetry_key)
         except KeyError:
             symmetry_key = "_space_group_symop_operation_xyz"
-            symmetry_loop = self._blk.GetLoop(symmetry_key)
+            symmetry_loop = self._blk.get_loop(symmetry_key)
 
         for l in symmetry_loop:
-            r, t = decode_equiv_pos_string(l.__getattribute__(symmetry_key))
+            r, t = decode_equiv_pos_string(l[symmetry_key])
             rots.append(r)
             trans.append(t)
         self.operations["rotations"] = tuple(rots)
@@ -317,18 +319,18 @@ class Cif:
         sys_keys = ["_chemical_name_systematic", "_chemical_name_common", "_chemical_formula_sum"]
         for k in sys_keys:
             try:
-                sys = self._blk.GetItemValue(k)
+                sys = self._blk.get_item(k)
                 continue
             except KeyError:
                 pass
         if sys is None:
             sys = "NA"
         try:
-            mine = self._blk.GetItemValue("_chemical_name_mineral")
+            mine = self._blk.get_item("_chemical_name_mineral")
         except KeyError:
             mine = "NA"
         try:
-            struct = self._blk.GetItemValue("_chemical_name_structure_type")
+            struct = self._blk.get_item("_chemical_name_structure_type")
         except KeyError:
             struct = "NA"
         return sys, mine, struct
@@ -342,14 +344,14 @@ class Cif:
         if self._latt is None:
             latta, lattb, lattc = tuple(
                 map(
-                    lambda x: conv_estimate_number(self._blk.GetItemValue(x)),
+                    lambda x: conv_estimate_number(self._blk.get_item(x)),
                     ["_cell_length_a", "_cell_length_b", "_cell_length_c"],
                 )
             )
             _logger.debug("cell length: %r , %r, %r", latta, lattb, lattc)
             angles = []
             for a in ["_cell_angle_alpha", "_cell_angle_beta", "_cell_angle_gamma"]:
-                angles.append(conv_estimate_number(self._blk.GetItemValue(a)))
+                angles.append(conv_estimate_number(self._blk.get_item(a)))
             _logger.debug("found angles: %r", angles)
             self._latt = get_latt_vecs_from_latt_consts(latta, lattb, lattc, *angles)
         _logger.debug("lattice parameters: %r", self._latt)
@@ -387,9 +389,9 @@ class Cif:
         """
         if self.ref is None:
             try:
-                ref = map(lambda x: self._blk.GetItemValue(x)[0], ["_citation_journal_full",
-                                                                   "_citation_journal_volume",
-                                                                   "_citation_page_first"])
+                ref = map(lambda x: self._blk.get_item(x)[0], ["_citation_journal_full",
+                                                               "_citation_journal_volume",
+                                                               "_citation_page_first"])
                 ref = "{} vol {}, pp {}".format(*ref)
             except KeyError:
                 ref = ""

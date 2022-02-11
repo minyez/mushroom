@@ -560,7 +560,6 @@ class test_supercell(ut.TestCase):
                   [0.5, 0.75, 0.75]]
         sc = self.cell.get_supercell(1, 2, 2)
         self.assertListEqual(scatms, sc.atms)
-        print(sc.posi)
         self.assertTrue(np.array_equal(sc.latt, np.array(sclatt, dtype=Cell._dtype)))
         self.assertTrue(np.array_equal(sc.posi, np.array(scposi, dtype=Cell._dtype)))
 

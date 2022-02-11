@@ -17,7 +17,6 @@ Any suggestions concerning code style, feature, etc, are totally welcome.
 - NumPy
 - SciPy (for special functions)
 - Spglib (for symmtery detection)
-- PyCIFRW (for reading cif)
 - BeautifulSoup4 (for scrapper and XML parser)
 - Bash >= 4.4 (for using workflow scripts)
 
