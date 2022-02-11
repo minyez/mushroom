@@ -127,7 +127,8 @@ class CifBlk:
                 for entry in loop["values"]:
                     d = dict(zip(loop["keys"], entry))
                     ds.append(d)
-        return ds
+                return ds
+        raise KeyError(f"key {key} is not found in loops")
 
     @property
     def items(self):
