@@ -8,7 +8,7 @@ import numpy as np
 from mushroom.core.logger import create_logger
 from mushroom.core.typehint import RealVec3D
 from mushroom.core.bs import BandStructure
-from mushroom.core.ioutils import readlines_remove_comment, grep
+from mushroom.core.ioutils import readlines_remove_comment, grep, open_textio
 from mushroom.core.elements import element_symbols, get_atomic_number, l_channels
 
 _logger = create_logger("aims")
@@ -247,7 +247,7 @@ class Control:
 
     def write(self, pcontrol):
         """write the control content to file ``pcontrol``"""
-        with open(pcontrol, 'w', encoding='utf-8') as h:
+        with open_textio(pcontrol, 'w') as h:
             print(self.export(), file=h)
 
     @classmethod

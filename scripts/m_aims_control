@@ -12,13 +12,15 @@ The left string is splited by ``:`` and parsed in the same order to the method.
 
 Currently an template including the species is required.
 """
+from sys import stdout
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from mushroom.aims import Control, Species
 
 def _parser():
     """the parser"""
     p = ArgumentParser(description=__doc__, formatter_class=RawDescriptionHelpFormatter)
-    p.add_argument("control", type=str, help="the filename to dump the control")
+    p.add_argument("-O", dest="output", type=str, default=stdout,
+                   help="the filename to dump the control")
     p.add_argument("-i", dest="control_temp", type=str, default=None,
                    help="template to initialize the control")
     p.add_argument("-t", dest="tags", nargs="+", type=str, default=None,
@@ -80,7 +82,7 @@ def m_aims_control():
                 raise ValueError(f"Support basis method a/m/d, parsed: {bargs[0]}")
             f(*bargs[1:])
 
-    c.write(args.control)
+    c.write(args.output)
 
 
 if __name__ == "__main__":
