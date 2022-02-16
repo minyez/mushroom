@@ -28,8 +28,8 @@ jobs:
           name: Install dependencies
           command: |
             sudo apt install -y libblas-dev liblapack-dev
-            pip install -r requirements.txt
-            pip install pytest pytest-cov codecov coverage
+            sudo pip install -r requirements.txt
+            sudo pip install pytest pytest-cov codecov coverage
       - save_cache:
           key: deps9-{{ .Branch }}-{{ checksum "requirements.txt" }}
           paths:
@@ -54,8 +54,9 @@ jobs:
       - run:
           name: Install dependencies
           command: |
-            pip install -r requirements.txt
-            pip install pytest
+            sudo apt install -y libblas-dev liblapack-dev
+            sudo pip install -r requirements.txt
+            sudo pip install pytest
       - run:
           command: |
             export PYTHONPATH="~/mushroom:$PYTHONPATH"
