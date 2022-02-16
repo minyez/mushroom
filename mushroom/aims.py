@@ -5,8 +5,9 @@ from typing import Tuple, List, Dict, Union
 from io import StringIO
 import numpy as np
 
+#from mushroom.core.cell import Cell
 from mushroom.core.logger import create_logger
-from mushroom.core.typehint import RealVec3D
+from mushroom.core.typehint import RealVec3D, Path
 from mushroom.core.bs import BandStructure
 from mushroom.core.ioutils import readlines_remove_comment, grep, open_textio
 from mushroom.core.elements import element_symbols, get_atomic_number, l_channels
@@ -139,7 +140,7 @@ class Control:
                 _logger.info("removed output 'tag' %s, original value: %s", output_tag,
                              self.output.pop(output_tag))
             except KeyError as _e:
-                _logger.info("output tag '%s' to remove is not defined, skip", output_tagtag)
+                _logger.info("output tag '%s' to remove is not defined, skip", output_tag)
 
     def add_basis(self, elem, *args, **kwargs):
         """add basis to speices of element ``elem``
@@ -236,11 +237,11 @@ class Control:
                     slist.append(f"output {k} {v}")
             else:
                 for kseg in v:
-                    if kseg[-1] is None:
-                        kstr = ' '.join(str(x) for x in kseg[:5])
-                    else:
-                        kstr = ' '.join(str(x) for x in kseg)
-                    slist.append(f"output {k} {kstr}")
+                    kstr = kseg[0] + kseg[1] + [kseg[2],]
+                    # if the ksymbols are specied
+                    if kseg[-1] is not None:
+                        kstr.extend(kseg[-2:])
+                    slist.append(f"output {k} {' '.join(str(x) for x in kstr)}")
         # species information
         slist.extend(s.export() for s in self.species)
         return "\n".join(slist)
@@ -603,3 +604,84 @@ class Species:
         pspecies = os.path.join(species_defaults, *pspecies)
         return cls.read(pspecies)
 
+class StdOut:
+    """a general-purpose object to handle aims standard output
+
+    Currently only support handling SCF and post-SCF.
+
+    Args:
+        pstdout (Path): path to the aims standard output file
+    """
+
+    def __init__(self, pstdout: Path):
+        with open(pstdout, 'r', encoding='utf-8') as h:
+            lines = h.readlines()
+        _logger.info("Reading standard output from: %s", pstdout)
+        self._finished = lines[-2].strip() == 'Have a nice day.'
+        _logger.info("  Finished? %s", self._finished)
+        self._finished_prep = False
+        self._finished_init  = False
+        self._prep_lines = None
+        self._init_lines = None
+        self._scf_lines = None
+        self._postscf_lines = None
+        for i, l in enumerate(lines):
+            if l.startswith("  Preparations completed."):
+                self._finished_prep = True
+                self._prep_lines = lines[:i]
+            if l.startswith("          Begin self-consistency loop: Initialization."):
+                self._finished_init = True
+                self._init_lines = lines[i:]
+            if l.startswith("          Begin self-consistency iteration #    1"):
+                self._init_lines = self._init_lines[:self._init_lines.index(l)]
+                self._scf_lines = lines[i:]
+            if l.startswith("  Post-SCF correlation calculation starts"):
+                self._scf_lines = self._scf_lines[:self._scf_lines.index(l)]
+                self._postscf_lines = lines[i:]
+
+        self._nkpts = None
+        self._nbasis_H = None
+        self._nelect = None
+        self._nbasis_uc = None
+        self._control = None
+        self._geometry = None
+
+        self._handle_prep()
+        self._handle_init()
+
+    def _handle_prep(self):
+        """process the information in the header part, i.e. data before the self-consistency loop"""
+        # the control information
+
+    def _handle_init(self):
+        """process the data in the self-consistency loop initialization"""
+        if not self._finished_init:
+            _logger.warning("self-consistent loop initialization is not finished")
+        for i, l in enumerate(self._init_lines):
+            if l.startswith("  Initializing the k-point"):
+                try:
+                    self._nkpts = int(self._init_lines[i+1].split()[-1])
+                except (IndexError, ValueError):
+                    pass
+            if l.startswith("  | Number of basis functions in the Hamiltonian integrals"):
+                self._nbasis_H = int(l.split()[-1])
+            if l.startswith("  | Number of basis functions in a single unit cell"):
+                self._nbasis_uc = int(l.split()[-1])
+            if l.startswith("  | Initial density: Formal number of electrons"):
+                self._nelect = float(l.split()[-1])
+
+    @property
+    def nelect(self):
+        """the integer number of electrons"""
+        return int(np.rint(self._nelect))
+
+    def _handle_scf(self):
+        """process the data in the self-consistency iterations"""
+
+    def get_control(self):
+        """return a Control object"""
+        raise NotImplementedError
+
+    def get_geometry(self):
+        """return a Cell object representing the geometry"""
+        raise NotImplementedError

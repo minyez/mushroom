@@ -61,7 +61,7 @@ def grep(pattern, filename, is_binary: bool = False, error_not_found: bool = Fal
                 raise FileNotFoundError("{} is not a file".format(filename))
             return None
         mode = 'r' + 'b' * int(is_binary)
-        f = filename.open(mode=mode)
+        f = filename.open(mode=mode, encoding='utf-8')
         container = f.readlines()
         f.close()
         del f
@@ -499,7 +499,7 @@ def get_str_indices_by_iden(container, iden=None):
         return list(OrderedDict.fromkeys(ret).keys())
     return ret
 
-def print_file_or_iowrapper(*s, f=None, mode='w', **kwargs):
+def print_file_or_iowrapper(*s, f=None, mode='w', encoding='utf-8', **kwargs):
     """print string s to file handler f
     Args:
         s (str) :
@@ -509,7 +509,7 @@ def print_file_or_iowrapper(*s, f=None, mode='w', **kwargs):
         kwargs: keyword arguments parsed to ``print``
     """
     if isinstance(f, str):
-        h = open(f, mode)
+        h = open(f, mode, encoding=encoding)
     if isinstance(f, TextIOWrapper):
         h = f
     if f is None:
@@ -679,17 +679,18 @@ def fortran_read(fstring: str, fortran_format: str):
     raise NotImplementedError
 
 @contextmanager
-def open_textio(f: TextIO, mode: str = 'r'):
-    """open, and read/write text from a filename/path/TextIOWrapper/StringIO
+def open_textio(f: TextIO, mode: str = 'r', encoding: str = 'utf-8'):
+    """open, and read/write text from a filename(str)/path/TextIOWrapper/StringIO
 
     Note that whatever instance f is, it will be closed when exiting ``with``.
 
     Args:
         f (str, PathLike, TextIOWrapper, StringIO): file-like object to input and output
-        mode (str): specify the mode to process the file (only when f is str or PathLike)
+        mode and encoding (str): specify the mode and encoding to process the file.
+            used only when f is str or PathLike, not applicable to StringIO or TextIOWrapper.
     """
     if isinstance(f, (str, os.PathLike)):
-        f = open(f, mode)
+        f = open(f, mode, encoding=encoding)
     try:
         yield f
     finally:
