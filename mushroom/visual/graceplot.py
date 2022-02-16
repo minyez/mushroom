@@ -16,7 +16,7 @@ from io import TextIOWrapper, StringIO
 from shutil import which
 from collections.abc import Iterable
 from copy import deepcopy
-from typing import Union, List, Tuple
+from typing import Union
 from numpy import shape, absolute, loadtxt
 
 from mushroom.core.data import Data
@@ -28,6 +28,7 @@ from mushroom.core.logger import create_logger
 __all__ = [
         "Plot",
         "extract_data_from_agr",
+        "merge_graphs",
         ]
 
 _logger = create_logger("grace")
@@ -110,7 +111,7 @@ class _MapOutput:
     def export(self):
         slist = []
         for k, v in self._map.items():
-            s = "map {:s} {:s} to ".format(self._marker, str(k)) + self._format.format(*v)
+            s = f"map {self._marker} {str(k)} to " + self._format.format(*v)
             slist.append(s)
         return slist
 
@@ -207,7 +208,7 @@ class _ColorMap(_MapOutput):
         if isinstance(color, int):
             if color in self._map:
                 return color
-            raise IndexError("color {:d} is not defined in the color map".format(color))
+            raise IndexError(f"color {color:d} is not defined in the color map")
         raise TypeError("color input is not valid, use str or int", color)
 
     @property
@@ -224,7 +225,7 @@ class _ColorMap(_MapOutput):
         if name is None:
             name = 'color' + str(self.n)
         elif name in self._cn:
-            msg = "color {:s} has been defined with code {:s}".format(name, self._cn.index(name))
+            msg = f"color {name} has been defined with code {self._cn.index(name)}"
             raise ValueError(msg)
         color = (r, g, b, name)
         _valid_rgb(*color)
@@ -1787,6 +1788,35 @@ class Dataset(_Dataset):
                                   size=ebsize, lw=eblw, ls=ebls, rlw=ebrlw, rls=ebrls, rc=ebrc,
                                   rcl=ebrcl)
 
+    def set_color(self, color=None, lc=None, sc=None, sfc=None, fc=None, ac=None, ebc=None):
+        """set the color of dataset
+
+        Args:
+            color: global color, will be overriden by specific choice by other parameters
+            lc: line color
+            sc: symbol color
+            sfc: symbol fill color
+            fc: fill color
+            ac: annotation value color
+            ebc: errorbar color
+        """
+        # no color is effectively chosen, just return
+        if not any([color, lc, sc, sfc, fc, ac, ebc]):
+            return
+        cpairs = (
+                (self._line, "color", lc),
+                (self._symbol, "color", sc),
+                (self._symbol, "fc", sfc),
+                (self._fill, "color", fc),
+                (self._avalue, "color", ac),
+                (self._errorbar, "color", ebc),
+                )
+        for o, kwarg, cvalue in cpairs:
+            for c in [color, cvalue]:
+                if c is not None:
+                    o.set(**{kwarg: c})
+                    break
+
     def xmin(self):
         """get the minimal value of abscissa"""
         return self.data.xmin()
@@ -2079,9 +2109,22 @@ class Graph(_Graph):
     def __len__(self):
         return len(self._datasets)
 
-    def get_objects(self):
+    @property
+    def datasets(self):
+        return self._datasets
+
+    def get_datasets(self):
+        """get a copy of datasets"""
+        return deepcopy(self._datasets)
+
+    @property
+    def objects(self):
         """get the drawing objects of graph"""
         return self._objects
+
+    def get_objects(self):
+        """get a copy of the drawing objects of graph"""
+        return deepcopy(self._objects)
 
     def set(self, hidden=None, gt=None, stacked=None, barhgap=None,
             fp=None, fpt=None, fpxy=None, fpform=None, fpprec=None, **kwargs):
@@ -2292,6 +2335,10 @@ class Graph(_Graph):
         """set x axis"""
         self.set_axis(axis='alty', **kwargs)
 
+    def add_datasets(self, *dss: Dataset):
+        """add datasets to the graph"""
+        self._datasets.extend(dss)
+
     def plot(self, x, ys, **kwargs):
         """plot a dataset with abscissa ``x`` and data ``ys``
 
@@ -2316,10 +2363,10 @@ class Graph(_Graph):
             for i, y in enumerate(ys[1:]):
                 extra = {k: v[i+1] for k, v in extras.items()}
                 ds.append(Dataset(n+i+1, x, y, **kwargs, **extra))
-            self._datasets.extend(ds)
+            self.add_datasets(*ds)
         else:
             ds = Dataset(self.ndata, x, ys, **kwargs)
-            self._datasets.append(ds)
+            self.add_datasets(ds)
 
     def bar(self, bins, y, **kwargs):
         """convenience method for bar plot"""
@@ -2656,7 +2703,7 @@ class Plot:
             slist += h.export()
         # drawing objects
         for g in self._graphs:
-            for o in g.get_objects():
+            for o in g.objects:
                 slist += o.export()
         # add @ to each header line
         if add_at:
@@ -2917,10 +2964,6 @@ class Plot:
         Args:
             pagr (Pathlike): path to the agr file
         """
-        def _read_dataset(lines):
-            """lines: the lines from @type to the last data point, i.e. before &"""
-        with open(pagr, 'r') as h:
-            lines = h.readlines()
         raise NotImplementedError
 
 def extract_data_from_agr(pagr):
@@ -2975,16 +3018,35 @@ def _run_gracebat(agr, figname, device):
     p = subprocess.Popen(cmds, stdin=subprocess.PIPE)
     p.stdin.write(agr.encode())
 
-def merge_datasets(base: Graph, *graphs: Graph, colors: Union[List, Tuple]=None):
-    """merge datasets in graphs to the base graph
+def merge_graphs(base: Graph, *graphs: Graph, colors: Union[str, Iterable]=None,
+                 merge_objects: bool =False):
+    """merge datasets in graphs into the base graph
 
     If color is left as None, colors of datasets in base and graphs will remain.
-    Otherwise datasets in base will
+    If color is a str, all datasets will be redraw in the according color.
+    If color is an Iterable, base datasets will be drawn in the first color,
+    those in the first merged graph in the second color, and so forth.
 
     Args:
         base (Graph): the base graph
         graphs (Graph): the graphs whose datasets will be merged into the base
-        colors (list or tuple): the color to redraw
+        colors (str or Iterable): the colors for redrawing
+        merge_objects (bool): the objects are merged to base when set True.
+
+    Returns:
+        Graph with merged datasets
     """
-    raise NotImplementedError
+    g = deepcopy(base)
+    if isinstance(colors, str):
+        colors = [colors,] * (1+len(graphs))
+    for ds in g.datasets:
+        ds.set_color(colors[0])
+    for mg, c in zip(graphs, colors[1:]):
+        dss = mg.get_datasets()
+        for ds in dss:
+            ds.set_color(c)
+        g.add_datasets(*dss)
+        if merge_objects:
+            g.objects.extend(mg.get_objects())
+    return g
 
