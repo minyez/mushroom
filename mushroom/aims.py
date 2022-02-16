@@ -99,6 +99,26 @@ class Control:
                 raise ValueError(f"species {elem} is not found in control") from _e
         return self.species[elem]
 
+    # pylint: disable=W0707
+    def get_tag(self, tag, *default):
+        """get the value of tag"""
+        try:
+            return self.tags[tag]
+        except KeyError:
+            if default:
+                return default[0]
+            raise KeyError(f"no tag {tag} is found in control")
+
+    # pylint: disable=W0707
+    def get_output(self, tag, *default):
+        """get the value of tag"""
+        try:
+            return self.output[tag]
+        except KeyError:
+            if default:
+                return default[0]
+            raise KeyError(f"no output tag {tag} is found in control")
+
     def update_tag(self, tag, value):
         """update the value of tag
 

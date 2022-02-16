@@ -8,7 +8,7 @@ from mushroom.aims import read_band_output
 from mushroom.core.bs import display_band_analysis
 from mushroom.core.cell import Cell
 from mushroom.core.kpoints import KPath
-from mushroom.core.ioutils import get_filename_wo_ext, decode_float_ends
+from mushroom.core.ioutils import get_filename_wo_ext, decode_float_ends, greeks, greeks_latex
 from mushroom.visual.graceplot import Plot
 
 def _parser():
@@ -48,10 +48,16 @@ def handle_control_ksymbol(pcontrol: str) -> List:
         pcontrol (str): path to the control file"""
     from mushroom.aims import Control
     c = Control.read(pcontrol)
-    bands = c.output.get("band", [])
+    bands = c.get_output("band", [])
     if not bands:
-        raise ValueError("control containing no output band tag: {}".format(pcontrol))
-    sym_ksegs = [x[3:5] for x in bands]
+        raise ValueError(f"control containing no output band tag: {pcontrol}")
+    sym_ksegs = []
+    for x in bands:
+        ksym = x[3:5]
+        for i in range(2):
+            if ksym[i] in greeks:
+                ksym[i] = greeks_latex[greeks.index(ksym[i])]
+        sym_ksegs.append(ksym)
     err = ValueError("ksymbols in control are incomplete! use --sym option instead")
     sym = [*sym_ksegs[0]]
     if None in sym:
@@ -60,9 +66,9 @@ def handle_control_ksymbol(pcontrol: str) -> List:
         if st is None or ed is None:
             raise err
         if not st == sym[-1]:
-            sym[-1] = "{}|{}".format(sym[-1], st)
+            sym[-1] = f"{sym[-1]}|{st}"
         sym.append(ed)
-    print("Extracted symbols: {}".format(sym))
+    #print(f"Extracted symbols: {sym}")
     return sym
 
 
@@ -108,6 +114,7 @@ def m_aims_gap():
     p.write(file=args.output)
     if args.fig_ext is not None:
         p.savefig(get_filename_wo_ext(args.output) + "." + args.fig_ext)
+
 
 if __name__ == "__main__":
     m_aims_gap()

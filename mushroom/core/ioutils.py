@@ -14,7 +14,8 @@ from typing import List, Union, Sequence, Tuple
 from mushroom.core.logger import create_logger
 from mushroom.core.typehint import TextIO
 
-lower_greeks = ["alpha", "beta", "gamma", "theta", "omega"]
+lower_greeks = ["alpha", "beta", "gamma", "theta", "omega", "lambda",
+                "delta", "zeta", "epsilon"]
 upper_greeks = list(x.capitalize() for x in lower_greeks)
 greeks = lower_greeks + upper_greeks
 greeks_latex = list("\\" + x for x in greeks)
