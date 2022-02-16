@@ -3,6 +3,7 @@
 import os
 from typing import Tuple, List, Dict, Union
 from io import StringIO
+from copy import deepcopy
 import numpy as np
 
 #from mushroom.core.cell import Cell
@@ -161,6 +162,27 @@ class Control:
                              self.output.pop(output_tag))
             except KeyError as _e:
                 _logger.info("output tag '%s' to remove is not defined, skip", output_tag)
+
+    def get_basis(self, elem, *args, **kwargs):
+        """get the basis of element ``elem``
+
+        Args:
+            elem (str or int): name of element, or its index in the control
+            args and kwargs: parsed to the Species.get_basis method
+        """
+        s = self.get_species(elem)
+        return s.get_basis(*args, **kwargs)
+
+    def get_abf(self, elem, *args, **kwargs):
+        """get the abf of element ``elem``
+
+        Args:
+            elem (str or int): name of element, or its index in the control
+            args and kwargs: parsed to the Species.get_abf method
+        """
+        s = self.get_species(elem)
+        return s.get_basis(*args, **kwargs)
+
 
     def add_basis(self, elem, *args, **kwargs):
         """add basis to speices of element ``elem``
@@ -380,7 +402,7 @@ class Species:
         self.abf = abf
 
     @classmethod
-    def _add_basis_common(cls, basis: dict, btype: str, bparam: str):
+    def _add_basis_common(cls, basis: dict, btype: str, bparam: str, *bparams):
         """add basis function to basis dictionary.
 
         The basis is defined by its type ``btype`` and a string with
@@ -392,14 +414,54 @@ class Species:
             basis[btype] = [bparam,]
         else:
             basis[btype].append(bparam)
+        if bparams:
+            basis[btype].extend(bparams)
 
-    def add_basis(self, btype: str, bparam: str):
+    @classmethod
+    def _get_basis_common(cls, basis: dict, btype: str = None):
+        """get the basis function from the basis dictionary
+
+        Args:
+            btype (str)
+
+        Returns:
+            dict if btype is None, otherwise list
+        """
+        if btype is None:
+            return deepcopy(basis)
+        if btype not in cls.basis_tag:
+            raise ValueError(f"Invalid basis type: {btype}")
+        return basis.get(btype, None)
+
+    def get_basis(self, btype: str = None):
+        """get the basis of the species
+
+        Args:
+            btype (str)
+
+        Returns:
+            dict if btype is None, otherwise list
+        """
+        return self._get_basis_common(self.basis, btype)
+
+    def get_abf(self, btype: str = None):
+        """get the ABFs of the species
+
+        Args:
+            btype (str)
+
+        Returns:
+            dict if btype is None, otherwise list
+        """
+        return self._get_basis_common(self.abf, btype)
+
+    def add_basis(self, btype: str, bparam: str, *bparams: str):
         """add basis function"""
-        self._add_basis_common(self.basis, btype, bparam)
+        self._add_basis_common(self.basis, btype, bparam, *bparams)
 
-    def add_abf(self, btype: str, bparam: str):
+    def add_abf(self, btype: str, bparam: str, *bparams: str):
         """add ABF"""
-        self._add_basis_common(self.abf, btype, bparam)
+        self._add_basis_common(self.abf, btype, bparam, *bparams)
 
     @classmethod
     def _modify_basis_common(cls, basis: dict, btype: str, index: Union[int, str], bparam: str,

@@ -1,9 +1,69 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# pylint: disable=C0115,C0116
 """test for aims functionality"""
 import unittest as ut
+import pathlib
+import json
 
-from mushroom.aims import decode_band_output_line, read_band_output
+from mushroom.aims import decode_band_output_line, read_band_output, Control, StdOut
+
+class test_decode_band_output_line(ut.TestCase):
+    # pylint: disable=C0301
+    def test_general_line(self):
+        lines = ("   1        0.2500000      0.5000000      0.7500000     2.00000       -6.35321     2.00000       -5.21600     2.00000       -4.64646     0.00000        8.25785",
+                 "   2        0.2777778      0.5000000      0.7222222     2.00000       -6.45133     2.00000       -5.20909     2.00000       -4.54280     0.00000        8.30246"
+                 )
+        results = (
+                ([0.25, 0.50, 0.75], [2.0, 2.0, 2.0, 0.0], [-6.35321, -5.21600, -4.64646, 8.25785]),
+                ([0.2777778, 0.50, 0.7222222], [2.0, 2.0, 2.0, 0.0], [-6.45133, -5.20909, -4.54280, 8.30246])
+                )
+        for l, (kpt, occ, ene) in zip(lines, results):
+            kpt_d, occ_d, ene_d = decode_band_output_line(l)
+            self.assertListEqual(kpt, kpt_d)
+            self.assertListEqual(occ, occ_d)
+            self.assertListEqual(ene, ene_d)
+
+class test_control(ut.TestCase):
+    # pylint: disable=R0914,R1702
+    def test_control_read(self):
+        dir_control = pathlib.Path(__file__).parent / "data"
+        index_json = dir_control / "aimscontrol.json"
+        with index_json.open('r') as h:
+            verifies = json.load(h)
+        for f, verify in verifies.items():
+            print(f"Testing {f}")
+            fpath = dir_control / f
+            c = Control.read(fpath)
+            for k, v in verify.items():
+                if k == "elements":
+                    self.assertListEqual(v, c.elements)
+                if k == "tags":
+                    for kt, vt in v.items():
+                        self.assertEqual(c.get_tag(kt), vt)
+                if k == "output":
+                    for ko, vo in v.items():
+                        vo_read = c.get_output(ko)
+                        if ko == "band":
+                            for band_read, band_veri in zip(vo_read, vo):
+                                self.assertListEqual(band_read[0], band_veri[0])
+                                self.assertListEqual(band_read[1], band_veri[1])
+                                for i in range(2, 5):
+                                    self.assertEqual(band_read[i], band_veri[i])
+
+    def test_species_handling(self):
+        dir_control = pathlib.Path(__file__).parent / "data"
+        index_json = dir_control / "aimscontrol.json"
+        with index_json.open('r') as h:
+            cfiles = list(json.load(h).keys())
+        if not cfiles:
+            return
+        # use the first to test
+        cfile = cfiles[0]
+        c = Control.read(dir_control / cfile)
+        elements = c.elements
+        c.add_basis(elements[0], "hydro", "3 d 5.0")
+        self.assertEqual("3 d 5.0", c.get_basis(elements[0], "hydro")[-1])
 
 
 if __name__ == "__main__":
