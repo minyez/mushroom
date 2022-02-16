@@ -210,19 +210,23 @@ class BandStructure(EnergyUnit):
         """
         if isinstance(band_iden, int):
             return band_iden
-        if BAND_STR_PATTERN.match(band_iden):
-            ref = {"v": self.ivbm[-1], "c": self.icbm[-1]}[band_iden[0]]
-            if len(band_iden) == 3:
-                return ref
-            n = int(re.split(r"[-+]", band_iden)[-1])
-            if band_iden[3] == '-':
-                ib = ref - n
-            else:
-                ib = ref + n
-            # check if the band index is valid
-            if 0 <= ib < self.nbands:
-                return ib
-        raise ValueError("unrecognized band identifier {}".format(band_iden))
+        try:
+            # when parsed a string of integer
+            return int(band_iden)
+        except ValueError:
+            if BAND_STR_PATTERN.match(band_iden):
+                ref = {"v": self.ivbm[-1], "c": self.icbm[-1]}[band_iden[0]]
+                if len(band_iden) == 3:
+                    return ref
+                n = int(re.split(r"[-+]", band_iden)[-1])
+                if band_iden[3] == '-':
+                    ib = ref - n
+                else:
+                    ib = ref + n
+                # check if the band index is valid
+                if 0 <= ib < self.nbands:
+                    return ib
+        raise ValueError(f"unrecognized band identifier {band_iden}")
 
     @property
     def unit(self):
@@ -759,6 +763,8 @@ class BandStructure(EnergyUnit):
         return coeff
 
     def _get_band_indices(self, ib):
+        if isinstance(ib, str):
+            return [self._convert_band_iden(ib),]
         if isinstance(ib, Iterable):
             return list(map(self._convert_band_iden, ib))
         return [self._convert_band_iden(ib),]

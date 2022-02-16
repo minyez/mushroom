@@ -30,7 +30,12 @@ def _parser():
                    help="figure extension to convert")
     p.add_argument("-e", dest="energy_range", type=str, default=None,
                    help="energy range (y-axis), e.g. 'm8~5' for -8.0 to 5.0")
-    p.add_argument("--vbmz", dest="vbm_zero", action="store_true",
+    g = p.add_mutually_exclusive_group()
+    g.add_argument("--skbz", dest="isikib_zero", default=None, type=str,
+                   help="use enk as energy zero, 'is:ik:ib', ib as a band identifier")
+    g.add_argument("--ferz", dest="fermi_zero", action="store_true",
+                   help="use Fermi energy as energy zero")
+    g.add_argument("--vbmz", dest="vbm_zero", action="store_true",
                    help="use VBM as energy zero")
     p.add_argument("--ef", dest="efermi", type=float, default=None,
                    help="Fermi energy")
@@ -86,7 +91,12 @@ def m_aims_gap():
         return
     ref = 0.0
     if args.vbm_zero:
+        ref = bs.vbm
+    if args.fermi_zero:
         ref = bs.efermi
+    if args.isikib_zero:
+        ispin, ikpt, ib = args.isikib_zero.split(":")
+        ref = bs.get_eigen(ib)[int(ispin), int(ikpt), 0]
 
     kp = KPath(kpts, c.b)
     ax.plot(kp.x, bs.eigen[0, :, :].transpose() - ref, color="k", symbol="none")
