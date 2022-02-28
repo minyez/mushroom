@@ -66,5 +66,21 @@ class test_control(ut.TestCase):
         self.assertEqual("3 d 5.0", c.get_basis(elements[0], "hydro")[-1])
 
 
+class test_stdout(ut.TestCase):
+    """testing reading the standard output"""
+    # pylint: disable=R0201
+    def test_aimsout_reading(self):
+        fns_qp = ["mole_ZnO.aims.out",]
+        dir_control = pathlib.Path(__file__).parent / "data"
+        index_json = dir_control / "aimsout.json"
+        with index_json.open('r') as h:
+            fn_dict = json.load(h)
+        for fn, verify in fn_dict.items():
+            print(f"Testing {fn}")
+            s = StdOut(dir_control / fn)
+            if fn in fns_qp:
+                qpbs = s.get_QP_bandstructure()
+
+
 if __name__ == "__main__":
     ut.main()

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """FHI-aims related"""
 import os
+import re
 from typing import Tuple, List, Dict, Union
 from io import StringIO
 from copy import deepcopy
@@ -707,6 +708,7 @@ class StdOut:
         self._init_lines = None
         self._scf_lines = None
         self._postscf_lines = None
+        self._nspins = None
         for i, l in enumerate(lines):
             if l.startswith("  Preparations completed."):
                 self._finished_prep = True
@@ -717,7 +719,8 @@ class StdOut:
             if l.startswith("          Begin self-consistency iteration #    1"):
                 self._init_lines = self._init_lines[:self._init_lines.index(l)]
                 self._scf_lines = lines[i:]
-            if l.startswith("  Post-SCF correlation calculation starts"):
+            # use the start of constructing auxillary basis as a mark for post-scf calculations
+            if l.startswith("  Constructing auxiliary basis"):
                 self._scf_lines = self._scf_lines[:self._scf_lines.index(l)]
                 self._postscf_lines = lines[i:]
 
@@ -734,6 +737,11 @@ class StdOut:
     def _handle_prep(self):
         """process the information in the header part, i.e. data before the self-consistency loop"""
         # the control information
+        if not self._finished_prep:
+            _logger.warning("preparation is not finished")
+        for i, l in enumerate(self._prep_lines):
+            if l.startswith("| Number of spin channels           :"):
+                self._nspins = int(l.split()[-1])
 
     def _handle_init(self):
         """process the data in the self-consistency loop initialization"""
@@ -767,3 +775,83 @@ class StdOut:
     def get_geometry(self):
         """return a Cell object representing the geometry"""
         raise NotImplementedError
+
+    def get_QP_result(self):
+        """get the aims QP result from the standard output
+
+        The dict includes 6 items, with their key corresponding to each data column
+        in the output file:
+        - ``occ`` : occupation number (occ_num),
+        - ``eps`` : starting-point eigenvalues (e_gs)
+        - ``exx`` : exact exchange contribution (e_x^ex),
+        - ``vxc`` : xc contribution to starting-point (e_xc^gs)
+        - ``sigc``: non-local correlation from self-energy (e_c^nloc)
+        - ``eqp`` : QP energy (e_qp).
+
+        Note the names of keys differ from the column names, since they are adapted
+        according to their meaning so that the keys are consistent across different
+        programs. The value is a (nspins, nkpoints, nbands) array.
+
+        Returns:
+            a dict
+        """
+        errmsg = "Post-SCF calculations is not {} from the standard output"
+        if self._postscf_lines is None:
+            raise TypeError(errmsg.format('recognized'))
+        st = None
+        ed = None
+        # looking for the header of the GW result part
+        for i, l in enumerate(self._postscf_lines):
+            if l.strip().startswith("GW quasi-particle energy levels"):
+                st = i
+            if l.strip().startswith("DFT/Hartree-Fock") \
+                    or l.strip().startswith("Valence band maximum (VBM) from the GW"):
+                ed = i
+        if st is None or ed is None:
+            raise ValueError(errmsg.format('finished'))
+        eqpline = re.compile(r'^\s*(\d+)' + r'\s+(-?[\d\.]+)'*6 + r'(\\n)?$')
+        # search the data
+        array = []
+        istates = []
+        for l in self._postscf_lines[st:ed]:
+            m = eqpline.match(l)
+            if m:
+                istates.append(int(m.group(1)))
+                array.append([*map(float, (m.group(i) for i in range(2, 8)))])
+        array = np.array(array)
+        # reshape all arrays. Generally, the first state is a fully occupied core state
+        # thus the number of spins can be decided from its occupation number
+        # this is usually not used, as the channel should be printed at the preparation stage
+        if self._nspins is None:
+            nspins = 1
+            if array[0, 0] == 1:
+                nspins = 2
+            self._nspins = nspins
+        # the number of kpoints to print, not necessary that used in SCF
+        nkpts = istates.count(istates[0]) // self._nspins
+        #nbands = istates[1:].index(istates[0]) + 1
+        # TODO: verify that kmesh goes faster than spin
+        #       otherwise one may swap the first two axis
+        keys = ["occ", "eps", "exx", "vxc", "sigc", "eqp"]
+        d = {}
+        for i, k in enumerate(keys):
+            d[k] = array[:, i].reshape(self._nspins, nkpts, -1, order="C")
+        return d
+
+    def get_QP_bandstructure(self, kind="eqp"):
+        """get the QP band structure
+
+        Args:
+            kind (str): the key of QP energies, default to "eqp".
+                using "eps" can be viewed as a helper function to get the KS band structure
+
+        Returns
+            BandStructure object
+        """
+        d = self.get_QP_result()
+        if kind not in ["eqp", "eps"]:
+            raise ValueError("Use eqp/eps for QP/KS band structure")
+        # TODO: which case does the occupation number refer to when
+        #       there is a band reordering?
+        return BandStructure(d[kind], d["occ"], unit='ev')
+
