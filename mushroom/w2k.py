@@ -732,7 +732,7 @@ def read_energy(penergy: str, penergy_dn: str = None, efermi=None):
         one need explictly parse the fermi enery
 
     Returns:
-        kpoints, weights, BandStructure
+        BandStructure, number of inequivalent atoms, kpoints coordinates, ksymbols
     """
     def _read_one_energy_file(fp, ln_kpts, nb):
         eigen = []

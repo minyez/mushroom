@@ -106,7 +106,7 @@ class BandStructure(EnergyUnit):
             raise BandStructureError from err
 
         EnergyUnit.__init__(self, eunit=unit)
-        self._emulti = {1: 2, 2: 1}[self._nspins]
+        #self._emulti = {1: 2, 2: 1}[self._nspins]
         # One may parse the kpoints with all zero weight for band calculation
         # In this case, reassign with unit weight
         if np.isclose(np.sum(self._weight), 0.0):
@@ -176,7 +176,8 @@ class BandStructure(EnergyUnit):
             _logger.error(info)
             raise BandStructureError
         self._occ = np.array(occ, dtype=self._dtype)
-        self._nelect_sp_kp = np.sum(self._occ, axis=2) * self._emulti
+        #self._nelect_sp_kp = np.sum(self._occ, axis=2) * self._emulti
+        self._nelect_sp_kp = np.sum(self._occ, axis=2)
         self._nelect_sp = np.dot(self._nelect_sp_kp, self._weight) / np.sum(self._weight)
         self._nelect = np.sum(self._nelect_sp)
 

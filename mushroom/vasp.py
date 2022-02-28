@@ -233,6 +233,10 @@ def _dict_read_eigen(path="EIGENVAL") -> dict:
     Args:
         path (str) : path to EIGENVAL
 
+    Note:
+        The occupation number in vasp eigenvalue file is not always the true number.
+        For spin-unpolarized calculations (ISPIN=1), you need to multiply it by 2.
+
     Returns:
         dict
     """
@@ -258,6 +262,8 @@ def _dict_read_eigen(path="EIGENVAL") -> dict:
         kptw[ik, :] = np.array(lines[start].split())
         eigen[:, ik, :], occ[:, ik, :] = \
             __read_kpt_data(lines[start+1:start+1+nbands], nspins=nspins)
+    if nspins == 1:
+        occ *= 2.0
     d = {"eigen": eigen,
          "occ": occ,
          "weight": kptw[:, 3],
