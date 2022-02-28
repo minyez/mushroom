@@ -1,0 +1,10 @@
+{
+  "mole_ZnO.geometry.in": {
+    "comment": "ZnO molecule, using atom for position",
+    "latt": [[20.0,0.0,0.0], [0.0,20.0,0.0], [0.0,0.0,20.0]],
+    "unit": "ang",
+    "coord_sys": "C",
+    "atms": ["Zn", "O"],
+    "posi": [[0.0,0.0,0.5],[0.0,0.0,2.48493]]
+  }
+}

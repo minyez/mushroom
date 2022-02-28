@@ -194,7 +194,7 @@ class DBCell(_DBBase):
         self.get_avail_cells = self.get_avail_entries
         self.read_format = None
 
-    def _read_cell(self, pcell, reader=None, primitize=False):
+    def _read_cell(self, pcell, reader=None, primitize=False, **kwargs):
         """read a cell file"""
         if reader is None:
             reader = detect(pcell, fail_with_ext=True)
@@ -203,11 +203,11 @@ class DBCell(_DBBase):
         if reader == "w2k":
             if primitize:
                 raise NotImplementedError("primitive w2k format is not supported")
-            return Struct.read(pcell)
+            return Struct.read(pcell, **kwargs)
         # will use the reader format as fallback when export format is unknown
         self.read_format = reader
         # default use Cell
-        c = Cell.read(pcell, form=reader)
+        c = Cell.read(pcell, form=reader, **kwargs)
         if primitize:
             c = c.primitize()
         return c

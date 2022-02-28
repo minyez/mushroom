@@ -6,7 +6,7 @@ import string
 import os
 from collections import OrderedDict
 from numbers import Real
-from typing import List, Sequence, Union
+from typing import List, Sequence, Union, Iterable
 from itertools import product
 
 import numpy as np
@@ -56,8 +56,11 @@ class Cell(LengthUnit):
         corresponding to the member in pos
         pos (array-like) : The internal coordinates of atoms
         unit (str): the unit, in lower case, either "ang" (default) or "au".
-        coord_sys (str): Coordinate system for the internal positions,
-            either "D" (Direct, default) or "C" (Cartesian)
+        coord_sys (str or iterable): Coordinate system for the internal positions,
+            either "D" (Direct, default) or "C" (Cartesian).
+            When str is parsed, all atom position will be treated in this coordiante.
+            When an iterable is parsed, the coordinate system which most atoms have
+            will be used, and the atoms with the other system will be converted.
         all_relax (bool) : default selective dynamics option for atoms.
             Set True (default) to allow all DOFs to relax
         select_dyn (dict) : a dictionary with key-value pair as ``int: [bool, bool, bool]``,
@@ -80,7 +83,8 @@ When other keyword are parsed, they will be filtered out and no exception will b
 
     def __init__(self, latt: Latt3T3, atms: Sequence[str], posi: Sequence[RealVec3D],
                  unit: str = 'ang', sanitize: bool = True,
-                 coord_sys: str = 'D', select_dyn: dict = None, all_relax: bool = True,
+                 coord_sys: Union[str, Iterable] = 'D',
+                 select_dyn: dict = None, all_relax: bool = True,
                  reference: str = None, comment: str = None, **kwargs):
 
         self.comment = "Default Cell class"
@@ -91,27 +95,41 @@ When other keyword are parsed, they will be filtered out and no exception will b
         if reference is not None:
             self._reference = "{}".format(reference)
 
-        self._all_relax = all_relax
-        self._select_dyn = {}
-        if select_dyn is not None:
-            self._select_dyn = select_dyn
-        self._coord_sys = coord_sys
-
         try:
             self._latt = np.array(latt, dtype=self._dtype)
             self._posi = np.array(posi, dtype=self._dtype)
         except ValueError:
             raise self._err(
                 "Fail to create latt and posi array. Please check.")
-        LengthUnit.__init__(self, lunit=unit)
         self._atms = [a.capitalize() for a in atms]
-        if 'coord_sys' in kwargs:
-            self._coord_sys = kwargs['coord_sys'].upper()
-        if "all_relax" in kwargs:
-            self._all_relax = kwargs["all_relax"]
-        if "select_dyn" in kwargs:
-            self._select_dyn = kwargs["select_dyn"]
         self._check_input_consistency()
+
+        LengthUnit.__init__(self, lunit=unit)
+        # TODO: allow input coord_sys for each atom
+        if isinstance(coord_sys, str):
+            self._coord_sys = coord_sys.upper()
+            assert self._coord_sys in ["C", "D"]
+        elif isinstance(coord_sys, Iterable):
+            if len(coord_sys) != self.natm:
+                raise ValueError("numbers of specified coord system is incompatible with natms")
+            coord_sys = [x.upper() for x in coord_sys]
+            assert all(x in ["C", "D"] for x in coord_sys)
+            self._coord_sys = "C"
+            _conv = self._latt
+            if coord_sys.count("D") > self.natm // 2:
+                self._coord_sys = "D"
+                _conv = np.linalg.inv(self._latt)
+            for i, c in enumerate(coord_sys):
+                if c != self._coord_sys:
+                    self._posi[i] = np.matmul(self._posi[i], _conv)
+        else:
+            raise TypeError("coord_sys must be str or Iterable")
+
+        self._all_relax = all_relax
+        self._select_dyn = {}
+        if select_dyn is not None:
+            self._select_dyn = select_dyn
+
         if sanitize:
             self._sanitize_atoms()
         self.exporters = {
@@ -190,7 +208,6 @@ When other keyword are parsed, they will be filtered out and no exception will b
             _logger.debug("> latt: %r", self._latt)
             _logger.debug("> atms: %r", self._atms)
             _logger.debug("> posi: %r", self._posi)
-            assert self._coord_sys in ["C", "D"]
             assert np.shape(self._latt) == (3, 3)
             assert self.natm > 0
             assert np.shape(self._posi) == (self.natm, 3)
@@ -1098,14 +1115,13 @@ When other keyword are parsed, they will be filtered out and no exception will b
         atms = []
         posi = []
         latt = []
-        coord_sys = None
+        coord_sys = []
         for dl in data:
             words = dl.split()
             if not words:
                 continue
             if words[0] in ["atom", "atom_frac"]:
-                if coord_sys is None:
-                    coord_sys = {"atom": "C", "atom_frac": "D"}[words[0]]
+                coord_sys.append({"atom": "C", "atom_frac": "D"}[words[0]])
                 atms.append(words[-1])
                 posi.append(list(map(float, words[1:4])))
             if words[0] == "lattice_vector":

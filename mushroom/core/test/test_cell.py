@@ -284,6 +284,24 @@ class cell_reader(ut.TestCase):
                 elif isinstance(v, list):
                     self.assertTrue(np.array_equal(cell_value, v), msg=msg)
 
+    def test_read_aims(self):
+        """read aims geometry.in file"""
+        dir_poscar = pathlib.Path(__file__).parent / "data"
+        index_json = dir_poscar / "aimsgeometry.json"
+        with index_json.open('r') as fp:
+            verifies = json.load(fp)
+        for f, verify in verifies.items():
+            print("Testing {}".format(f))
+            fpath = dir_poscar / f
+            c = Cell.read(str(fpath), form="aims")
+            for k, v in verify.items():
+                cell_value = c.__getattribute__(k)
+                msg = ">> error, different {}: {} != {}".format(k, v, cell_value)
+                if isinstance(v, (int, float)):
+                    self.assertEqual(cell_value, v, msg=msg)
+                elif isinstance(v, list):
+                    self.assertTrue(np.array_equal(cell_value, v), msg=msg)
+
 class test_exporter(ut.TestCase):
     """test the exporter facilities"""
     latt = [[5.0, 0.0, 0.0], [0.0, 5.0, 0.0], [0.0, 0.0, 5.0]]
