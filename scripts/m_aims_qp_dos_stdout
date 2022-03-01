@@ -1,0 +1,38 @@
+#!/usr/bin/env python3
+"""export the QP density of states from aims standard output
+
+The name of file storing the DOS data is controled by ``-o`` option.
+"""
+# -*- coding: utf-8 -*-
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
+from mushroom.aims import StdOut
+
+def _parser():
+    """the parser"""
+    p = ArgumentParser(description=__doc__, formatter_class=RawDescriptionHelpFormatter)
+    p.add_argument('stdout', help="path to the aims standard output")
+    p.add_argument('-s', dest="sigma", type=float, default=None, help="smearing, default 0.05")
+    p.add_argument('-o', dest="output", type=str, default='dos.dat', help="output filename")
+    return p
+
+
+if __name__ == "__main__":
+    args = _parser().parse_args()
+
+    s = StdOut(args.stdout)
+    bs = s.get_QP_bandstructure()
+    sigma = args.sigma
+    if sigma is None:
+        #if bs.nkpts < 2:
+        #    sigma = 0.1
+        #else:
+        #    sigma = 0.05
+        sigma = 0.05
+    #print(bs.eigen)
+    print(f"Fermi energy (QP): {bs.efermi} {bs.unit}")
+    # prune core states
+    dos = bs.get_dos(emin=bs.efermi-10, sigma=sigma)
+    nspins = dos.nspins
+    with open(args.output, 'w') as h:
+        print("\n".join(dos.export_tdos(transpose=True, reverse_spindn=True)), file=h)
+

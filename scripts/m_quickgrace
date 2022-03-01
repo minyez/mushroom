@@ -72,10 +72,15 @@ def m_quickgrace():
     ax.set_xlabel(args.xlabel)
     ax.set_ylabel(args.ylabel)
 
+    # a generator to find explicit legend, None if exhausted
     def get_explict_legend():
-        if args.leg_explicit is not None:
+        if args.leg_explicit:
             for leg in args.leg_explicit:
                 yield leg
+        while True:
+            yield None
+
+    legends = get_explict_legend()
 
     for fn in args.data_files:
         datastrings = readtext_split_emptyline(fn)
@@ -101,7 +106,7 @@ def m_quickgrace():
                 # skip plotting against itself
                 if iy == args.ix:
                     continue
-                label = get_explict_legend()
+                label = next(legends)
                 if label is None:
                     label = "{}:{}".format(args.ix, iy)
                 if args.leg_add_fn:

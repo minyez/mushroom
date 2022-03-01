@@ -839,66 +839,61 @@ class BandStructure(EnergyUnit):
         newbs._efermi = None
         return newbs
 
-    #def get_dos(self, emin=None, emax=None, nedos=3000, smearing="Gaussian", sigma=0.05):
-    #    """Generate a Dos object on a energy grid by smearing the band structure
-    #    with particular smearing scheme
+    # pylint: disable=R0914
+    def get_dos(self, emin=None, emax=None, nedos=3000, smearing="Gaussian", sigma=0.05):
+        """Generate a DensityOfStates object on a energy grid by smearing the band structure
+        with particular smearing scheme
 
-    #    Args:
-    #        emin, emax (float): the minimum and maximum of energy grid.
-    #            If not specified, the minium and maximum value of the eigenvalues
-    #            will be used, respectively.
-    #        nedos (int): the number of energy grid points
-    #        smearing (str): the smearing scheme
-    #        sigma (float): the width of smearing, in the same unit with BandStructure.
+        Args:
+            emin, emax (float): the minimum and maximum of energy grid.
+                If not specified, the minium and maximum value of the eigenvalues
+                will be used, respectively.
+            nedos (int): the number of energy grid points
+            smearing (str): the smearing scheme
+            sigma (float): the width of smearing, in the same unit with BandStructure.
 
-    #    Returns:
-    #        ``Dos`` object
-    #    """
-    #    from mykit.core.dos import Dos
-    #
-    #    smearDict = {
-    #        "Gaussian": Smearing.gaussian,
-    #    }
-    #    if not isinstance(sigma, Real):
-    #        raise TypeError("sigma must be a real number")
-    #    if smearing not in smearDict:
-    #        raise ValueError(
-    #            "smearing type {} is not available".format(smearing))
-    #    sm = smearDict[smearing]
-    #    eminAvail, emaxAvail = np.min(self._eigen), np.max(self._eigen)
-    #    if emin is None:
-    #        emin = eminAvail
-    #    if emax is None:
-    #        emax = emaxAvail
-    #    for e in (emin, emax):
-    #        if not isinstance(e, Real):
-    #            raise TypeError("emin/emax must be a real number")
-    #    if emin < eminAvail:
-    #        emin = eminAvail
-    #    if emax > emaxAvail:
-    #        emax = emaxAvail
-    #    # expand the grid a little bit
-    #    egrid = np.linspace(emin - abs(emin) * 0.15,
-    #                        emax + abs(emax) * 0.15, nedos)
-    #    totalDos = np.zeros((nedos, self.nspins), dtype=self._dtype)
-    #    if self.has_proj():
-    #        projected = {"atoms": self._atms, "projs": self._projs}
-    #        pDos = np.zeros((nedos, self.nspins, self.natoms,
-    #                         self.nprojs), dtype=self._dtype)
-    #        projected["pDos"] = pDos
-    #    else:
-    #        projected = None
-    #    # ? the convolution may be optimized
-    #    for i in range(nedos):
-    #        # shape of d: (nspins, nkpts, nbands)
-    #        d = sm(self._eigen, egrid[i], sigma)
-    #        totalDos[i, :] += np.sum(d, axis=(1, 2))
-    #        if self.has_proj():
-    #            p = np.tile(d, (self.natoms, self.nprojs, 1, 1, 1))
-    #            for _j in range(2):
-    #                p = np.moveaxis(p, 0, -1)
-    #            pDos[i, :, :, :] += np.sum(p * self._pwav, axis=(1, 2))
-    #    return Dos(egrid, totalDos, self._efermi, unit=self.unit, projected=projected)
+        Returns:
+            ``Dos`` object
+        """
+        from mushroom.core.math_func import Smearing
+        from mushroom.core.dos import DensityOfStates
+
+        smearings = {
+            "Gaussian": Smearing.gaussian,
+        }
+        if not isinstance(sigma, Real):
+            raise TypeError("sigma must be a real number")
+        if smearing not in smearings:
+            raise ValueError(
+                "smearing type {} is not available".format(smearing))
+        sm = smearings[smearing]
+        if emin is None:
+            emin = np.min(self._eigen)
+        if emax is None:
+            emax = np.max(self._eigen)
+        for e in (emin, emax):
+            if not isinstance(e, Real):
+                raise TypeError("emin/emax must be a real number")
+        # expand the grid to include the smearing width,
+        # 10 sigma is sufficient
+        sigma = abs(sigma)
+        egrid = np.linspace(emin - 10 * sigma, emax + 10 * sigma, nedos)
+        tdos = np.zeros((self.nspins, nedos), dtype=self._dtype)
+        pdos = None
+        if self.has_proj():
+            pdos = np.zeros((self.nspins, nedos, self.natoms, self.nprojs), dtype=self._dtype)
+        # ? the convolution may be optimized
+        for i in range(nedos):
+            # shape of d: (nspins, nkpts, nbands)
+            d = sm(self._eigen, egrid[i], sigma)
+            tdos[:, i] += np.sum(d, axis=(1, 2))
+            if self.has_proj():
+                p = np.tile(d, (self.natoms, self.nprojs, 1, 1, 1))
+                for _j in range(2):
+                    p = np.moveaxis(p, 0, -1)
+                pdos[:, i, :, :] += np.sum(p * self._pwav, axis=(1, 2))
+        return DensityOfStates(egrid, tdos, self._efermi, unit=self.unit,
+                               pdos=pdos, atms=self._atms, prjs=self._prjs)
 
 
 # pylint: disable=R0914

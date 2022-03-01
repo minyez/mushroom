@@ -120,6 +120,12 @@ class test_BS_no_projection(ut.TestCase):
         self.assertEqual(bs.direct_gap(), gap)
         self.assertTrue(bs.is_gap_direct())
 
+    def test_get_dos(self):
+        """test dos generation from band structure"""
+        nsp, nkp, nb = 1, 4, 4
+        eigen = np.zeros((nsp, nkp, nb*2))
+        eigen[:, :, :nb] = 1.0
+
     def test_reading_in_good_eigen(self):
         good = 0
         datadir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')

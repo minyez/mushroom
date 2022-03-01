@@ -56,7 +56,7 @@ class test_dos_initialize(ut.TestCase):
         self.assertFalse(dos.has_pdos())
         tf = tempfile.NamedTemporaryFile()
         with open(tf.name, 'w') as h:
-            print(dos.export_dos(), file=h)
+            print(dos.export_tdos(), file=h)
         tf.close()
 
     def test_get_pdos(self):

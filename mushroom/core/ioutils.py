@@ -548,20 +548,6 @@ def readtext_split_emptyline(fn):
             strings.append("".join(lines[st+1:ed]))
     return strings
 
-#class Smearing:
-#    """class with different smearing schemes implemented as static method
-#    """
-#
-#    @staticmethod
-#    def gaussian(x, x0, sigma):
-#        """Gaussian smearing
-#        """
-#        return (
-#            np.exp(-np.subtract(x, x0) ** 2 / sigma ** 2 / 2.0)
-#            / sigma
-#            / np.sqrt(2.0 * PI)
-#        )
-
 def cycler(i: int, lt: Union[List, Tuple], return_int=False):
     """cycle the index according to the length of list/tuple
 

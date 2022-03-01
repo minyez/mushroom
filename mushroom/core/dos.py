@@ -39,7 +39,7 @@ class DensityOfStates(EnergyUnit):
 
     Args:
         egrid (1d-array-like) : energy grids
-        tdos (2d-array-like) : total density of states, (nspins, nedos)
+        tdos (2d-array-like) : total density of states, (nspins, nedos).
         efermi (float) : fermi energy
 
     Optional args:
@@ -252,32 +252,44 @@ class DensityOfStates(EnergyUnit):
             raise ValueError("parse prjs first for projector string")
         return get_str_indices_by_iden(self._prjs, prj)
 
-    def get_dos(self, ispin=None):
+    def get_tdos(self, ispin: int=None, reverse_spindn: bool=False):
         """get the total dos data
 
         Args:
-            ispin (int) : 0 for spin-up and 1 for spin-down.
-                Total dos will be returned otherwise or nspins=1
-            transpose (bool) : True for array (egrid, dos1, dos2)
-                False for (xa, xb, xc).
+            ispin (int) : the spin channel, can be 0 or 1.
+                Left as None to return all spin channels.
+                Total dos summed from both spin channel (nspins=2) will be returned,
+                if ispin is negative.
+            reverse_spindn (bool): when set True, the density of states in the second
+                channel (when available) will be multiplied by -1.
+                Useful for plot purpose
 
         Returns:
             array.
         """
-        if self.nspins == 2 and ispin in [0, 1]:
-            d = self._tdos[ispin, :]
-        else:
-            d = self._tdos.sum(axis=0)
-        return d
+        if ispin is None:
+            if reverse_spindn and self.nspins == 2:
+                mask = np.ones(self._tdos.shape)
+                mask[1, :] = -1
+                return self._tdos * mask
+            return self._tdos
+        if isinstance(ispin, int):
+            if ispin < 0:
+                return self._tdos.sum(axis=0)
+            if ispin in range(self.nspins):
+                return self._tdos[ispin, :]
+        raise ValueError(f"invalid spin channel: {ispin}")
 
-    def export_dos(self, ispin=None, transpose=False, form=None, sep=None):
+    def export_tdos(self, ispin=None, reverse_spindn=False, transpose=False, form=None, sep=None):
         """export the total dos data to a list of strings
 
         The data are separated by `sep`
 
         Args:
-            ispin, atms, prjs, transpose: see `get_dos` method
+            ispin, atms, prjs: see `get_tdos` method
             form (str or list/tuple): format string
+            transpose (bool) : True for array (egrid, dos1, dos2)
+                False for (xa, xb, xc).
             sep (str):
 
         Returns:
@@ -297,9 +309,13 @@ class DensityOfStates(EnergyUnit):
 
             i.e., abscissa goes fastest
         """
-        if sep is None:
-            sep = ' '
-        data = np.stack([self._egrid, self.get_dos(ispin=ispin)])
+        tdos = self.get_tdos(ispin=ispin, reverse_spindn=reverse_spindn)
+        if len(tdos.shape) == 1:
+            data = np.stack([self._egrid, tdos])
+        elif len(tdos.shape) == 2:
+            data = np.stack([self._egrid, *tdos])
+        else:
+            raise TypeError("tdos shape is wrong, contact developer")
         return export_2d_data(data, transpose=transpose, form=form, sep=sep)
 
 def split_ap(ap: str):
