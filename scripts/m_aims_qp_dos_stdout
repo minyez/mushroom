@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """export the QP density of states from aims standard output
 
+This is done by smearing the QP energies according to Gaussian function.
 The name of file storing the DOS data is controled by ``-o`` option.
 """
 # -*- coding: utf-8 -*-
@@ -13,10 +14,14 @@ def _parser():
     p.add_argument('stdout', help="path to the aims standard output")
     p.add_argument('-s', dest="sigma", type=float, default=None, help="smearing, default 0.05")
     p.add_argument('-o', dest="output", type=str, default='dos.dat', help="output filename")
+    p.add_argument('--filter-below-ef', type=float, default=10,
+                   help="states more than it below the Fermi level will not be added to DOS")
+    p.add_argument('--filter-above-ef', type=float, default=None,
+                   help="similar to --exclude-below-ef, but for those above Fermi")
     return p
 
-
-if __name__ == "__main__":
+def m_aims_qp_dos_stdout():
+    """the main steam"""
     args = _parser().parse_args()
 
     s = StdOut(args.stdout)
@@ -30,9 +35,17 @@ if __name__ == "__main__":
         sigma = 0.05
     #print(bs.eigen)
     print(f"Fermi energy (QP): {bs.efermi} {bs.unit}")
-    # prune core states
-    dos = bs.get_dos(emin=bs.efermi-10, sigma=sigma)
+    # filter states
+    emax = None
+    if args.filter_above_ef:
+        emax = bs.efermi + args.filter_above_ef
+    dos = bs.get_dos(emin=bs.efermi-args.filter_below_ef, emax=emax, sigma=sigma)
+    print(f"Smearing: {sigma} {bs.unit}")
     nspins = dos.nspins
     with open(args.output, 'w') as h:
         print("\n".join(dos.export_tdos(transpose=True, reverse_spindn=True)), file=h)
+
+
+if __name__ == "__main__":
+    m_aims_qp_dos_stdout()
 

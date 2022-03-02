@@ -805,7 +805,8 @@ class StdOut:
             if l.strip().startswith("GW quasi-particle energy levels"):
                 st = i
             if l.strip().startswith("DFT/Hartree-Fock") \
-                    or l.strip().startswith("Valence band maximum (VBM) from the GW"):
+                    or l.strip().startswith("Valence band maximum (VBM) from the GW") \
+                    or l.strip().startswith("Spin-up valence band maximum"):
                 ed = i
         if st is None or ed is None:
             raise ValueError(errmsg.format('finished'))
