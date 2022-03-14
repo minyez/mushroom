@@ -23,10 +23,12 @@ def _parser():
                    help="the filename to dump the control")
     p.add_argument("-i", dest="control_temp", type=str, default=None,
                    help="template to initialize the control")
-    p.add_argument("-t", dest="tags", nargs="+", type=str, default=None,
-                   help="tag pair in 'tag:value format'")
-    p.add_argument("--ot", dest="output_tags", nargs="+", type=str, default=None,
+    p.add_argument("-t", dest="tags", nargs="+", type=str,
+                   help="tag pair in 'tag:value' format")
+    p.add_argument("--ot", dest="output_tags", nargs="+", type=str,
                    help="output tags")
+    p.add_argument("--st", dest="species_tags", nargs="+", type=str,
+                   help="species tags in 'elem:tag:value' format")
     p.add_argument("-s", dest="species", type=str, default="defaults_2020",
                    help="species category")
     p.add_argument("--sl", dest="species_level", type=str, default="intermediate",
@@ -40,6 +42,7 @@ def _parser():
     return p
 
 def _handle_tag_pair(tag_pair):
+    """"""
     tv = tag_pair.split(':', maxsplit=1)
     try:
         t, v = tv
@@ -51,6 +54,16 @@ def _handle_tag_pair(tag_pair):
     elif v.lower() in ['f', '.f.', '.false.', 'false']:
         v = False
     return t, v
+
+def _handle_elem_tag_pair(elem_tag_pair):
+    """"""
+    etv = elem_tag_pair.split(':', maxsplit=1)
+    try:
+        e, tv = etv
+    except ValueError:
+        raise ValueError(f"invalid elem:tag:value pair: {elem_tag_pair}")
+    t, v = _handle_tag_pair(tv)
+    return e, t, v
 
 def m_aims_control():
     """the main stream"""
@@ -64,6 +77,9 @@ def m_aims_control():
     if args.output_tags is not None:
         for t in args.output_tags:
             c.update_output(*_handle_tag_pair(t))
+    if args.species_tags is not None:
+        for t in args.species_tags:
+            c.update_species_basic_tag(*_handle_elem_tag_pair(t))
 
     # handle basis
     if args.handle_basis is not None:

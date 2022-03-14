@@ -7,7 +7,7 @@ from io import StringIO
 from copy import deepcopy
 import numpy as np
 
-#from mushroom.core.cell import Cell
+# from mushroom.core.cell import Cell
 from mushroom.core.logger import create_logger
 from mushroom.core.typehint import RealVec3D, Path
 from mushroom.core.bs import BandStructure
@@ -139,7 +139,7 @@ class Control:
         else:
             try:
                 _logger.info("removed tag '%s', original value: %s", tag, self.tags.pop(tag))
-            except KeyError as _e:
+            except KeyError:
                 _logger.info("tag '%s' to remove is not defined, skip", tag)
 
     def update_output(self, output_tag, value):
@@ -161,8 +161,19 @@ class Control:
             try:
                 _logger.info("removed output 'tag' %s, original value: %s", output_tag,
                              self.output.pop(output_tag))
-            except KeyError as _e:
+            except KeyError:
                 _logger.info("output tag '%s' to remove is not defined, skip", output_tag)
+
+    def update_species_basic_tag(self, elem, tag, value):
+        """update the species basic tag of element ``elem``
+
+        Args:
+            elem (str or int): name of element, or its index in the control
+            tag (str): the species basic tag
+            value : the new value of tag. See ``update_basic_tag``
+        """
+        s = self.get_species(elem)
+        s.update_basic_tag(tag, value)
 
     def get_basis(self, elem, *args, **kwargs):
         """get the basis of element ``elem``
@@ -401,6 +412,29 @@ class Species:
         self.tags = tags
         self.basis = basis
         self.abf = abf
+
+    def update_basic_tag(self, tag, value):
+        """update the value of basic species tag
+
+        Args:
+            tag (str): the basic tag to be updated
+            value (str-able): the new value of the tag
+                If set to None or empty list, the tag will be deleted
+        """
+        if tag not in self.species_basic_tag:
+            raise KeyError(f"not a supported species tag: {tag}")
+        if value or value is False:
+            try:
+                v = {True: ".true.", False: ".false."}.get(value, str(value))
+                self.tags[tag] = v
+                _logger.info("tag '%s' updated to: %s", tag, v)
+            except ValueError:
+                raise ValueError(f"cannot turn value into string: {value}")
+        else:
+            try:
+                _logger.info("removed tag '%s', original value: %s", tag, self.tags.pop(tag))
+            except KeyError:
+                _logger.info("tag '%s' to remove is not defined, skip", tag)
 
     @classmethod
     def _add_basis_common(cls, basis: dict, btype: str, bparam: str, *bparams):
@@ -830,7 +864,7 @@ class StdOut:
             self._nspins = nspins
         # the number of kpoints to print, not necessary that used in SCF
         nkpts = istates.count(istates[0]) // self._nspins
-        #nbands = istates[1:].index(istates[0]) + 1
+        # nbands = istates[1:].index(istates[0]) + 1
         # TODO: verify that kmesh goes faster than spin
         #       otherwise one may swap the first two axis
         keys = ["occ", "eps", "exx", "vxc", "sigc", "eqp"]

@@ -8,42 +8,59 @@ The name of file storing the DOS data is controled by ``-o`` option.
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from mushroom.aims import StdOut
 
+
 def _parser():
     """the parser"""
-    p = ArgumentParser(description=__doc__, formatter_class=RawDescriptionHelpFormatter)
+    p = ArgumentParser(description=__doc__,
+                       formatter_class=RawDescriptionHelpFormatter)
     p.add_argument('stdout', help="path to the aims standard output")
-    p.add_argument('-s', dest="sigma", type=float, default=None, help="smearing, default 0.05")
-    p.add_argument('-o', dest="output", type=str, default='dos.dat', help="output filename")
+    p.add_argument('-s', dest="sigma", type=float, default=None,
+                   help="smearing, default 0.05")
+    p.add_argument('-o', dest="output", type=str, default='dos.dat',
+                   help="output filename")
     p.add_argument('--filter-below-ef', type=float, default=10,
                    help="states more than it below the Fermi level will not be added to DOS")
+    p.add_argument('--ks', action="store_true", help="KS dos instead of QP")
     p.add_argument('--filter-above-ef', type=float, default=None,
                    help="similar to --exclude-below-ef, but for those above Fermi")
     return p
+
 
 def m_aims_qp_dos_stdout():
     """the main steam"""
     args = _parser().parse_args()
 
     s = StdOut(args.stdout)
-    bs = s.get_QP_bandstructure()
+    kind = "eqp"
+    if args.ks:
+        kind = "eps"
+    bs = s.get_QP_bandstructure(kind)
     sigma = args.sigma
     if sigma is None:
-        #if bs.nkpts < 2:
-        #    sigma = 0.1
-        #else:
-        #    sigma = 0.05
+        # if bs.nkpts < 2:
+        #     sigma = 0.1
+        # else:
+        #     sigma = 0.05
         sigma = 0.05
-    #print(bs.eigen)
+    # print(bs.eigen)
     print(f"Fermi energy (QP): {bs.efermi} {bs.unit}")
     # filter states
     emax = None
     if args.filter_above_ef:
         emax = bs.efermi + args.filter_above_ef
-    dos = bs.get_dos(emin=bs.efermi-args.filter_below_ef, emax=emax, sigma=sigma)
+    dos = bs.get_dos(emin=bs.efermi-args.filter_below_ef, emax=emax,
+                     sigma=sigma)
     print(f"Smearing: {sigma} {bs.unit}")
-    nspins = dos.nspins
     with open(args.output, 'w') as h:
-        print("\n".join(dos.export_tdos(transpose=True, reverse_spindn=True)), file=h)
+        def p(*args):
+            print(*args, file=h)
+        if args.ks:
+            p(f"#KS-DOS from {args.stdout}")
+        else:
+            p(f"#QP-DOS from {args.stdout}")
+        p(f"#EF: {bs.efermi} {bs.unit}")
+        p(f"#Sigma: {sigma}")
+        p("\n".join(dos.export_tdos(transpose=True, reverse_spindn=True)))
 
 
 if __name__ == "__main__":
