@@ -15,6 +15,7 @@ Note:
     linewidth, color and symbol will be set for all datasets
 """
 from io import StringIO
+import warnings
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 import numpy as np
 
@@ -82,19 +83,26 @@ def m_quickgrace():
 
     legends = get_explict_legend()
 
+    warnings.filterwarnings('ignore', r'loadtxt: Empty input file')
+
     for fn in args.data_files:
         datastrings = readtext_split_emptyline(fn)
 
         for s in datastrings:
-            data_cols = np.loadtxt(StringIO(s), unpack=True, delimiter=args.delimiter)
+            data_cols = np.loadtxt(StringIO(s), unpack=True,
+                                   delimiter=args.delimiter)
             ncols = len(data_cols)
-            kwargs = {"comment": fn, "symbol": args.symbol, "lw": args.linewidth,
+            # no data
+            if ncols == 0:
+                continue
+            is_single_col = len(data_cols.shape)
+            kwargs = {"comment": fn, "symbol": args.symbol,
+                      "lw": args.linewidth,
                       "color": args.color}
-            if ncols == 1:
+            if is_single_col:
                 if args.sort:
                     data_cols.sort()
-                ax.plot(list(range(1, len(data_cols[0]))), data_cols[0],
-                        **kwargs)
+                ax.plot(list(range(1, len(data_cols)+1)), data_cols, **kwargs)
                 continue
             if args.xy is not None:
                 for xy in args.xy:
@@ -120,7 +128,7 @@ def m_quickgrace():
     if args.yrange is not None:
         ax.set_ylim(*decode_float_ends(args.yrange))
 
-    fig.tight_graph()
+    # fig.tight_graph()
     output = args.output
     if output is None:
         output = get_filename_wo_ext(args.data_files[0]) + "_quickgp.agr"
