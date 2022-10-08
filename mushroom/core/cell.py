@@ -1074,7 +1074,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
     # * Reader implementations
 
     @classmethod
-    def read(cls, path, form=None) -> Cell:
+    def read(cls, path, form=None):
         """read file at path and return a Cell instance
 
         Args:

@@ -63,6 +63,8 @@ def build_cell():
                     primitize=args.primitize)
         return
     if args.show or args.search:
+        if cdb.N == 0:
+            print("No cell entries are found at", cdb._db_path)
         for i, s in cdb.filter(args.search):
             print("{:>3d} : {:s}".format(i, s))
         return
