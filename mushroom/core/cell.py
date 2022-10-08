@@ -1071,10 +1071,10 @@ When other keyword are parsed, they will be filtered out and no exception will b
             }
         return json.dumps(d)
 
-
     # * Reader implementations
+
     @classmethod
-    def read(cls, path, form=None):
+    def read(cls, path, form=None) -> Cell:
         """read file at path and return a Cell instance
 
         Args:

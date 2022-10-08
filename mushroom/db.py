@@ -194,7 +194,7 @@ class DBCell(_DBBase):
         self.get_avail_cells = self.get_avail_entries
         self.read_format = None
 
-    def _read_cell(self, pcell, reader=None, primitize=False, **kwargs):
+    def _read_cell(self, pcell, reader=None, primitize=False, standardize=False, **kwargs):
         """read a cell file"""
         if reader is None:
             reader = detect(pcell, fail_with_ext=True)
@@ -208,22 +208,26 @@ class DBCell(_DBBase):
         self.read_format = reader
         # default use Cell
         c = Cell.read(pcell, form=reader, **kwargs)
-        if primitize:
-            c = c.primitize()
+        if standardize:
+            c = c.standardize(to_primitive=primitize)
+        else:
+            if primitize:
+                c = c.primitize()
         return c
 
-    def convert(self, pcell: Path, output_path=None, reader=None, writer=None, primitize=False):
+    def convert(self, pcell: Path, output_path=None, reader=None, writer=None,
+                primitize=False, standardize=False):
         """convert a file in one format of lattice cell to another"""
-        self._write(self._read_cell(pcell, reader=reader, primitize=primitize),
+        self._write(self._read_cell(pcell, reader=reader, primitize=primitize, standardize=False),
                     output_path=output_path, writer=writer)
 
     def extract(self, cell_entry: Union[str, int], output_path=None,
-                reader=None, writer=None, primitize=False):
+                reader=None, writer=None, primitize=False, standardize=False):
         """extract the entry from cell database"""
         pcell = self.get_cell_path(cell_entry)
         if pcell is None:
             raise DBEntryNotFoundError("cell entry {} is not found".format(cell_entry))
-        self._write(self._read_cell(pcell, reader=reader, primitize=primitize),
+        self._write(self._read_cell(pcell, reader=reader, primitize=primitize, standardize=False),
                     output_path=output_path, writer=writer)
 
     def _write(self, cell_object, output_path: Union[str, int]=None,

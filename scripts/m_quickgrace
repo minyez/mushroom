@@ -95,11 +95,10 @@ def m_quickgrace():
             # no data
             if ncols == 0:
                 continue
-            is_single_col = len(data_cols.shape)
             kwargs = {"comment": fn, "symbol": args.symbol,
                       "lw": args.linewidth,
                       "color": args.color}
-            if is_single_col:
+            if len(data_cols.shape) == 1:
                 if args.sort:
                     data_cols.sort()
                 ax.plot(list(range(1, len(data_cols)+1)), data_cols, **kwargs)
@@ -107,7 +106,10 @@ def m_quickgrace():
             if args.xy is not None:
                 for xy in args.xy:
                     ix, iy = tuple(map(int, xy.split(':')))
-                    ax.plot(data_cols[ix], data_cols[iy], label=xy,
+                    label = next(legends)
+                    if label is None:
+                        label = "{}:{}".format(ix, iy)
+                    ax.plot(data_cols[ix], data_cols[iy], label=label,
                             **kwargs)
                 continue
             for iy in range(ncols):
@@ -127,8 +129,9 @@ def m_quickgrace():
         ax.set_xlim(*decode_float_ends(args.xrange))
     if args.yrange is not None:
         ax.set_ylim(*decode_float_ends(args.yrange))
+    if args.xrange is None and args.yrange is None:
+        fig.tight_graph()
 
-    # fig.tight_graph()
     output = args.output
     if output is None:
         output = get_filename_wo_ext(args.data_files[0]) + "_quickgp.agr"

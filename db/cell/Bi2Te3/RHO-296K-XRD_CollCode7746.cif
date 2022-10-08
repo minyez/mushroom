@@ -1,0 +1,75 @@
+
+#(C) 2022 by FIZ Karlsruhe - Leibniz Institute for Information Infrastructure.  All rights reserved.
+data_7746-ICSD
+_database_code_ICSD 7746
+_audit_creation_date 2019-08-01
+_chemical_name_common 'Bismuth telluride (2/3)'
+_chemical_formula_structural 'Bi2 Te3'
+_chemical_formula_sum 'Bi2 Te3'
+_chemical_name_structure_type Bi2Te3
+_exptl_crystal_density_diffrn 7.86
+_citation_title
+
+;
+Tailoring thermoelectric properties through structure and morphology in
+chemically synthesized n-type bismuth telluride nanostructures
+;
+loop_
+_citation_id
+_citation_journal_full
+_citation_year
+_citation_journal_volume
+_citation_page_first
+_citation_page_last
+_citation_journal_id_ASTM
+primary 'Inorganic Chemistry' 2017 56 6264 6274 INOCAJ
+loop_
+_citation_author_citation_id
+_citation_author_name
+primary 'Akshay, V.R.'
+primary 'Suneesh, M.V.'
+primary 'Vasundhara, M.'
+_cell_length_a 10.4448(15)
+_cell_length_b 10.4448(15)
+_cell_length_c 10.4448(15)
+_cell_angle_alpha 24.2714(8)
+_cell_angle_beta 24.2714(8)
+_cell_angle_gamma 24.2714(8)
+_cell_volume 169.23
+_cell_formula_units_Z 1
+_space_group_name_H-M_alt 'R -3 m R'
+_space_group_IT_number 166
+loop_
+_space_group_symop_id
+_space_group_symop_operation_xyz
+1 '-z, -y, -x'
+2 '-z, -x, -y'
+3 '-x, -z, -y'
+4 '-y, -z, -x'
+5 '-y, -x, -z'
+6 '-x, -y, -z'
+7 'z, y, x'
+8 'z, x, y'
+9 'x, z, y'
+10 'y, z, x'
+11 'y, x, z'
+12 'x, y, z'
+loop_
+_atom_type_symbol
+_atom_type_oxidation_number
+Te2- -2
+Bi3+ 3
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_symmetry_multiplicity
+_atom_site_Wyckoff_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_U_iso_or_equiv
+_atom_site_occupancy
+Te1 Te2- 1 a 0. 0. 0. -0.02897 1.
+Te2 Te2- 2 c 0.79198 0.79198 0.79198 0.02596 1.
+Bi1 Bi3+ 2 c 0.40162 0.40162 0.40162 0.06045 1.
+#End of TTdata_7746-ICSD

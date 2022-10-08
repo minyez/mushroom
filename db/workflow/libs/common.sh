@@ -186,3 +186,18 @@ function confirm () {
     echo "$de"
   fi
 }
+
+function is_a_bigger_than_b () {
+  # $1: a
+  # $2: b
+  case $# in
+    2 ) a="$1"; b="$2";;
+    * ) echo "$0 need two arguments"; exit 1;;
+  esac
+  if awk "BEGIN {exit !($a > $b)}"; then
+    return 0
+  else
+    return 1
+  fi
+
+}

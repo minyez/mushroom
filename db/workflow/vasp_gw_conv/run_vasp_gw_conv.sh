@@ -8,7 +8,7 @@ source ./vasp.sh
 
 np=${SLURM_NTASKS:=$defaultnp}
 vaspcmd="mpirun -np $np $vaspexe"
-module load "${modules[@]}"
+[[ -n ${modules[*]} ]] && module load "${modules[@]}"
 
 # ===== functions =====
 function gw_calc () {
@@ -46,14 +46,14 @@ function run_vasp_gw_conv_calc () {
     #nbandsmax=$(echo "$encut 750 1139" | awk '{printf("%d",0.5 + ($1/$2)**1.5 * $3)}')
     for encutgwratio in "${encutgwratios[@]}"; do
       # give ENCUTGW explicitly instead from a ratio of ENCUT
-      if (( encutgwratio > 300 )); then
+      if is_a_bigger_than_b "$encutgwratio" 3; then
         encutgw="$encutgw"
       else
         encutgw=$(echo "$encut $encutgwratio" | awk '{printf("%d", 0.5 + $1*$2)}')
       fi
       for nbandsratio in "${nbandsratios[@]}"; do
         # give nbands explicitly instead from a ratio of NPW
-        if (( nbandsratio > 1 )); then
+        if is_a_bigger_than_b "$nbandsratio" 1 ; then
           nbands="$nbandsratio"
         else
           nbands=$(echo "$nbandsmax $nbandsratio $np" | awk '{printf("%d",($1*$2) - ($1*$2) % $3)}')

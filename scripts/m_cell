@@ -33,6 +33,8 @@ def _parser():
     #               help="add converted input to sample data (JSON format)")
     p.add_argument('--prim', dest='primitize', action="store_true",
                    help="primitize the cell (spglib required)")
+    p.add_argument('--std', dest='primitize', action="store_true",
+                   help="standardize the cell (spglib required)")
     p.add_argument('-i', dest='input_format', choices=DBCell.avail_readers,
                    type=str, default=None,
                    help="format of input file, default use automatic detection")
