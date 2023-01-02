@@ -34,7 +34,7 @@ def m_aims_qp_dos_stdout():
     kind = "eqp"
     if args.ks:
         kind = "eps"
-    bs = s.get_QP_bandstructure(kind)
+    bs, _ = s.get_QP_bandstructure(kind)
     sigma = args.sigma
     if sigma is None:
         # if bs.nkpts < 2:

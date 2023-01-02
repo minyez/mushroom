@@ -1,0 +1,36 @@
+#!/usr/bin/env python3
+"""analyze the QP energies from aims stdout file"""
+# -*- coding: utf-8 -*-
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
+from mushroom.aims import StdOut
+from mushroom.core.bs import display_band_analysis, display_transition_energies
+
+
+def _parser():
+    """the parser"""
+    p = ArgumentParser(description=__doc__,
+                       formatter_class=RawDescriptionHelpFormatter)
+    p.add_argument('stdout', help="path to the aims standard output")
+    p.add_argument("-t", dest="trans", type=str, default=None, nargs="+",
+                   help="transitions of interest, in the form of 'ivk:ick'")
+    p.add_argument('--ks', action="store_true", help="KS dos instead of QP")
+    return p
+
+
+def m_aims_qp_gap_stdout():
+    """the main steam"""
+    args = _parser().parse_args()
+
+    s = StdOut(args.stdout)
+    kind = "eqp"
+    if args.ks:
+        kind = "eps"
+    bs, kpts = s.get_QP_bandstructure(kind)
+    display_band_analysis(bs, kpts)
+    if args.trans is not None:
+        display_transition_energies(args.trans, bs, kpts)
+
+
+if __name__ == "__main__":
+    m_aims_qp_gap_stdout()
+

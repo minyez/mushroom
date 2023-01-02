@@ -1,0 +1,61 @@
+#!/usr/bin/env python
+"""compute the k-point mesh of a k-grids"""
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
+try:
+    from argcomplete import autocomplete
+except ImportError:
+    autocomplete = None
+
+from mushroom.core.kpoints import MPGrid
+from mushroom.core.cell import Cell
+
+
+def _parser():
+    """the parser"""
+    p = ArgumentParser(description=__doc__, formatter_class=RawDescriptionHelpFormatter)
+    p.add_argument("kgrids", nargs=3, type=int)
+    p.add_argument("--ir", action="store_true", help="flag to get irreducile points")
+    p.add_argument("--gamma-center", action="store_true",
+                   help="flag to generate Gamma-centered mesh")
+
+    grp_cell = p.add_mutually_exclusive_group()
+    grp_cell.add_argument("-I", dest="inputcell", type=str, default=None,
+                          help="cell input file")
+
+    p.add_argument("-i", type=str, default=None, help="format of cell input file")
+
+    if autocomplete is not None:
+        autocomplete(p)
+    return p
+
+
+def m_kpt_get_kmesh(kgrids, gamma_center=True, irreducile=False, cell: Cell = None):
+    """the main stream"""
+    spgcell = None
+    if cell is not None:
+        spgcell = cell.get_spglib_input()
+
+    mpgrids = MPGrid(kgrids[0], kgrids[1], kgrids[2], spgcell)
+    if irreducile:
+        kmesh, mapping = mpgrids.get_ir_grids()
+    else:
+        kmesh = mpgrids.kpts
+        mapping = list(range(len(kmesh)))
+    for i, (kpt, mapirk) in enumerate(zip(kmesh, mapping)):
+        if i == mapirk:
+            print("%3d %8.5f %8.5f %8.5f" % (i + 1, kpt[0], kpt[1], kpt[2]))
+        else:
+            print("%3d %8.5f %8.5f %8.5f -> %3d %8.5f %8.5f %8.5f" %
+                  (i + 1, kpt[0], kpt[1], kpt[2], mapirk + 1,
+                   kmesh[mapirk][0], kmesh[mapirk][1], kmesh[mapirk][2]))
+
+
+if __name__ == "__main__":
+    args = _parser().parse_args()
+    kgrids = args.kgrids
+    inputcell = None
+    if args.ir:
+        if args.inputcell is None:
+            raise ValueError("Cell input -I is required to get irreducible kmesh")
+        inputcell = Cell.read(args.inputcell)
+    m_kpt_get_kmesh(kgrids, args.gamma_center, args.ir, inputcell)

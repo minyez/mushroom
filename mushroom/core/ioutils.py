@@ -665,6 +665,7 @@ def fortran_read(fstring: str, fortran_format: str):
     """
     raise NotImplementedError
 
+
 @contextmanager
 def open_textio(f: TextIO, mode: str = 'r', encoding: str = 'utf-8'):
     """open, and read/write text from a filename(str)/path/TextIOWrapper/StringIO
@@ -683,7 +684,8 @@ def open_textio(f: TextIO, mode: str = 'r', encoding: str = 'utf-8'):
     finally:
         f.close()
 
-def raise_no_module(mod, modname: str, msg: str=None):
+
+def raise_no_module(mod, modname: str, msg: str = None):
     """
     Raise when a module is not found (set to None) when it is required
     """
@@ -691,4 +693,3 @@ def raise_no_module(mod, modname: str, msg: str=None):
         if msg is None:
             raise ModuleNotFoundError("require {}".format(modname))
         raise ModuleNotFoundError("require {}: {}".format(modname, msg))
-

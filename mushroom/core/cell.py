@@ -482,6 +482,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
         """
         was_c = self.coord_sys == "C"
         multi = np.array([n1, n2, n3])
+        # print(multi)
         if np.prod(multi) == 0:
             raise ValueError("encounter zero expansion")
 

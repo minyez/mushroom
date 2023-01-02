@@ -100,6 +100,7 @@ class MPGrid:
         sort (bool)
     """
     _dtype = 'float64'
+
     def __init__(self, nk1: int, nk2: int, nk3: int, spgcell=None,
                  shift=None, sort: bool = False):
         self._kdivs = np.array([nk1, nk2, nk3])
@@ -133,14 +134,14 @@ class MPGrid:
         """int, number of mesh points"""
         return len(self.kpts)
 
-    @property
-    def ir_grids(self):
+    def get_ir_grids(self):
         """get the irreducible grid points"""
         if self._spgcell is None:
             raise ValueError("need cell to compute irreducible kpoints")
         raise_no_module(spglib, "Spglib")
-        return spglib.get_ir_reciprocal_mesh(self._kdivs, self._spgcell,
-                                             is_shift=self._shift)
+        mapping, grids = spglib.get_ir_reciprocal_mesh(self._kdivs, self._spgcell,
+                                                       is_shift=self._shift)
+        return np.divide(grids, self._kdivs), mapping
 
 
 def find_k_segments(kpts):
@@ -187,6 +188,7 @@ def find_k_segments(kpts):
     if ed - st >= 2:
         ksegs.append((st, ed-1))
     return ksegs
+
 
 def uniform_int_kmesh(nk1: int, nk2: int, nk3: int,
                       shift: Iterable, sort=False):

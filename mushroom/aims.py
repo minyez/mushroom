@@ -829,9 +829,9 @@ class StdOut:
         Returns:
             a dict
         """
-        errmsg = "Post-SCF calculations is not {} from the standard output"
+        errmsg = "QP calculations is not {} from the standard output"
         if self._postscf_lines is None:
-            raise TypeError(errmsg.format('recognized'))
+            raise ValueError(errmsg.format("found"))
         st = None
         ed = None
         # looking for the header of the GW result part
@@ -844,7 +844,7 @@ class StdOut:
                 ed = i
         if st is None or ed is None:
             raise ValueError(errmsg.format('finished'))
-        eqpline = re.compile(r'^\s*(\d+)' + r'\s+(-?[\d\.]+)'*6 + r'(\\n)?$')
+        eqpline = re.compile(r'^\s*(\d+)' + r'\s+(-?[\d\.]+)' * 6 + r'(\\n)?$')
         # search the data
         array = []
         istates = []
@@ -854,6 +854,13 @@ class StdOut:
                 istates.append(int(m.group(1)))
                 array.append([*map(float, (m.group(i) for i in range(2, 8)))])
         array = np.array(array)
+        kpts = []
+        kptline = re.compile(r'^  K_point\s+(\d+)\s+:' + r'\s+(-?[\d\.]+)' * 3 + r'(\\n)?$')
+        for l in self._postscf_lines[st:ed]:
+            m = kptline.match(l)
+            if m:
+                kpts.append([*map(float, (m.group(i) for i in range(2, 5)))])
+        kpts = np.array(kpts)
         # reshape all arrays. Generally, the first state is a fully occupied core state
         # thus the number of spins can be decided from its occupation number
         # this is usually not used, as the channel should be printed at the preparation stage
@@ -864,6 +871,7 @@ class StdOut:
             self._nspins = nspins
         # the number of kpoints to print, not necessary that used in SCF
         nkpts = istates.count(istates[0]) // self._nspins
+        assert (nkpts == len(kpts))
         # nbands = istates[1:].index(istates[0]) + 1
         # TODO: verify that kmesh goes faster than spin
         #       otherwise one may swap the first two axis
@@ -871,7 +879,7 @@ class StdOut:
         d = {}
         for i, k in enumerate(keys):
             d[k] = array[:, i].reshape(self._nspins, nkpts, -1, order="C")
-        return d
+        return d, kpts
 
     def get_QP_bandstructure(self, kind="eqp"):
         """get the QP band structure
@@ -883,10 +891,9 @@ class StdOut:
         Returns
             BandStructure object
         """
-        d = self.get_QP_result()
+        d, kpts = self.get_QP_result()
         if kind not in ["eqp", "eps"]:
             raise ValueError("Use eqp/eps for QP/KS band structure")
         # TODO: which case does the occupation number refer to when
         #       there is a band reordering?
-        return BandStructure(d[kind], d["occ"], unit='ev')
-
+        return BandStructure(d[kind], d["occ"], unit='ev'), kpts
