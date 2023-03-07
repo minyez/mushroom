@@ -1,0 +1,31 @@
+{
+  "name": "make.inc",
+  "type": "makefile",
+  "version": "2e",
+  "compiler": "gcc",
+  "compiler_version": ["7.5.0"],
+  "variables": {
+    "LAPACKROOT": null
+  },
+  "configs": {
+    "LAPACK":"-L$(LAPACKROOT) -llpack -lblas -lm",
+    "CC":"gcc",
+    "CFLAGS":"-O2",
+    "FC":"gfortran -ffree-form -ffree-line-length-0 ",
+    "F77":"gfortran -ffixed-form -ffixed-line-length-0 ",
+    "FPP":"-cpp ",
+    "DOPTS":" -O0 -fbacktrace -g -ffpe-trap=invalid,zero,overflow -ftrapv -fcheck=all -Wall -Wno-line-truncation -Wno-unused -DDEBUG",
+    "OOPTS":" -O3 -Wno-all -ffpe-trap=invalid,zero,overflow",
+    "FFLAGS":"-freal-4-real-8 $(FPP) $(DOPTS)",
+    "LDFLAGS":"$(LAPACK)",
+    "MPIFC":"mpif90",
+    "MPITAG":"mpi",
+    "MPIFFLAGS":"-fc=gfortran $(FFLAGS) -DMPI",
+    "YACC":"bison -y",
+    "USEMOD":"-I",
+    "AR":"ar",
+    "ARFLAGS":"crv",
+    "RANLIB":"ar s",
+    ".SUFFIXES": [".F90", ".f90"]
+  }
+}

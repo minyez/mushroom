@@ -1,0 +1,3 @@
+#!/usr/bin/env python
+"""check the orthonormality of NAO basis functions output from aims
+"""

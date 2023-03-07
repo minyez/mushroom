@@ -1,0 +1,51 @@
+#------------------------------------------------------------------------------#
+#                     make.inc for Linux, using Intel compilers                #
+#------------------------------------------------------------------------------#
+
+
+## use ifort+MKL is used for lapack
+#LAPACK = -L$(MKLROOT)/lib/intel64 -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm
+## use lapack for gfortran
+LAPACK = -L/Users/stevezhang/software/mathlib/lapack/3.8.0/gnu/10.2.0/ -llapack -lblas -lm
+
+ ## ifort
+ # CC = icc
+ # CFLAGS = -O2
+ #FC = ifort -FR
+ #F77 = ifort -fixed 
+ #FPP= -fpp -DINTEL
+ #DOPTS =  -O0 -nogen-interfaces -warn interfaces -debug-parameters all -traceback -g -fpe0 -warn all -check uninit -check bounds -ftrapuv  -check noarg_temp_created -warn nounused -DDEBUG
+ #OOPTS =  -O3 -mp1 -w -prec_div -pc80 -nopad -ip -fpe0 
+ ## -w: no warning
+ #FFLAGS = -r8 $(FPP) $(OOPTS) # -convert big_endian # ifort
+ #MPIFC=mpiifort
+ #MPIFFLAGS = -fc=ifort  $(FFLAGS) -DMPI 
+
+ ## gfotran
+ CC = gcc
+ CFLAGS = -O2
+ FC = gfortran -ffree-form -ffree-line-length-0 
+ F77 = gfortran -ffixed-form -ffixed-line-length-0 
+ DOPTS =  -O0 -fbacktrace -g -ffpe-trap=invalid,zero,overflow -ftrapv -fcheck=all -Wall -Wno-line-truncation -Wno-unused -DDEBUG
+ OOPTS =  -O3 -Wno-all -ffpe-trap=invalid,zero,overflow
+ FPP= -cpp
+ FFLAGS = -freal-4-real-8  $(FPP) $(DOPTS)
+ MPIFC=mpif90
+ MPIFFLAGS = -fc=gfortran  $(FFLAGS) -DMPI 
+
+ LDFLAGS = $(LAPACK) 
+ 
+ MPITAG = mpi
+
+# this is to support that different compilers may use different way to include *.mod 
+# in ifort, it is just -I, but in SunOS f95 compiler, it uses -M 
+ USEMOD = -I
+
+ YACC = bison -y  
+ AR  = ar 
+ ARFLAGS= crv 
+ RANLIB  = ar s
+
+.SUFFIXES:      .F90
+.SUFFIXES:      .f90
+
