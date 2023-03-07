@@ -14,11 +14,11 @@ from mushroom.core.typehint import Path
 from mushroom.w2k import Struct
 
 __all__ = [
-        "DBCell",
-        "DBWorkflow",
-        "DBKPath",
-        "DBDoctemp",
-        ]
+    "DBCell",
+    "DBWorkflow",
+    "DBKPath",
+    "DBDoctemp",
+]
 
 _logger = create_logger("db")
 del create_logger
@@ -29,8 +29,10 @@ mushroom_db_home = pathlib.Path(__file__).parent.parent / "db"
 if not mushroom_db_home.is_dir():
     raise FileNotFoundError("database directory is not found", mushroom_db_home.name)
 
+
 class DBEntryNotFoundError(FileNotFoundError):
     """exception for failing to find database entry"""
+
 
 class _DBBase:
     """base object of database searching
@@ -39,6 +41,7 @@ class _DBBase:
         name (str) : relative path for databse in mushroom. otherwise
         glob_regex (Iterable)
     """
+
     def __init__(self, name: str, glob_regex: Iterable, excludes: Iterable = None,
                  dir_only: bool = False):
         name = pathlib.Path(name)
@@ -180,10 +183,11 @@ class _DBBase:
         """
         return self._get_entry(entry, True)
 
+
 class DBCell(_DBBase):
     """database of crystall structure cells"""
-    avail_writers = list(Cell.avail_exporters) + ["w2k",]
-    avail_readers = list(Cell.avail_readers) + ["w2k",]
+    avail_writers = list(Cell.avail_exporters) + ["w2k", ]
+    avail_readers = list(Cell.avail_readers) + ["w2k", ]
     default_writer = "vasp"
     assert default_writer in avail_writers
 
@@ -194,7 +198,8 @@ class DBCell(_DBBase):
         self.get_avail_cells = self.get_avail_entries
         self.read_format = None
 
-    def _read_cell(self, pcell, reader=None, primitize=False, standardize=False, **kwargs):
+    def _read_cell(self, pcell, reader=None, primitize=False, standardize=False,
+                   supercell=None, **kwargs) -> Cell:
         """read a cell file"""
         if reader is None:
             reader = detect(pcell, fail_with_ext=True)
@@ -213,24 +218,29 @@ class DBCell(_DBBase):
         else:
             if primitize:
                 c = c.primitize()
+        if supercell:
+            c = c.get_supercell(*supercell)
         return c
 
     def convert(self, pcell: Path, output_path=None, reader=None, writer=None,
-                primitize=False, standardize=False):
+                primitize=False, standardize=False, supercell=None):
         """convert a file in one format of lattice cell to another"""
-        self._write(self._read_cell(pcell, reader=reader, primitize=primitize, standardize=False),
+        self._write(self._read_cell(pcell, reader=reader, primitize=primitize,
+                                    standardize=False, supercell=supercell),
                     output_path=output_path, writer=writer)
 
     def extract(self, cell_entry: Union[str, int], output_path=None,
-                reader=None, writer=None, primitize=False, standardize=False):
+                reader=None, writer=None, primitize=False, standardize=False,
+                supercell=None):
         """extract the entry from cell database"""
         pcell = self.get_cell_path(cell_entry)
         if pcell is None:
             raise DBEntryNotFoundError("cell entry {} is not found".format(cell_entry))
-        self._write(self._read_cell(pcell, reader=reader, primitize=primitize, standardize=False),
+        self._write(self._read_cell(pcell, reader=reader, primitize=primitize,
+                                    standardize=False, supercell=supercell),
                     output_path=output_path, writer=writer)
 
-    def _write(self, cell_object, output_path: Union[str, int]=None,
+    def _write(self, cell_object, output_path: Union[str, int] = None,
                writer=None):
         """write to some format"""
         if writer is None:
@@ -257,11 +267,12 @@ class DBCell(_DBBase):
             return
         raise ValueError("invalid class of input cell object: {}".format(type(cell_object)))
 
+
 class DBWorkflow(_DBBase):
     """database of workflows"""
 
     def __init__(self):
-        _DBBase.__init__(self, "workflow", ["*_*",], dir_only=True)
+        _DBBase.__init__(self, "workflow", ["*_*", ], dir_only=True)
         self._libs = self._db_path / "libs"
         self.get_workflow = self.get_entry
         self.get_workflow_path = self.get_entry_path
@@ -323,17 +334,19 @@ class DBWorkflow(_DBBase):
                 else:
                     _logger.warning(">> %s found. Use --force to overwrite.", f.name)
 
+
 class DBKPath(_DBBase):
     """database of k-point path"""
 
     def __init__(self):
-        _DBBase.__init__(self, "kpath", ["**/*.json",])
+        _DBBase.__init__(self, "kpath", ["**/*.json", ])
+
 
 class DBDoctemp(_DBBase):
     """database of document template"""
 
     def __init__(self):
-        _DBBase.__init__(self, "doctemp", ["tex-*",], excludes=[".gitignore",".DS_Store"])
+        _DBBase.__init__(self, "doctemp", ["tex-*", ], excludes=[".gitignore", ".DS_Store"])
         self.get_doctemp = self.get_entry
         self.get_doctemp_path = self.get_entry_path
 
@@ -364,7 +377,7 @@ class DBDoctemp(_DBBase):
             _logger.info("Created directory under %s", str(dst))
         _logger.info("Copying %s files to %s", p.name, dst.name)
         if p.is_file():
-            files = [p,]
+            files = [p, ]
         elif p.is_dir():
             files = list(p.glob("*"))
         else:
@@ -381,4 +394,3 @@ class DBDoctemp(_DBBase):
                     _logger.info(">> %s", f.name)
                 else:
                     _logger.warning(">> %s found. Use --force to overwrite.", f.name)
-

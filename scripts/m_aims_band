@@ -4,12 +4,15 @@
 from typing import List
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
-from mushroom.aims import read_band_output
+import numpy as np
+
+from mushroom.aims import read_band_output, handle_control_ksymbol
 from mushroom.core.bs import display_band_analysis
 from mushroom.core.cell import Cell
 from mushroom.core.kpoints import KPath
-from mushroom.core.ioutils import get_filename_wo_ext, decode_float_ends, greeks, greeks_latex
+from mushroom.core.ioutils import get_filename_wo_ext, decode_float_ends, decode_int_ends
 from mushroom.visual.graceplot import Plot
+
 
 def _parser():
     """the parser"""
@@ -24,12 +27,14 @@ def _parser():
                    help="number of kpoints at first to remove")
     p.add_argument("--rkbh", dest="remove_k_behind", type=int, default=None,
                    help="number of kpoints from behind to remove")
-    p.add_argument("--pos", dest="geometry", default='geometry.in', type=str,
+    p.add_argument("--geo", dest="geometry", default='geometry.in', type=str,
                    help="geometry.in file")
     p.add_argument("--savefig", dest="fig_ext", type=str, default=None,
                    help="figure extension to convert")
     p.add_argument("-e", dest="energy_range", type=str, default=None,
                    help="energy range (y-axis), e.g. 'm8~5' for -8.0 to 5.0")
+    p.add_argument("--bands", dest="band_range", type=str, default=None,
+                   help="range of bands to plot, e.g. ~m2 for bands except the highest two")
     g = p.add_mutually_exclusive_group()
     g.add_argument("--skbz", dest="isikib_zero", default=None, type=str,
                    help="use enk as energy zero, 'is:ik:ib', ib as a band identifier")
@@ -46,44 +51,15 @@ def _parser():
                    help="read ksymbols in band output fromm the path to the control file")
     return p
 
-def handle_control_ksymbol(pcontrol: str) -> List:
-    """get the ksymbol list from the control file
 
-    Args:
-        pcontrol (str): path to the control file"""
-    from mushroom.aims import Control
-    c = Control.read(pcontrol)
-    bands = c.get_output("band", [])
-    if not bands:
-        raise ValueError(f"control containing no output band tag: {pcontrol}")
-    sym_ksegs = []
-    for x in bands:
-        ksym = x[3:5]
-        for i in range(2):
-            if ksym[i] in greeks:
-                ksym[i] = greeks_latex[greeks.index(ksym[i])]
-        sym_ksegs.append(ksym)
-    err = ValueError("ksymbols in control are incomplete! use --sym option instead")
-    sym = [*sym_ksegs[0]]
-    if None in sym:
-        raise err
-    for st, ed in sym_ksegs[1:]:
-        if st is None or ed is None:
-            raise err
-        if not st == sym[-1]:
-            sym[-1] = f"{sym[-1]}|{st}"
-        sym.append(ed)
-    #print(f"Extracted symbols: {sym}")
-    return sym
-
-
-def m_aims_gap():
+def m_aims_band():
     """the main stream"""
     args = _parser().parse_args()
     p, ax = Plot.subplots(1, 1, background=False)
     bs, kpts = read_band_output(*args.out_files, unit=args.unit,
                                 filter_k_before=args.remove_k_before,
                                 filter_k_behind=args.remove_k_behind)
+    nbands = bs.nbands
     c = Cell.read(args.geometry, form="aims")
 
     display_band_analysis(bs, kpts)
@@ -99,6 +75,9 @@ def m_aims_gap():
         ref = bs.get_eigen(ib)[int(ispin), int(ikpt), 0]
 
     kp = KPath(kpts, c.b)
+    if args.band_range is not None:
+        band_lb, band_ub = decode_int_ends(args.band_range)
+
     ax.plot(kp.x, bs.eigen[0, :, :].transpose() - ref, color="k", symbol="none")
     ax.x.set_major(grid=True, color="grey", lw=3, ls="dashed")
     ksymbols = None
@@ -115,17 +94,19 @@ def m_aims_gap():
             ax.set_ylim(ymin=emin, ymax=emax)
         except ValueError as err:
             raise ValueError("invalid energy range", args.energy_range) from err
-    ax.set_xlim(0.0, kp.x[-1]*1.001)
-    ax.set_ylim(-6, 6)
+    else:
+        ax.set_ylim(-20, 20)
+
+    ax.set_xlim(0.0, kp.x[-1] * 1.001)
     ax.y.set_major(major=4)
     ax.y.set_label("Energy (eV)")
     # draw zero line
     ax.axhline(0.0, ls="dashed")
     p.write(file=args.output)
+
     if args.fig_ext is not None:
         p.savefig(get_filename_wo_ext(args.output) + "." + args.fig_ext)
 
 
 if __name__ == "__main__":
-    m_aims_gap()
-
+    m_aims_band()

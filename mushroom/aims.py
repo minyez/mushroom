@@ -11,11 +11,12 @@ import numpy as np
 from mushroom.core.logger import create_logger
 from mushroom.core.typehint import RealVec3D, Path
 from mushroom.core.bs import BandStructure
-from mushroom.core.ioutils import readlines_remove_comment, grep, open_textio
+from mushroom.core.ioutils import readlines_remove_comment, grep, open_textio, greeks, greeks_latex
 from mushroom.core.elements import element_symbols, get_atomic_number, l_channels
 
 _logger = create_logger("aims")
 del create_logger
+
 
 def decode_band_output_line(bstr: str) -> Tuple[List, List, List]:
     """decode a line of band output file, e.g. scfband1001.out, band2001.out
@@ -38,6 +39,7 @@ def decode_band_output_line(bstr: str) -> Tuple[List, List, List]:
         return kpts, occ, ene
     except IndexError as _e:
         raise ValueError(f"bad input string for aims band energy: {bstr}") from _e
+
 
 def read_band_output(bfile, *bfiles, filter_k_before: int=0, filter_k_behind: int=None,
                      unit: str='ev') -> Tuple[BandStructure, List[RealVec3D]]:
@@ -334,20 +336,24 @@ class Control:
         output = []
         while i < len(_ls[:species_region[0]]):
             tagkv = _ls[i].split(maxsplit=1)
-            tagk, tagv = tagkv[0], tagkv[1]
+            if len(tagkv) > 1:
+                tagk, tagv = tagkv[0], tagkv[1]
+            else:
+                tagk = tagkv[0]
+                tagv = None
             if tagk == 'output':
-                if tagv:
-                    output.append(tagv)
-                else:
+                if tagv is None:
                     _logger.warning("empty output tag, ignore")
+                else:
+                    output.append(tagv)
             else:
                 # single keyword without value
                 # NOTE I am not sure if there is any single keyword without value in aims,
                 #      though put here for safety
-                if tagv:
-                    tagv = tagkv[1]
-                else:
+                if tagv is None:
                     tagv = ".true."
+                else:
+                    tagv = tagkv[1]
                 tags[tagk] = tagv
             i += 1
         output = _read_output(output)
@@ -355,6 +361,37 @@ class Control:
         _logger.debug("output: %r", output)
         _logger.debug("species: %r", species)
         return cls(tags, output, species)
+
+
+def handle_control_ksymbol(pcontrol: str) -> List:
+    """get the ksymbol list from the control file
+
+    Args:
+        pcontrol (str): path to the control file"""
+    c = Control.read(pcontrol)
+    bands = c.get_output("band", [])
+    if not bands:
+        raise ValueError(f"control containing no output band tag: {pcontrol}")
+    sym_ksegs = []
+    for x in bands:
+        ksym = x[3:5]
+        for i in range(2):
+            if ksym[i] in greeks:
+                ksym[i] = greeks_latex[greeks.index(ksym[i])]
+        sym_ksegs.append(ksym)
+    err = ValueError("ksymbols in control are incomplete! use --sym option instead")
+    sym = [*sym_ksegs[0]]
+    if None in sym:
+        raise err
+    for st, ed in sym_ksegs[1:]:
+        if st is None or ed is None:
+            raise err
+        if not st == sym[-1]:
+            sym[-1] = f"{sym[-1]}|{st}"
+        sym.append(ed)
+    # print(f"Extracted symbols: {sym}")
+    return sym
+
 
 def _read_output(lines):
     """read output tags in aims control file

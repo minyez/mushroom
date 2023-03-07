@@ -583,6 +583,61 @@ def split_comma(s, convert: Callable = None) -> List:
                 container.append(x)
     return container
 
+
+def _decode_num_ends(s: str, t, m_minus=True) -> List:
+    """internal function for decode string representing integer/float ends
+
+
+    Args:
+        s (str) : string like '8.5:10.2', '-10.2:8', 'm9~'
+        t : ``float`` or ``int``
+        m_minus (bool) : m before the number will be converted to minus.
+            useful when parsing range from command line arguments.
+            If set False, ValueError will be raised if m is matched
+
+    Returns:
+        list, including two floats
+    """
+    start = None
+    end = None
+    ends_patterns = {int: re.compile(r"(m)?([+-]?[\d]+)?[:~](m)?([+-]?[\d]+)?"),
+                     float: re.compile(r"(m)?([+-]?[.\d]+)?[:~](m)?([+-]?[.\d]+)?")}
+    t_strs = {int: "int", float: "float"}
+    try:
+        t_str = t_strs[t]
+        ends_pattern = ends_patterns[t]
+    except KeyError:
+        raise ValueError("Unsupported type for number ends decoding")
+    matched = ends_pattern.fullmatch(s)
+    _logger.debug("decoding %s ends: %s, matched? %r", t_str, s, matched)
+    if matched:
+        is_start_minus, start, is_end_minus, end = map(matched.group, range(1, 5))
+        if not m_minus and (is_start_minus or is_start_minus):
+            raise ValueError("m mark is not turned on. Use m_minus=True")
+        if start is not None:
+            start = t(start) * {None: 1}.get(is_start_minus, -1)
+        if end is not None:
+            end = t(end) * {None: 1}.get(is_end_minus, -1)
+        return start, end
+    raise ValueError("invalid {} ends string {}".format(t_str, s))
+
+
+def decode_int_ends(s: str, m_minus=True) -> List:
+    """split and convert a string standing for two ends of an integer range to two numbers
+
+
+    Args:
+        s (str) : string like '8:10', '-10:8', 'm9~'
+        m_minus (bool) : m before the number will be converted to minus.
+            useful when parsing range from command line arguments.
+            If set False, ValueError will be raised if m is matched
+
+    Returns:
+        list, including two integers
+    """
+    return _decode_num_ends(s, int, m_minus)
+
+
 def decode_float_ends(s: str, m_minus=True) -> List:
     """split and convert a string standing for two ends of a float range to two numbers
 
@@ -596,21 +651,8 @@ def decode_float_ends(s: str, m_minus=True) -> List:
     Returns:
         list, including two floats
     """
-    start = None
-    end = None
-    float_ends = re.compile(r"(m)?([+-]?[.\d]+)?[:~](m)?([+-]?[.\d]+)?")
-    matched = float_ends.fullmatch(s)
-    _logger.debug("decoding float ends: %s, matched? %r", s, matched)
-    if matched:
-        is_start_minus, start, is_end_minus, end = map(matched.group, range(1, 5))
-        if not m_minus and (is_start_minus or is_start_minus):
-            raise ValueError("m mark is not turned on. Use m_minus=True")
-        if start is not None:
-            start = float(start) * {None: 1.}.get(is_start_minus, -1.)
-        if end is not None:
-            end = float(end) * {None: 1.}.get(is_end_minus, -1.)
-        return start, end
-    raise ValueError("invalid float ends string {}".format(s))
+    return _decode_num_ends(s, float, m_minus)
+
 
 def decode_int_range(s: str) -> List:
     """decode a int range of a string into a list of string
@@ -633,6 +675,7 @@ def decode_int_range(s: str) -> List:
     else:
         decoded.append(s)
     return decoded
+
 
 def fortran_write(fortran_format: str, *args, file=stdout):
     """write out arguments in a Fortran format (without parentheses)
