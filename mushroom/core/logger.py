@@ -29,16 +29,20 @@ def _set_handler(flevel, slevel):
         from mushroom.__config__ import logfile_mode
     except ImportError:
         logfile_mode = 'w'
-    file_hand = logging.FileHandler("mushroom.log", mode=logfile_mode)
-    stream_hand = logging.StreamHandler()
+    file_hand = None
+    stream_hand = None
     fform = logging.Formatter(fmt='%(asctime)s - %(name)7s:%(levelname)8s - %(message)s',
                               datefmt='%Y-%m-%d %H:%M:%S')
     sform = logging.Formatter(fmt='%(name)7s:%(levelname)8s - %(message)s')
+    if flevel != logging.NOTSET:
+        file_hand = logging.FileHandler("mushroom.log", mode=logfile_mode)
+        file_hand.setFormatter(fform)
+        file_hand.setLevel(flevel)
+    if slevel != logging.NOTSET:
+        stream_hand = logging.StreamHandler()
+        stream_hand.setFormatter(sform)
+        stream_hand.setLevel(slevel)
 
-    file_hand.setFormatter(fform)
-    file_hand.setLevel(flevel)
-    stream_hand.setFormatter(sform)
-    stream_hand.setLevel(slevel)
     return file_hand, stream_hand
 
 # global handler
@@ -73,11 +77,11 @@ def create_logger(name: str, level: str = None,
         logger.setLevel(get_logging_level(level))
     if f_handler is None:
         f_handler = log_to_file
-    if f_handler:
+    if f_handler and _fhand is not None:
         logger.addHandler(_fhand)
     if s_handler is None:
         s_handler = log_to_stream
-    if s_handler:
+    if s_handler and _shand is not None:
         logger.addHandler(_shand)
     return logger
 
