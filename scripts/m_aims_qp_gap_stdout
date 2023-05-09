@@ -13,7 +13,8 @@ def _parser():
     p.add_argument('stdout', help="path to the aims standard output")
     p.add_argument("-t", dest="trans", type=str, default=None, nargs="+",
                    help="transitions of interest, in the form of 'ivk:ick'")
-    p.add_argument('--ks', action="store_true", help="KS dos instead of QP")
+    p.add_argument('--ks', action="store_true", help="KS gap instead of QP")
+    p.add_argument('--value', dest="value_only", action="store_true", help="Value only")
     return p
 
 
@@ -26,9 +27,9 @@ def m_aims_qp_gap_stdout():
     if args.ks:
         kind = "eps"
     bs, kpts = s.get_QP_bandstructure(kind)
-    display_band_analysis(bs, kpts)
+    display_band_analysis(bs, kpts, value_only=args.value_only)
     if args.trans is not None:
-        display_transition_energies(args.trans, bs, kpts)
+        display_transition_energies(args.trans, bs, kpts, value_only=args.value_only)
 
 
 if __name__ == "__main__":

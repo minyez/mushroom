@@ -987,9 +987,18 @@ def split_apb(apb: str):
 
     return a, p, b
 
+
 # pylint: disable=C0301
-def display_band_analysis(bs: BandStructure, kpts=None, unit="eV"):
-    """display analysis of band structure"""
+def display_band_analysis(bs: BandStructure, kpts=None, unit="eV", value_only=False):
+    """display analysis of band structure
+
+    Args:
+        bs (BandStructure) : BandStructure object to analyze
+        kpts : kpoints list
+        value_only (bool) : only show the value of gap, no kpoints or other explanation.
+            In this case gaps will be printed in the order of fundamental gap,
+            direct gap at VBM and direct gap at CBM
+    """
     if bs.nspins != 1:
         raise NotImplementedError("spin-polarized BS analysis")
     try:
@@ -1001,36 +1010,42 @@ def display_band_analysis(bs: BandStructure, kpts=None, unit="eV"):
         ik_eg_dir = np.argmin(direct_gaps)
         ivb, ik_vb = bs.ivbm[2], bs.ivbm[1]
         icb, ik_cb = bs.icbm[2], bs.icbm[1]
-        print("> band edge between band index {:3d} -> {:3d}".format(ivb, icb))
-        if bs.is_gap_direct():
-            print("> fundamental gap = {:8.5f} {}".format(eg_dir, unit))
-            if kpts is None:
-                print(">>   ik={:<3d}".format(ik_eg_dir))
+        if not value_only:
+            print("> band edge between band index {:3d} -> {:3d}".format(ivb, icb))
+            if bs.is_gap_direct():
+                print("> fundamental gap = {:8.5f} {}".format(eg_dir, unit))
+                if kpts is None:
+                    print(">>   ik={:<3d}".format(ik_eg_dir))
+                else:
+                    print(">>   ik={:<3d} ({:7.5f},{:7.5f},{:7.5f})"
+                          .format(ik_eg_dir, *kpts[ik_eg_dir, :]))
             else:
-                print(">>   ik={:<3d} ({:7.5f},{:7.5f},{:7.5f})"
-                      .format(ik_eg_dir, *kpts[ik_eg_dir, :]))
+                print("> fundamental gap = {:8.5f} {}".format(eg_ind, unit))
+                if kpts is None:
+                    print(">> ikvb={:<3d} -> ikcb={:<3d}".format(ik_vb, ik_cb))
+                else:
+                    print(">> ikvb={:<3d} ({:7.5f},{:7.5f},{:7.5f}) -> ikcb={:<3d} ({:7.5f},{:7.5f},{:7.5f})"
+                          .format(ik_vb, *kpts[ik_vb, :], ik_cb, *kpts[ik_cb, :]))
+                print(">> VBM direct gap = {:8.5f} {}".format(direct_gaps[ik_vb], unit))
+                print(">> CBM direct gap = {:8.5f} {}".format(direct_gaps[ik_cb], unit))
+                if kpts is None:
+                    print("> min. direct gap = {:8.5f} {} at ik={:<3d}"
+                          .format(eg_dir, unit, ik_eg_dir))
+                else:
+                    print("> min. direct gap = {:8.5f} {} at ik={:<3d} ({:7.5f},{:7.5f},{:7.5f})"
+                          .format(eg_dir, unit, ik_eg_dir, *kpts[ik_eg_dir, :]))
         else:
-            print("> fundamental gap = {:8.5f} {}".format(eg_ind, unit))
-            if kpts is None:
-                print(">> ikvb={:<3d} -> ikcb={:<3d}".format(ik_vb, ik_cb))
+            if bs.is_gap_direct():
+                print("{:8.5f} {:8.5f} {:8.5f}".format(eg_dir, eg_dir, eg_dir))
             else:
-                print(">> ikvb={:<3d} ({:7.5f},{:7.5f},{:7.5f}) -> ikcb={:<3d} ({:7.5f},{:7.5f},{:7.5f})"
-                      .format(ik_vb, *kpts[ik_vb, :], ik_cb, *kpts[ik_cb, :]))
-            print(">> VBM direct gap = {:8.5f} {}".format(direct_gaps[ik_vb], unit))
-            print(">> CBM direct gap = {:8.5f} {}".format(direct_gaps[ik_cb], unit))
-            if kpts is None:
-                print("> min. direct gap = {:8.5f} {} at ik={:<3d}"
-                      .format(eg_dir, unit, ik_eg_dir))
-            else:
-                print("> min. direct gap = {:8.5f} {} at ik={:<3d} ({:7.5f},{:7.5f},{:7.5f})"
-                      .format(eg_dir, unit, ik_eg_dir, *kpts[ik_eg_dir, :]))
+                print("{:8.5f} {:8.5f} {:8.5f}".format(eg_ind, direct_gaps[ik_vb], direct_gaps[ik_cb]))
         bs.unit = was_unit
     except BandStructureError as err:
         raise BandStructureError("fail to display band analysis") from err
 
 
 def display_transition_energies(trans: Sequence[str], bs: BandStructure,
-                                kpts=None, unit: str="eV"):
+                                kpts=None, unit: str="eV", value_only=False):
     """display the transitions
 
     Args:
@@ -1065,16 +1080,20 @@ def display_transition_energies(trans: Sequence[str], bs: BandStructure,
     try:
         was_unit = bs.unit
         bs.unit = unit.lower()
-        print("> Transition energies ({}):".format(unit))
-        print(">> {:5s} {:29s}    {:29s}".format("E", "kpt_v", "kpt_c"))
+        if not value_only:
+            print("> Transition energies ({}):".format(unit))
+            print(">> {:5s} {:29s}    {:29s}".format("E", "kpt_v", "kpt_c"))
         for t in trans:
             ivk, ick, ivb, icb = _decode_itrans(t)
             et = bs.get_transition(ivk, ick, ivb=ivb, icb=icb)
-            if kpts is None:
-                print(">> {:5.3f} {:<29d} -> {:<29d}".format(et, ivk, ick))
+            if not value_only:
+                if kpts is None:
+                    print(">> {:5.3f} {:<29d} -> {:<29d}".format(et, ivk, ick))
+                else:
+                    print(">> {:5.3f} {:<3d} ({:7.5f},{:7.5f},{:7.5f}) -> {:<3d} ({:7.5f},{:7.5f},{:7.5f})"
+                          .format(et, ivk, *kpts[ivk, :], ick, *kpts[ick, :]))
             else:
-                print(">> {:5.3f} {:<3d} ({:7.5f},{:7.5f},{:7.5f}) -> {:<3d} ({:7.5f},{:7.5f},{:7.5f})"
-                      .format(et, ivk, *kpts[ivk, :], ick, *kpts[ick, :]))
+                print("{:5.3f}".format(et))
         bs.unit = was_unit
     except BandStructureError as err:
         raise BandStructureError("fail to display transition energies") from err
