@@ -16,6 +16,7 @@ from sys import stdout
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from mushroom.aims import Control, Species
 
+
 def _parser():
     """the parser"""
     p = ArgumentParser(description=__doc__, formatter_class=RawDescriptionHelpFormatter)
@@ -41,6 +42,7 @@ def _parser():
                    help="handle the ABFs, see description")
     return p
 
+
 def _handle_tag_pair(tag_pair):
     """"""
     tv = tag_pair.split(':', maxsplit=1)
@@ -48,12 +50,13 @@ def _handle_tag_pair(tag_pair):
         t, v = tv
     except ValueError:
         t = tv[0]
-        v = "t"
+        v = None
     if v.lower() in ['t', '.t.', '.true.', 'true']:
         v = True
     elif v.lower() in ['f', '.f.', '.false.', 'false']:
         v = False
     return t, v
+
 
 def _handle_elem_tag_pair(elem_tag_pair):
     """"""
@@ -64,6 +67,7 @@ def _handle_elem_tag_pair(elem_tag_pair):
         raise ValueError(f"invalid elem:tag:value pair: {elem_tag_pair}")
     t, v = _handle_tag_pair(tv)
     return e, t, v
+
 
 def m_aims_control():
     """the main stream"""
