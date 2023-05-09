@@ -1,0 +1,10 @@
+numpy
+scipy
+spglib>=1.9.0
+lxml
+BeautifulSoup4
+matplotlib
+pytest
+pytest-cov
+codecov
+coverage

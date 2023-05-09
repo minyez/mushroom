@@ -1,64 +1,44 @@
 version: 2.1
 
 orbs:
-  codecov: codecov/codecov@1.0.2
+  codecov: codecov/codecov@3.2.4
+  python: circleci/python@2.1.1
   #shellcheck: circleci/shellcheck@1.0.0
 
 workflows:
-  version: 2.1
   test:
     jobs:
-      - test-py371
-      #- test-py35
+      - test-py31011
       #- shellcheck/check
+
 jobs:
-  test-py371: &test-template
+  test-py31011: &test-template
     working_directory: ~/mushroom
     docker:
-      - image: circleci/python:3.7.1 # every job must define an image for the docker executor and subsequent jobs may define a different image.
+      - image: cimg/python:3.10.11 # every job must define an image for the docker executor and subsequent jobs may define a different image.
         environment:
           PIPENV_VENV_IN_PROJECT: false
     steps:
       - checkout
-      - run: sudo chown -R circleci:circleci /usr/local/bin
-      - run: sudo chown -R circleci:circleci /usr/local/lib/python3.7/site-packages
-      - restore_cache:  # ensure this step occurs *before* installing dependencies
-          key: deps9-{{ .Branch }}-{{ checksum "requirements.txt" }}
-      - run:
-          name: Install dependencies
-          command: |
-            sudo apt install -y libblas-dev liblapack-dev
-            sudo pip install -r requirements.txt
-            sudo pip install pytest pytest-cov codecov coverage
-      - save_cache:
-          key: deps9-{{ .Branch }}-{{ checksum "requirements.txt" }}
-          paths:
-            - "/usr/local/bin"
-            - "/usr/local/lib/python3.7/site-packages"
+      # - run: sudo chown -R circleci:circleci /usr/local/bin
+      # - run: sudo chown -R circleci:circleci /usr/local/lib/python3.10/site-packages
+      # - restore_cache:  # ensure this step occurs *before* installing dependencies
+      #     key: deps9-{{ .Branch }}-{{ checksum "requirements_test.txt" }}
+      # - run:
+      #     name: Install system dependencies
+      #     command: |
+      #       sudo apt install -y libblas-dev liblapack-dev
+      - python/install-packages:
+          pkg-manager: pip
+          pip-dependency-file: requirements_test.txt
+      # - save_cache:
+      #     key: deps9-{{ .Branch }}-{{ checksum "requirements_test.txt" }}
+      #     paths:
+      #       - "/usr/local/bin"
+      #       - "/usr/local/lib/python3.10/site-packages"
       - run:
           command: |
             export PYTHONPATH="~/mushroom:$PYTHONPATH"
             export FORCE_COPY=1
             pytest --cov=./
             codecov
-  test-py35: &test-template
-    working_directory: ~/mushroom
-    docker:
-      - image: circleci/python:3.5 # every job must define an image for the docker executor and subsequent jobs may define a different image.
-        environment:
-          PIPENV_VENV_IN_PROJECT: false
-    steps:
-      - checkout
-      - run: sudo chown -R circleci:circleci /usr/local/bin
-      - run: sudo chown -R circleci:circleci /usr/local/lib/python3.5/site-packages
-      - run:
-          name: Install dependencies
-          command: |
-            sudo apt install -y libblas-dev liblapack-dev
-            sudo pip install -r requirements.txt
-            sudo pip install pytest
-      - run:
-          command: |
-            export PYTHONPATH="~/mushroom:$PYTHONPATH"
-            export FORCE_COPY=1
-            pytest
