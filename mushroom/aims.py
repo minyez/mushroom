@@ -18,6 +18,10 @@ _logger = create_logger("aims")
 del create_logger
 
 
+class AimsNotFinishedError(Exception):
+    pass
+
+
 def decode_band_output_line(bstr: str) -> Tuple[List, List, List]:
     """decode a line of band output file, e.g. scfband1001.out, band2001.out
 
@@ -41,8 +45,12 @@ def decode_band_output_line(bstr: str) -> Tuple[List, List, List]:
         raise ValueError(f"bad input string for aims band energy: {bstr}") from _e
 
 
-def read_band_output(bfile, *bfiles, filter_k_before: int=0, filter_k_behind: int=None,
-                     unit: str='ev') -> Tuple[BandStructure, List[RealVec3D]]:
+def read_band_output(
+        bfile,
+        *bfiles,
+        filter_k_before: int = 0,
+        filter_k_behind: int = None,
+        unit: str = 'ev') -> Tuple[BandStructure, List[RealVec3D]]:
     """read band output files and return a Band structure
 
     Note that all band energies are treated in the same spin channel,
@@ -72,6 +80,7 @@ def read_band_output(bfile, *bfiles, filter_k_before: int=0, filter_k_behind: in
     ene = np.array([ene,])[:, filter_k_before:filter_k_behind, :]
     kpts = kpts[filter_k_before:filter_k_behind, :]
     return BandStructure(ene, occ, unit=unit), kpts
+
 
 class Control:
     """object to handle aims control
@@ -196,7 +205,6 @@ class Control:
         """
         s = self.get_species(elem)
         return s.get_basis(*args, **kwargs)
-
 
     def add_basis(self, elem, *args, **kwargs):
         """add basis to speices of element ``elem``
@@ -328,7 +336,7 @@ class Control:
         species_region = [*species_ln[1], len(_ls)]
         species = []
         for i, st in enumerate(species_region[:-1]):
-            ed = species_region[i+1]
+            ed = species_region[i + 1]
             species.append(Species.read(StringIO("\n".join(_ls[st:ed]))))
 
         # read other setup, including general tags and output tags
@@ -356,7 +364,7 @@ class Control:
                     tagv = tagkv[1]
                 tags[tagk] = tagv
             i += 1
-        output = _read_output(output)
+        output = _read_tags_from_output(output)
         _logger.debug("tags: %r", tags)
         _logger.debug("output: %r", output)
         _logger.debug("species: %r", species)
@@ -393,7 +401,7 @@ def handle_control_ksymbol(pcontrol: str) -> List:
     return sym
 
 
-def _read_output(lines):
+def _read_tags_from_output(lines):
     """read output tags in aims control file
 
     each element of lines is the text without output tag
@@ -714,7 +722,7 @@ class Species:
                     else:
                         # head plus the following vals[1] _ls
                         cgtos = [tagv,]
-                        for x in _ls[i+1:i+1+int(vals[1])]:
+                        for x in _ls[i + 1:i + 1 + int(vals[1])]:
                             cgtos.extend(x.split())
                         basis_dict[tagk].append(" ".join(cgtos))
                         i += int(vals[1])
@@ -758,6 +766,7 @@ class Species:
         pspecies = os.path.join(species_defaults, *pspecies)
         return cls.read(pspecies)
 
+
 class StdOut:
     """a general-purpose object to handle aims standard output
 
@@ -767,6 +776,8 @@ class StdOut:
         pstdout (Path): path to the aims standard output file
     """
 
+    aims_version = "230214-9c10ff0ac"
+
     def __init__(self, pstdout: Path):
         with open(pstdout, 'r', encoding='utf-8') as h:
             lines = h.readlines()
@@ -774,12 +785,14 @@ class StdOut:
         self._finished = lines[-2].strip() == 'Have a nice day.'
         _logger.info("  Finished? %s", self._finished)
         self._finished_prep = False
-        self._finished_init  = False
+        self._finished_init = False
+
         self._prep_lines = None
         self._init_lines = None
         self._scf_lines = None
         self._postscf_lines = None
-        self._nspins = None
+        self._timestat_lines = None
+
         for i, l in enumerate(lines):
             if l.startswith("  Preparations completed."):
                 self._finished_prep = True
@@ -794,16 +807,25 @@ class StdOut:
             if l.startswith("  Constructing auxiliary basis"):
                 self._scf_lines = self._scf_lines[:self._scf_lines.index(l)]
                 self._postscf_lines = lines[i:]
+            if l.startswith("          Leaving FHI-aims."):
+                self._postscf_lines = self._postscf_lines[:self._postscf_lines.index(l)]
+            if l.startswith("          Detailed time accounting"):
+                self._timestat_lines = lines[i + 1:]
+            if l.startswith("          Partial memory accounting:"):
+                self._timestat_lines = self._timestat_lines[:self._timestat_lines.index(l)]
 
+        self._nspins = None
         self._nkpts = None
         self._nbasis_H = None
         self._nelect = None
         self._nbasis_uc = None
         self._control = None
         self._geometry = None
+        self._timestat = None
 
         self._handle_prep()
         self._handle_init()
+        self._handle_timing_statistics()
 
     def _handle_prep(self):
         """process the information in the header part, i.e. data before the self-consistency loop"""
@@ -821,7 +843,7 @@ class StdOut:
         for i, l in enumerate(self._init_lines):
             if l.startswith("  Initializing the k-point"):
                 try:
-                    self._nkpts = int(self._init_lines[i+1].split()[-1])
+                    self._nkpts = int(self._init_lines[i + 1].split()[-1])
                 except (IndexError, ValueError):
                     pass
             if l.startswith("  | Number of basis functions in the Hamiltonian integrals"):
@@ -830,6 +852,34 @@ class StdOut:
                 self._nbasis_uc = int(l.split()[-1])
             if l.startswith("  | Initial density: Formal number of electrons"):
                 self._nelect = float(l.split()[-1])
+
+    def _handle_timing_statistics(self):
+        """process the timing statistics at the end of calculation"""
+        if not self._finished:
+            _logger.warning("calculation is not finished, stop processing timing statistics")
+            return
+        # tline = re.compile(r'^\s+\|(.*):' + r'\s*(?[\d\.]+\s+s)?' * 2 + r'\\n$')
+        # tline = re.compile(r'^\s+\|(.*):' + r'\s*([\d\.]+)\s+s' * 2 + r'\\n$')
+        tline = re.compile(r"\s+\|\s*(\S.*\S)\s*:" + r"\s*\(?\s*([\d\.]+)\s+s\)?" * 2 + r"\n$")
+        timestat = {}
+        self._timestat = {}
+        for l in self._timestat_lines:
+            m = tline.match(l)
+            if m is not None:
+                timestat[m.group(1)] = (float(m.group(2)), float(m.group(3)))
+        # print(timestat)
+        # name a subset of recorded timing
+        names = (("Total time", "total"),
+                 ("Initialization for periodic correlated calc", "post_scf_pbc_init"),
+                 ("Total time for polarizability calc.", "polar"),
+                 ("Total time for polarizability of k space", "polar_k"),
+                 ("Total time for GW self-energy (regular k) c", "gwse")
+                 )
+        for key, name in names:
+            try:
+                self._timestat[name] = timestat.pop(key)
+            except KeyError:
+                pass
 
     @property
     def nelect(self):
@@ -934,3 +984,22 @@ class StdOut:
         # TODO: which case does the occupation number refer to when
         #       there is a band reordering?
         return BandStructure(d[kind], d["occ"], unit='ev'), kpts
+
+    def get_cpu_time(self):
+        """get CPU time accounting (in seconds)"""
+        if self._timestat is None:
+            raise AimsNotFinishedError
+        return {k: v[0] for k, v in self._timestat.items()}
+
+    def get_wall_time(self):
+        """get wall time accounting (in seconds)"""
+        if self._timestat is None:
+            raise AimsNotFinishedError
+        return {k: v[1] for k, v in self._timestat.items()}
+
+    def get_wall_time_total(self):
+        """get total wall time (in seconds)"""
+        if self._timestat is None:
+            raise AimsNotFinishedError
+        return self._timestat['total'][1]
+
