@@ -204,7 +204,7 @@ class Control:
             args and kwargs: parsed to the Species.get_abf method
         """
         s = self.get_species(elem)
-        return s.get_basis(*args, **kwargs)
+        return s.get_abf(*args, **kwargs)
 
     def add_basis(self, elem, *args, **kwargs):
         """add basis to speices of element ``elem``
@@ -364,7 +364,7 @@ class Control:
                     tagv = tagkv[1]
                 tags[tagk] = tagv
             i += 1
-        output = _read_tags_from_output(output)
+        output = _read_output_tags(output)
         _logger.debug("tags: %r", tags)
         _logger.debug("output: %r", output)
         _logger.debug("species: %r", species)
@@ -401,7 +401,7 @@ def handle_control_ksymbol(pcontrol: str) -> List:
     return sym
 
 
-def _read_tags_from_output(lines):
+def _read_output_tags(lines):
     """read output tags in aims control file
 
     each element of lines is the text without output tag
@@ -779,24 +779,68 @@ class StdOut:
     aims_version = "230214-9c10ff0ac"
 
     def __init__(self, pstdout: Path):
+        self._path = pstdout
+
         with open(pstdout, 'r', encoding='utf-8') as h:
             lines = h.readlines()
         _logger.info("Reading standard output from: %s", pstdout)
         self._finished = lines[-2].strip() == 'Have a nice day.'
         _logger.info("  Finished? %s", self._finished)
+        self._finished_system = False
+        self._finished_control = False
+        self._finished_geometry = False
         self._finished_prep = False
         self._finished_init = False
 
+        self._system_lines = None
+        self._control_lines = None
+        self._geometry_lines = None
         self._prep_lines = None
         self._init_lines = None
         self._scf_lines = None
         self._postscf_lines = None
         self._timestat_lines = None
 
+        self._ntasks = None
+        self._nnodes = None
+        self._node_names = None
+        self._node_names_unique = None
+        self._omp_threads = None
+        self._nspins = None
+        self._nkpts = None
+        self._nbasis_H = None
+        self._nelect = None
+        self._nbasis_uc = None
+        self._control = None
+        self._geometry = None
+        self._timestat = None
+
+        self._divide_output_lines(lines)
+        self._handle_system()
+        self._handle_prep()
+        self._handle_init()
+        self._handle_timing_statistics()
+
+    def _divide_output_lines(self, lines):
+        """coarsely devide the lines into sections"""
         for i, l in enumerate(lines):
+            if l.startswith("  Obtaining array dimensions for all initial allocations:"):
+                self._finished_system = True
+                self._system_lines = lines[:i]
+            if l.startswith("  Parsing control.in "):
+                self._control_lines = lines[i:]
+            if l.startswith("  Completed first pass over input file control.in"):
+                self._finished_control = True
+                self._control_lines = self._control_lines[:self._control_lines.index(l)]
+            if l.startswith("  Parsing geometry.in (first pass over file, find array dimensions only)."):
+                self._geometry_lines = lines[i:]
+            if l.startswith("  Completed first pass over input file geometry.in"):
+                self._finished_geometry = True
+                self._geometry_lines = self._geometry_lines[:self._geometry_lines.index(l)]
+                self._prep_lines = lines[i:]
             if l.startswith("  Preparations completed."):
                 self._finished_prep = True
-                self._prep_lines = lines[:i]
+                self._prep_lines = self._prep_lines[:self._prep_lines.index(l)]
             if l.startswith("          Begin self-consistency loop: Initialization."):
                 self._finished_init = True
                 self._init_lines = lines[i:]
@@ -814,27 +858,56 @@ class StdOut:
             if l.startswith("          Partial memory accounting:"):
                 self._timestat_lines = self._timestat_lines[:self._timestat_lines.index(l)]
 
-        self._nspins = None
-        self._nkpts = None
-        self._nbasis_H = None
-        self._nelect = None
-        self._nbasis_uc = None
-        self._control = None
-        self._geometry = None
-        self._timestat = None
 
-        self._handle_prep()
-        self._handle_init()
-        self._handle_timing_statistics()
+    def _handle_system(self):
+        """process the system environment information"""
+        if not self._finished_system:
+            _logger.warning("System info is not complete, some data might be missing")
+        taskl_pat = re.compile(r"^  Task\s*(\d+) on host (.*) reporting.")
+        for i, l in enumerate(self._system_lines):
+            if l.startswith("  Task"):
+                m = taskl_pat.match(l)
+                if m is not None:
+                    if self._node_names is None:
+                        self._node_names = []
+                    self._node_names.append(m.group(2).strip())
+            if l.startswith("  *** Environment variable OMP_NUM_THREADS"):
+                self._omp_threads = int(self._system_lines[i + 1].strip())
+        if self._node_names is not None:
+            self._node_names_unique = set(self._node_names)
+            self._ntasks = len(self._node_names)
+            self._nnodes = len(self._node_names_unique)
+
+    def get_nnodes(self):
+        """get number of nodes used"""
+        return self._nnodes
+
+    def get_ntasks(self):
+        """get number of tasks used"""
+        return self._ntasks
+
+    def get_node_names(self):
+        """get names of nodes for each task"""
+        return self._node_names
+
+    def get_omp_threads(self):
+        """get the omp threads used in the run"""
+        return self._omp_threads
 
     def _handle_prep(self):
         """process the information in the header part, i.e. data before the self-consistency loop"""
         # the control information
         if not self._finished_prep:
-            _logger.warning("preparation is not finished")
+            _logger.warning("preparation is not finished, skip")
+            return
         for i, l in enumerate(self._prep_lines):
             if l.startswith("| Number of spin channels           :"):
                 self._nspins = int(l.split()[-1])
+            if l.startswith("*** Environment variable OMP_NUM_THREADS is set to"):
+                try:
+                    self._omp_threads = int(self._prep_lines[i + 1].strip())
+                except IndexError:
+                    pass
 
     def _handle_init(self):
         """process the data in the self-consistency loop initialization"""
@@ -856,7 +929,7 @@ class StdOut:
     def _handle_timing_statistics(self):
         """process the timing statistics at the end of calculation"""
         if not self._finished:
-            _logger.warning("calculation is not finished, stop processing timing statistics")
+            _logger.warning("Calculation is not finished, stop processing timing statistics")
             return
         # tline = re.compile(r'^\s+\|(.*):' + r'\s*(?[\d\.]+\s+s)?' * 2 + r'\\n$')
         # tline = re.compile(r'^\s+\|(.*):' + r'\s*([\d\.]+)\s+s' * 2 + r'\\n$')
@@ -891,7 +964,20 @@ class StdOut:
 
     def get_control(self):
         """return a Control object"""
-        raise NotImplementedError
+        if self._control is None:
+            if not self._finished_control:
+                raise ValueError("control.in in the output is not complete")
+            # the content of control.in are between two banner lines
+            banner_locs = []
+            for i, l in enumerate(self._control_lines):
+                if l.startswith("  -------------------------"):
+                    banner_locs.append(i)
+            if len(banner_locs) != 2:
+                raise ValueError("Internal error: should be exactly 2 banner lines in control session")
+            self._control = Control.read(
+                StringIO("".join(self._control_lines[banner_locs[0] + 1:
+                                                     banner_locs[1]])))
+        return self._control
 
     def get_geometry(self):
         """return a Cell object representing the geometry"""
@@ -1002,4 +1088,3 @@ class StdOut:
         if self._timestat is None:
             raise AimsNotFinishedError
         return self._timestat['total'][1]
-
