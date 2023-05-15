@@ -5,6 +5,7 @@ from pathlib import Path
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from mushroom.core.hpc import add_scheduler_header, current_platform, current_use_pbs
 
+
 def _parser():
     """the argument parser"""
     p = ArgumentParser(description=__doc__, formatter_class=RawDescriptionHelpFormatter)
@@ -15,6 +16,7 @@ def _parser():
     p.add_argument("-p", dest='platform', default=None, type=str, help="manually specify platform")
     p.add_argument("--use-pbs", dest='use_pbs', action="store_true", help="use PBS headers")
     return p
+
 
 def m_add_job_header():
     """main stream"""
@@ -31,6 +33,7 @@ def m_add_job_header():
         add_scheduler_header(pscript, platform, use_pbs=use_pbs)
     except ValueError as err:
         raise ValueError from err
+
 
 if __name__ == "__main__":
     m_add_job_header()

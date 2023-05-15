@@ -274,17 +274,32 @@ class Control:
             self._if_species_changed = False
         return self._elements
 
-    def add_species(self, s, error_replace=False):
-        """add species to the control file"""
-        info = f"{s.elem} is already included in species"
-        if s.elem in self.elements:
-            if error_replace:
-                raise ValueError(info)
-            _logger.warning("%s, will replace", info)
-            self.species[self.elements.index(s.elem)] = s
-        else:
-            self.species.append(s)
+    def purge_species(self):
+        """remove all species"""
+        self.species = []
+        self._if_species_changed = True
+
+    def replace_specie(self, specie_new):
+        """replace specie of element with a new one ``specie_new``"""
+        info = f"{specie_new.elem} is not included in species"
+        if specie_new.elem in self.elements:
+            self.species[self.elements.index(specie_new.elem)] = specie_new
             self._if_species_changed = True
+        else:
+            _logger.warning("%s, no replace", info)
+
+    def add_species(self, *ss, error_replace=True):
+        """add species to the control file"""
+        for s in ss:
+            info = f"{s.elem} is already included in species"
+            if s.elem in self.elements:
+                if error_replace:
+                    raise ValueError(info)
+                _logger.warning("%s, will replace", info)
+                self.replace_specie(s)
+            else:
+                self.species.append(s)
+                self._if_species_changed = True
 
     def export(self):
         """export the control object to a string"""
@@ -308,12 +323,12 @@ class Control:
                     slist.append(f"output {k} {' '.join(str(x) for x in kstr)}")
         # species information
         slist.extend(s.export() for s in self.species)
-        return "\n".join(slist)
+        return slist
 
     def write(self, pcontrol):
         """write the control content to file ``pcontrol``"""
         with open_textio(pcontrol, 'w') as h:
-            print(self.export(), file=h)
+            print("\n".join(self.export()), file=h)
 
     @classmethod
     def read(cls, pcontrol="control.in"):
@@ -671,29 +686,23 @@ class Species:
     @classmethod
     def read(cls, pspecies):
         """read in the species from a filelike object"""
-        _ls = readlines_remove_comment(pspecies, keep_empty_lines=False, trim_leading_space=True)
-        try:
-            elem = _ls[0].split()[1]
-            assert elem in element_symbols[1:]
-        except IndexError as _e:
-            raise ValueError(f"Invalid species head {_ls[0]}") from _e
-        except AssertionError as _e:
-            raise ValueError(f"Unknown species: {elem}") from _e
-        _logger.info("handling species: %s", elem)
+        with open_textio(pspecies, 'r') as h:
+            _ls = pspecies.readlines()
+        elem = None
         tags = {}
         basis = {}
         abf = {}
         agt = cls.angular_grids_tag[0]
         i = 0
         while i < len(_ls):
-            if _ls[i].strip().startswith('#'):
+            if _ls[i].strip().startswith('#') or _ls[i].strip() == '':
                 i += 1
                 continue
             tagk, tagv = _ls[i].strip().split(maxsplit=1)
             # handle general species tags
             if tagk in cls.species_basic_tag:
                 tags[tagk] = tagv
-            if tagk in cls.angular_grids_tag:
+            elif tagk in cls.angular_grids_tag:
                 if agt not in tags:
                     tags[agt] = {'method': None, 'division': []}
                 if tagk == agt:
@@ -703,35 +712,69 @@ class Species:
                 else:
                     tags[agt][tagk] = tagv
             # handle basis set configuration
-            basis_dict = basis
-            basis_key = 'basis'
-            if tagk == 'for_aux':
-                basis_dict = abf
-                basis_key = 'abf'
-                tagk, tagv = tagv.strip().split(maxsplit=1)
-            if tagk in cls.basis_tag:
-                if tagk not in basis_dict:
-                    basis_dict[tagk] = []
-                vals = tagv.split()
-                if tagk == 'gaussian':
-                    # pGTO
-                    if int(vals[1]) == 1:
-                        basis_dict[tagk].append(tagv)
-                        _logger.debug("append pGTO %s: %s", basis_key, tagv)
-                    # cGTO
+            elif tagk == "for_aux" or tagk in cls.basis_tag:
+                basis_dict = basis
+                basis_key = 'basis'
+                if tagk == 'for_aux':
+                    basis_dict = abf
+                    basis_key = 'abf'
+                    tagk, tagv = tagv.strip().split(maxsplit=1)
+                if tagk in cls.basis_tag:
+                    if tagk not in basis_dict:
+                        basis_dict[tagk] = []
+                    vals = tagv.split()
+                    if tagk == 'gaussian':
+                        # pGTO
+                        if int(vals[1]) == 1:
+                            basis_dict[tagk].append(tagv)
+                            _logger.debug("append pGTO %s: %s", basis_key, tagv)
+                        # cGTO
+                        else:
+                            # head plus the following vals[1] _ls
+                            cgtos = [tagv,]
+                            for x in _ls[i + 1:i + 1 + int(vals[1])]:
+                                cgtos.extend(x.split())
+                            basis_dict[tagk].append(" ".join(cgtos))
+                            i += int(vals[1])
+                            _logger.debug("append cGTO %s: %s", basis_key, " ".join(cgtos))
                     else:
-                        # head plus the following vals[1] _ls
-                        cgtos = [tagv,]
-                        for x in _ls[i + 1:i + 1 + int(vals[1])]:
-                            cgtos.extend(x.split())
-                        basis_dict[tagk].append(" ".join(cgtos))
-                        i += int(vals[1])
-                        _logger.debug("append cGTO %s: %s", basis_key, " ".join(cgtos))
-                else:
-                    basis_dict[tagk].append(tagv)
-                    _logger.debug("append %s %s: %s", tagk, basis_key, tagv)
+                        basis_dict[tagk].append(tagv)
+                        _logger.debug("append %s %s: %s", tagk, basis_key, tagv)
+            elif tagk == "species":
+                # skip the element identifier
+                elem = tagv
+            else:
+                info = "Unknown species tag {} on line {}, break for safety".format(tagk, i + 1)
+                _logger.error(info)
+                raise ValueError(info)
             i += 1
+        if elem not in element_symbols[1:]:
+            raise ValueError(f"Unknown element: {elem}")
+        _logger.info("handling species of element: %s", elem)
         return cls(elem, tags, basis, abf)
+
+    @classmethod
+    def read_multiple(cls, pspecies):
+        """similar to read, but intended for a file containing multiple species,
+
+        Returns:
+            list of Species object
+        """
+        with open(pspecies, 'r') as h:
+            lines = h.readlines()
+        elemline_indices = []
+        species = []
+        for i, l in enumerate(lines):
+            if l.strip().startswith("species"):
+                elemline_indices.append(i)
+        for i, ielem in enumerate(elemline_indices):
+            if i == len(elemline_indices) - 1:
+                species.append(cls.read(StringIO("".join(lines[ielem:]))))
+            else:
+                species.append(
+                    cls.read(
+                        StringIO("".join(lines[ielem:elemline_indices[i + 1]]))))
+        return species
 
     @classmethod
     def read_default(cls, elem: str, level: str = "intermediate",
@@ -857,7 +900,6 @@ class StdOut:
                 self._timestat_lines = lines[i + 1:]
             if l.startswith("          Partial memory accounting:"):
                 self._timestat_lines = self._timestat_lines[:self._timestat_lines.index(l)]
-
 
     def _handle_system(self):
         """process the system environment information"""

@@ -40,6 +40,8 @@ def _parser():
                    help="handle the basis, see description")
     p.add_argument("--handle-abf", type=str, nargs="+", default=None,
                    help="handle the ABFs, see description")
+    p.add_argument("--reload-species", type=str, default=None
+                   help="reload species from file. remove all species data if set to ''")
     return p
 
 
@@ -75,6 +77,11 @@ def m_aims_control():
     if args.control_temp is None:
         raise NotImplementedError("please parse the template")
     c = Control.read(args.control_temp)
+    if args.reload_species is not None:
+        c.purge_species()
+        if args.reload_species != "":
+            ss = Species.read_multiple(args.reload_species)
+            c.add_species(*ss)
     if args.tags is not None:
         for t in args.tags:
             c.update_tag(*_handle_tag_pair(t))
