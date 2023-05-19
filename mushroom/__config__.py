@@ -12,7 +12,7 @@ fn = "." + __NAME__ + "rc"
 config_files = [
     os.path.join(os.environ["HOME"], fn),
     fn,
-    ]
+]
 
 # pylint: disable=no-value-for-parameter,W1505
 for config_file in config_files:
@@ -20,5 +20,5 @@ for config_file in config_files:
         # may replace load_module later
         machinery.SourceFileLoader(__NAME__ + '.__config__', config_file).load_module()
 
-del(config_files, config_file, machinery, os, sys)
+del (config_files, config_file, machinery, os, sys)
 

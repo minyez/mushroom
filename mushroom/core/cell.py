@@ -36,16 +36,19 @@ from mushroom.core.logger import create_logger
 from mushroom.core.typehint import Latt3T3, RealVec3D, Path
 
 __all__ = [
-        "CellError",
-        "Cell",
-        ]
+    "CellError",
+    "Cell",
+]
+
 
 class CellError(Exception):
     """Exception in cell module
     """
 
+
 _logger = create_logger("cell")
 del create_logger
+
 
 class Cell(LengthUnit):
     """Cell structure class
@@ -139,7 +142,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
             'qe': self.export_qe,
             'qe_alat': self.export_qe_alat,
             'aims': self.export_aims,
-            }
+        }
         assert all([x in self.exporters for x in self.avail_exporters])
 
     def __eq__(self, cell):
@@ -262,6 +265,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
             self.coord_sys = "D"
             self._posi = self._posi - np.floor(self._posi)
             self.coord_sys = "C"
+
     # pylint: disable=R0914
     def Rab_in_rcut(self, rcut, ia, ib, axis=None,
                     sort=True, return_iR=False, return_iR_Rablen=False):
@@ -284,7 +288,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
         for i in range(3):
             if i not in axis:
                 imax[i] = 0
-        iR = list(product(*map(lambda x: range(-x, x+1), imax)))
+        iR = list(product(*map(lambda x: range(-x, x + 1), imax)))
         if ia == ib:
             del iR[iR.index((0, 0, 0))]
         iR = np.array(iR, dtype="float64")
@@ -320,7 +324,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
         for i in range(3):
             if i not in axis:
                 imax[i] = 0
-        iG = list(product(*map(lambda x: range(-x, x+1), imax)))
+        iG = list(product(*map(lambda x: range(-x, x + 1), imax)))
         if np.allclose(q, 0.0):
             del iG[iG.index((0, 0, 0))]
         iG = np.array(iG, dtype="float64")
@@ -369,7 +373,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
         _sorted = True
         for i in range(n - 1):
             li = i
-            ri = i+1
+            ri = i + 1
             _logger.debug("Check sort index: %d", i)
             __dict = {True: k[li] > k[ri],
                       False: k[li] < k[ri]}
@@ -380,7 +384,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
             for i in range(1, n):
                 j = i
                 while j > 0:
-                    li = j-1
+                    li = j - 1
                     ri = j
                     __dict = {True: k[ri] > k[li],
                               False: k[ri] < k[li]}
@@ -419,7 +423,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
             assert isinstance(reverse, bool)
         except AssertionError:
             raise self._err()
-        keys = self.posi[:, axis-1]
+        keys = self.posi[:, axis - 1]
         for at in self.atom_types:
             ind = self.get_sym_index(at)
             self._bubble_sort_atoms(keys, ind, reverse=not reverse)
@@ -489,7 +493,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
         self.coord_sys = "D"
         latt, atms, posi = self.get_cell()
         scatms = []
-        for _ in range(n1*n2*n3):
+        for _ in range(n1 * n2 * n3):
             scatms.extend(atms)
         sclatt = latt.transpose() * multi
         sclatt = sclatt.transpose()
@@ -529,7 +533,10 @@ When other keyword are parsed, they will be filtered out and no exception will b
 
         If spglib is not available, return the elemental operation only
         """
-        elemental = {"rotations": np.diag((1.,1.,1.)), "translations": np.zeros(3)}
+        elemental = {
+            "rotations": np.diag((1., 1., 1.)),
+            "translations": np.zeros(3)
+        }
         try:
             raise_no_module(spglib, "Spglib")
         except ModuleNotFoundError:
@@ -578,7 +585,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
         for i in range(self.natm):
             _dupcs, _dn = periodic_duplicates_in_cell(self._posi[i, :])
             for _dupc in _dupcs:
-                np.add(_posSum, _dupc/float(_dn), _posSum)
+                np.add(_posSum, _dupc / float(_dn), _posSum)
         # _posSum = np.sum(self._posi, axis=0)
         # check periodic duplicate, by recognizing number of zeros in pos.
         # _dup = 3 - np.count_nonzero(self._posi, axis=1)
@@ -877,7 +884,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
             # self.print_log("Use global flag for atom {}".format(ia), level=3, depth=1)
             flag = [self._all_relax, ] * 3
         else:
-            flag = [[self._all_relax, ]*3 for _i in range(self.natm)]
+            flag = [[self._all_relax, ] * 3 for _i in range(self.natm)]
             for i in self._select_dyn:
                 flag[i] = self._select_dyn[i]
         return flag
@@ -891,7 +898,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
         return self.latt, self.posi, self.type_index()
 
     # * Exporter implementations
-    def write(self, output_format: str, filename=None, scale: float=1.0):
+    def write(self, output_format: str, filename=None, scale: float = 1.0):
         """Export cell to file in the format `output_format`
 
         Args:
@@ -950,18 +957,18 @@ When other keyword are parsed, they will be filtered out and no exception will b
         # since using celldm, unit must be fixed to Bohr
         self.unit = "bohr"
         self.coord_sys = "D"
-        slist = ["&SYSTEM",
-                 "  ibrav = 0,",
-                 "  celldm(1)= {:f},".format(self.alen[0]*scale),
-                 "  nat = {:d},".format(self.natm),
-                 "  ntyp = {:d},".format(len(self.atom_types)),
-                 "/"]
+        slist = [
+            "&SYSTEM", "  ibrav = 0,",
+            "  celldm(1)= {:f},".format(self.alen[0] * scale),
+            "  nat = {:d},".format(self.natm),
+            "  ntyp = {:d},".format(len(self.atom_types)), "/"
+        ]
         slist.append("ATOMIC_SPECIES")
         for symbol in self.atom_types:
             slist.append("  {s:<2s}  {m:f}  {s:s}.upf".format(s=symbol, m=get_atomic_mass(symbol)))
         slist.append("CELL_PARAMETERS alat")
         for i in range(3):
-            slist.append(" {:19.16f} {:19.16f} {:19.16f}".format(*(self.latt[i, :]/self.alen[0])))
+            slist.append(" {:19.16f} {:19.16f} {:19.16f}".format(*(self.latt[i, :] / self.alen[0])))
         slist.append("ATOMIC_POSITIONS crystal")
         for atm, pos in zip(self.atms, self.posi):
             # high precision for correct symmetry
@@ -1069,7 +1076,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
             "atms": self.atms,
             "unit": self.unit,
             "coord_sys": self.coord_sys,
-            }
+        }
         return json.dumps(d)
 
     # * Reader implementations
@@ -1089,7 +1096,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
             'cif': cls.read_cif,
             'json': cls.read_json,
             'aims': cls.read_aims,
-            }
+        }
         try:
             if form is None:
                 form = detect(path)
@@ -1219,12 +1226,11 @@ When other keyword are parsed, they will be filtered out and no exception will b
         def _raise_errline(cond, i=None, s="input"):
             if cond:
                 if i:
-                    raise CellError("bad {:s}, atom L{} in file {:s}".format(s, i+1, pvasp))
+                    raise CellError("bad {:s}, atom L{} in file {:s}".format(s, i + 1, pvasp))
                 raise CellError("bad {:s} in file {:s}".format(s, pvasp))
 
         fixed = {}
         flags = {'T': True, 'F': False}
-        #with open(pvasp, 'r') as fp:
         with open_textio(pvasp) as fp:
             symbols = None
             # line 1: comment on system
@@ -1291,7 +1297,6 @@ When other keyword are parsed, they will be filtered out and no exception will b
             return cls(latt, atms, posi, unit="ang", coord_sys=coord,
                        all_relax=True, select_dyn=fixed, comment=comment)
 
-
     # * Factory methods
     @classmethod
     def _bravais_o(cls, kind: str, atom: str, a: float, b: float, c: float, **kwargs):
@@ -1301,10 +1306,10 @@ When other keyword are parsed, they will be filtered out and no exception will b
             atms = [atom, ]
             posi = [[0.0, 0.0, 0.0]]
         if kind == "I":
-            atms = [atom, ]*2
+            atms = [atom, ] * 2
             posi = [[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]
         if kind == "F":
-            atms = [atom, ]*4
+            atms = [atom, ] * 4
             posi = [[0.0, 0.0, 0.0], [0.0, 0.5, 0.5],
                     [0.5, 0.0, 0.5], [0.5, 0.5, 0.0]]
         kwargs.pop("coord_sys", None)
@@ -1380,14 +1385,14 @@ When other keyword are parsed, they will be filtered out and no exception will b
             kwargs: keyword argument for ``Cell`` except ``coord_sys``
         '''
         if primitive:
-            latt = [[-a/2.0, a/2.0, a/2.0],
-                    [a/2.0, -a/2.0, a/2.0],
-                    [a/2.0, a/2.0, -a/2.0]]
+            latt = [[-a / 2.0, a / 2.0, a / 2.0],
+                    [a / 2.0, -a / 2.0, a / 2.0],
+                    [a / 2.0, a / 2.0, -a / 2.0]]
             atms = [atom]
             posi = [[0.0, 0.0, 0.0]]
         else:
             latt = [[a, 0.0, 0.0], [0.0, a, 0.0], [0.0, 0.0, a]]
-            atms = [atom, ]*2
+            atms = [atom, ] * 2
             posi = [[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]
         kwargs.pop("coord_sys", None)
         if "comment" not in kwargs:
@@ -1405,13 +1410,14 @@ When other keyword are parsed, they will be filtered out and no exception will b
             kwargs: keyword argument for ``Cell`` except ``coord_sys``
         '''
         if primitive:
-            latt = [[0.0, a/2.0, a/2.0],
-                    [a/2.0, 0.0, a/2.0], [a/2.0, a/2.0, 0.0]]
+            latt = [[0.0, a / 2.0, a / 2.0],
+                    [a / 2.0, 0.0, a / 2.0],
+                    [a / 2.0, a / 2.0, 0.0]]
             atms = [atom]
             posi = [[0.0, 0.0, 0.0]]
         else:
             latt = [[a, 0.0, 0.0], [0.0, a, 0.0], [0.0, 0.0, a]]
-            atms = [atom,]*4
+            atms = [atom,] * 4
             posi = [[0.0, 0.0, 0.0], [0.0, 0.5, 0.5],
                     [0.5, 0.0, 0.5], [0.5, 0.5, 0.0]]
         kwargs.pop("coord_sys", None)
@@ -1433,7 +1439,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
             kwargs: keyword argument for ``Cell`` except ``coord_sys``
         '''
         latt = [[a, 0.0, 0.0], [0.0, a, 0.0], [0.0, 0.0, a]]
-        atms = [atom1, atom2, ] + [atom3, ]*3
+        atms = [atom1, atom2, ] + [atom3, ] * 3
         posi = [[0.0, 0.0, 0.0], [0.5, 0.5, 0.5], [
             0.0, 0.5, 0.5], [0.5, 0.0, 0.5], [0.5, 0.5, 0.0]]
         kwargs.pop("coord_sys", None)
@@ -1458,14 +1464,15 @@ When other keyword are parsed, they will be filtered out and no exception will b
             kwargs: keyword argument for ``Cell`` except ``coord_sys``
         '''
         if primitive:
-            latt = [[0.0, a/2.0, a/2.0],
-                    [a/2.0, 0.0, a/2.0], [a/2.0, a/2.0, 0.0]]
+            latt = [[0.0, a / 2.0, a / 2.0],
+                    [a / 2.0, 0.0, a / 2.0],
+                    [a / 2.0, a / 2.0, 0.0]]
             atms = [atom1, atom2]
             posi = [[0.0, 0.0, 0.0],
                     [0.25, 0.25, 0.25]]
         else:
             latt = [[a, 0.0, 0.0], [0.0, a, 0.0], [0.0, 0.0, a]]
-            atms = [atom1, ]*4 + [atom2, ]*4
+            atms = [atom1, ] * 4 + [atom2, ] * 4
             posi = [[0.0, 0.0, 0.0],
                     [0.0, 0.5, 0.5],
                     [0.5, 0.0, 0.5],
@@ -1495,15 +1502,15 @@ When other keyword are parsed, they will be filtered out and no exception will b
             kwargs: keyword argument for ``Cell`` except ``coord_sys``
         '''
         if primitive:
-            latt = [[0.0, a/2.0, a/2.0],
-                    [a/2.0, 0.0, a/2.0],
-                    [a/2.0, a/2.0, 0.0]]
+            latt = [[0.0, a / 2.0, a / 2.0],
+                    [a / 2.0, 0.0, a / 2.0],
+                    [a / 2.0, a / 2.0, 0.0]]
             atms = [atom1, atom2]
             posi = [[0.0, 0.0, 0.0],
                     [0.5, 0.5, 0.5]]
         else:
             latt = [[a, 0.0, 0.0], [0.0, a, 0.0], [0.0, 0.0, a]]
-            atms = [atom1, ]*4 + [atom2, ]*4
+            atms = [atom1, ] * 4 + [atom2, ] * 4
             posi = [[0.0, 0.0, 0.0],
                     [0.0, 0.5, 0.5],
                     [0.5, 0.0, 0.5],
@@ -1546,19 +1553,17 @@ When other keyword are parsed, they will be filtered out and no exception will b
             kwargs: keyword argument for ``Cell`` except ``coord_sys``
         '''
         a = abs(a)
-        halfa = a/2.0
+        halfa = a / 2.0
         if c is None:
-            c = a * np.sqrt(8.0/3)
+            c = a * np.sqrt(8.0 / 3)
         if u is None:
-            u = 1.0/6
-        latt = [[a, 0.0, 0.0],
-                [-halfa, np.sqrt(3)*halfa, 0.0],
-                [0.0, 0.0, c]]
-        atms = [atom1, ]*2 + [atom2, ]*2
+            u = 1.0 / 6
+        latt = [[a, 0.0, 0.0], [-halfa, np.sqrt(3) * halfa, 0.0], [0.0, 0.0, c]]
+        atms = [atom1, ] * 2 + [atom2, ] * 2
         posi = [[0.0, 0.0, 0.0],
-                [2.0/3, 1.0/3, 0.5],
-                [0.0, 0.0, 1.0-u],
-                [2.0/3, 1.0/3, 0.5-u]]
+                [2.0 / 3, 1.0 / 3, 0.5],
+                [0.0, 0.0, 1.0 - u],
+                [2.0 / 3, 1.0 / 3, 0.5 - u]]
         kwargs.pop("coord_sys", None)
         if "comment" not in kwargs:
             kwargs.update({"comment": "Wurtzite {}{}".format(atom1, atom2)})
@@ -1584,13 +1589,13 @@ When other keyword are parsed, they will be filtered out and no exception will b
         _a = abs(a)
         _c = abs(c)
         latt = [[_a, 0.0, 0.0], [0.0, _a, 0.0], [0.0, 0.0, _c]]
-        atms = [atom1, ]*2 + [atom2, ]*4
+        atms = [atom1, ] * 2 + [atom2, ] * 4
         posi = [[0.0, 0.0, 0.0],
                 [0.5, 0.5, 0.5],
                 [u, u, 0.0],
                 [-u, -u, 0.0],
-                [0.5-u, 0.5+u, 0.5],
-                [0.5+u, 0.5-u, 0.5]]
+                [0.5 - u, 0.5 + u, 0.5],
+                [0.5 + u, 0.5 - u, 0.5]]
         kwargs.pop("coord_sys", None)
         if "comment" not in kwargs:
             kwargs.update({"comment": "Rutile {}{}2".format(atom1, atom2)})
@@ -1620,30 +1625,31 @@ When other keyword are parsed, they will be filtered out and no exception will b
         _a = abs(a)
         _c = abs(c)
         if primitive:
-            latt = [[-_a/2, _a/2, _c/2],
-                    [_a/2, -_a/2, _c/2], [_a/2, _a/2, -_c/2]]
-            atms = [atom1, ]*2 + [atom2, ]*4
+            latt = [[-_a / 2, _a / 2, _c / 2],
+                    [_a / 2, -_a / 2, _c / 2],
+                    [_a / 2, _a / 2, -_c / 2]]
+            atms = [atom1, ] * 2 + [atom2, ] * 4
             posi = [[0.0, 0.0, 0.0],
                     [0.75, 0.25, 0.5],
-                    [0.25-u, 0.75-u, 0.5],
-                    [0.25+u, 0.75+u, 0.5],
-                    [0.5+u,  0.5+u, 0.0],
-                    [0.5-u,  0.5-u, 0.0], ]
+                    [0.25 - u, 0.75 - u, 0.5],
+                    [0.25 + u, 0.75 + u, 0.5],
+                    [0.5 + u, 0.5 + u, 0.0],
+                    [0.5 - u, 0.5 - u, 0.0],]
         else:
             latt = [[_a, 0.0, 0.0], [0.0, _a, 0.0], [0.0, 0.0, _c]]
-            atms = [atom1, ]*4 + [atom2, ]*8
+            atms = [atom1, ] * 4 + [atom2, ] * 8
             posi = [[0.0, 0.0, 0.0],
                     [0.5, 0.0, 0.25],
                     [0.0, 0.5, 0.75],
                     [0.5, 0.5, 0.5],
-                    [0.0, 0.0,   u],
-                    [0.0, 0.0,  -u],
-                    [0.5, 0.0, 0.25-u],
-                    [0.5, 0.0, 0.25+u],
-                    [0.0, 0.5, 0.75-u],
-                    [0.0, 0.5, 0.75+u],
-                    [0.5, 0.5, 0.5-u],
-                    [0.5, 0.5, 0.5+u]]
+                    [0.0, 0.0, u],
+                    [0.0, 0.0, -u],
+                    [0.5, 0.0, 0.25 - u],
+                    [0.5, 0.0, 0.25 + u],
+                    [0.0, 0.5, 0.75 - u],
+                    [0.0, 0.5, 0.75 + u],
+                    [0.5, 0.5, 0.5 - u],
+                    [0.5, 0.5, 0.5 + u]]
         kwargs.pop("coord_sys", None)
         if "comment" not in kwargs:
             kwargs.update({"comment": "Anatase {}{}2".format(atom1, atom2)})
@@ -1661,30 +1667,32 @@ When other keyword are parsed, they will be filtered out and no exception will b
             u (float): the internal coordinate
             kwargs: keyword argument for ``Cell`` except ``coord_sys``
         '''
-        ha = a/2
+        ha = a / 2
         if primitive:
             # obtained from spglib primitize
-            latt = [[ha, ha/SQRT3, c/3], [-ha, ha/SQRT3, c/3], [0.0, -2*ha/SQRT3, c/3]]
+            latt = [[ha, ha / SQRT3, c / 3],
+                    [-ha, ha / SQRT3, c / 3],
+                    [0.0, -2 * ha / SQRT3, c / 3]]
             atms = [str(atom1), str(atom2), str(atom3), str(atom3)]
             posi = [[0.0, 0.0, 0.0],
                     [0.5, 0.5, 0.5],
                     [u, u, u],
-                    [1.0-u, 1.0-u, 1.0-u]]
+                    [1.0 - u, 1.0 - u, 1.0 - u]]
         else:
-            latt = [[a, 0.0, 0.0], [-ha, ha*SQRT3, c], [0.0, 0.0, c]]
-            atms = [str(atom1),]*3 + [str(atom2),]*3 + [str(atom3),]*6
-            posi = [[0.0, 0.0, 0.0], #Cu
-                    [2/3, 1/3, 1/3],
-                    [1/3, 2/3, 2/3],
-                    [1/3, 2/3, 1/6], #Al
-                    [0., 0., 1/2],
-                    [2/3, 1/3, 5/6],
-                    [0., 0., u], #O
-                    [0., 0., 1-u],
-                    [2/3, 1/3, 1/3-u],
-                    [2/3, 1/3, 1/3+u],
-                    [1/3, 2/3, 2/3-u],
-                    [1/3, 2/3, 2/3+u]]
+            latt = [[a, 0.0, 0.0], [-ha, ha * SQRT3, c], [0.0, 0.0, c]]
+            atms = [str(atom1),] * 3 + [str(atom2),] * 3 + [str(atom3),] * 6
+            posi = [[0.0, 0.0, 0.0],  # Cu
+                    [2 / 3, 1 / 3, 1 / 3],
+                    [1 / 3, 2 / 3, 2 / 3],
+                    [1 / 3, 2 / 3, 1 / 6],  # Al
+                    [0., 0., 1 / 2],
+                    [2 / 3, 1 / 3, 5 / 6],
+                    [0., 0., u],  # O
+                    [0., 0., 1 - u],
+                    [2 / 3, 1 / 3, 1 / 3 - u],
+                    [2 / 3, 1 / 3, 1 / 3 + u],
+                    [1 / 3, 2 / 3, 2 / 3 - u],
+                    [1 / 3, 2 / 3, 2 / 3 + u]]
         kwargs.pop("coord_sys", None)
         if "comment" not in kwargs:
             kwargs.update({"comment": "Delafossite {}{}{}2".format(atom1, atom2, atom3)})
@@ -1703,19 +1711,19 @@ When other keyword are parsed, they will be filtered out and no exception will b
             kwargs: keyword argument for ``Cell`` except ``coord_sys``
         """
         latt = [[a, 0.0, 0.0], [0.0, a, 0.0], [0.0, 0.0, a]]
-        atms = [atom1, ]*4 + [atom2, ]*8
+        atms = [atom1, ] * 4 + [atom2, ] * 8
         posi = [[0.0, 0.0, 0.0],
                 [0.0, 0.5, 0.5],
                 [0.5, 0.0, 0.5],
                 [0.5, 0.5, 0.0],
-                [0.5-u,     u,    -u],
-                [0.5+u,    -u,     u],
-                [-u, 0.5-u,     u],
-                [u, 0.5+u,    -u],
-                [u,    -u, 0.5-u],
-                [-u,     u, 0.5+u],
-                [0.5+u, 0.5+u, 0.5+u],
-                [0.5-u, 0.5-u, 0.5-u]]
+                [0.5 - u, u, -u],
+                [0.5 + u, -u, u],
+                [-u, 0.5 - u, u],
+                [u, 0.5 + u, -u],
+                [u, -u, 0.5 - u],
+                [-u, u, 0.5 + u],
+                [0.5 + u, 0.5 + u, 0.5 + u],
+                [0.5 - u, 0.5 - u, 0.5 - u]]
         kwargs.pop("coord_sys", None)
         if "comment" not in kwargs:
             kwargs.update({"comment": "Pyrite {}{}2".format(atom1, atom2)})
@@ -1735,17 +1743,18 @@ When other keyword are parsed, they will be filtered out and no exception will b
             kwargs: keyword argument for ``Cell`` except ``coord_sys``
         '''
         latt = [[a, 0.0, 0.0], [0.0, b, 0.0], [0.0, 0.0, c]]
-        atms = [atom1, ]*2 + [atom2, ]*4
+        atms = [atom1, ] * 2 + [atom2, ] * 4
         posi = [[0.0, 0.0, 0.0],
                 [0.5, 0.5, 0.5],
-                [0.5+v, 0.5-w,    0.5],
-                [0.5-v, 0.5+w,    0.5],
-                [-v,    -w,    0.0],
-                [v,     w,    0.0], ]
+                [0.5 + v, 0.5 - w, 0.5],
+                [0.5 - v, 0.5 + w, 0.5],
+                [-v, -w, 0.0],
+                [v, w, 0.0], ]
         kwargs.pop("coord_sys", None)
         if "comment" not in kwargs:
             kwargs.update({"comment": "Marcasite {}{}2".format(atom1, atom2)})
         return cls(latt, atms, posi, **kwargs)
+
 
 def latt_equal(cell1: Cell, cell2: Cell) -> bool:
     """compare the lattice vectors of two cell"""
@@ -1754,4 +1763,3 @@ def latt_equal(cell1: Cell, cell2: Cell) -> bool:
     equal = np.allclose(cell1.latt, cell2.latt)
     cell2.unit = unit
     return equal
-
