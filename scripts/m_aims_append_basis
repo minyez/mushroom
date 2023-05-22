@@ -1,0 +1,58 @@
+#!/usr/bin/env python3
+"""a helper script to append aims basis"""
+import os
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
+from mushroom.core.elements import element_symbols
+from mushroom.aims import get_specie_filename, search_basis_directories, \
+    get_basis_directory_from_alias, read_divide_control_lines
+
+
+def _parser():
+    """the parser"""
+    p = ArgumentParser(description=__doc__, formatter_class=RawDescriptionHelpFormatter)
+    p.add_argument("control_file", help="the control file to append/replace")
+    p.add_argument("directory", help="available basis directories")
+    p.add_argument("--sd", dest="species_defaults", help="species_defaults directory", default=None)
+
+    aelem = p.add_mutually_exclusive_group()
+    aelem.add_argument("-e", dest="elements", nargs="+", default=None, help="Elements to add")
+    aelem.add_argument("-i", dest="pgeometry", nargs="?", const="geometry.in", default=None,
+                       help="geometry file to load elements")
+    return p
+
+
+def m_aims_apppend_basis(control_file, directory, *elem, species_defaults=None):
+    """the main stream"""
+    gl, sl = read_divide_control_lines(control_file)
+    if sl != []:
+        print("Replacing existing basis information in control file {}".format(control_file))
+    sl = []
+    for el in elem:
+        f = get_specie_filename(el, directory, species_defaults)
+        print("Reading {}".format(f))
+        with open(f, 'r') as h:
+            sl.extend(h.readlines())
+            sl.append("\n")
+    with open(control_file, 'w') as h:
+        print("".join(gl + sl), file=h)
+
+
+if __name__ == '__main__':
+    args = _parser().parse_args()
+
+    if args.elements is None:
+        if args.pgeometry is None:
+            raise ValueError("specify elements either by -e or -i")
+        from mushroom.aims import read_geometry
+        elements = read_geometry(args.pgeometry).atom_types
+    else:
+        elements = args.elements
+
+    directory = args.directory
+    directory = get_basis_directory_from_alias(directory)
+    basis_avail = search_basis_directories(args.species_defaults)
+    if directory not in basis_avail:
+        raise ValueError("Basis {} is not available".format(directory))
+
+    print("Appending elements {} from {} to {}".format(elements, directory, args.control_file))
+    m_aims_apppend_basis(args.control_file, directory, *elements, species_defaults=args.species_defaults)
