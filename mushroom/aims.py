@@ -2,12 +2,14 @@
 """FHI-aims related"""
 import os
 import re
+import glob
 from typing import Tuple, List, Dict, Union
 from io import StringIO
 from copy import deepcopy
 import numpy as np
 
 # from mushroom.core.cell import Cell
+from mushroom.core.cell import Cell
 from mushroom.core.logger import create_logger
 from mushroom.core.typehint import RealVec3D, Path
 from mushroom.core.bs import BandStructure
@@ -20,6 +22,9 @@ del create_logger
 
 class AimsNotFinishedError(Exception):
     pass
+
+
+read_geometry = Cell.read_aims
 
 
 def decode_band_output_line(bstr: str) -> Tuple[List, List, List]:
@@ -80,6 +85,51 @@ def read_band_output(
     ene = np.array([ene,])[:, filter_k_before:filter_k_behind, :]
     kpts = kpts[filter_k_before:filter_k_behind, :]
     return BandStructure(ene, occ, unit=unit), kpts
+
+
+def get_species_defaults_directory():
+    """get the directory of species_default from environment variable and configuration"""
+    species_defaults_ev = "AIMS_SPECIES_DEFAULTS"
+    try:
+        species_defaults = os.environ[species_defaults_ev]
+    except KeyError as _e:
+        try:
+            from mushroom.__config__ import aims_species_defaults as species_defaults
+        except ImportError:
+            raise KeyError("Environment variable {} or aims_species_defaults in config file is required"
+                           .format(species_defaults_ev))
+    if not os.path.isdir(species_defaults):
+        raise ValueError("species_defaults {} is not a directory".format(species_defaults))
+    return species_defaults
+
+
+def search_basis_directories(aims_species_defaults=None):
+    if aims_species_defaults is None:
+        aims_species_defaults = get_species_defaults_directory()
+    if not os.path.isdir(aims_species_defaults):
+        raise ValueError("specified aims_species_defaults {} is not a directory"
+                         .format(aims_species_defaults))
+    paths = []
+    for path in glob.glob('**/01_H_default', root_dir=aims_species_defaults, recursive=True):
+        paths.append(os.path.dirname(path))
+
+    return paths
+
+
+def get_basis_directory_from_alias(directory_alias):
+    """get the directory name from alias"""
+    directory = directory_alias.lower()
+    if directory in ['light', 'intermediate', 'tight', 'really_tight']:
+        directory = os.path.join("defaults_2020", directory)
+    elif directory in ['cc-pvdz', 'cc-pvtz', 'cc-pvqz',
+                       'aug-cc-pvdz', 'aug-cc-pvtz', 'aug-cc-pvqz']:
+        directory = os.path.join("non-standard", "gaussian_tight_770",
+                                 directory[:directory.index('v')] + directory[-3:].upper())
+    elif directory in ["nao-j-2", "nao-j-3", "nao-j-4", "nao-j-5"]:
+        directory = os.path.join("NAO-J-n", directory.upper())
+    elif directory in ["nao-vcc-2z", "nao-vcc-3z", "nao-vcc-4z", "nao-vcc-5z"]:
+        directory = os.path.join("NAO-VCC-nZ", directory.upper())
+    return directory
 
 
 class Control:
@@ -386,6 +436,39 @@ class Control:
         return cls(tags, output, species)
 
 
+def read_divide_control_lines(pcontrol):
+    """read and divide control file into general lines and species lines
+
+    Args:
+        pcontrol (pathlike)
+
+    Returns:
+        two list of str
+    """
+    first_specie_line = None
+    with open_textio(pcontrol, 'r') as h:
+        lines = h.readlines()
+        for i, l in enumerate(lines):
+            if l.strip().startswith("species    "):
+                first_specie_line = i
+                break
+
+    # no species lines are found
+    if first_specie_line is None:
+        return lines, []
+
+    general_l = []
+    species_l = lines
+    # include the comment lines on top of species
+    for i in range(first_specie_line - 1, 0, -1):
+        l = lines[i].strip()
+        if not l.startswith("#"):
+            general_l = lines[:i + 1]
+            species_l = lines[i + 1:]
+            break
+    return general_l, species_l
+
+
 def handle_control_ksymbol(pcontrol: str) -> List:
     """get the ksymbol list from the control file
 
@@ -687,7 +770,7 @@ class Species:
     def read(cls, pspecies):
         """read in the species from a filelike object"""
         with open_textio(pspecies, 'r') as h:
-            _ls = pspecies.readlines()
+            _ls = h.readlines()
         elem = None
         tags = {}
         basis = {}
@@ -777,37 +860,46 @@ class Species:
         return species
 
     @classmethod
-    def read_default(cls, elem: str, level: str = "intermediate",
-                     category: str = "defaults_2020"):
+    def read_default(cls, elem: str, directory: str = "defaults_2020/intermediate"):
         """load the default setting in 'species_defaults' directory
 
         It is actually a convenient function to use the ``read`` method.
         It extracts the ``AIMS_SPECIES_DEFAULTS`` environment variable,
-        load the available categories
+        If it is not available, it will read ``aims_species_defaults`` variable
+        in the configuration file.
 
         Args:
             elem (str): element of the species
-            level (str): 'light', 'intermediate', etc for defaults, and n for NAO-J/NAO-VCC basis
+            directory (str): the directory where the species files lie, e.g.
+                'defaults_2020/light', 'defaults_2020/intermediate', 'NAO-VCC' basis
                 For non-standard basis, you have to specify the level below "non-standard",
                 e.g. "cc-pVDZ" and set category to "non-standard"
-            category (str): the category.
-                It is the directory name under species_defaults for standard basis,
-                and the name under non-standard for non-standard basis.
         """
-        # non-standard basis
-        species_defaults_ev = "AIMS_SPECIES_DEFAULTS"
-        try:
-            species_defaults = os.environ[species_defaults_ev]
-        except KeyError as _e:
-            raise KeyError(f"Environment variable {species_defaults_ev} is not set") from _e
-        pspecies = []
-        if level not in ["intermediate", "light", "light_spd", "really_tight", "tight"]:
-            _logger.info("Querying non-standard basis")
-            pspecies.append("non-standard")
-        elem_id = get_atomic_number(elem)
-        pspecies.extend([category, level, f"{elem_id}_{elem}_default"])
-        pspecies = os.path.join(species_defaults, *pspecies)
+        species_defaults = get_species_defaults_directory()
         return cls.read(pspecies)
+
+
+def get_specie_filename(elem: str, directory: str, species_defaults: str = None):
+    """get the name of specie file of a particular basis
+
+    Args:
+        elem (str)
+        directory (str)
+        species_defaults (str)
+
+    Returns:
+        str
+    """
+    if species_defaults is None:
+        species_defaults = get_species_defaults_directory()
+    directories_avail = search_basis_directories(species_defaults)
+    elem_id = get_atomic_number(elem, False)
+    if directory not in directories_avail:
+        raise ValueError("{} is not found in available basis directories {}"
+                         .format(directory, directories_avail))
+    pspecies = [species_defaults, directory, f"{elem_id:02d}_{elem}_default"]
+    pspecies = os.path.join(*pspecies)
+    return pspecies
 
 
 class StdOut:
@@ -849,19 +941,24 @@ class StdOut:
         self._node_names = None
         self._node_names_unique = None
         self._omp_threads = None
+        self._control = None
+        self._geometry = None
+        self._timestat = None
+
+        self._nbasbas = None
         self._nspins = None
         self._nkpts = None
         self._nbasis_H = None
         self._nelect = None
         self._nbasis_uc = None
-        self._control = None
-        self._geometry = None
-        self._timestat = None
+        self._nbasis = None
+        self._nrad = None
 
         self._divide_output_lines(lines)
         self._handle_system()
         self._handle_prep()
         self._handle_init()
+        self._handle_postscf()
         self._handle_timing_statistics()
 
     def _divide_output_lines(self, lines):
@@ -945,6 +1042,10 @@ class StdOut:
         for i, l in enumerate(self._prep_lines):
             if l.startswith("| Number of spin channels           :"):
                 self._nspins = int(l.split()[-1])
+            if l.startswith("  | Total number of radial functions:"):
+                self._nrad = int(l.split()[-1])
+            if l.startswith("  | Total number of basis functions :"):
+                self._nbasis = int(l.split()[-1])
             if l.startswith("*** Environment variable OMP_NUM_THREADS is set to"):
                 try:
                     self._omp_threads = int(self._prep_lines[i + 1].strip())
@@ -968,6 +1069,13 @@ class StdOut:
             if l.startswith("  | Initial density: Formal number of electrons"):
                 self._nelect = float(l.split()[-1])
 
+    def _handle_postscf(self):
+        if not self._finished:
+            _logger.warning("Calculation is not finished, postscf processing could fail")
+        for i, l in enumerate(self._postscf_lines):
+            if l.startswith("  | Shrink_full_auxil_basis : there are totally"):
+                self._nbasbas = int(l.split()[-5])
+
     def _handle_timing_statistics(self):
         """process the timing statistics at the end of calculation"""
         if not self._finished:
@@ -988,13 +1096,18 @@ class StdOut:
                  ("Initialization for periodic correlated calc", "post_scf_pbc_init"),
                  ("Total time for polarizability calc.", "polar"),
                  ("Total time for polarizability of k space", "polar_k"),
-                 ("Total time for GW self-energy (regular k) c", "gwse")
+                 ("Total time for GW self-energy (regular k) c", "gwse_k"),
+                 ("Total time for GW band self-energy calc.", "gwse_b"),
                  )
         for key, name in names:
             try:
                 self._timestat[name] = timestat.pop(key)
             except KeyError:
                 pass
+
+    def is_finished(self):
+        """check if the calculation is finished successfully"""
+        return self._finished
 
     @property
     def nelect(self):

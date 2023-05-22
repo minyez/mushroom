@@ -28,7 +28,8 @@ element_symbols = ('X' , # pseudo atom
 
 nuclear_charges = {s: i for i, s in enumerate(element_symbols)}
 
-def get_atomic_number(e: Union[str, int]):
+
+def get_atomic_number(e: Union[str, int], allow_int: bool = True):
     """get the atomic number of element
 
     Args:
@@ -36,12 +37,15 @@ def get_atomic_number(e: Union[str, int]):
             if e is a int, it will check the validity of the number.
             if e is a str, it will first remove any space and numbers within,
                 then capitalize it before search
+        allow_int (bool): allow parsing e as int for validity check
 
     Returns:
         int, atomic number of the element
     """
     an = None
     if isinstance(e, int):
+        if not allow_int:
+            raise ValueError("symbol must be str, not int")
         if e < len(element_symbols):
             an = e
     if isinstance(e, str):
