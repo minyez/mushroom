@@ -2966,6 +2966,7 @@ class Plot:
         """
         raise NotImplementedError
 
+
 def extract_data_from_agr(pagr):
     """extract all data from agr file
 
@@ -2986,9 +2987,9 @@ def extract_data_from_agr(pagr):
     for i, l in enumerate(lines):
         if l.startswith("@type"):
             # the line above includes information like @target G0.S4
-            index_gs.append(tuple(map(int, findall(r"\d+", lines[i-1]))))
+            index_gs.append(tuple(map(int, findall(r"\d+", lines[i - 1]))))
             # exclude @type line
-            starts.append(i+1)
+            starts.append(i + 1)
             types.append(l.split()[-1].lower())
         if l == "&\n":
             ends.append(i)

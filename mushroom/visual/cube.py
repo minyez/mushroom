@@ -11,6 +11,7 @@ from mushroom.core.typehint import RealVec3D, Latt3T3, Key, TextIO
 _logger = create_logger('cube')
 del create_logger
 
+
 class Cube(LengthUnit):
     """object for reading/writing Gaussian Cube file
 
@@ -49,7 +50,7 @@ class Cube(LengthUnit):
             self.charges = charges
         self.comment = "{}".format(comment)
         if comment is None:
-            self.comment =Cube.default_comment
+            self.comment = Cube.default_comment
 
     @property
     def unit(self):
@@ -102,8 +103,8 @@ class Cube(LengthUnit):
         nlines = len(data) // 6
         form = "{:13.5E}" * 6
         for i in range(nlines):
-            slist.append(form.format(*data[6*i:6*(i+1)]))
-        left = len(data) - nlines*6
+            slist.append(form.format(*data[6 * i:6 * (i + 1)]))
+        left = len(data) - nlines * 6
         if left != 0:
             form = "{:13.5E}" * left
             slist.append(form.format(*data[-left:]))
@@ -117,4 +118,3 @@ class Cube(LengthUnit):
             pcube (TextIO): the TextIO object to write the Cube file
         """
         raise NotImplementedError
-

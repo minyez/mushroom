@@ -19,5 +19,5 @@ IntVec3D = Tuple[int, int, int]
 RealVec3D = Tuple[Real, Real, Real]
 CplxVec3D = Tuple[Complex, Complex, Complex]
 Latt3T3 = Tuple[RealVec3D, RealVec3D, RealVec3D]
-del PathLike, Real, Tuple, Union, Sequence, Complex, StringIO, TextIOWrapper
 
+del PathLike, Real, Tuple, Union, Sequence, Complex, StringIO, TextIOWrapper

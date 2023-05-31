@@ -20,6 +20,7 @@ del create_logger
 
 gwmethod_suffices = {'g0w0': 'GW', 'gw0': 'GW0'}
 
+
 class Eps:
     """object to handle the binary file ``.eps`` storing dielectric matrix
 
@@ -117,8 +118,9 @@ class Eps:
         # first is an integer for matrix size
         struct.unpack('=i', self._fhandle.read(4))
         counts = 2 * self._msize**2
-        rawdata = np.frombuffer(self._fhandle.read(8*counts),
-                                dtype='float64', count=counts)
+        rawdata = np.frombuffer(self._fhandle.read(8 * counts),
+                                dtype='float64',
+                                count=counts)
         # reshape for head and wing
         rawdata = self._reshape(rawdata)
         if self._cache:
@@ -130,14 +132,14 @@ class Eps:
         rawdata = rawdata[0::2] + rawdata[1::2] * 1.0j
         reshaped = np.zeros((self.msize, self.msize), dtype='complex64')
         s = int(self._is_q0)
-        reshaped[s:, s:] = rawdata[s*(2*self.msize-s):].reshape((self.msize-s, self.msize-s),
-                                                                order='F')
+        reshaped[s:, s:] = rawdata[s * (2 * self.msize - s):].reshape(
+            (self.msize - s, self.msize - s), order='F')
         if s:
             reshaped[0, 0] = rawdata[0]
             # vertical wing
             reshaped[1:, 0] = rawdata[1:self.msize]
             # horizontal wing
-            reshaped[0, 1:] = rawdata[self.msize:2*self.msize-1]
+            reshaped[0, 1:] = rawdata[self.msize:2 * self.msize - 1]
         return reshaped
 
     def is_hermitian(self, iomega: int) -> bool:
@@ -161,7 +163,9 @@ class Eps:
         if self.kind == "inv":
             eps = np.linalg.inv(rawdata)
         elif self.kind == "invm1":
-            eps = np.linalg.inv(rawdata+np.diag([1.0+0.0j,]*self.msize))
+            eps = np.linalg.inv(rawdata + np.diag([
+                1.0 + 0.0j,
+            ] * self.msize))
         elif self.kind == "eps":
             eps = rawdata
         else:
@@ -176,7 +180,7 @@ class Eps:
         """
         rawdata = self.get(iomega)
         if self.kind == "invm1":
-            eps = rawdata+np.diag([1.0+0.0j,]*self.msize)
+            eps = rawdata + np.diag([1.0 + 0.0j,] * self.msize)
         elif self.kind == "eps":
             eps = np.linalg.inv(rawdata)
         # nothing to do if kind is "inv"
@@ -185,6 +189,7 @@ class Eps:
         else:
             raise ValueError("kind is not applicable")
         return eps
+
 
 class Eqpev:
     """quasiparticle data object
@@ -200,6 +205,7 @@ class Eqpev:
             states under VBM.
     """
     _head_lines = 10
+
     # pylint: disable=R0914
     def __init__(self, peqpev: Path = None, dirpath: Path = ".",
                  casename: str = None, method: str = 'g0w0',
@@ -228,7 +234,7 @@ class Eqpev:
         nkpts = int(data[-1, 0])
         nbandsgw = int(data[-1, 1] - data[0, 1]) + 1
         self._occ_thres = occ_thres
-        self._ibandsgw = np.array(data[0:nbandsgw+1, 1], dtype='int')
+        self._ibandsgw = np.array(data[0:nbandsgw + 1, 1], dtype='int')
         self._eks = np.reshape(data[:, 2], (1, nkpts, nbandsgw), order="C")
         self._eqp = np.reshape(data[:, 3], (1, nkpts, nbandsgw), order="C")
         self._ehf = np.reshape(data[:, 4], (1, nkpts, nbandsgw), order="C")
@@ -244,9 +250,9 @@ class Eqpev:
         self._ik = []
         self._ibzkpts = []
         for ik in range(nkpts):
-            l = lines[self._head_lines+ik*(2+nbandsgw)]
+            l = lines[self._head_lines + ik * (2 + nbandsgw)]
             kpt = conv_string(l, int, 3, -5, -4, -3, -1)
-            self._ibzkpts.append([x/kpt[-1] for x in kpt[1:4]])
+            self._ibzkpts.append([x / kpt[-1] for x in kpt[1:4]])
             self._ik.append(kpt[0])
         self._ik = np.array(self._ik)
         self._ibzkpts = np.array(self._ibzkpts)
@@ -317,6 +323,7 @@ class Eqpev:
         """
         return self._degw
 
+
 class Vmat:
     """analyze Coulomb matrix vmat binary data (2e-201117)
 
@@ -324,6 +331,7 @@ class Vmat:
         pvmat (PathLike)
         nbyte_recl (int): unit of record length.
     """
+
     def __init__(self, pvmat: Path, nbyte_recl: int = 1):
         self._pvmat = pvmat
         self._nbyte_recl = nbyte_recl
@@ -346,7 +354,7 @@ class Vmat:
         Args:
             imb (int): row index of Coulomb matrix
         """
-        return self._nbyte_recl * self._recl * (1+imb)
+        return self._nbyte_recl * self._recl * (1 + imb)
 
     @property
     def nbyte_recl(self):
@@ -413,7 +421,8 @@ class Vmat:
             vmat = []
             for i in range(msize):
                 h.seek(self._seek_record(i))
-                data = np.frombuffer(h.read(16*msize), dtype='float64', count=2*msize)
+                data = np.frombuffer(h.read(16 * msize),
+                                     dtype='float64',
+                                     count=2 * msize)
                 vmat.append(reshape_2n_float_n_cmplx(data))
             self._vmat = np.array(vmat)
-

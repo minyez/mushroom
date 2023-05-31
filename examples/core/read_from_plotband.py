@@ -7,7 +7,7 @@ from mushroom.visual.graceplot import Plot, extract_data_from_agr
 p = Plot()
 
 # plotband.agr is a file produced by py_band.py
-_, data_all = extract_data_from_agr("plotband.agr")
+_, data_all, _ = extract_data_from_agr("plotband.agr")
 
 for i, (x, y) in enumerate(data_all):
     p[0].plot(x, y, color="k", symbol="none")
