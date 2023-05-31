@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """create/read a cell and export to various code-specific format
 
@@ -17,6 +17,7 @@ try:
 except ImportError:
     autocomplete = None
 
+
 def _parser():
     """parser"""
     p = ArgumentParser(description=__doc__, formatter_class=RawDescriptionHelpFormatter)
@@ -29,8 +30,6 @@ def _parser():
                       help="extract predefined sample cell. int or str. see -p")
     igrp.add_argument('-l', dest='show', action="store_true",
                       help="list predefined sample cells")
-    #p.add_argument('-a', dest='add_cell', type=str, default=None,
-    #               help="add converted input to sample data (JSON format)")
     p.add_argument('--sc', dest='supercell', default=None, nargs=3, type=int,
                    help="create super cell")
     p.add_argument('--prim', dest='primitize', action="store_true",
@@ -48,6 +47,7 @@ def _parser():
     if autocomplete is not None:
         autocomplete(p)
     return p
+
 
 def build_cell():
     """main stream"""
