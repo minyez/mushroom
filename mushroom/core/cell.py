@@ -1050,9 +1050,13 @@ When other keyword are parsed, they will be filtered out and no exception will b
 
     def export_aims(self, scale: float = 1.0) -> str:
         """Export in fhi-aims format"""
+        _logger.info("exporting to aims ...")
         latt = self._latt * scale
         was_unit = self.unit
+        _logger.debug("converting unit to ang ...")
+        _logger.debug("cell before convert %s", self)
         self.unit = "ang"
+        _logger.debug("cell after convert %s", self)
         atom_tag = "atom_frac"
         if self.coord_sys == "C":
             atom_tag = "atom"
@@ -1061,9 +1065,10 @@ When other keyword are parsed, they will be filtered out and no exception will b
         ret.append("# reference: {}\n#".format(self.get_reference()))
         for posi, atm in zip(self.posi, self.atms):
             ret.append("{} {:15.9f} {:15.9f} {:15.9f} {}".format(atom_tag, *posi, atm))
-        for l in latt:
+        for l in self.latt:
             ret.append("lattice_vector {:15.9f} {:15.9f} {:15.9f}".format(*l))
         self.unit = was_unit
+        _logger.debug("converted string list to return\n%r", ret)
         return '\n'.join(ret)
 
     def export_json(self, scale: float = 1.0) -> str:
