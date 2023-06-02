@@ -1,0 +1,15 @@
+#!/usr/bin/env python3
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
+from mushroom.aims import StdOut, display_dimensions
+
+
+def _parser():
+    """the parser"""
+    p = ArgumentParser(description=__doc__, formatter_class=RawDescriptionHelpFormatter)
+    p.add_argument("aimsout")
+    return p
+
+
+if __name__ == '__main__':
+    args = _parser().parse_args()
+    display_dimensions(args.aimsout)

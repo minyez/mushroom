@@ -1052,7 +1052,7 @@ class StdOut:
             _logger.warning("preparation is not finished, skip")
             return
         for i, l in enumerate(self._prep_lines):
-            if l.startswith("| Number of spin channels           :"):
+            if l.startswith("  | Number of spin channels           :"):
                 self._nspins = int(l.split()[-1])
             if l.startswith("  | Total number of radial functions:"):
                 self._nrad = int(l.split()[-1])
@@ -1069,6 +1069,15 @@ class StdOut:
         if not self._finished_pbc_lists_init:
             _logger.warning("PBC lists initialization is not finished")
         for i, l in enumerate(self._pbc_lists_init_lines):
+            if l.startswith("  Initializing the k-points"):
+                try:
+                    self._nkpts = int(self._pbc_lists_init_lines[i + 1].split()[-1])
+                except (IndexError, ValueError):
+                    pass
+            if l.startswith("  | Number of basis functions in the Hamiltonian integrals"):
+                self._nbasis_H = int(l.split()[-1])
+            if l.startswith("  | Number of basis functions in a single unit cell"):
+                self._nbasis_uc = int(l.split()[-1])
             if l.startswith("  | Number of super-cells (origin)"):
                 self._n_cells = conv_string(l, int, -1)
             if l.startswith("  | Number of super-cells (after PM_index)"):
@@ -1083,15 +1092,6 @@ class StdOut:
         if not self._finished_scf_init:
             _logger.warning("self-consistent loop initialization is not finished")
         for i, l in enumerate(self._scf_init_lines):
-            if l.startswith("  Initializing the k-point"):
-                try:
-                    self._nkpts = int(self._scf_init_lines[i + 1].split()[-1])
-                except (IndexError, ValueError):
-                    pass
-            if l.startswith("  | Number of basis functions in the Hamiltonian integrals"):
-                self._nbasis_H = int(l.split()[-1])
-            if l.startswith("  | Number of basis functions in a single unit cell"):
-                self._nbasis_uc = int(l.split()[-1])
             if l.startswith("  | Initial density: Formal number of electrons"):
                 self._nelect = float(l.split()[-1])
 
@@ -1269,3 +1269,28 @@ class StdOut:
         if self._timestat is None:
             raise AimsNotFinishedError
         return self._timestat['total'][1]
+
+
+def display_dimensions(aimsout):
+    """display dimensions in the FHI-aims calculation from aimsout"""
+    s = StdOut(aimsout)
+    dict_str_dim = {
+        "Spins": s._nspins,
+        "K-points": s._nkpts,
+        "OBS (orbital basis set)": s._nbasis,
+        "ABF (auxiliary basis function)": s._nbasbas,
+        "Radial functions": s._nrad,
+        "Basis in H Integrals": s._nbasis_H,
+        "Basis in UC": s._nbasis_uc,
+        "Electrons": s._nelect,
+        "Super-cells": s._n_cells,
+        "Super-cells (packed)": s._n_cells_pm,
+        "Non-zero elements of all H(R)": s._n_matrix_size_H,
+    }
+    lstr = max([len(x) for x in dict_str_dim.keys()])
+    format_str = "# %-{}s : %s".format(lstr)
+    for sd in dict_str_dim.items():
+        if sd[1] is not None:
+            print(format_str % sd)
+        else:
+            print(format_str % (sd[0], "(NOT FOUND)"))
