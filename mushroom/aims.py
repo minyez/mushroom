@@ -919,8 +919,9 @@ class StdOut:
         with open(pstdout, 'r', encoding='utf-8') as h:
             lines = h.readlines()
         _logger.info("Reading standard output from: %s", pstdout)
-        self._finished = lines[-2].strip() == 'Have a nice day.'
-        _logger.info("  Finished? %s", self._finished)
+        self._not_converged = lines[-2].strip() == '*** scf_solver: SCF cycle not converged.'
+        self._finished = self._not_converged or lines[-2].strip() == 'Have a nice day.'
+
         self._finished_system = False
         self._finished_control = False
         self._finished_geometry = False
@@ -1003,8 +1004,10 @@ class StdOut:
             if l.startswith("  Constructing auxiliary basis"):
                 self._scf_lines = self._scf_lines[:self._scf_lines.index(l)]
                 self._postscf_lines = lines[i:]
-            if l.startswith("          Leaving FHI-aims."):
-                self._postscf_lines = self._postscf_lines[:self._postscf_lines.index(l)]
+            if l.startswith("          Leaving FHI-aims.") and not self._not_converged:
+                # in case that SCF is not converged, it will leave aims without starting postscf
+                if self._postscf_lines is not None:
+                    self._postscf_lines = self._postscf_lines[:self._postscf_lines.index(l)]
             if l.startswith("          Detailed time accounting"):
                 self._timestat_lines = lines[i + 1:]
             if l.startswith("          Partial memory accounting:"):
@@ -1098,6 +1101,8 @@ class StdOut:
     def _handle_postscf(self):
         if not self._finished:
             _logger.warning("Calculation is not finished, postscf processing could fail")
+        if self._postscf_lines is None:
+            return
         for i, l in enumerate(self._postscf_lines):
             if l.startswith("  | Shrink_full_auxil_basis : there are totally"):
                 self._nbasbas = int(l.split()[-5])
