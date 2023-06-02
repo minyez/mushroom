@@ -13,7 +13,7 @@ from mushroom.core.cell import Cell
 from mushroom.core.logger import create_logger
 from mushroom.core.typehint import RealVec3D, Path
 from mushroom.core.bs import BandStructure
-from mushroom.core.ioutils import readlines_remove_comment, grep, open_textio, greeks, greeks_latex
+from mushroom.core.ioutils import readlines_remove_comment, grep, open_textio, greeks, greeks_latex, conv_string
 from mushroom.core.elements import element_symbols, get_atomic_number, l_channels
 
 _logger = create_logger("aims")
@@ -925,13 +925,15 @@ class StdOut:
         self._finished_control = False
         self._finished_geometry = False
         self._finished_prep = False
-        self._finished_init = False
+        self._finished_pbc_lists_init = False
+        self._finished_scf_init = False
 
         self._system_lines = None
         self._control_lines = None
         self._geometry_lines = None
         self._prep_lines = None
-        self._init_lines = None
+        self._pbc_lists_init_lines = None
+        self._scf_init_lines = None
         self._scf_lines = None
         self._postscf_lines = None
         self._timestat_lines = None
@@ -945,6 +947,11 @@ class StdOut:
         self._geometry = None
         self._timestat = None
 
+        self._n_cells = None
+        self._n_cells_pm = None
+        self._n_cells_H = None
+        self._n_matrix_size_H = None
+
         self._nbasbas = None
         self._nspins = None
         self._nkpts = None
@@ -957,7 +964,8 @@ class StdOut:
         self._divide_output_lines(lines)
         self._handle_system()
         self._handle_prep()
-        self._handle_init()
+        self._handle_pbc_lists_init()
+        self._handle_scf_init()
         self._handle_postscf()
         self._handle_timing_statistics()
 
@@ -981,11 +989,15 @@ class StdOut:
             if l.startswith("  Preparations completed."):
                 self._finished_prep = True
                 self._prep_lines = self._prep_lines[:self._prep_lines.index(l)]
+            if l.startswith("  Initializing index lists of integration centers"):
+                self._pbc_lists_init_lines = lines[i:]
             if l.startswith("          Begin self-consistency loop: Initialization."):
-                self._finished_init = True
-                self._init_lines = lines[i:]
+                self._finished_pbc_lists_init = True
+                self._pbc_lists_init_lines = self._pbc_lists_init_lines[:self._pbc_lists_init_lines.index(l)]
+                self._scf_init_lines = lines[i:]
             if l.startswith("          Begin self-consistency iteration #    1"):
-                self._init_lines = self._init_lines[:self._init_lines.index(l)]
+                self._finished_scf_init = True
+                self._scf_init_lines = self._scf_init_lines[:self._scf_init_lines.index(l)]
                 self._scf_lines = lines[i:]
             # use the start of constructing auxillary basis as a mark for post-scf calculations
             if l.startswith("  Constructing auxiliary basis"):
@@ -1052,14 +1064,28 @@ class StdOut:
                 except IndexError:
                     pass
 
-    def _handle_init(self):
+    def _handle_pbc_lists_init(self):
+        """process the data in initializing pbc list by the subroutine initialize_bc_dependent_lists"""
+        if not self._finished_pbc_lists_init:
+            _logger.warning("PBC lists initialization is not finished")
+        for i, l in enumerate(self._pbc_lists_init_lines):
+            if l.startswith("  | Number of super-cells (origin)"):
+                self._n_cells = conv_string(l, int, -1)
+            if l.startswith("  | Number of super-cells (after PM_index)"):
+                self._n_cells_pm = conv_string(l, int, -1)
+            if l.startswith("  | Number of super-cells in hamiltonian"):
+                self._n_cells_H = conv_string(l, int, -1)
+            if l.startswith("  | Size of matrix packed + index"):
+                self._n_matrix_size_H = conv_string(l, int, -1)
+
+    def _handle_scf_init(self):
         """process the data in the self-consistency loop initialization"""
-        if not self._finished_init:
+        if not self._finished_scf_init:
             _logger.warning("self-consistent loop initialization is not finished")
-        for i, l in enumerate(self._init_lines):
+        for i, l in enumerate(self._scf_init_lines):
             if l.startswith("  Initializing the k-point"):
                 try:
-                    self._nkpts = int(self._init_lines[i + 1].split()[-1])
+                    self._nkpts = int(self._scf_init_lines[i + 1].split()[-1])
                 except (IndexError, ValueError):
                     pass
             if l.startswith("  | Number of basis functions in the Hamiltonian integrals"):
