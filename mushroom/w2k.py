@@ -218,20 +218,26 @@ class Struct:
         posi_types: direct positions of atoms of each type in atms_types
             atms_types and posi_types should have the same length
     """
+
     # pylint: disable=R0912,R0914,R0915
-    def __init__(self, latt_consts, atms_types: Sequence[str],
-                 posi_types, kind="P", unit="au", coord_sys="D",
-                 isplits=None, npts=None, rzeros=None, rmts=None, symops=None,
-                 casename: str=None, mode: str="rela",
-                 rotmats=None, reference: str=None, comment: str=None):
+    def __init__(self, latt_consts, atms_types: Sequence[str], posi_types,
+                 kind="P", unit="au", coord_sys="D",
+                 isplits=None, npts=None,
+                 rzeros=None, rmts=None,
+                 symops=None,
+                 casename: str = None,
+                 mode: str = "rela",
+                 rotmats=None,
+                 reference: str = None,
+                 comment: str = None):
         if len(atms_types) != len(posi_types):
-            raise ValueError("length of atms_types ({}) and posi_types ({}) are different"\
+            raise ValueError("length of atms_types ({}) and posi_types ({}) are different"
                              .format(len(atms_types), len(posi_types)))
-        #try:
-        #    assert len(np.shape(posi_types)) == 3
-        #    assert np.shape(posi_types)[2] == 3
-        #except (AssertionError, ValueError):
-        #    raise ValueError("invalid shape of posi_types")
+        # try:
+        #     assert len(np.shape(posi_types)) == 3
+        #     assert np.shape(posi_types)[2] == 3
+        # except (AssertionError, ValueError):
+        #     raise ValueError("invalid shape of posi_types")
         self.casename = casename
         self.kind = kind
         self.atms_types = atms_types
@@ -249,21 +255,21 @@ class Struct:
         if kind == "H":
             # recp: [2/SQRT(3), 0, 0], [1/SQRT(3),1,0], [0,0,1]
             latt = [[latt_consts[0], 0, 0],
-                    [-latt_consts[0]/2, latt_consts[1]*SQRT3/2, 0],
+                    [-latt_consts[0] / 2, latt_consts[1] * SQRT3 / 2, 0],
                     [0, 0, latt_consts[2]]]
         elif kind == "R":
             # recp: [1/SQRT(3), -1, 1], [1/SQRT(3),1,1], [-2/SQRT(3),0,1]
-            latt = [[latt_consts[0]/2, latt_consts[1]/2/SQRT3, latt_consts[2]/3],
-                    [-latt_consts[0]/2, latt_consts[1]/2/SQRT3, latt_consts[2]/3],
-                    [0.0, -latt_consts[1]/SQRT3, latt_consts[2]/3]]
+            latt = [[latt_consts[0] / 2, latt_consts[1] / 2 / SQRT3, latt_consts[2] / 3],
+                    [-latt_consts[0] / 2, latt_consts[1] / 2 / SQRT3, latt_consts[2] / 3],
+                    [0.0, -latt_consts[1] / SQRT3, latt_consts[2] / 3]]
         elif kind == "B":
             # recp:[[0, 1, 1], [1, 0, 1], [1, 1, 0]]
-            latt = np.multiply([[-1, 1, 1], [1, -1, 1], [1, 1, -1]], latt_consts[0]/2)
+            latt = np.multiply([[-1, 1, 1], [1, -1, 1], [1, 1, -1]], latt_consts[0] / 2)
         elif kind in ["CXY", "CYZ", "CXZ"]:
             raise NotImplementedError("C kind of struct is not implemented")
         elif kind == "F":
             # recp:[[-1, 1, 1], [1, -1, 1], [1, 1, -1]]
-            latt = np.multiply([[0, 1, 1], [1, 0, 1], [1, 1, 0]], latt_consts[0]/2)
+            latt = np.multiply([[0, 1, 1], [1, 0, 1], [1, 1, 0]], latt_consts[0] / 2)
         elif kind in ["P", "S"]:
             # primitive case, generate latt directly
             latt = get_latt_vecs_from_latt_consts(*latt_consts)
@@ -432,9 +438,12 @@ class Struct:
         ntypes = int(lines[1][27:30])
         kind = lines[1][:4].strip()
         # lattice constants, 6F10.6
-        latt_consts = tuple(map(lambda i: float(lines[3][10*i:10*i+10]), range(6)))
+        latt_consts = tuple(map(lambda i: float(lines[3][10 * i:10 * i + 10]), range(6)))
         # relativity mode: RELA or something else
-        mode = lines[2][13:].strip()
+        unit = 'au'
+        mode = lines[2][13:17].lower()
+        if len(lines[2][13:].split()) > 1:
+            unit = lines[2][23:].strip().lower()
 
         atm_blocks = []
         rotmats = []
@@ -451,9 +460,8 @@ class Struct:
         rzeros = {}
         rmts = {}
         for _ in range(ntypes):
-            mult = int(lines[atomline_index+1][15:17])
-            atm, p, npt, rzero, rmt, isplit, rotmat = \
-                    _read_atm_block(lines[atomline_index:atomline_index+mult+6])
+            mult = int(lines[atomline_index + 1][15:17])
+            atm, p, npt, rzero, rmt, isplit, rotmat = _read_atm_block(lines[atomline_index:atomline_index + mult + 6])
             atms_types.append(atm)
             posi_types.append(p)
             rotmats.append(rotmat)
@@ -465,7 +473,7 @@ class Struct:
 
         symops = _read_symops(lines[atomline_index:])
         return cls(latt_consts, atms_types, posi_types, npts=npts, symops=symops, rmts=rmts,
-                   isplits=isplits, kind=kind, rzeros=rzeros, rotmats=rotmats,
+                   isplits=isplits, kind=kind, unit=unit, rzeros=rzeros, rotmats=rotmats,
                    comment=lines[0].strip(), casename=casename)
 
     def export(self, scale: float = 1.0) -> str:
@@ -490,13 +498,13 @@ class Struct:
             posi = self._cell.get_atm_posi(at)
             mult = len(posi)
             Z = get_atomic_number(at)
-            slist_atm = ["ATOM{:4d}: X={:10.8f} Y={:10.8f} Z={:10.8f}".format(iat+1,
+            slist_atm = ["ATOM{:4d}: X={:10.8f} Y={:10.8f} Z={:10.8f}".format(iat + 1,
                                                                               *posi[0, :]),
                          "{:10s}MULT={:2d}{:10s}ISPLIT={:2d}".format("", mult, "", isplit),]
             for i in range(1, mult):
-                slist_atm.append("{:8d}: X={:10.8f} Y={:10.8f} Z={:10.8f}".format(iat+1,
+                slist_atm.append("{:8d}: X={:10.8f} Y={:10.8f} Z={:10.8f}".format(iat + 1,
                                                                                   *posi[i, :]))
-            slist_atm.append("{:<3s}{:<8s}NPT={:5d}  R0={:10.8f} RMT={:10.4f}{:>5s}{:5.1f}"\
+            slist_atm.append("{:<3s}{:<8s}NPT={:5d}  R0={:10.8f} RMT={:10.4f}{:>5s}{:5.1f}"
                              .format(at, "", npt, rzero, rmt, "Z:", Z))
             rotmat_format = "\n".join(["{:<20s}{:10.7f}{:10.7f}{:10.7f}",] * 3)
             slist_atm.append(rotmat_format.format("LOCAL ROT MATRIX", *rotmat[0, :],
@@ -509,7 +517,7 @@ class Struct:
         for i, (rot, tran) in enumerate(zip(rots, trans)):
             for j in range(3):
                 slist.append("{:2d}{:2d}{:2}{:11.8f}".format(*rot[j, :], tran[j]))
-            slist.append("{:8d}".format(i+1))
+            slist.append("{:8d}".format(i + 1))
         return "\n".join(slist)
 
     def write(self, filename=None, scale: float = 1.0):
@@ -993,4 +1001,3 @@ def read_dos(pdos1: Path, *pdos: Path, unit: str=None,
         pdos[0, :, ia, prjs.index(p)] = data[2+iap] * mults[ia]
     return DensityOfStates(egrid, tdos, efermi=efermi, unit=unit,
                            pdos=pdos, atms=atms, prjs=prjs)
-
