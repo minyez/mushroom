@@ -97,10 +97,10 @@ def _read_atm_block(lines):
     # the line including atomic symbol, NPT, R0, RMT and Z
     l = lines[mult + 1]
     # atom symbol may include an index
-    atm = l[:3]
-    npt = int(l[15:20])
-    rzero = float(l[25:36])
-    rmt = float(l[40:53])
+    atm = l[:3].strip()
+    npt = int(l[15:20].strip())
+    rzero = float(l[25:36].strip())
+    rmt = float(l[40:53].strip())
 
     l = "".join(lines[mult+2+i][20:].strip('\n') for i in range(3))
     rotmat = np.array([float(l[10*i:10*(i+1)]) for i in range(9)]).reshape((3,3))
@@ -281,6 +281,7 @@ class Struct:
         posi = np.round(posi, decimals=8)
         self._mults = [len(x) for x in posi_types]
         atms = atms_from_sym_nat(atms_types, self._mults)
+        _logger.debug("generated atoms in struct: %r", atms)
         self._cell = Cell(latt, atms, posi, unit=unit, coord_sys=coord_sys,
                           reference=reference, comment=comment)
         self._cell.move_atoms_to_first_lattice()

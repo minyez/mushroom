@@ -105,6 +105,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
             raise self._err(
                 "Fail to create latt and posi array. Please check.")
         self._atms = [a.capitalize() for a in atms]
+        _logger.debug("cell._atms %r\nconverted from atms %r", self._atms, atms)
         self._check_input_consistency()
 
         LengthUnit.__init__(self, lunit=unit)
