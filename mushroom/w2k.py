@@ -21,12 +21,12 @@ from mushroom.core.bs import BandStructure
 from mushroom.core.dos import DensityOfStates
 
 __all__ = [
-        "Struct",
-        "read_energy",
-        "KList",
-        "InTetra",
-        "In1",
-        ]
+    "Struct",
+    "read_energy",
+    "KList",
+    "InTetra",
+    "In1",
+]
 
 _logger = create_logger("w2k")
 del create_logger
@@ -34,9 +34,8 @@ del create_logger
 npt_default = 781
 rzero_default_elements = {}
 rmt_default = 1.8
-rmt_default_elements = {
-        "N": 1.4, "B": 1.3
-    }
+rmt_default_elements = {"N": 1.4, "B": 1.3}
+
 
 def _get_default_rzero(element):
     """get the default R0 for element ``element``
@@ -56,6 +55,7 @@ def _get_default_rzero(element):
             rzero = 0.0001
     return rzero
 
+
 def _get_default_rmt(element):
     """get the default RMT for element ``element``
 
@@ -70,6 +70,7 @@ def _get_default_rmt(element):
         _logger.warning("unknown element for RMT, use default %f", rmt_default)
         return rmt_default
     return rmt
+
 
 def _read_atm_block(lines):
     """read inequivalent atom block in struct file
@@ -102,8 +103,9 @@ def _read_atm_block(lines):
     rzero = float(l[25:36].strip())
     rmt = float(l[40:53].strip())
 
-    l = "".join(lines[mult+2+i][20:].strip('\n') for i in range(3))
-    rotmat = np.array([float(l[10*i:10*(i+1)]) for i in range(9)]).reshape((3,3))
+    l = "".join(lines[mult + 2 + i][20:].strip('\n') for i in range(3))
+    rotmat = np.array([float(l[10 * i:10 * (i + 1)])
+                       for i in range(9)]).reshape((3, 3))
     return atm, posi, npt, rzero, rmt, isplit, rotmat
 
 
@@ -130,7 +132,8 @@ def _read_symops(lines):
         symops["translations"][i, :] = t
     return symops
 
-def get_casename(dirpath: Path=".", casename: str=None):
+
+def get_casename(dirpath: Path = ".", casename: str = None):
     """get the case name of the wien2k calculation under directory `dirpath`
 
     It will first search for .struct file under dirpath and
@@ -208,6 +211,7 @@ def get_inputs(suffix: str, *suffices, dirpath: Path = ".",
     if search_cplx:
         return tuple(search_cplx_input(i) for i in inputs)
     return tuple(str(i) for i in inputs)
+
 
 class Struct:
     """object for generating struct files
@@ -478,7 +482,9 @@ class Struct:
                    comment=lines[0].strip(), casename=casename)
 
     def export(self, scale: float = 1.0) -> str:
-        """export the cell and atomic setup in the wien2k format"""
+        """export the cell and atomic setup in the wien2k format
+
+        The lattice is always in atomic unit"""
         slist = ["{}, {}".format(self.comment, self.get_reference()),
                  "{:<4s}LATTICE,NONEQUIV.ATOMS:{:3d}".format(self.kind, self.ntypes),
                  "MODE OF CALC={}".format(self.mode_calc.upper()),]
@@ -634,9 +640,9 @@ class In1:
         if matched is None:
             raise ValueError("Fail to find Fermi energy from in1")
         efermi = float(matched.group(1))
-        #matched = re.match(r"([\d\s.]+)", w2klines[1])
-        #if matched is None:
-        #    raise ValueError("Fail to find RKmax, Lmax and LNSmax from in1")
+        # matched = re.match(r"([\d\s.]+)", w2klines[1])
+        # if matched is None:
+        #     raise ValueError("Fail to find RKmax, Lmax and LNSmax from in1")
         rkmax, lmax, lnsmax = map(float, w2klines[1].split()[:3])
         lmax = int(lmax)
         lnsmax = int(lnsmax)
@@ -644,14 +650,14 @@ class In1:
         elparams = []
         i = 2
         while i < len(w2klines):
-            #line = re.match(r"([-\w\d\s.]+)", w2klines[i]).group()
+            # line = re.match(r"([-\w\d\s.]+)", w2klines[i]).group()
             line = w2klines[i]
             if line.startswith("K-VECTORS FROM UNIT"):
                 kvec_info = line.strip()
                 break
             words = line.split()
             ndiff = int(words[1])
-            el = _read_el_block(w2klines[i : i + ndiff + 1])
+            el = _read_el_block(w2klines[i:i + ndiff + 1])
             elparams.append(el)
             i += ndiff + 1
         return cls(casename, switch, efermi,
@@ -694,11 +700,14 @@ class In1:
         """write the w2k formatted string to filename"""
         print_file_or_iowrapper(self.export(), f=filename)
 
+
 # pylint: disable=C0301
 # kpoint line format in energy file, wien2k v14.2
-_energy_kpt_line = re.compile(r"([ -]\d\.\d{12}E[+-]\d{2})"*3+r"([\w\s\d]{10})\s*(\d+)\s+(\d+)\s+(\d+\.\d+)")
+_energy_kpt_line = re.compile(r"([ -]\d\.\d{12}E[+-]\d{2})" * 3 +
+                              r"([\w\s\d]{10})\s*(\d+)\s+(\d+)\s+(\d+\.\d+)")
 
-def _read_efermi_from_second_to_last_el(l, shift_to_last_digit: int=1):
+
+def _read_efermi_from_second_to_last_el(l, shift_to_last_digit: int = 1):
     """extract the fermi energy from the line containing linearization energy of lapw at large l
 
     Such energy is usually set to 0.2 Ry below the Fermi level.
@@ -717,14 +726,15 @@ def _read_efermi_from_second_to_last_el(l, shift_to_last_digit: int=1):
         raise ValueError("bad-formatted el string")
     width = len(l) // nel
     decimals = width - l.index('.') - 1
-    efermi = float(l[-2*width:-width]) + 0.2
-    if efermi > 150: # LAPW
+    efermi = float(l[-2 * width:-width]) + 0.2
+    if efermi > 150:  # LAPW
         efermi -= 200.0
     _logger.info("> nr. excpetions = %d", nel)
     _logger.info("> read E_F = %f", efermi)
     efermi += shift_to_last_digit * (10 ** (-decimals))
     _logger.info(">  set E_F = %f", efermi)
     return efermi
+
 
 # pylint: disable=R0914
 def read_energy(penergy: str, penergy_dn: str = None, efermi=None):
@@ -748,7 +758,7 @@ def read_energy(penergy: str, penergy_dn: str = None, efermi=None):
         lines = fp.readlines()
         for ln in ln_kpts:
             _logger.debug("starting k-line %d: %s", ln, lines[ln].strip('\n'))
-            s = StringIO("".join(lines[ln+1:ln+1+nb]))
+            s = StringIO("".join(lines[ln + 1:ln + 1 + nb]))
             eigen.append(np.loadtxt(s, usecols=[1,]))
         return np.array(eigen)
     if efermi is None:
@@ -784,8 +794,8 @@ def read_energy(penergy: str, penergy_dn: str = None, efermi=None):
                            return_linenum=True)
         eigen.append(_read_one_energy_file(h, linenums, nbands_min))
     # always Rydberg unit
-    return BandStructure(eigen, weight=weights, unit='ry', efermi=efermi), \
-           natm_ineq, np.array(kpts), symbols
+    return BandStructure(eigen, weight=weights, unit='ry', efermi=efermi), natm_ineq, np.array(kpts), symbols
+
 
 class KList:
     """the object to manipulate klist file, including
@@ -797,9 +807,14 @@ class KList:
         ksym (list of tuple)
         comment (str)
     """
-    def __init__(self, xyzd: Sequence[Tuple[int,int,int,int]],
-                 weight: Sequence[float], e1: float, e2: float,
-                 ksym: Sequence[Tuple[int,str]]=None, comment: str=None):
+
+    def __init__(self,
+                 xyzd: Sequence[Tuple[int, int, int, int]],
+                 weight: Sequence[float],
+                 e1: float,
+                 e2: float,
+                 ksym: Sequence[Tuple[int, str]] = None,
+                 comment: str = None):
         self.xyzd = np.array(xyzd)
         self.weight = np.array(weight)
         self.e1 = e1
@@ -815,7 +830,7 @@ class KList:
     def get_kpts(self):
         """get the fractional kpoint vectors"""
         if self._kpts is None:
-            self._kpts = self.xyzd[:,:3] / self.xyzd[:,3]
+            self._kpts = self.xyzd[:, :3] / self.xyzd[:, 3]
         return self._kpts
 
     def export(self):
@@ -829,7 +844,7 @@ class KList:
             if bandlike:
                 sym = self.ksym.get(ik, "")
             else:
-                sym = str(ik+1)
+                sym = str(ik + 1)
             s = "{:10s}{:10d}{:10d}{:10d}{:10d}{:5.2f}".format(sym, x, y, z, d, w)
             if ik == 0:
                 s = s + "{:5.2f}{:5.2f}{:s}".format(self.e1, self.e2, self.comment)
@@ -841,13 +856,16 @@ class KList:
         """read a klist file and return a KList object"""
         raise NotImplementedError
 
+
 class InTetra:
     """int file for qtl/tetra"""
+
     def __init__(self):
         pass
 
+
 # pylint: disable=R0912,R0915
-def read_qtl(pqtl: Path, data_only: bool=False):
+def read_qtl(pqtl: Path, data_only: bool = False):
     """read qtl file and return a BandStructure object
 
     Args:
@@ -859,14 +877,14 @@ def read_qtl(pqtl: Path, data_only: bool=False):
 
     """
     def _read_one_band_block_between_iline(lines, natm):
-        nkpt = len(lines)//(natm+1)
+        nkpt = len(lines) // (natm + 1)
         nprj = len(lines[0].split()) - 3
         eig = np.zeros((nkpt,))
         pwav = np.zeros((nkpt, natm, nprj))
         for ik in range(nkpt):
-            eig[ik] = float(lines[ik*(natm+1)+natm].split()[0])
+            eig[ik] = float(lines[ik * (natm + 1) + natm].split()[0])
             for ia in range(natm):
-                l = lines[ik*(natm+1)+ia]
+                l = lines[ik * (natm + 1) + ia]
                 pwav[ik, ia, :] = list(map(float, l.split()[3:]))
         return nkpt, eig, pwav
     if pqtl is None:
@@ -902,13 +920,13 @@ def read_qtl(pqtl: Path, data_only: bool=False):
     ibls = []
     for i, s in enumerate(enes):
         if s.startswith(" BAND"):
-            ibls.append(i+1)
+            ibls.append(i + 1)
     nbands = len(ibls)
     list_eigen = []
     list_pwav = []
     for i, ibst in enumerate(ibls):
         if i < nbands - 1:
-            nkpt, e, p = _read_one_band_block_between_iline(enes[ibst:ibls[i+1]], natm)
+            nkpt, e, p = _read_one_band_block_between_iline(enes[ibst:ibls[i + 1]], natm)
         else:
             nkpt, e, p = _read_one_band_block_between_iline(enes[ibst:], natm)
         list_eigen.append(e)
@@ -920,7 +938,7 @@ def read_qtl(pqtl: Path, data_only: bool=False):
         pwav[0, :, ib, :, :] = p
     # consider multiplicity
     for iat, mult in enumerate(mults):
-        pwav[:, :, :, iat, :] = pwav[:, :, :, iat, :]*mult
+        pwav[:, :, :, iat, :] = pwav[:, :, :, iat, :] * mult
     # process projectors:
     # angular number to its corresponding name
     # lower letter
@@ -931,8 +949,11 @@ def read_qtl(pqtl: Path, data_only: bool=False):
         return pwav, prjs_new
     return BandStructure(eigen, unit="ry", pwav=pwav, prjs=prjs_new)
 
-def read_dos(pdos1: Path, *pdos: Path, unit: str=None,
-             mults: Sequence[int]=None) -> DensityOfStates:
+
+def read_dos(pdos1: Path,
+             *pdos: Path,
+             unit: str = None,
+             mults: Sequence[int] = None) -> DensityOfStates:
     """read one or more dos(ev) files and return a DensityOfStates object
 
     Args:
@@ -956,12 +977,12 @@ def read_dos(pdos1: Path, *pdos: Path, unit: str=None,
             h.readline()
             h.readline()
             # atom:projector in dos. 1 for the comment symbol
-            atms_prjs = h.readline().split()[n+1:]
+            atms_prjs = h.readline().split()[n + 1:]
         return data, atms_prjs
     efermi = 0.0000
     if unit is None:
         ext = get_file_ext(pdos1)
-        #if ext.startswith("dos1ev"):
+        # if ext.startswith("dos1ev"):
         if re.match(r"dos[1-9]ev", ext):
             unit = "ev"
         else:
@@ -974,13 +995,13 @@ def read_dos(pdos1: Path, *pdos: Path, unit: str=None,
             # remove the energy column
             _logger.debug(" shape of DOS data array:")
             _logger.debug("        data: %r", np.shape(data))
-            _logger.debug("       extra: %r (energy column excluded)", np.shape(dp[1:,:]))
-            data = np.concatenate([data, dp[1:,:]])
+            _logger.debug("       extra: %r (energy column excluded)", np.shape(dp[1:, :]))
+            data = np.concatenate([data, dp[1:, :]])
             _logger.debug("concat. data: %r", np.shape(data))
             atms_prjs.extend(app)
     # in dos(ev), efermi is fixed to 0.0
-    egrid = data[0,:]
-    tdos = data[1,:].reshape((1, len(egrid)))
+    egrid = data[0, :]
+    tdos = data[1, :].reshape((1, len(egrid)))
     # return if no projected dos are found
     if len(atms_prjs) == 0:
         return DensityOfStates(egrid, tdos, efermi=efermi)
@@ -999,6 +1020,11 @@ def read_dos(pdos1: Path, *pdos: Path, unit: str=None,
     for iap, ap in enumerate(atms_prjs):
         a, p = ap.split(":")
         ia = atms.index(a)
-        pdos[0, :, ia, prjs.index(p)] = data[2+iap] * mults[ia]
-    return DensityOfStates(egrid, tdos, efermi=efermi, unit=unit,
-                           pdos=pdos, atms=atms, prjs=prjs)
+        pdos[0, :, ia, prjs.index(p)] = data[2 + iap] * mults[ia]
+    return DensityOfStates(egrid,
+                           tdos,
+                           efermi=efermi,
+                           unit=unit,
+                           pdos=pdos,
+                           atms=atms,
+                           prjs=prjs)

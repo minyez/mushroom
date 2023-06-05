@@ -23,6 +23,7 @@ greeks_latex = list("\\" + x for x in greeks)
 _logger = create_logger("ioutil")
 del create_logger
 
+
 # pylint: disable=R0912,R0914,R0915
 def grep(pattern, filename, is_binary: bool = False, error_not_found: bool = False,
          from_behind: bool = False, return_group: Union[bool, int, Sequence[int]] = False,
@@ -100,7 +101,7 @@ def grep(pattern, filename, is_binary: bool = False, error_not_found: bool = Fal
             n += 1
             if n >= maxcounts:
                 break
-        if i+1 >= maxdepth:
+        if i + 1 >= maxdepth:
             break
 
     if return_linenum:
@@ -151,6 +152,7 @@ def get_file_ext(path: Union[str, os.PathLike, TextIOWrapper], greedy: bool = Tr
     else:
         end = m.end()
     return name[end:]
+
 
 def get_filename_wo_ext(path: Union[str, os.PathLike], dirname=False) -> str:
     """Get the filename without extension
@@ -270,8 +272,8 @@ def trim_before(string: str, regex: str, include_pattern=False) -> str:
     _search = re.search(regex, string)
     if _search is not None:
         if include_pattern:
-            return string[_search.start() :]
-        return string[_search.end() :]
+            return string[_search.start():]
+        return string[_search.end():]
     return string
 
 
@@ -500,6 +502,7 @@ def get_str_indices_by_iden(container, iden=None):
         return list(OrderedDict.fromkeys(ret).keys())
     return ret
 
+
 def print_file_or_iowrapper(*s, f=None, mode='w', encoding='utf-8', **kwargs):
     """print string s to file handler f
     Args:
@@ -518,6 +521,7 @@ def print_file_or_iowrapper(*s, f=None, mode='w', encoding='utf-8', **kwargs):
     print(*s, file=h, **kwargs)
     if isinstance(f, str):
         h.close()
+
 
 def readtext_split_emptyline(fn):
     """read all text, and split the file string by empty line
@@ -538,15 +542,15 @@ def readtext_split_emptyline(fn):
         return strings
     # find index of empty line
     # -1 refers to the dummy line before the first
-    indices_empty = [-1,] + [i for i, line in enumerate(lines) if line.strip() == ""] \
-            + [len(lines),]
+    indices_empty = [-1,] + [i for i, line in enumerate(lines) if line.strip() == ""] + [len(lines),]
     n = len(indices_empty)
-    for i in range(n-1):
+    for i in range(n - 1):
         st = indices_empty[i]
-        ed = indices_empty[i+1]
+        ed = indices_empty[i + 1]
         if ed - st > 1:
-            strings.append("".join(lines[st+1:ed]))
+            strings.append("".join(lines[st + 1:ed]))
     return strings
+
 
 def cycler(i: int, lt: Union[List, Tuple], return_int=False):
     """cycle the index according to the length of list/tuple
@@ -555,7 +559,7 @@ def cycler(i: int, lt: Union[List, Tuple], return_int=False):
         i (int)
         lt (list or tuple)
     """
-    i = i%len(lt)
+    i = i % len(lt)
     if return_int:
         return i
     return lt[i]
@@ -667,7 +671,7 @@ def decode_int_range(s: str) -> List:
     m = int_range.fullmatch(s)
     if m:
         prefix, start, end = map(m.group, range(1, 4))
-        gen = range(int(start), int(end)+1)
+        gen = range(int(start), int(end) + 1)
         if prefix:
             decoded.extend("{:s}{:+d}".format(prefix, i) for i in gen)
         else:
@@ -688,8 +692,7 @@ def fortran_write(fortran_format: str, *args, file=stdout):
     try:
         print(python_format.format(*args), file=file)
     except ValueError as err:
-        info = "unbalanced Fortran format string ({}) and number of arguments {}".format\
-               (fortran_format, len(args))
+        info = "unbalanced Fortran format string ({}) and number of arguments {}".format(fortran_format, len(args))
         raise ValueError(info) from err
     raise NotImplementedError
 

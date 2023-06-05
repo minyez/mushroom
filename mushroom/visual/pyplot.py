@@ -9,6 +9,7 @@ except ImportError:
 
 from mushroom.core.ioutils import raise_no_module
 
+
 def rc_gracify(transparent: bool = False, dpi: int = 300):
     """setup rcParams to mimic the style of XmGrace"""
     raise_no_module(plt, "matplotlib")
