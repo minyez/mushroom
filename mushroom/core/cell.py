@@ -1065,7 +1065,10 @@ When other keyword are parsed, they will be filtered out and no exception will b
         ret.append("#\n# {}".format(self.comment))
         ret.append("# reference: {}\n#".format(self.get_reference()))
         for posi, atm in zip(self.posi, self.atms):
-            ret.append("{} {:15.9f} {:15.9f} {:15.9f} {}".format(atom_tag, *posi, atm))
+            # aims usually doesn't have arabic number in atom symbols,
+            # so we prune it before export (by a very naive way)
+            atm_prune_ara = atm.strip(" 0123456789")
+            ret.append("{} {:15.9f} {:15.9f} {:15.9f} {}".format(atom_tag, *posi, atm_prune_ara))
         for l in self.latt:
             ret.append("lattice_vector {:15.9f} {:15.9f} {:15.9f}".format(*l))
         self.unit = was_unit

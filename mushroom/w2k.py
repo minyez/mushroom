@@ -213,6 +213,52 @@ def get_inputs(suffix: str, *suffices, dirpath: Path = ".",
     return tuple(str(i) for i in inputs)
 
 
+def _w2k_read_latt_posi_for_kind(kind, coord_sys, latt_consts, posi_types):
+    """convert lattice vectors and positions for different lattice kind in w2k when reading"""
+    # the following latt determination are adapted from latgen.f
+    # where the reciprocal lattice is calculated first, and then
+    # transform to real space with gbass.f
+    if coord_sys.lower() != "d":
+        raise NotImplementedError
+
+    if kind == "H":
+        # recp: [2/SQRT(3), 0, 0], [1/SQRT(3),1,0], [0,0,1]
+        latt = [[latt_consts[0], 0, 0],
+                [-latt_consts[0] / 2, latt_consts[1] * SQRT3 / 2, 0],
+                [0, 0, latt_consts[2]]]
+        if coord_sys.lower() == "d":
+            posi_types = np.dot(posi_types, [[2 / SQRT3, 0, 0],
+                                             [1 / SQRT3, 1, 0],
+                                             [0, 0, 1]])
+    elif kind == "R":
+        # recp: [1/SQRT(3), -1, 1], [1/SQRT(3),1,1], [-2/SQRT(3),0,1]
+        latt = [[latt_consts[0] / 2, latt_consts[1] / 2 / SQRT3, latt_consts[2] / 3],
+                [-latt_consts[0] / 2, latt_consts[1] / 2 / SQRT3, latt_consts[2] / 3],
+                [0.0, -latt_consts[1] / SQRT3, latt_consts[2] / 3]]
+        if coord_sys.lower() == "d":
+            posi_types = np.dot(posi_types, [[1 / SQRT3, -1, 1],
+                                             [1 / SQRT3, 1, 1],
+                                             [-2 / SQRT3, 0, 1]])
+    elif kind == "B":
+        # recp: [[0, 1, 1], [1, 0, 1], [1, 1, 0]]
+        latt = np.multiply([[-1, 1, 1], [1, -1, 1], [1, 1, -1]], latt_consts[0] / 2)
+        if coord_sys.lower() == "d":
+            posi_types = np.dot(posi_types, [[0, 1, 1], [1, 0, 1], [1, 1, 0]])
+    elif kind in ["CXY", "CYZ", "CXZ"]:
+        raise NotImplementedError("C kind of struct is not implemented")
+    elif kind == "F":
+        # recp: [[-1, 1, 1], [1, -1, 1], [1, 1, -1]]
+        latt = np.multiply([[0, 1, 1], [1, 0, 1], [1, 1, 0]], latt_consts[0] / 2)
+        if coord_sys.lower() == "d":
+            posi_types = np.dot(posi_types, [[-1, 1, 1], [1, -1, 1], [1, 1, -1]])
+    elif kind in ["P", "S"]:
+        # primitive case, generate latt directly
+        latt = get_latt_vecs_from_latt_consts(*latt_consts)
+    else:
+        raise ValueError("Unsupported lattice type {}".format(kind))
+    return latt, posi_types
+
+
 class Struct:
     """object for generating struct files
 
@@ -253,32 +299,9 @@ class Struct:
             self.rotmats = []
             for i, _ in enumerate(atms_types):
                 self.rotmats.append(np.diag([1.0, 1.0, 1.0]))
-        # the following latt determination are adapted from latgen.f
-        # where the reciprocal lattice is calculated first, and then
-        # transform to real space with gbass.f
-        if kind == "H":
-            # recp: [2/SQRT(3), 0, 0], [1/SQRT(3),1,0], [0,0,1]
-            latt = [[latt_consts[0], 0, 0],
-                    [-latt_consts[0] / 2, latt_consts[1] * SQRT3 / 2, 0],
-                    [0, 0, latt_consts[2]]]
-        elif kind == "R":
-            # recp: [1/SQRT(3), -1, 1], [1/SQRT(3),1,1], [-2/SQRT(3),0,1]
-            latt = [[latt_consts[0] / 2, latt_consts[1] / 2 / SQRT3, latt_consts[2] / 3],
-                    [-latt_consts[0] / 2, latt_consts[1] / 2 / SQRT3, latt_consts[2] / 3],
-                    [0.0, -latt_consts[1] / SQRT3, latt_consts[2] / 3]]
-        elif kind == "B":
-            # recp:[[0, 1, 1], [1, 0, 1], [1, 1, 0]]
-            latt = np.multiply([[-1, 1, 1], [1, -1, 1], [1, 1, -1]], latt_consts[0] / 2)
-        elif kind in ["CXY", "CYZ", "CXZ"]:
-            raise NotImplementedError("C kind of struct is not implemented")
-        elif kind == "F":
-            # recp:[[-1, 1, 1], [1, -1, 1], [1, 1, -1]]
-            latt = np.multiply([[0, 1, 1], [1, 0, 1], [1, 1, 0]], latt_consts[0] / 2)
-        elif kind in ["P", "S"]:
-            # primitive case, generate latt directly
-            latt = get_latt_vecs_from_latt_consts(*latt_consts)
-        else:
-            raise ValueError("Unsupported lattice type {}".format(kind))
+
+        latt, posi_types = _w2k_read_latt_posi_for_kind(kind, coord_sys, latt_consts, posi_types)
+
         posi = []
         for x in posi_types:
             posi.extend(x)
@@ -479,7 +502,7 @@ class Struct:
         symops = _read_symops(lines[atomline_index:])
         return cls(latt_consts, atms_types, posi_types, npts=npts, symops=symops, rmts=rmts,
                    isplits=isplits, kind=kind, unit=unit, rzeros=rzeros, rotmats=rotmats,
-                   comment=lines[0].strip(), casename=casename)
+                   coord_sys="D", comment=lines[0].strip(), casename=casename)
 
     def export(self, scale: float = 1.0) -> str:
         """export the cell and atomic setup in the wien2k format

@@ -11,9 +11,11 @@ from mushroom.core.logger import create_logger
 _logger = create_logger("cryutil")
 del create_logger
 
+
 def get_recp_latt(latt: Latt3T3):
     """get the reciprocal lattice vectors from the real vectors"""
     return np.cross(latt[(1, 2, 0), :], latt[(2, 0, 1), :]) / np.linalg.det(latt) * 2.0E0 * PI
+
 
 def get_latt_vecs_from_latt_consts(a: float, b: float, c: float,
                                    alpha: float = 90.,
@@ -35,7 +37,7 @@ def get_latt_vecs_from_latt_consts(a: float, b: float, c: float,
     a = abs(a)
     b = abs(b)
     c = abs(c)
-    is_ortho = all(map(lambda x: abs(x-90.) <= angle_thres, [alpha, beta, gamma]))
+    is_ortho = all(map(lambda x: abs(x - 90.) <= angle_thres, [alpha, beta, gamma]))
     if is_ortho:
         return [[a, 0., 0.], [0., b, 0.], [0., 0., c]]
     alpha *= PI / 180.
@@ -44,10 +46,10 @@ def get_latt_vecs_from_latt_consts(a: float, b: float, c: float,
     ca, cb, cg = cos([alpha, beta, gamma])
     sa, sb, sg = sin([alpha, beta, gamma])
     a1 = [a, 0., 0.]
-    a2 = [b*cg, b*sg, 0.0]
-    a3 = [c*cb, c/sg*(ca-cg*cb),
-          c/sg*np.sqrt(sb**2*sg**2 - ca**2 - cg**2*cb**2 + 2.0*ca*cb*cg)
-          ]
+    a2 = [b * cg, b * sg, 0.0]
+    a3 = [c * cb,
+          c / sg * (ca - cg * cb),
+          c / sg * np.sqrt(sb**2 * sg**2 - ca**2 - cg**2 * cb**2 + 2.0 * ca * cb * cg)]
     return np.round([a1, a2, a3], decimals=decimals)
 
 
@@ -130,6 +132,7 @@ def get_all_atoms_from_symops(atms_ineq: Iterable[str], posi_ineq, symops: dict,
                 posi.append(a)
                 xyzs.append(xyz)
     return atms, posi
+
 
 # pylint: disable=C0301
 def periodic_duplicates_in_cell(direct_coord):
@@ -233,8 +236,9 @@ def select_dyn_flag_from_axis(axis, relax: bool = False) -> List[bool]:
     flag = [not relax, not relax, not relax]
     alist = axis_list(axis)
     for a in alist:
-        flag[a-1] = not flag[a-1]
+        flag[a - 1] = not flag[a - 1]
     return flag
+
 
 def brav_from_latt_consts(a: float, b: float, c: float,
                           alpha: float, beta: float, gamma: float,
@@ -245,6 +249,7 @@ def brav_from_latt_consts(a: float, b: float, c: float,
         string, tuple. string
     """
     raise NotImplementedError
+
 
 def axis_list(axis) -> tuple:
     """Generate axis indices from ``axis``
@@ -275,4 +280,3 @@ def axis_list(axis) -> tuple:
                 if _a in range(1, 4):
                     _aList.append(_a)
     return tuple(_aList)
-
