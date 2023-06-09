@@ -953,14 +953,19 @@ class StdOut:
         self._n_cells_H = None
         self._n_matrix_size_H = None
 
-        self._nbasbas = None
         self._nspins = None
         self._nkpts = None
+        self._nbands = None
         self._nbasis_H = None
         self._nelect = None
         self._nbasis_uc = None
         self._nbasis = None
         self._nrad = None
+
+        # postscf stuff
+        self._nbasbas = None
+        self._gw_kgrid_result = None
+        self._gw_kgrid_kpts = None
 
         self._divide_output_lines(lines)
         self._handle_system()
@@ -1061,6 +1066,8 @@ class StdOut:
                 self._nrad = int(l.split()[-1])
             if l.startswith("  | Total number of basis functions :"):
                 self._nbasis = int(l.split()[-1])
+            if l.startswith("  | Number of Kohn-Sham states (occupied + empty)"):
+                self._nbands = int(l.split()[-1])
             if l.startswith("*** Environment variable OMP_NUM_THREADS is set to"):
                 try:
                     self._omp_threads = int(self._prep_lines[i + 1].strip())
@@ -1169,6 +1176,13 @@ class StdOut:
         """return a Cell object representing the geometry"""
         raise NotImplementedError
 
+    def get_n_spin_kpt_band_basis(self):
+        """get the most requested dimensions of the system
+
+        Return:
+            4 int, number of spins, kpoints, bands/states and basis functions"""
+        return self._nspins, self._nkpts, self._nbands, self._nbasis
+
     def get_QP_result(self):
         """get the aims QP result from the standard output
 
@@ -1189,6 +1203,9 @@ class StdOut:
             a dict
         """
         errmsg = "QP calculations is not {} from the standard output"
+        if self._gw_kgrid_result is not None and self._gw_kgrid_kpts is not None:
+            return self._gw_kgrid_result, self._gw_kgrid_kpts
+
         if self._postscf_lines is None:
             raise ValueError(errmsg.format("found"))
         st = None
@@ -1231,14 +1248,30 @@ class StdOut:
         # the number of kpoints to print, not necessary that used in SCF
         nkpts = istates.count(istates[0]) // self._nspins
         assert (nkpts == len(kpts))
-        # nbands = istates[1:].index(istates[0]) + 1
+
         # TODO: verify that kmesh goes faster than spin
         #       otherwise one may swap the first two axis
         keys = ["occ", "eps", "exx", "vxc", "sigc", "eqp"]
         d = {}
         for i, k in enumerate(keys):
             d[k] = array[:, i].reshape(self._nspins, nkpts, -1, order="C")
-        return d, kpts
+        # store the data
+        self._gw_kgrid_result = d
+        self._gw_kgrid_kpts = kpts
+
+        return self._gw_kgrid_result, self._gw_kgrid_kpts
+
+    def get_QP_sigc(self):
+        """get the correlation self-energy to Koh-Sham state"""
+        d, _ = self.get_QP_result()
+        return d["sigc"]
+
+    def get_QP_sigx(self):
+        """get the exchange self-energy correction (i.e. exact-exchange) to Koh-Sham state"""
+        d, _ = self.get_QP_result()
+        return d["exx"]
+
+    get_exx = get_QP_sigx
 
     def get_QP_bandstructure(self, kind="eqp"):
         """get the QP band structure
@@ -1282,6 +1315,7 @@ def display_dimensions(aimsout):
     dict_str_dim = {
         "Spins": s._nspins,
         "K-points": s._nkpts,
+        "States/bands": s._nbands,
         "OBS (orbital basis set)": s._nbasis,
         "ABF (auxiliary basis function)": s._nbasbas,
         "Radial functions": s._nrad,
