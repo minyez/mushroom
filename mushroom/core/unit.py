@@ -2,8 +2,10 @@
 """Objects to manipulate units of physical quantities"""
 from mushroom.core.constants import ANG2AU, EV2HA, EV2RY, RY2HA
 
+
 class UnitError(Exception):
     """exception for unit manipulation"""
+
 
 class EnergyUnit:
     """Base class for controlling energy unit
@@ -44,7 +46,6 @@ class EnergyUnit:
         if u not in self._valid_eu:
             info = "{} is not a valid energy unit".format(eunit)
             raise UnitError(info)
-
 
 
 class LengthUnit:

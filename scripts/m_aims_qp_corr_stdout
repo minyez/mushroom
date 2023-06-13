@@ -16,15 +16,9 @@ def m_aims_qp_corr_stdout(aimsout, kind="xc", eksmin=None, eksmax=None, refopt=N
         fig, ax
     """
     s = StdOut(aimsout)
-    if kind == "c":
-        data = s.get_QP_sigc()
-    elif kind == "x" or kind == "exx":
-        data = s.get_QP_sigx()
-    elif kind == "xc":
-        data = s.get_QP_sigc() + s.get_QP_sigx()
     eks, _ = s.get_QP_bandstructure("eps")
     nspins, nkpts, nbands, _ = s.get_n_spin_kpt_band_basis()
-    fig, ax = Plot.subplots(1, 1)
+
     ref = 0.0
     if refopt is not None:
         if refopt == "vbm":
@@ -34,7 +28,26 @@ def m_aims_qp_corr_stdout(aimsout, kind="xc", eksmin=None, eksmax=None, refopt=N
         else:
             raise ValueError("unknown reference option: %s" % refopt)
 
-    ax.plot_group(eks.eigen - ref, sigc, color="k", ls="none")
+    fig, ax = Plot.subplots(1, 1)
+    ax.set_xlabel("Kohn-Sham energy [eV]")
+    if kind == "c":
+        data = s.get_QP_sigc()
+        ax.set_ylabel("Correlation self-energy [eV]")
+    elif kind == "x":
+        data = s.get_QP_sigx()
+        ax.set_ylabel("Exchange self-energy [eV]")
+    elif kind == "xc":
+        d, _ = s.get_QP_result()
+        data = d["sigc"] + d["exx"]
+        ax.set_ylabel("XC self-energy [eV]")
+    elif kind == "qp":
+        d, _ = s.get_QP_result()
+        data = d["sigc"] + d["exx"] - d["vxc"]
+        ax.set_ylabel("Self-energy correction to KS state [eV]")
+    else:
+        raise ValueError("Unknown kind for qp energy: %s" % kind)
+
+    ax.plot_group(eks.eigen - ref, data, color="k", ls="none", ssize=0.55)
     # ax.set_lim(xmin=np.min(eks), xmax=np.max(eks),
     #            ymin=np.min(sigc), ymax=np.max(sigc))
     ax.tight_graph()
@@ -43,17 +56,21 @@ def m_aims_qp_corr_stdout(aimsout, kind="xc", eksmin=None, eksmax=None, refopt=N
     ax.axhline(0.0, ls="dashed", color="gray")
     ax.axvline(0.0, ls="dashed", color="gray")
 
-    return fix, ax
+    return fig, ax
 
 
 if __name__ == '__main__':
     p = ArgumentParser(description=__doc__)
     p.add_argument("aimsout", help="aims stdout file")
     p.add_argument("-o", dest="output_agr", default=None, help="path of grace output")
-    p.add_argument("--kind", default="xc", choices=["x", "c", "xc", "exx"],
-                   help="type of QP correction, default X+C")
-    p.add_argument("--emin", dest="eksmin", default=None, help="minimal KS energy to show on plot")
-    p.add_argument("--emax", dest="eksmax", default=None, help="minimal KS energy to show on plot")
+    p.add_argument("--kind", default="qp", choices=["x", "c", "xc", "qp"],
+                   help="type of QP correction, default QP")
+    p.add_argument("--emin", dest="eksmin",
+                   type=float, default=None,
+                   help="minimal KS energy to show on plot")
+    p.add_argument("--emax", dest="eksmax",
+                   type=float, default=None,
+                   help="minimal KS energy to show on plot")
     p.add_argument("--ref", dest="refopt", default=None, choices=[None, "vbm", "fermi"],
                    help="reference as energy (absicca) zero")
     args = p.parse_args()
@@ -65,9 +82,8 @@ if __name__ == '__main__':
     if args.output_agr is None:
         output_agr = {
             "x": "plot_sigx.agr",
-            "exx": "plot_sigx.agr",
             "c": "plot_sigc.agr",
-            "xc": "plot_qpcorr.agr",
-        }
+            "xc": "plot_sigxc.agr",
+            "qp": "plot_qpcorr.agr",
+        }.get(args.kind)
     fig.write(output_agr)
-

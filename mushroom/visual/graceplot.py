@@ -16,7 +16,7 @@ from io import TextIOWrapper, StringIO
 from shutil import which
 from collections.abc import Iterable
 from copy import deepcopy
-from typing import Union, Tuple
+from typing import Union, Tuple, List, Type, TypeVar
 from numpy import shape, absolute, loadtxt
 from itertools import product
 
@@ -2763,6 +2763,8 @@ def _set_graph_alignment(rows, cols, hgap=0.02, vgap=0.02, width_ratios=None, he
     return graphs
 
 
+TypePlot = TypeVar('TypePlot', bound="Plot")
+
 # ===== main object =====
 class Plot:
     """the general control object for the grace plot
@@ -3010,7 +3012,7 @@ class Plot:
 
     # Templates
     @classmethod
-    def subplots(cls, *args, **kwargs) -> Tuple[Plot, List[Graph]]:
+    def subplots(cls: Type[TypePlot], *args, **kwargs) -> Tuple[TypePlot, Union[Graph, List[Graph]]]:
         """emulate matplotlib.pyplot.subplots
 
         ArgsL

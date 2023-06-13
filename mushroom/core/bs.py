@@ -15,9 +15,9 @@ from mushroom.core.ioutils import get_str_indices_by_iden, split_comma
 from mushroom.core.typehint import Key
 
 __all__ = [
-        "BandStructure",
-        "split_apb",
-        ]
+    "BandStructure",
+    "split_apb",
+]
 
 # eigen, occ (array): shape (nspins, nkpt, nbands)
 DIM_EIGEN_OCC = 3
@@ -40,6 +40,7 @@ AtmPrjToken = Union[Key, Sequence[Key]]
 
 _logger = create_logger("bs")
 del create_logger
+
 
 class BandStructureError(Exception):
     """exception for band structure"""
@@ -78,6 +79,7 @@ class BandStructure(EnergyUnit):
     """
     _dtype = "float64"
     # pylint: disable=R0912,R0915
+
     def __init__(self, eigen, occ=None, weight=None, unit: str = 'ev', efermi: float = None,
                  pwav=None, atms: Sequence[str] = None, prjs: Sequence[str] = None):
         shape_e = np.shape(eigen)
@@ -106,7 +108,7 @@ class BandStructure(EnergyUnit):
             raise BandStructureError from err
 
         EnergyUnit.__init__(self, eunit=unit)
-        #self._emulti = {1: 2, 2: 1}[self._nspins]
+        # self._emulti = {1: 2, 2: 1}[self._nspins]
         # One may parse the kpoints with all zero weight for band calculation
         # In this case, reassign with unit weight
         if np.isclose(np.sum(self._weight), 0.0):
@@ -176,7 +178,7 @@ class BandStructure(EnergyUnit):
             _logger.error(info)
             raise BandStructureError
         self._occ = np.array(occ, dtype=self._dtype)
-        #self._nelect_sp_kp = np.sum(self._occ, axis=2) * self._emulti
+        # self._nelect_sp_kp = np.sum(self._occ, axis=2) * self._emulti
         self._nelect_sp_kp = np.sum(self._occ, axis=2)
         self._nelect_sp = np.dot(self._nelect_sp_kp, self._weight) / np.sum(self._weight)
         self._nelect = np.sum(self._nelect_sp)
@@ -199,7 +201,7 @@ class BandStructure(EnergyUnit):
             b.append(self._convert_band_iden(ib))
         return b
 
-    def _convert_band_iden(self, band_iden):
+    def _convert_band_iden(self, band_iden: Union[int, str]) -> int:
         """convert a string of band identifier, like "vbm", "cbm-2", "vbm+3"
         to the correpsonding band index.
 
@@ -237,10 +239,11 @@ class BandStructure(EnergyUnit):
     @unit.setter
     def unit(self, newu: str):
         coef = self._get_eunit_conversion(newu)
-        to_conv = [self._eigen,
-                   self._vbm_sp, self._vbm_sp_kp,
-                   self._cbm_sp, self._cbm_sp_kp,
-                  ]
+        to_conv = [
+            self._eigen,
+            self._vbm_sp, self._vbm_sp_kp,
+            self._cbm_sp, self._cbm_sp_kp,
+        ]
         if coef != 1:
             if self._efermi is not None:
                 self._efermi *= coef
@@ -335,6 +338,7 @@ class BandStructure(EnergyUnit):
     def atms(self):
         """list of strings, types of each atom. None for no atoms info"""
         return self._atms
+
     @atms.setter
     def atms(self, new: str):
         if self._pwav is None:
@@ -352,6 +356,7 @@ class BandStructure(EnergyUnit):
     def prjs(self):
         """list of strings, names of atomic projectors. None for no projectors info"""
         return self._prjs
+
     @prjs.setter
     def prjs(self, new: str):
         if self._pwav is None:
@@ -425,16 +430,16 @@ class BandStructure(EnergyUnit):
                     self._has_infty_cbm = True
                     info = "VBM index for spin-kpt channel (%d,%d) equals nbands. %s"
                     _logger.warning(
-                        info, i+1, j+1, "CBM for this channel set to infinity")
+                        info, i + 1, j + 1, "CBM for this channel set to infinity")
                     self._cbm_sp_kp[i, j] = np.infty
                 else:
-                    self._cbm_sp_kp[i, j] = self.eigen[i, j, vb+1]
+                    self._cbm_sp_kp[i, j] = self.eigen[i, j, vb + 1]
         self._band_width = np.zeros(
             (self.nspins, self.nbands, 2), dtype=self._dtype)
         self._band_width[:, :, 0] = np.min(self._eigen, axis=1)
         self._band_width[:, :, 1] = np.max(self._eigen, axis=1)
         # VB indices
-        self._ivbm_sp = np.array(((0, 0),)*self.nspins)
+        self._ivbm_sp = np.array(((0, 0),) * self.nspins)
         self._vbm_sp = np.max(self._vbm_sp_kp, axis=1)
         self._ivbm_sp[:, 0] = np.argmax(self._vbm_sp_kp, axis=1)
         for i in range(self.nspins):
@@ -445,7 +450,7 @@ class BandStructure(EnergyUnit):
         self._ivbm[1:3] = self._ivbm_sp[self._ivbm[0], :]
         self._vbm = self._vbm_sp[self._ivbm[0]]
         # CB indices
-        self._icbm_sp = np.array(((0, 0),)*self.nspins)
+        self._icbm_sp = np.array(((0, 0),) * self.nspins)
         self._cbm_sp = np.min(self._cbm_sp_kp, axis=1)
         self._icbm_sp[:, 0] = np.argmin(self._cbm_sp_kp, axis=1)
         for i in range(self.nspins):
@@ -636,9 +641,12 @@ class BandStructure(EnergyUnit):
         cb = np.unravel_index(np.argmin(self.cbm_sp_kp, axis=None), shape)
         return tuple((vb, cb))
 
-    def get_transition(self, ivk: int, ick: int,
-                       ivb=None, icb=None,
-                       ispin: int=0):
+    def get_transition(self,
+                       ivk: int,
+                       ick: int,
+                       ivb: Union[int, str] = None,
+                       icb: Union[int, str] = None,
+                       ispin: int = 0):
         """get the transition energy between particular transition in a spin channel
 
         Args:
@@ -693,11 +701,11 @@ class BandStructure(EnergyUnit):
         except BandStructureError as err:
             info = "unable to compute effective gap, since no partial wave is parsed. try kavg_gap"
             raise BandStructureError(info) from err
-        if ivb is None or not ivb in range(self.nbands):
+        if ivb is None or ivb not in range(self.nbands):
             vb_coef = vb_coefs[:, :, np.max(self.ivbm)]
         else:
             vb_coef = vb_coefs[:, :, ivb]
-        if icb is None or not icb in range(self.nbands):
+        if icb is None or icb not in range(self.nbands):
             cb_coef = cb_coefs[:, :, np.min(self.icbm)]
         else:
             cb_coef = cb_coefs[:, :, icb]
@@ -705,7 +713,7 @@ class BandStructure(EnergyUnit):
         inv = np.sum(np.abs(np.reciprocal(self.direct_gaps()) * vb_coef * cb_coef))
         if np.allclose(inv, 0.0):
             return np.infty
-        return 1.0/inv
+        return 1.0 / inv
 
     def get_eigen(self, indices=None):
         """get eigenvalues of particular bands
@@ -826,7 +834,7 @@ class BandStructure(EnergyUnit):
                                  .format(y.nspins, self.nspins))
             was_unit = y.unit
             y.unit = self.unit
-            newbs._eigen = newbs._eigen - y._eigen[:,:,:newbs.nbands]
+            newbs._eigen = newbs._eigen - y._eigen[:, :, :newbs.nbands]
             y.unit = was_unit
         elif isinstance(y, Real):
             if y == 0.0:
@@ -931,12 +939,12 @@ def random_band_structure(nspins: int = 1, nkpts: int = 1, nbands: int = 2,
     shape = (nspins, nkpts, nbands)
     eigen = np.random.random_sample(shape)
     # set vb to the band in the middle
-    ivb = int(nbands/2) - 1
+    ivb = int(nbands / 2) - 1
     for i in range(nbands):
         eigen[:, :, i] += i - ivb
 
     occ = np.zeros(shape)
-    occ[:, :, :ivb+1] = 1.0
+    occ[:, :, :ivb + 1] = 1.0
     weight = np.random.randint(1, 11, size=nkpts)
     efermi = None
     if is_metal:
@@ -959,6 +967,7 @@ def random_band_structure(nspins: int = 1, nkpts: int = 1, nbands: int = 2,
                     pwav[ispin, ik, ib, :, :] /= np.sum(pwav[ispin, ik, ib, :, :])
     return BandStructure(eigen, occ, weight=weight, efermi=efermi,
                          pwav=pwav, atms=atms, prjs=prjs)
+
 
 def split_apb(apb: str):
     """split an atom-projector-band string into lists containing corresponding identifiers
@@ -1013,39 +1022,73 @@ def display_band_analysis(bs: BandStructure, kpts=None, unit="eV", value_only=Fa
         if not value_only:
             print("> band edge between band index {:3d} -> {:3d}".format(ivb, icb))
             if bs.is_gap_direct():
-                print("> fundamental gap = {:8.5f} {}".format(eg_dir, unit))
+                print("> fundamental gap = {:8.4f} {}".format(eg_dir, unit))
                 if kpts is None:
                     print(">>   ik={:<3d}".format(ik_eg_dir))
                 else:
                     print(">>   ik={:<3d} ({:7.5f},{:7.5f},{:7.5f})"
                           .format(ik_eg_dir, *kpts[ik_eg_dir, :]))
             else:
-                print("> fundamental gap = {:8.5f} {}".format(eg_ind, unit))
+                print("> fundamental gap = {:8.4f} {}".format(eg_ind, unit))
                 if kpts is None:
                     print(">> ikvb={:<3d} -> ikcb={:<3d}".format(ik_vb, ik_cb))
                 else:
                     print(">> ikvb={:<3d} ({:7.5f},{:7.5f},{:7.5f}) -> ikcb={:<3d} ({:7.5f},{:7.5f},{:7.5f})"
                           .format(ik_vb, *kpts[ik_vb, :], ik_cb, *kpts[ik_cb, :]))
-                print(">> VBM direct gap = {:8.5f} {}".format(direct_gaps[ik_vb], unit))
-                print(">> CBM direct gap = {:8.5f} {}".format(direct_gaps[ik_cb], unit))
+                print(">> VBM direct gap = {:8.4f} {}".format(direct_gaps[ik_vb], unit))
+                print(">> CBM direct gap = {:8.4f} {}".format(direct_gaps[ik_cb], unit))
                 if kpts is None:
-                    print("> min. direct gap = {:8.5f} {} at ik={:<3d}"
+                    print("> min. direct gap = {:8.4f} {} at ik={:<3d}"
                           .format(eg_dir, unit, ik_eg_dir))
                 else:
-                    print("> min. direct gap = {:8.5f} {} at ik={:<3d} ({:7.5f},{:7.5f},{:7.5f})"
+                    print("> min. direct gap = {:8.4f} {} at ik={:<3d} ({:7.5f},{:7.5f},{:7.5f})"
                           .format(eg_dir, unit, ik_eg_dir, *kpts[ik_eg_dir, :]))
         else:
             if bs.is_gap_direct():
-                print("{:8.5f} {:8.5f} {:8.5f}".format(eg_dir, eg_dir, eg_dir))
+                print("{:8.4f}".format(eg_dir))
             else:
-                print("{:8.5f} {:8.5f} {:8.5f}".format(eg_ind, direct_gaps[ik_vb], direct_gaps[ik_cb]))
+                print("{:8.4f} {:8.4f} {:8.4f}".format(eg_ind, direct_gaps[ik_vb], direct_gaps[ik_cb]))
         bs.unit = was_unit
     except BandStructureError as err:
         raise BandStructureError("fail to display band analysis") from err
 
 
-def display_transition_energies(trans: Sequence[str], bs: BandStructure,
-                                kpts=None, unit: str="eV", value_only=False):
+def _decode_itrans_string(s):
+    """
+
+    Args:
+        s (list of str): "ivk:ick:ivb:icb", the last two can be omitted
+    """
+    itrans = [x.strip() for x in s.split(":")]
+    if len(itrans) == 2:
+        ivk, ick = list(map(int, itrans))
+        ivb = None
+        icb = None
+    elif len(itrans) == 3:
+        ivk, ick = list(map(int, itrans[:2]))
+        try:
+            ivb = int(itrans[2])
+        except ValueError:
+            ivb = itrans[2]
+        icb = None
+    else:
+        ivk, ick = list(map(int, itrans[:2]))
+        try:
+            ivb = int(itrans[2])
+        except ValueError:
+            ivb = itrans[2]
+        try:
+            icb = int(itrans[3])
+        except ValueError:
+            icb = itrans[3]
+    return ivk, ick, ivb, icb
+
+
+def display_transition_energies(trans: Sequence[str],
+                                bs: BandStructure,
+                                kpts=None,
+                                unit: str = "eV",
+                                value_only=False):
     """display the transitions
 
     Args:
@@ -1053,30 +1096,7 @@ def display_transition_energies(trans: Sequence[str], bs: BandStructure,
     """
     if bs.nspins != 1:
         raise NotImplementedError("spin-polarized BS analysis")
-    def _decode_itrans(s):
-        itrans = [x.strip() for x in s.split(":")]
-        if len(itrans) == 2:
-            ivk, ick = list(map(int, itrans))
-            ivb = None
-            icb = None
-        elif len(itrans) == 3:
-            ivk, ick = list(map(int, itrans[:2]))
-            try:
-                ivb = int(itrans[2])
-            except ValueError:
-                ivb = itrans[2]
-            icb = None
-        else:
-            ivk, ick = list(map(int, itrans[:2]))
-            try:
-                ivb = int(itrans[2])
-            except ValueError:
-                ivb = itrans[2]
-            try:
-                icb = int(itrans[3])
-            except ValueError:
-                icb = itrans[3]
-        return ivk, ick, ivb, icb
+
     try:
         was_unit = bs.unit
         bs.unit = unit.lower()
@@ -1084,17 +1104,16 @@ def display_transition_energies(trans: Sequence[str], bs: BandStructure,
             print("> Transition energies ({}):".format(unit))
             print(">> {:5s} {:29s}    {:29s}".format("E", "kpt_v", "kpt_c"))
         for t in trans:
-            ivk, ick, ivb, icb = _decode_itrans(t)
+            ivk, ick, ivb, icb = _decode_itrans_string(t)
             et = bs.get_transition(ivk, ick, ivb=ivb, icb=icb)
             if not value_only:
                 if kpts is None:
                     print(">> {:5.3f} {:<29d} -> {:<29d}".format(et, ivk, ick))
                 else:
-                    print(">> {:5.3f} {:<3d} ({:7.5f},{:7.5f},{:7.5f}) -> {:<3d} ({:7.5f},{:7.5f},{:7.5f})"
+                    print(">> {:5.3f} {:<3d} ({:7.4f},{:7.4f},{:7.4f}) -> {:<3d} ({:7.4f},{:7.4f},{:7.4f})"
                           .format(et, ivk, *kpts[ivk, :], ick, *kpts[ick, :]))
             else:
                 print("{:5.3f}".format(et))
         bs.unit = was_unit
     except BandStructureError as err:
         raise BandStructureError("fail to display transition energies") from err
-
