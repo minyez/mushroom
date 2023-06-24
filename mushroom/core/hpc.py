@@ -201,3 +201,15 @@ def add_scheduler_header(pscript: Union[str, PathLike],
             lines[0] += head
             with pscript.open("w") as h:
                 print(*lines, sep="", file=h)
+
+
+def is_slurm_enabled() -> bool:
+    """check if slurm is enabled and configured on the platform.
+
+    This is achieved by calling sacct and reading its returncode"""
+    import subprocess as sp
+    p = sp.Popen(["sacct", "-h"], stderr=sp.PIPE, stdout=sp.PIPE)
+    ret = p.wait()
+    if ret == 0:
+        return True
+    return False

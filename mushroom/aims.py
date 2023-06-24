@@ -3,9 +3,11 @@
 import os
 import re
 import glob
+import pathlib
 from typing import Tuple, List, Dict, Union
 from io import StringIO
 from copy import deepcopy
+
 import numpy as np
 
 # from mushroom.core.cell import Cell
@@ -130,310 +132,6 @@ def get_basis_directory_from_alias(directory_alias):
     elif directory in ["nao-vcc-2z", "nao-vcc-3z", "nao-vcc-4z", "nao-vcc-5z"]:
         directory = os.path.join("NAO-VCC-nZ", directory.upper())
     return directory
-
-
-class Control:
-    """object to handle aims control
-
-    The arguments are all dictionaries.
-    Keys are all strings.
-    Value of general tags are also string.
-
-    Args:
-        tags (dict): general tags
-        output (dict): tag controlling output
-        species (dict)
-    """
-
-    def __init__(self, tags: Dict = None, output: Dict = None, species: List = None):
-        self.tags = tags
-        self.output = output
-        self.species = species
-        self._if_species_changed = False
-        if self.species is not None:
-            self._elements = [s.elem for s in self.species]
-
-    def get_species(self, elem: Union[int, str]) -> int:
-        """get the species object of element in the control"""
-        if isinstance(elem, str):
-            try:
-                elem = self.elements.index(elem)
-            except ValueError as _e:
-                raise ValueError(f"species {elem} is not found in control") from _e
-        return self.species[elem]
-
-    # pylint: disable=W0707
-    def get_tag(self, tag, *default):
-        """get the value of tag"""
-        try:
-            return self.tags[tag]
-        except KeyError:
-            if default:
-                return default[0]
-            raise KeyError(f"no tag {tag} is found in control")
-
-    # pylint: disable=W0707
-    def get_output(self, tag, *default):
-        """get the value of tag"""
-        try:
-            return self.output[tag]
-        except KeyError:
-            if default:
-                return default[0]
-            raise KeyError(f"no output tag {tag} is found in control")
-
-    def update_tag(self, tag, value):
-        """update the value of tag
-
-        Args:
-            tag (str): the tag to be updated
-            value (str-able): the new value of the tag
-                If set to None, the tag will be deleted
-        """
-        if value or value is False:
-            try:
-                v = {True: ".true.", False: ".false."}.get(value, str(value))
-                self.tags[tag] = v
-                _logger.info("tag '%s' updated to: %s", tag, v)
-            except ValueError as _e:
-                raise ValueError(f"cannot turn value into string: {value}") from _e
-        else:
-            try:
-                _logger.info("removed tag '%s', original value: %s", tag, self.tags.pop(tag))
-            except KeyError:
-                _logger.info("tag '%s' to remove is not defined, skip", tag)
-
-    def update_output(self, output_tag, value):
-        """update the output tag value
-
-        Args:
-            output_tag (str): the output tag to be updated
-            value (str-able): the new value of the output tag
-                set to False or None to delete the tag
-        """
-        if value:
-            try:
-                v = {True: ""}.get(value, str(value))
-                self.output[output_tag] = v
-                _logger.info("output tag '%s' updated to: %s", output_tag, v)
-            except ValueError as _e:
-                raise ValueError(f"cannot turn value into string: {value}") from _e
-        else:
-            try:
-                _logger.info("removed output 'tag' %s, original value: %s", output_tag,
-                             self.output.pop(output_tag))
-            except KeyError:
-                _logger.info("output tag '%s' to remove is not defined, skip", output_tag)
-
-    def update_species_basic_tag(self, elem, tag, value):
-        """update the species basic tag of element ``elem``
-
-        Args:
-            elem (str or int): name of element, or its index in the control
-            tag (str): the species basic tag
-            value : the new value of tag. See ``update_basic_tag``
-        """
-        s = self.get_species(elem)
-        s.update_basic_tag(tag, value)
-
-    def get_basis(self, elem, *args, **kwargs):
-        """get the basis of element ``elem``
-
-        Args:
-            elem (str or int): name of element, or its index in the control
-            args and kwargs: parsed to the Species.get_basis method
-        """
-        s = self.get_species(elem)
-        return s.get_basis(*args, **kwargs)
-
-    def get_abf(self, elem, *args, **kwargs):
-        """get the abf of element ``elem``
-
-        Args:
-            elem (str or int): name of element, or its index in the control
-            args and kwargs: parsed to the Species.get_abf method
-        """
-        s = self.get_species(elem)
-        return s.get_abf(*args, **kwargs)
-
-    def add_basis(self, elem, *args, **kwargs):
-        """add basis to speices of element ``elem``
-
-        Args:
-            elem (str or int): name of element, or its index in the control
-            args and kwargs: parsed to the Species.add_basis method
-        """
-        s = self.get_species(elem)
-        s.add_basis(*args, **kwargs)
-
-    def add_abf(self, elem, *args, **kwargs):
-        """add abf to speices of element ``elem``
-
-        Args:
-            elem (str or int): name of element, or its index in the control
-            args and kwargs: parsed to the Species.add_abf method
-        """
-        s = self.get_species(elem)
-        s.add_abf(*args, **kwargs)
-
-    def modify_basis(self, elem, *args, **kwargs):
-        """modify basis in speices of element ``elem``
-
-        Args:
-            elem (str or int): name of element, or its index in the control
-            args and kwargs: parsed to the Species.modify_basis method
-        """
-        s = self.get_species(elem)
-        s.modify_basis(*args, **kwargs)
-
-    def modify_abf(self, elem, *args, **kwargs):
-        """modify ABFs in speices of element ``elem``
-
-        Args:
-            elem (str or int): name of element, or its index in the control
-            args and kwargs: parsed to the Species.modify_abf method
-        """
-        s = self.get_species(elem)
-        s.modify_abf(*args, **kwargs)
-
-    def delete_basis(self, elem, *args, **kwargs):
-        """modify basis in speices of element ``elem``
-
-        Args:
-            elem (str or int): name of element, or its index in the control
-            args and kwargs: parsed to the Species.delete_basis method
-        """
-        s = self.get_species(elem)
-        s.delete_basis(*args, **kwargs)
-
-    def delete_abf(self, elem, *args, **kwargs):
-        """modify basis in speices of element ``elem``
-
-        Args:
-            elem (str or int): name of element, or its index in the control
-            args and kwargs: parsed to the Species.delete_abf method
-        """
-        s = self.get_species(elem)
-        s.delete_abf(*args, **kwargs)
-
-    @property
-    def elements(self):
-        """the element name of the species"""
-        if self._if_species_changed:
-            self._elements = [s.elem for s in self.species]
-            self._if_species_changed = False
-        return self._elements
-
-    def purge_species(self):
-        """remove all species"""
-        self.species = []
-        self._if_species_changed = True
-
-    def replace_specie(self, specie_new):
-        """replace specie of element with a new one ``specie_new``"""
-        info = f"{specie_new.elem} is not included in species"
-        if specie_new.elem in self.elements:
-            self.species[self.elements.index(specie_new.elem)] = specie_new
-            self._if_species_changed = True
-        else:
-            _logger.warning("%s, no replace", info)
-
-    def add_species(self, *ss, error_replace=True):
-        """add species to the control file"""
-        for s in ss:
-            info = f"{s.elem} is already included in species"
-            if s.elem in self.elements:
-                if error_replace:
-                    raise ValueError(info)
-                _logger.warning("%s, will replace", info)
-                self.replace_specie(s)
-            else:
-                self.species.append(s)
-                self._if_species_changed = True
-
-    def export(self):
-        """export the control object to a string"""
-        slist = ["# normal tags"]
-        # normal tags
-        slist.extend(f"{k} {v}" for k, v in self.tags.items())
-        # output tags
-        slist.append("# output tags")
-        for k, v in self.output.items():
-            if k != 'band':
-                if v is True:
-                    slist.append(f"output {k}")
-                else:
-                    slist.append(f"output {k} {v}")
-            else:
-                for kseg in v:
-                    kstr = kseg[0] + kseg[1] + [kseg[2],]
-                    # if the ksymbols are specied
-                    if kseg[-1] is not None:
-                        kstr.extend(kseg[-2:])
-                    slist.append(f"output {k} {' '.join(str(x) for x in kstr)}")
-        # species information
-        slist.extend(s.export() for s in self.species)
-        return slist
-
-    def write(self, pcontrol):
-        """write the control content to file ``pcontrol``"""
-        with open_textio(pcontrol, 'w') as h:
-            print("\n".join(self.export()), file=h)
-
-    @classmethod
-    def read(cls, pcontrol="control.in"):
-        """Read aims control file and return an control object
-
-        Note that global flags after species are excluded and all the comment are removed.
-        """
-        _logger.info("Reading control file: %s", pcontrol)
-        _ls = readlines_remove_comment(pcontrol, keep_empty_lines=False, trim_leading_space=True)
-        tags = {}
-        # line number of each specie header
-        species_ln = grep(r'species', _ls, return_linenum=True)
-        if species_ln[1]:
-            _logger.debug("Detected species: %r", [x.split()[1:] for x in species_ln[0]])
-        else:
-            _logger.warning("No species tag is found in control")
-
-        # read all species information
-        # delegate the reading to the Species object
-        species_region = [*species_ln[1], len(_ls)]
-        species = []
-        for i, st in enumerate(species_region[:-1]):
-            ed = species_region[i + 1]
-            species.append(Species.read(StringIO("\n".join(_ls[st:ed]))))
-
-        # read other setup, including general tags and output tags
-        i = 0
-        output = []
-        while i < len(_ls[:species_region[0]]):
-            tagkv = _ls[i].split(maxsplit=1)
-            if len(tagkv) > 1:
-                tagk, tagv = tagkv[0], tagkv[1]
-            else:
-                tagk = tagkv[0]
-                tagv = None
-            if tagk == 'output':
-                if tagv is None:
-                    _logger.warning("empty output tag, ignore")
-                else:
-                    output.append(tagv)
-            else:
-                # single keyword without value
-                # NOTE I am not sure if there is any single keyword without value in aims,
-                #      though put here for safety
-                if tagv is None:
-                    tagv = ".true."
-                else:
-                    tagv = tagkv[1]
-                tags[tagk] = tagv
-            i += 1
-        output = _read_output_tags(output)
-        _logger.debug("tags: %r", tags)
-        _logger.debug("output: %r", output)
-        _logger.debug("species: %r", species)
-        return cls(tags, output, species)
 
 
 def read_divide_control_lines(pcontrol):
@@ -902,6 +600,314 @@ def get_specie_filename(elem: str, directory: str, species_defaults: str = None)
     return pspecies
 
 
+class Control:
+    """object to handle aims control
+
+    The arguments are all dictionaries.
+    Keys are all strings.
+    Value of general tags are also string.
+
+    Args:
+        tags (dict): general tags
+        output (dict): tag controlling output
+        species (dict)
+    """
+
+    def __init__(self, tags: Dict = None, output: Dict = None, species: List[Species] = None):
+        self.tags = tags
+        self.output = output
+        self.species = species
+        self._if_species_changed = False
+        if self.species is not None:
+            self._elements = [s.elem for s in self.species]
+
+    def get_species(self, elem: Union[int, str]) -> Species:
+        """get the species object of element in the control"""
+        if isinstance(elem, str):
+            try:
+                elem = self.elements.index(elem)
+            except ValueError as _e:
+                raise ValueError(f"species {elem} is not found in control") from _e
+        return self.species[elem]
+
+    # pylint: disable=W0707
+    def get_tag(self, tag, *default):
+        """get the value of tag"""
+        try:
+            return self.tags[tag]
+        except KeyError:
+            if default:
+                return default[0]
+            raise KeyError(f"no tag {tag} is found in control")
+
+    # pylint: disable=W0707
+    def get_output(self, tag, *default):
+        """get the value of tag"""
+        try:
+            return self.output[tag]
+        except KeyError:
+            if default:
+                return default[0]
+            raise KeyError(f"no output tag {tag} is found in control")
+
+    def update_tag(self, tag, value):
+        """update the value of tag
+
+        Args:
+            tag (str): the tag to be updated
+            value (str-able): the new value of the tag
+                If set to None, the tag will be deleted
+        """
+        if value or value is False:
+            try:
+                v = {True: ".true.", False: ".false."}.get(value, str(value))
+                self.tags[tag] = v
+                _logger.info("tag '%s' updated to: %s", tag, v)
+            except ValueError as _e:
+                raise ValueError(f"cannot turn value into string: {value}") from _e
+        else:
+            try:
+                _logger.info("removed tag '%s', original value: %s", tag, self.tags.pop(tag))
+            except KeyError:
+                _logger.info("tag '%s' to remove is not defined, skip", tag)
+
+    def update_output(self, output_tag, value):
+        """update the output tag value
+
+        Args:
+            output_tag (str): the output tag to be updated
+            value (str-able): the new value of the output tag
+                set to False or None to delete the tag
+        """
+        if value:
+            try:
+                v = {True: ""}.get(value, str(value))
+                self.output[output_tag] = v
+                _logger.info("output tag '%s' updated to: %s", output_tag, v)
+            except ValueError as _e:
+                raise ValueError(f"cannot turn value into string: {value}") from _e
+        else:
+            try:
+                _logger.info("removed output 'tag' %s, original value: %s", output_tag,
+                             self.output.pop(output_tag))
+            except KeyError:
+                _logger.info("output tag '%s' to remove is not defined, skip", output_tag)
+
+    def update_species_basic_tag(self, elem, tag, value):
+        """update the species basic tag of element ``elem``
+
+        Args:
+            elem (str or int): name of element, or its index in the control
+            tag (str): the species basic tag
+            value : the new value of tag. See ``update_basic_tag``
+        """
+        s = self.get_species(elem)
+        s.update_basic_tag(tag, value)
+
+    def get_basis(self, elem, *args, **kwargs):
+        """get the basis of element ``elem``
+
+        Args:
+            elem (str or int): name of element, or its index in the control
+            args and kwargs: parsed to the Species.get_basis method
+        """
+        s = self.get_species(elem)
+        return s.get_basis(*args, **kwargs)
+
+    def get_abf(self, elem, *args, **kwargs):
+        """get the abf of element ``elem``
+
+        Args:
+            elem (str or int): name of element, or its index in the control
+            args and kwargs: parsed to the Species.get_abf method
+        """
+        s = self.get_species(elem)
+        return s.get_abf(*args, **kwargs)
+
+    def add_basis(self, elem, *args, **kwargs):
+        """add basis to speices of element ``elem``
+
+        Args:
+            elem (str or int): name of element, or its index in the control
+            args and kwargs: parsed to the Species.add_basis method
+        """
+        s = self.get_species(elem)
+        s.add_basis(*args, **kwargs)
+
+    def add_abf(self, elem, *args, **kwargs):
+        """add abf to speices of element ``elem``
+
+        Args:
+            elem (str or int): name of element, or its index in the control
+            args and kwargs: parsed to the Species.add_abf method
+        """
+        s = self.get_species(elem)
+        s.add_abf(*args, **kwargs)
+
+    def modify_basis(self, elem, *args, **kwargs):
+        """modify basis in speices of element ``elem``
+
+        Args:
+            elem (str or int): name of element, or its index in the control
+            args and kwargs: parsed to the Species.modify_basis method
+        """
+        s = self.get_species(elem)
+        s.modify_basis(*args, **kwargs)
+
+    def modify_abf(self, elem, *args, **kwargs):
+        """modify ABFs in speices of element ``elem``
+
+        Args:
+            elem (str or int): name of element, or its index in the control
+            args and kwargs: parsed to the Species.modify_abf method
+        """
+        s = self.get_species(elem)
+        s.modify_abf(*args, **kwargs)
+
+    def delete_basis(self, elem, *args, **kwargs):
+        """modify basis in speices of element ``elem``
+
+        Args:
+            elem (str or int): name of element, or its index in the control
+            args and kwargs: parsed to the Species.delete_basis method
+        """
+        s = self.get_species(elem)
+        s.delete_basis(*args, **kwargs)
+
+    def delete_abf(self, elem, *args, **kwargs):
+        """modify basis in speices of element ``elem``
+
+        Args:
+            elem (str or int): name of element, or its index in the control
+            args and kwargs: parsed to the Species.delete_abf method
+        """
+        s = self.get_species(elem)
+        s.delete_abf(*args, **kwargs)
+
+    @property
+    def elements(self):
+        """the element name of the species"""
+        if self._if_species_changed:
+            self._elements = [s.elem for s in self.species]
+            self._if_species_changed = False
+        return self._elements
+
+    def purge_species(self):
+        """remove all species"""
+        self.species = []
+        self._if_species_changed = True
+
+    def replace_specie(self, specie_new):
+        """replace specie of element with a new one ``specie_new``"""
+        info = f"{specie_new.elem} is not included in species"
+        if specie_new.elem in self.elements:
+            self.species[self.elements.index(specie_new.elem)] = specie_new
+            self._if_species_changed = True
+        else:
+            _logger.warning("%s, no replace", info)
+
+    def add_species(self, *ss, error_replace=True):
+        """add species to the control file"""
+        for s in ss:
+            info = f"{s.elem} is already included in species"
+            if s.elem in self.elements:
+                if error_replace:
+                    raise ValueError(info)
+                _logger.warning("%s, will replace", info)
+                self.replace_specie(s)
+            else:
+                self.species.append(s)
+                self._if_species_changed = True
+
+    def export(self):
+        """export the control object to a string"""
+        slist = ["# normal tags"]
+        # normal tags
+        slist.extend(f"{k} {v}" for k, v in self.tags.items())
+        # output tags
+        slist.append("# output tags")
+        for k, v in self.output.items():
+            if k != 'band':
+                if v is True:
+                    slist.append(f"output {k}")
+                else:
+                    slist.append(f"output {k} {v}")
+            else:
+                for kseg in v:
+                    kstr = kseg[0] + kseg[1] + [kseg[2],]
+                    # if the ksymbols are specied
+                    if kseg[-1] is not None:
+                        kstr.extend(kseg[-2:])
+                    slist.append(f"output {k} {' '.join(str(x) for x in kstr)}")
+        # species information
+        slist.extend(s.export() for s in self.species)
+        return slist
+
+    def write(self, pcontrol):
+        """write the control content to file ``pcontrol``"""
+        with open_textio(pcontrol, 'w') as h:
+            print("\n".join(self.export()), file=h)
+
+    @classmethod
+    def read(cls, pcontrol="control.in"):
+        """Read aims control file and return an control object
+
+        Note that global flags after species are excluded and all the comment are removed.
+        """
+        _logger.info("Reading control file: %s", pcontrol)
+        _ls = readlines_remove_comment(pcontrol, keep_empty_lines=False, trim_leading_space=True)
+        tags = {}
+        # line number of each specie header
+        species_ln = grep(r'species', _ls, return_linenum=True)
+        if species_ln[1]:
+            _logger.debug("Detected species: %r", [x.split()[1:] for x in species_ln[0]])
+        else:
+            _logger.warning("No species tag is found in control")
+
+        # read all species information
+        # delegate the reading to the Species object
+        species_region = [*species_ln[1], len(_ls)]
+        species = []
+        for i, st in enumerate(species_region[:-1]):
+            ed = species_region[i + 1]
+            species.append(Species.read(StringIO("\n".join(_ls[st:ed]))))
+
+        # read other setup, including general tags and output tags
+        i = 0
+        output = []
+        while i < len(_ls[:species_region[0]]):
+            tagkv = _ls[i].split(maxsplit=1)
+            if len(tagkv) > 1:
+                tagk, tagv = tagkv[0], tagkv[1]
+            else:
+                tagk = tagkv[0]
+                tagv = None
+            if tagk == 'output':
+                if tagv is None:
+                    _logger.warning("empty output tag, ignore")
+                else:
+                    output.append(tagv)
+            else:
+                # single keyword without value
+                # NOTE I am not sure if there is any single keyword without value in aims,
+                #      though put here for safety
+                if tagv is None:
+                    tagv = ".true."
+                else:
+                    tagv = tagkv[1]
+                tags[tagk] = tagv
+            i += 1
+        output = _read_output_tags(output)
+        _logger.debug("tags: %r", tags)
+        _logger.debug("output: %r", output)
+        _logger.debug("species: %r", species)
+        return cls(tags, output, species)
+
+
+def split_aimsout_region(lines):
+    """split the aimsout region for processing"""
+
+
 class StdOut:
     """a general-purpose object to handle aims standard output
 
@@ -921,6 +927,8 @@ class StdOut:
         _logger.info("Reading standard output from: %s", pstdout)
         self._not_converged = lines[-2].strip() == '*** scf_solver: SCF cycle not converged.'
         self._finished = self._not_converged or lines[-2].strip() == 'Have a nice day.'
+
+        self._aims_version = None
 
         self._finished_system = False
         self._finished_control = False
@@ -953,6 +961,10 @@ class StdOut:
         self._n_cells_H = None
         self._n_matrix_size_H = None
 
+        # real space integration information
+        self._n_full_points = None
+        self._n_full_points_nz = None
+
         self._nspins = None
         self._nkpts = None
         self._nbands = None
@@ -966,6 +978,14 @@ class StdOut:
         self._nbasbas = None
         self._gw_kgrid_result = None
         self._gw_kgrid_kpts = None
+
+        # determine the version before dividing regions
+        for l in lines:
+            if l.startswith("  FHI-aims version"):
+                self._aims_version = l.split()[-1]
+                break
+        if self._aims_version is None:
+            raise ValueError("cannot extract aims version, incomplete calculation")
 
         self._divide_output_lines(lines)
         self._handle_system()
@@ -1079,15 +1099,17 @@ class StdOut:
         if not self._finished_pbc_lists_init:
             _logger.warning("PBC lists initialization is not finished")
         for i, l in enumerate(self._pbc_lists_init_lines):
-            if l.startswith("  Initializing the k-points"):
-                try:
-                    self._nkpts = int(self._pbc_lists_init_lines[i + 1].split()[-1])
-                except (IndexError, ValueError):
-                    pass
+            # if l.startswith("  Initializing the k-points"):
+            #     try:
+            #         self._nkpts = int(self._pbc_lists_init_lines[i + 1].split()[-1])
+            #     except (IndexError, ValueError):
+            #         pass
+            if l.startswith("  | Number of k-points"):
+                self._nkpts = conv_string(l, int, -1)
             if l.startswith("  | Number of basis functions in the Hamiltonian integrals"):
-                self._nbasis_H = int(l.split()[-1])
+                self._nbasis_H = conv_string(l, int, -1)
             if l.startswith("  | Number of basis functions in a single unit cell"):
-                self._nbasis_uc = int(l.split()[-1])
+                self._nbasis_uc = conv_string(l, int, -1)
             if l.startswith("  | Number of super-cells (origin)"):
                 self._n_cells = conv_string(l, int, -1)
             if l.startswith("  | Number of super-cells (after PM_index)"):
@@ -1104,6 +1126,10 @@ class StdOut:
         for i, l in enumerate(self._scf_init_lines):
             if l.startswith("  | Initial density: Formal number of electrons"):
                 self._nelect = float(l.split()[-1])
+            if l.startswith("  | Net number of integration points"):
+                self._n_full_points = int(l.split()[-1])
+            if l.startswith("  | of which are non-zero points"):
+                self._n_full_points_nz = int(l.split()[-1])
 
     def _handle_postscf(self):
         if not self._finished:
@@ -1325,6 +1351,8 @@ def display_dimensions(aimsout):
         "Super-cells": s._n_cells,
         "Super-cells (packed)": s._n_cells_pm,
         "Non-zero elements of all H(R)": s._n_matrix_size_H,
+        "Real-space grid points": s._n_full_points,
+        "Real-space grid points (non-zero)": s._n_full_points_nz,
     }
     lstr = max([len(x) for x in dict_str_dim.keys()])
     format_str = "# %-{}s : %s".format(lstr)
@@ -1333,3 +1361,22 @@ def display_dimensions(aimsout):
             print(format_str % sd)
         else:
             print(format_str % (sd[0], "(NOT FOUND)"))
+
+
+def is_finished_aimsdir(dirpath: Path, aimsout_pat: str = "aims.out*") -> str:
+    """check if the calculation inside dirpath is completed.
+
+    This is done by searching aims output files matching pattern ``aimsout_pat``
+    and checking if they are finished.
+
+    Args:
+        dirpath (str and PathLike): the directory containing aims input and output (if exists)
+        aimsout_pat (str): pattern to match the aims output file.
+    """
+    dirpath = pathlib.Path(dirpath)
+    for aimsout in dirpath.glob(aimsout_pat):
+        stdout = StdOut(aimsout)
+        if stdout.is_finished():
+            return aimsout.name
+    return None
+

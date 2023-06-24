@@ -6,7 +6,7 @@ from mushroom.aims import StdOut, display_dimensions
 def _parser():
     """the parser"""
     p = ArgumentParser(description=__doc__, formatter_class=RawDescriptionHelpFormatter)
-    p.add_argument("aimsout")
+    p.add_argument("-o", dest="aimsout", default="aims.out")
     return p
 
 

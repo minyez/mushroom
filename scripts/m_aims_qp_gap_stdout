@@ -14,7 +14,7 @@ def _parser():
     p.add_argument("-t", dest="trans", type=str, default=None, nargs="+",
                    help="transitions of interest, in the form of 'ivk:ick'")
     p.add_argument('--ks', action="store_true", help="KS gap instead of QP")
-    p.add_argument('--value', dest="value_only", action="store_true", help="Value only")
+    p.add_argument('-v', '--value', dest="value_only", action="store_true", help="Value only")
     return p
 
 

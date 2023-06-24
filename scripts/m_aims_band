@@ -102,10 +102,10 @@ def m_aims_band():
     ax.y.set_label("Energy (eV)")
     # draw zero line
     ax.axhline(0.0, ls="dashed")
-    p.write(file=args.output)
-
-    if args.fig_ext is not None:
-        p.savefig(get_filename_wo_ext(args.output) + "." + args.fig_ext)
+    if args.output != "none":
+        p.write(file=args.output)
+        if args.fig_ext is not None:
+            p.savefig(get_filename_wo_ext(args.output) + "." + args.fig_ext)
 
 
 if __name__ == "__main__":

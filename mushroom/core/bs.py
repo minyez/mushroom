@@ -1102,18 +1102,20 @@ def display_transition_energies(trans: Sequence[str],
         bs.unit = unit.lower()
         if not value_only:
             print("> Transition energies ({}):".format(unit))
-            print(">> {:5s} {:29s}    {:29s}".format("E", "kpt_v", "kpt_c"))
+            print(">> {:8s} {:29s}    {:29s}".format("E", "kpt_v", "kpt_c"))
         for t in trans:
             ivk, ick, ivb, icb = _decode_itrans_string(t)
             et = bs.get_transition(ivk, ick, ivb=ivb, icb=icb)
             if not value_only:
                 if kpts is None:
-                    print(">> {:5.3f} {:<29d} -> {:<29d}".format(et, ivk, ick))
+                    print(">> {:8.4f} {:<29d} -> {:<29d}".format(et, ivk, ick))
                 else:
-                    print(">> {:5.3f} {:<3d} ({:7.4f},{:7.4f},{:7.4f}) -> {:<3d} ({:7.4f},{:7.4f},{:7.4f})"
+                    print(">> {:4.8f} {:<3d} ({:7.4f},{:7.4f},{:7.4f}) -> {:<3d} ({:7.4f},{:7.4f},{:7.4f})"
                           .format(et, ivk, *kpts[ivk, :], ick, *kpts[ick, :]))
             else:
-                print("{:5.3f}".format(et))
+                print("{:8.4f}".format(et), end="")
+        if value_only:
+            print("")
         bs.unit = was_unit
     except BandStructureError as err:
         raise BandStructureError("fail to display transition energies") from err
