@@ -37,6 +37,8 @@ def _parser():
                    help="range of bands to plot, e.g. ~m2 for bands except the highest two")
     p.add_argument("--resolve", nargs="+", default=None, type=str,
                    help="resolve band crossing, e.g. 5,6,7")
+    p.add_argument("--resolve-dthres", dest="deriv_thres", default=5.0, type=float,
+                   help="derivative threshold for band resolution")
     g = p.add_mutually_exclusive_group()
     g.add_argument("--skbz", dest="isikib_zero", default=None, type=str,
                    help="use enk as energy zero, 'is:ik:ib', ib as a band identifier")
@@ -85,7 +87,7 @@ def m_aims_band():
         for resband in args.resolve:
             bands_tuple = tuple(map(int, resband.split(',')))
             bands = eigen[:, bands_tuple].transpose()
-            eigen[:, bands_tuple] = resolve_band_crossing(kp.x, bands).transpose()
+            eigen[:, bands_tuple] = resolve_band_crossing(kp.x, bands, deriv_thres=args.deriv_thres).transpose()
 
     ax.plot(kp.x, eigen.transpose() - ref, color="k", symbol="none")
     ax.x.set_major(grid=True, color="grey", lw=3, ls="dashed")

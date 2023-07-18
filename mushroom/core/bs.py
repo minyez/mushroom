@@ -1150,12 +1150,19 @@ def left_right_derivative_band(kx, band):
     return left_derivs, right_derivs
 
 
-def resolve_band_crossing_2band(kx, band1, band2, deriv_thres=5):
+def resolve_band_crossing_2band(kx, band1, band2, deriv_thres=None):
     """Resolve the crossing between two bands to make each band smooth.
 
     Args:
-        kpath segments have to be continous.
+        band1, band2 (1-dim ndarray)
+        deriv_thres (float)
+
+    Returns:
+        band1, band2 (1-dim ndarray)
     """
+    # default value
+    if deriv_thres is None:
+        deriv_thres = 5.0
     nk = len(kx)
     nbands = 2
     assert len(band1) == nk
@@ -1219,12 +1226,19 @@ def resolve_band_crossing_2band(kx, band1, band2, deriv_thres=5):
     return bands[0], bands[1]
 
 
-def resolve_band_crossing(kx, bands, deriv_thres=5):
+def resolve_band_crossing(kx, bands, deriv_thres=None):
     """Resolve the crossing between two bands to make each band smooth.
 
     Args:
-        kpath segments have to be continous.
+        bands (2-dim ndarray)
+        deriv_thres (float)
+
+    Returns:
+        bands (2-dim ndarray)
     """
+    # default value
+    if deriv_thres is None:
+        deriv_thres = 5.0
     nk = len(kx)
     nbands = len(bands)
     assert np.shape(bands) == (nbands, nk)
