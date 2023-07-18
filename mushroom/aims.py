@@ -974,6 +974,9 @@ class StdOut:
         self._nbasis = None
         self._nrad = None
 
+        # scf
+        self._nscf_ite = None
+
         # postscf stuff
         self._nbasbas = None
         self._gw_kgrid_result = None
@@ -992,6 +995,7 @@ class StdOut:
         self._handle_prep()
         self._handle_pbc_lists_init()
         self._handle_scf_init()
+        self._handle_scf()
         self._handle_postscf()
         self._handle_timing_statistics()
 
@@ -1180,6 +1184,9 @@ class StdOut:
 
     def _handle_scf(self):
         """process the data in the self-consistency iterations"""
+        for i, l in enumerate(self._scf_lines):
+            if l.startswith("  End self-consistency iteration #    "):
+                self._nscf_ite = conv_string(l, int, 4)
 
     def get_control(self):
         """return a Control object"""
@@ -1348,6 +1355,7 @@ def display_dimensions(aimsout):
         "Basis in H Integrals": s._nbasis_H,
         "Basis in UC": s._nbasis_uc,
         "Electrons": s._nelect,
+        "DFT SCF iterations": s._nscf_ite,
         "Super-cells": s._n_cells,
         "Super-cells (packed)": s._n_cells_pm,
         "Non-zero elements of all H(R)": s._n_matrix_size_H,
@@ -1371,7 +1379,10 @@ def is_finished_aimsdir(dirpath: Path, aimsout_pat: str = "aims.out*") -> str:
 
     Args:
         dirpath (str and PathLike): the directory containing aims input and output (if exists)
-        aimsout_pat (str): pattern to match the aims output file.
+        aimsout_pat (str): wildcard pattern to match the aims output file.
+
+    Returns:
+        str, path of finished aims stdout, or None if there is no finished calculation
     """
     dirpath = pathlib.Path(dirpath)
     for aimsout in dirpath.glob(aimsout_pat):

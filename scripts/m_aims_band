@@ -7,7 +7,7 @@ from argparse import ArgumentParser, RawDescriptionHelpFormatter
 import numpy as np
 
 from mushroom.aims import read_band_output, handle_control_ksymbol
-from mushroom.core.bs import display_band_analysis
+from mushroom.core.bs import display_band_analysis, resolve_band_crossing
 from mushroom.core.cell import Cell
 from mushroom.core.kpoints import KPath
 from mushroom.core.ioutils import get_filename_wo_ext, decode_float_ends, decode_int_ends
@@ -33,8 +33,10 @@ def _parser():
                    help="figure extension to convert")
     p.add_argument("-e", dest="energy_range", type=str, default=None,
                    help="energy range (y-axis), e.g. 'm8~5' for -8.0 to 5.0")
-    p.add_argument("--bands", dest="band_range", type=str, default=None,
+    p.add_argument("--bands", dest="band_erange", type=str, default=None,
                    help="range of bands to plot, e.g. ~m2 for bands except the highest two")
+    p.add_argument("--resolve", nargs="+", default=None, type=str,
+                   help="resolve band crossing, e.g. 5,6,7")
     g = p.add_mutually_exclusive_group()
     g.add_argument("--skbz", dest="isikib_zero", default=None, type=str,
                    help="use enk as energy zero, 'is:ik:ib', ib as a band identifier")
@@ -75,10 +77,17 @@ def m_aims_band():
         ref = bs.get_eigen(ib)[int(ispin), int(ikpt), 0]
 
     kp = KPath(kpts, c.b)
-    if args.band_range is not None:
-        band_lb, band_ub = decode_int_ends(args.band_range)
+    if args.band_erange is not None:
+        band_lb, band_ub = decode_int_ends(args.band_erange)
 
-    ax.plot(kp.x, bs.eigen[0, :, :].transpose() - ref, color="k", symbol="none")
+    eigen = bs.eigen[0, :, :]
+    if args.resolve is not None:
+        for resband in args.resolve:
+            bands_tuple = tuple(map(int, resband.split(',')))
+            bands = eigen[:, bands_tuple].transpose()
+            eigen[:, bands_tuple] = resolve_band_crossing(kp.x, bands).transpose()
+
+    ax.plot(kp.x, eigen.transpose() - ref, color="k", symbol="none")
     ax.x.set_major(grid=True, color="grey", lw=3, ls="dashed")
     ksymbols = None
     if args.ksymbols is not None:
