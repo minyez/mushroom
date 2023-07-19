@@ -37,8 +37,11 @@ def _parser():
                    help="range of bands to plot, e.g. ~m2 for bands except the highest two")
     p.add_argument("--resolve", nargs="+", default=None, type=str,
                    help="resolve band crossing, e.g. 5,6,7")
-    p.add_argument("--resolve-dthres", dest="deriv_thres", default=5.0, type=float,
-                   help="derivative threshold for band resolution")
+    p.add_argument(
+        "--resolve-dthres",
+        dest="deriv_thres", nargs="+", default=None, type=float,
+        help="derivative threshold for band resolution. Try some negative value when you need resolution earlier"
+    )
     g = p.add_mutually_exclusive_group()
     g.add_argument("--skbz", dest="isikib_zero", default=None, type=str,
                    help="use enk as energy zero, 'is:ik:ib', ib as a band identifier")
@@ -84,10 +87,19 @@ def m_aims_band():
 
     eigen = bs.eigen[0, :, :]
     if args.resolve is not None:
-        for resband in args.resolve:
+        if args.deriv_thres is None:
+            deriv_thres = [None,] * len(args.resolve)
+        else:
+            if len(args.deriv_thres) == 1:
+                deriv_thres = [args.deriv_thres,] * len(args.resolve)
+            elif len(args.deriv_thres) == len(args.resolve):
+                deriv_thres = args.deriv_thres
+            else:
+                raise ValueError("deriv_thres should be either one number, or the same length as resolve")
+        for resband, thres in zip(args.resolve, deriv_thres):
             bands_tuple = tuple(map(int, resband.split(',')))
             bands = eigen[:, bands_tuple].transpose()
-            eigen[:, bands_tuple] = resolve_band_crossing(kp.x, bands, deriv_thres=args.deriv_thres).transpose()
+            eigen[:, bands_tuple] = resolve_band_crossing(kp.x, bands, deriv_thres=thres).transpose()
 
     ax.plot(kp.x, eigen.transpose() - ref, color="k", symbol="none")
     ax.x.set_major(grid=True, color="grey", lw=3, ls="dashed")
@@ -108,6 +120,7 @@ def m_aims_band():
     else:
         ax.set_ylim(-20, 20)
 
+    # slightly wider than the last symbol to make it visible on graph
     ax.set_xlim(0.0, kp.x[-1] * 1.001)
     ax.y.set_major(major=4)
     ax.y.set_label("Energy (eV)")
