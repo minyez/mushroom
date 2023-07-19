@@ -68,6 +68,7 @@ class test_control(ut.TestCase):
 
 class test_stdout(ut.TestCase):
     """testing reading the standard output"""
+
     # pylint: disable=R0201
     def test_aimsout_reading(self):
         fns_qp = ["mole_ZnO.aims.out",]

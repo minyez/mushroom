@@ -2,5 +2,9 @@
   "mole_ZnO.aims.out": {
     "nspins": 2,
     "nkpts": 1
+  },
+  "pgw_Si.aims.out": {
+    "nspins": 1,
+    "nkpts": 27
   }
 }

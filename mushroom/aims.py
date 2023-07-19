@@ -244,7 +244,9 @@ class Species:
     species_basic_tag = ["nucleus", "mass", "l_hartree", "cut_pot", "basis_dep_cutoff",
                          "radial_base", "radial_multiplier", "angular_min", "angular_acc",
                          "innermost_max", "logarithmic", "include_min_basis", "pure_gauss",
-                         "basis_acc", "cite_reference"]
+                         "basis_acc", "cite_reference",
+                         "plus_u"]
+    # TODO: accept multiple plus_u, so we need a list to store it
     angular_grids_tag = ["angular_grids", "outer_grid", "division"]
     basis_tag = ["valence", "ion_occ", "hydro", "ionic", "gaussian", "sto"]
 
@@ -1023,7 +1025,8 @@ class StdOut:
                 self._pbc_lists_init_lines = lines[i:]
             if l.startswith("          Begin self-consistency loop: Initialization."):
                 self._finished_pbc_lists_init = True
-                self._pbc_lists_init_lines = self._pbc_lists_init_lines[:self._pbc_lists_init_lines.index(l)]
+                if self._pbc_lists_init_lines is not None:
+                    self._pbc_lists_init_lines = self._pbc_lists_init_lines[:self._pbc_lists_init_lines.index(l)]
                 self._scf_init_lines = lines[i:]
             if l.startswith("          Begin self-consistency iteration #    1"):
                 self._finished_scf_init = True
@@ -1269,6 +1272,9 @@ class StdOut:
             m = kptline.match(l)
             if m:
                 kpts.append([*map(float, (m.group(i) for i in range(2, 5)))])
+        # molecule cases
+        if len(kpts) == 0:
+            kpts = [[0, 0, 0]]
         kpts = np.array(kpts)
         # reshape all arrays. Generally, the first state is a fully occupied core state
         # thus the number of spins can be decided from its occupation number
