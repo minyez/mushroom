@@ -11,7 +11,7 @@ import numpy as np
 from mushroom.core.bs import BandStructure as BS
 from mushroom.core.bs import BandStructureError as BSErr
 from mushroom.core.bs import random_band_structure
-from mushroom.core.bs import split_apb, resolve_band_crossing_2band, resolve_band_crossing, left_right_derivative_band
+from mushroom.core.bs import split_apb, resolve_band_crossing
 from mushroom.core.constants import EV2RY
 from mushroom.core.ioutils import get_matched_files
 
@@ -301,33 +301,6 @@ class test_split_apb(ut.TestCase):
 
 class test_BS_resolve_crossing(ut.TestCase):
 
-    def test_left_right_derivative_band(self):
-        # an ideal 1-segment path, linear dispersion, crossing between kx 0.4 and 0.5
-        kx    = [ 0.0,  0.1, 0.2, 0.3, 0.4, 0.5, 0.7, 0.9,  1.1]
-        band1 = [ 1.0,  0.9, 0.8, 0.7, 0.6, 0.5, 1.0, 1.4,  1.8]
-        band2 = [-0.4, -0.2, 0.0, 0.2, 0.4, 0.6, 0.3, 0.1, -0.1]
-        ld, rd = left_right_derivative_band(kx, band1)
-        ld_ref = [-1, -1, -1, -1, -1, -1, 2.5, 2, 2]
-        rd_ref = [-1, -1, -1, -1, -1, 2.5, 2, 2, 2]
-        self.assertTrue(np.allclose(ld, ld_ref))
-        self.assertTrue(np.allclose(rd, rd_ref))
-        ld, rd = left_right_derivative_band(kx, band2)
-        ld_ref = [2, 2, 2, 2, 2, 2, -1.5, -1, -1]
-        rd_ref = [2, 2, 2, 2, 2, -1.5, -1, -1, -1]
-        self.assertTrue(np.allclose(ld, ld_ref))
-        self.assertTrue(np.allclose(rd, rd_ref))
-
-    def test_resolve_two_bands_linear_dispersion(self):
-        # an ideal 1-segment path, linear dispersion, crossing between kx 0.4 and 0.5
-        kx    = [ 0.0,  0.1, 0.2, 0.3, 0.4, 0.5, 0.7, 0.9,  1.1]
-        band1 = [ 1.0,  0.9, 0.8, 0.7, 0.6, 0.5, 1.0, 1.4,  1.8]
-        band2 = [-0.4, -0.2, 0.0, 0.2, 0.4, 0.6, 0.3, 0.1, -0.1]
-        band1_resolve_ref = [ 1.0,  0.9, 0.8, 0.7, 0.6, 0.5, 0.3, 0.1, -0.1]
-        band2_resolve_ref = [-0.4, -0.2, 0.0, 0.2, 0.4, 0.6, 1.0, 1.4,  1.8]
-        # band1_res, band2_res = resolve_band_crossing_2band(kx, band1, band2, deriv_thres=3)
-        # self.assertTrue(np.allclose(band1_res, band1_resolve_ref))
-        # self.assertTrue(np.allclose(band2_res, band2_resolve_ref))
-
     def test_resolve_two_bands(self):
         datafile = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 'data', 'BandStructure_crossing_0.json')
@@ -339,12 +312,7 @@ class test_BS_resolve_crossing(ut.TestCase):
         band2_en = j["entangled"]["band2"]
         band1_resolve_ref = j["disentangled"]["band1"]
         band2_resolve_ref = j["disentangled"]["band2"]
-        # use the 2-band version
-        band1_res, band2_res = resolve_band_crossing_2band(kx, band1_en, band2_en, deriv_thres=5)
-        self.assertTrue(np.allclose(band1_res, band1_resolve_ref))
-        self.assertTrue(np.allclose(band2_res, band2_resolve_ref))
 
-        # use the general version
         bands = np.array([band1_en, band2_en])
         band1_res, band2_res = resolve_band_crossing(kx, bands, deriv_thres=5)
         self.assertTrue(np.allclose(band1_res, band1_resolve_ref))
