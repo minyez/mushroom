@@ -221,36 +221,45 @@ def _w2k_read_latt_posi_for_kind(kind, coord_sys, latt_consts, posi_types):
     if coord_sys.lower() != "d":
         raise NotImplementedError
 
+    _logger.debug("_w2k_read_latt_posi_for_kind")
+    _logger.debug("kind: %s", kind)
+    _logger.debug("coord_sys: %s", coord_sys)
+    _logger.debug("latt_consts: %r", latt_consts)
+    _logger.debug("posi_types: %r", posi_types)
     if kind == "H":
         # recp: [2/SQRT(3), 0, 0], [1/SQRT(3),1,0], [0,0,1]
         latt = [[latt_consts[0], 0, 0],
                 [-latt_consts[0] / 2, latt_consts[1] * SQRT3 / 2, 0],
                 [0, 0, latt_consts[2]]]
         if coord_sys.lower() == "d":
-            posi_types = np.dot(posi_types, [[2 / SQRT3, 0, 0],
-                                             [1 / SQRT3, 1, 0],
-                                             [0, 0, 1]])
+            for i, p in enumerate(posi_types):
+                posi_types[i] = np.dot(p, [[2 / SQRT3, 0, 0],
+                                           [1 / SQRT3, 1, 0],
+                                           [0, 0, 1]])
     elif kind == "R":
         # recp: [1/SQRT(3), -1, 1], [1/SQRT(3),1,1], [-2/SQRT(3),0,1]
         latt = [[latt_consts[0] / 2, latt_consts[1] / 2 / SQRT3, latt_consts[2] / 3],
                 [-latt_consts[0] / 2, latt_consts[1] / 2 / SQRT3, latt_consts[2] / 3],
                 [0.0, -latt_consts[1] / SQRT3, latt_consts[2] / 3]]
         if coord_sys.lower() == "d":
-            posi_types = np.dot(posi_types, [[1 / SQRT3, -1, 1],
-                                             [1 / SQRT3, 1, 1],
-                                             [-2 / SQRT3, 0, 1]])
+            for i, p in enumerate(posi_types):
+                posi_types[i] = np.dot(p, [[1 / SQRT3, -1, 1],
+                                           [1 / SQRT3, 1, 1],
+                                           [-2 / SQRT3, 0, 1]])
     elif kind == "B":
         # recp: [[0, 1, 1], [1, 0, 1], [1, 1, 0]]
         latt = np.multiply([[-1, 1, 1], [1, -1, 1], [1, 1, -1]], latt_consts[0] / 2)
         if coord_sys.lower() == "d":
-            posi_types = np.dot(posi_types, [[0, 1, 1], [1, 0, 1], [1, 1, 0]])
+            for i, p in enumerate(posi_types):
+                posi_types[i] = np.dot(p, [[0, 1, 1], [1, 0, 1], [1, 1, 0]])
     elif kind in ["CXY", "CYZ", "CXZ"]:
         raise NotImplementedError("C kind of struct is not implemented")
     elif kind == "F":
         # recp: [[-1, 1, 1], [1, -1, 1], [1, 1, -1]]
         latt = np.multiply([[0, 1, 1], [1, 0, 1], [1, 1, 0]], latt_consts[0] / 2)
         if coord_sys.lower() == "d":
-            posi_types = np.dot(posi_types, [[-1, 1, 1], [1, -1, 1], [1, 1, -1]])
+            for i, p in enumerate(posi_types):
+                posi_types[i] = np.dot(p, [[-1, 1, 1], [1, -1, 1], [1, 1, -1]])
     elif kind in ["P", "S"]:
         # primitive case, generate latt directly
         latt = get_latt_vecs_from_latt_consts(*latt_consts)
