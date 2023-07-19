@@ -23,6 +23,7 @@ from mushroom.core.ioutils import get_filename_wo_ext, readtext_split_emptyline
 from mushroom.core.ioutils import decode_float_ends
 from mushroom.visual.graceplot import Plot
 
+
 def _parser():
     """the parser"""
     p = ArgumentParser(description=__doc__, formatter_class=RawDescriptionHelpFormatter)
@@ -52,6 +53,8 @@ def _parser():
                    help="sort: X not supported, Y for cols=1")
     # legend options
     l = p.add_mutually_exclusive_group()
+    l.add_argument("--l-comment", dest="leg_comment", action="store_true",
+                   help="use comment line (starting exactly # and single space) above the data session")
     l.add_argument("--l-add-fn", dest="leg_add_fn", action="store_true",
                    help="add filename to legend")
     l.add_argument("--l-fn-only", dest="leg_fn_only", action="store_true",
@@ -65,6 +68,7 @@ def _parser():
         pass
     return p
 
+
 def m_quickgrace():
     """main stream"""
     args = _parser().parse_args()
@@ -73,10 +77,18 @@ def m_quickgrace():
     ax.set_xlabel(args.xlabel)
     ax.set_ylabel(args.ylabel)
 
+    legends_comments = []
+    for fn in args.data_files:
+        with open(fn, 'r') as h:
+            legends_comments.extend(x[2:].strip() for x in h.readlines() if x.startswith("# "))
+
     # a generator to find explicit legend, None if exhausted
     def get_explict_legend():
         if args.leg_explicit:
             for leg in args.leg_explicit:
+                yield leg
+        if args.leg_comment:
+            for leg in legends_comments:
                 yield leg
         while True:
             yield None
@@ -101,7 +113,7 @@ def m_quickgrace():
             if len(data_cols.shape) == 1:
                 if args.sort:
                     data_cols.sort()
-                ax.plot(list(range(1, len(data_cols)+1)), data_cols, **kwargs)
+                ax.plot(list(range(1, len(data_cols) + 1)), data_cols, **kwargs)
                 continue
             if args.xy is not None:
                 for xy in args.xy:
