@@ -1286,13 +1286,15 @@ def resolve_band_crossing(kx, bands, deriv_thres=None):
             # right
             derivs_crossband[ipermut, :, 1] = (bands_adjacent[:, 2] - bands_adjacent[permut, 3]) / (kx[i] - kr)
         diff_derivs_inband = np.sum(np.abs(derivs_inband[:, 1] - derivs_inband[:, 0]))
-        diff_deriv_crossband = np.sum(np.abs(derivs_crossband[:, :, 1] - derivs_crossband[:, :, 0]), axis=1)
-        arg = np.argmin(diff_deriv_crossband)
-        if diff_derivs_inband > diff_deriv_crossband[arg] + deriv_thres:
-            _logger.debug("deriv %f > %f, possible crossing at %d, switch bands",
-                          diff_derivs_inband, diff_deriv_crossband[arg], i)
+        diff_derivs_crossband = np.sum(np.abs(derivs_crossband[:, :, 1] - derivs_crossband[:, :, 0]), axis=1)
+        arg = np.argmin(diff_derivs_crossband)
+        _logger.debug("deriv. diff: inband %f vs min-crossband %f, at %d",
+                      diff_derivs_inband, diff_derivs_crossband[arg], i)
+        if diff_derivs_inband > diff_derivs_crossband[arg] + deriv_thres:
+            _logger.info("deriv. diff: inband %f > crossband %f, possible crossing at %d, switch bands",
+                         diff_derivs_inband, diff_derivs_crossband[arg], i)
+            _logger.info("permutation: %r", permuts[arg])
             _logger.debug("kx: %f %f %f", kl, kx[i], kr)
-            _logger.debug("permutation: %r", permuts[arg])
             for ib in range(nbands):
                 _logger.debug("related band energies: %r", bands_adjacent[ib, :])
             temp = bands[:, i + 1:]
