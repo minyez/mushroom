@@ -98,8 +98,7 @@ def m_aims_band():
                 raise ValueError("deriv_thres should be either one number, or the same length as resolve")
         for resband, thres in zip(args.resolve, deriv_thres):
             bands_tuple = tuple(map(int, resband.split(',')))
-            bands = eigen[:, bands_tuple].transpose()
-            eigen[:, bands_tuple] = resolve_band_crossing(kp.x, bands, deriv_thres=thres).transpose()
+            eigen[:, bands_tuple] = resolve_band_crossing(kp.x, eigen[:, bands_tuple], deriv_thres=thres)
 
     ax.plot(kp.x, eigen.transpose() - ref, color="k", symbol="none")
     ax.x.set_major(grid=True, color="grey", lw=3, ls="dashed")

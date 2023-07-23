@@ -1142,8 +1142,16 @@ def resolve_band_crossing(kx, bands, pwav=None, deriv_thres=None):
     if deriv_thres is None:
         deriv_thres = 5.0
     nk = len(kx)
-    nbands = len(bands)
-    assert np.shape(bands) == (nbands, nk)
+    shape_bands = np.shape(bands)
+    if len(shape_bands) != 2:
+        raise ValueError("bands should be 2-dim, got %d" % len(shape_bands))
+    if shape_bands[0] != nk:
+        raise ValueError("Inconsistent shape of bands and kx")
+    nbands = shape_bands[1]
+    if pwav is not None:
+        shape_pwav = np.shape(pwav)
+        if len(shape_pwav) < 4 or shape_pwav[0] != nk or shape_pwav[1] != nbands:
+            raise ValueError("Invalid shape of pwav, should be 4d: (nk, nbands, :, :)")
 
     kx = np.array(kx)
 
@@ -1166,8 +1174,8 @@ def resolve_band_crossing(kx, bands, pwav=None, deriv_thres=None):
             if j == 0:
                 raise ValueError
         # left side
-        bands_adjacent[:, 0] = bands[:, j]
-        bands_adjacent[:, 1] = bands[:, j + 1]
+        bands_adjacent[:, 0] = bands[j, :]
+        bands_adjacent[:, 1] = bands[j + 1, :]
         # find the right non-end-point for point i
         for j in range(i + 1, nk):
             kr = kx[j]
@@ -1176,8 +1184,8 @@ def resolve_band_crossing(kx, bands, pwav=None, deriv_thres=None):
             if j == nk - 1:
                 raise ValueError
         # right side
-        bands_adjacent[:, 2] = bands[:, j - 1]
-        bands_adjacent[:, 3] = bands[:, j]
+        bands_adjacent[:, 2] = bands[j - 1, :]
+        bands_adjacent[:, 3] = bands[j, :]
         # inband derivatives
         derivs_inband[:, 0] = (bands_adjacent[:, 1] - bands_adjacent[:, 0]) / (kx[i] - kl)
         derivs_inband[:, 1] = (bands_adjacent[:, 2] - bands_adjacent[:, 3]) / (kx[i] - kr)
@@ -1199,9 +1207,9 @@ def resolve_band_crossing(kx, bands, pwav=None, deriv_thres=None):
             _logger.debug("kx: %f %f %f", kl, kx[i], kr)
             for ib in range(nbands):
                 _logger.debug("related band energies: %r", bands_adjacent[ib, :])
-            temp = bands[:, i + 1:]
-            temp = temp[permuts[arg], :]
-            bands[:, i + 1:] = temp[:, :]
+            temp = bands[i + 1:, :]
+            temp = temp[:, permuts[arg]]
+            bands[i + 1:, :] = temp[:, :]
 
     _logger.debug("multi-band resolve done")
     # return the disentangled bands
