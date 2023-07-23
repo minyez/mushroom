@@ -314,9 +314,9 @@ class test_BS_resolve_crossing(ut.TestCase):
         band2_resolve_ref = j["disentangled"]["band2"]
 
         bands = np.array([band1_en, band2_en])
-        band1_res, band2_res = resolve_band_crossing(kx, bands, deriv_thres=5)
-        self.assertTrue(np.allclose(band1_res, band1_resolve_ref))
-        self.assertTrue(np.allclose(band2_res, band2_resolve_ref))
+        bands_res = resolve_band_crossing(kx, bands, deriv_thres=5)
+        self.assertTrue(np.allclose(bands[0], band1_resolve_ref))
+        self.assertTrue(np.allclose(bands[1], band2_resolve_ref))
 
 
 if __name__ == '__main__':

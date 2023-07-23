@@ -24,7 +24,7 @@ log_level = get_logging_level(log_level)
 
 stream_level = "notset"
 try:
-    log_level = os.environ["MUSHROOM_STREAM"]
+    stream_level = os.environ["MUSHROOM_STREAM"]
 except KeyError:
     try:
         from mushroom.__config__ import stream_level

@@ -89,6 +89,103 @@ def read_band_output(
     return BandStructure(ene, occ, unit=unit), kpts
 
 
+def handle_single_band_mulliken_output(bfile):
+    """process a single bandmlk file
+
+    Args:
+        bfile (str): path to bandmlk file
+
+    Returns:
+        ndarray (kpts), ndarray (band energy), ndarray (occupation), ndarray (mulliken)
+    """
+    _logger.debug("handling band mulliken file: %r", bfile)
+    with open(bfile, 'r') as h:
+        lines = h.readlines()
+    # match lines like the following:
+    # k point number:     1: (   0.50000000   0.50000000   0.50000000 )
+    kpts_pattern = r'^k point number:\s+\d+: \(' + r'(\s+[+-]?\d\.\d+)' * 3 + r'\s+\)'
+    kpts_groups = grep(kpts_pattern, lines, return_group=True)
+    kpts = [[float(m.group(1)), float(m.group(2)), float(m.group(3))] for m in kpts_groups]
+    # NOTE: there is some error in kpoint coordinate
+    # could potentially affect the determination of path segments
+    # in this case, one need to round numbers to ~7 digits after
+    # converting to ndarray
+    kpts = np.array(kpts)
+    # filter out the kpoint and explanation lines
+    lines = [x for x in lines if not (x.startswith("k point") or x.startswith("    State"))]
+
+    nkpts = len(kpts)
+    nbands = int(lines[-1].split()[0])
+    natms = len(lines) // nkpts
+    if natms % nbands != 0:
+        raise ValueError("invalid bandmlk file")
+    natms = natms // nbands
+    _logger.debug("dimension detected (nkpts %d, nbands %d, natms %d)",
+                  nkpts, nbands, natms)
+
+    # check the largest number of angular momentum quantum number among atoms
+    # 5 accounts for state, ene, occ, atom index, total
+    # 1 considers maxl of "s" is 0
+    maxl = max(len(x.split()) for x in lines[3:3 + natms]) - 5 - 1
+    ene_occ = [x.split()[1:3] for x in lines[::natms]]
+    ene = np.array([float(x[0]) for x in ene_occ]).reshape(nkpts, nbands)
+    occ = np.array([float(x[1]) for x in ene_occ]).reshape(nkpts, nbands)
+    # starting from the s component
+    mlk_str = [list(map(float, x.split()[5:])) for x in lines]
+    maxl_per_line = [len(x) - 1 for x in mlk_str]
+    for i, l in enumerate(maxl_per_line):
+        if l < maxl:
+            line = [0.0, ] * (maxl + 1)
+            line[:l + 1] = mlk_str[i]
+            mlk_str[i] = line
+    mlk = np.array(mlk_str).reshape(nkpts, nbands, natms, maxl + 1)
+    if np.min(mlk) < -0.1:
+        _logger.warning("significant (<-0.1) negative mulliken charge found in %s", bfile)
+
+    return kpts, ene, occ, mlk
+
+
+def read_band_mulliken_output(
+        bfile,
+        *bfiles,
+        filter_k_before: int = 0,
+        filter_k_behind: int = None,
+        unit: str = 'ev') -> Tuple[BandStructure, List[RealVec3D]]:
+    """read band mulliken output files and return a Band structure object
+
+    Note that all band energies are treated in the same spin channel,
+    the resulting ``BandStructure`` object always has nspins=1
+
+    Args:
+        bfile (str)
+        unit (str): unit of energies, default to ev
+
+    Returns:
+        BandStructure, k-points
+    """
+    kpts, ene, occ, mlk = handle_single_band_mulliken_output(bfile)
+    _, nbands, natms, nprjs = mlk.shape
+    for bf in bfiles:
+        kpts1, ene1, occ1, mlk1 = handle_single_band_mulliken_output(bf)
+        _, nbands1, natms1, nprjs1 = mlk1.shape
+        if nbands1 != nbands or natms1 != natms or nprjs1 != nprjs:
+            raise ValueError("Inconsitent shape found when reading bandmlk: %s" % bf)
+        kpts = np.concatenate((kpts, kpts1))
+        ene = np.concatenate((ene, ene1))
+        occ = np.concatenate((occ, occ1))
+        mlk = np.concatenate((mlk, mlk1))
+
+    nkpts_total = len(kpts)
+    if filter_k_behind is None:
+        filter_k_behind = nkpts_total
+    kpts = kpts[filter_k_before:filter_k_behind, :]
+    occ = occ.reshape(1, nkpts_total, nbands)[:, filter_k_before:filter_k_behind, :]
+    ene = ene.reshape(1, nkpts_total, nbands)[:, filter_k_before:filter_k_behind, :]
+    mlk = mlk.reshape(1, nkpts_total, nbands, natms, nprjs)[:, filter_k_before:filter_k_behind, :, :, :]
+    # NOTE: the atomic projectors are assumed sequential, i.e. s, p, d, f, ...
+    return BandStructure(ene, occ, pwav=mlk, unit=unit, prjs=l_channels[:nprjs]), kpts
+
+
 def get_species_defaults_directory():
     """get the directory of species_default from environment variable and configuration"""
     species_defaults_ev = "AIMS_SPECIES_DEFAULTS"
@@ -1105,6 +1202,8 @@ class StdOut:
         """process the data in initializing pbc list by the subroutine initialize_bc_dependent_lists"""
         if not self._finished_pbc_lists_init:
             _logger.warning("PBC lists initialization is not finished")
+        if self._pbc_lists_init_lines is None:
+            return
         for i, l in enumerate(self._pbc_lists_init_lines):
             # if l.startswith("  Initializing the k-points"):
             #     try:
@@ -1130,6 +1229,8 @@ class StdOut:
         """process the data in the self-consistency loop initialization"""
         if not self._finished_scf_init:
             _logger.warning("self-consistent loop initialization is not finished")
+        if self._scf_init_lines is None:
+            return
         for i, l in enumerate(self._scf_init_lines):
             if l.startswith("  | Initial density: Formal number of electrons"):
                 self._nelect = float(l.split()[-1])
@@ -1151,6 +1252,8 @@ class StdOut:
         """process the timing statistics at the end of calculation"""
         if not self._finished:
             _logger.warning("Calculation is not finished, stop processing timing statistics")
+            return
+        if self._timestat_lines is None:
             return
         # tline = re.compile(r'^\s+\|(.*):' + r'\s*(?[\d\.]+\s+s)?' * 2 + r'\\n$')
         # tline = re.compile(r'^\s+\|(.*):' + r'\s*([\d\.]+)\s+s' * 2 + r'\\n$')

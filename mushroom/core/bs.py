@@ -1122,15 +1122,21 @@ def display_transition_energies(trans: Sequence[str],
         raise BandStructureError("fail to display transition energies") from err
 
 
-def resolve_band_crossing(kx, bands, deriv_thres=None):
+def resolve_band_crossing(kx, bands, pwav=None, deriv_thres=None):
     """Resolve the crossing between two bands to make each band smooth.
 
     Args:
+        kx (array-like)
         bands (2-dim ndarray)
         deriv_thres (float)
+        pwav (4-dim ndarray)
 
     Returns:
-        bands (2-dim ndarray)
+        2-dim ndarray (bands) if pwav is None, otherwise
+        2-dim ndarray (bands) and 4-dim ndarray (pwav).
+
+    Note:
+        Side effect: bands and pwav are also changed in place.
     """
     # default value
     if deriv_thres is None:
@@ -1199,4 +1205,6 @@ def resolve_band_crossing(kx, bands, deriv_thres=None):
 
     _logger.debug("multi-band resolve done")
     # return the disentangled bands
-    return bands
+    if pwav is None:
+        return bands
+    return bands, pwav
