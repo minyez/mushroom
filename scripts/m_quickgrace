@@ -38,7 +38,8 @@ def _parser():
     p.add_argument("-c", dest="color", type=str, help="color code", default=None)
     p.add_argument("--yr", dest="yrange", type=str, default=None,
                    help="same as --xr, for y range")
-    p.add_argument("-s", dest="symbol", type=str, help="symbol", default="none")
+    p.add_argument("-s", dest="symbol", type=str, help="symbol", nargs="?", const=None, default="none")
+
     p.add_argument("-o", dest="output", type=str, default=None,
                    help="output agr filename")
     p.add_argument("-d", dest="delimiter", type=str, default=None,
@@ -101,7 +102,7 @@ def m_quickgrace():
         datastrings = readtext_split_emptyline(fn)
 
         for s in datastrings:
-            data_cols = np.loadtxt(StringIO(s), unpack=True,
+            data_cols = np.loadtxt(StringIO(s), unpack=True, ndmin=2,
                                    delimiter=args.delimiter)
             ncols = len(data_cols)
             # no data
@@ -110,10 +111,11 @@ def m_quickgrace():
             kwargs = {"comment": fn, "symbol": args.symbol,
                       "lw": args.linewidth,
                       "color": args.color}
-            if len(data_cols.shape) == 1:
+            # only one data column, plot it against index (starting from 1)
+            if ncols == 1:
                 if args.sort:
-                    data_cols.sort()
-                ax.plot(list(range(1, len(data_cols) + 1)), data_cols, **kwargs)
+                    data_cols[0].sort()
+                ax.plot(list(range(1, len(data_cols[0]) + 1)), data_cols[0], **kwargs)
                 continue
             if args.xy is not None:
                 for xy in args.xy:

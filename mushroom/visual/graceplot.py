@@ -2170,6 +2170,8 @@ class Graph(_Graph):
         self._if_ytick_set = False
         # exclude white
         self._color_cycler = StyleCycler(list(range(1, plot_colormap.n)))
+        # exclude no-symbol
+        self._symbol_cycler = StyleCycler(list(range(1, len(Symbol.pair.keys()))))
         self._xaxes = Axes('x')
         self._yaxes = Axes('y')
         # self._altxaxes = _Axes('altx', switch=Switch.OFF)
@@ -2427,6 +2429,8 @@ class Graph(_Graph):
         # check if multiple y data are parsed
         if 'color' not in kwargs or kwargs['color'] is None:
             kwargs['color'] = self._color_cycler.get()
+        if 'symbol' not in kwargs or kwargs['symbol'] is None:
+            kwargs['symbol'] = self._symbol_cycler.get()
         if len(shape(ys)) == 2:
             n = self.ndata
             # check error in keyword arguments as well
