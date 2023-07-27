@@ -40,6 +40,9 @@ def _parser():
                    help="same as --xr, for y range")
     p.add_argument("-s", dest="symbol", type=str, help="symbol", nargs="?", const=None, default="none")
 
+    p.add_argument("--xscale", type=str, help="X scale", choices=["log", "rec"], default=None)
+    p.add_argument("--yscale", type=str, help="Y scale", choices=["log", "rec"], default=None)
+
     p.add_argument("-o", dest="output", type=str, default=None,
                    help="output agr filename")
     p.add_argument("-d", dest="delimiter", type=str, default=None,
@@ -145,6 +148,11 @@ def m_quickgrace():
         ax.set_ylim(*decode_float_ends(args.yrange))
     if args.xrange is None and args.yrange is None:
         fig.tight_graph()
+
+    if args.xscale is not None:
+        ax.set_xscale(args.xscale)
+    if args.yscale is not None:
+        ax.set_yscale(args.xscale)
 
     output = args.output
     if output is None:
