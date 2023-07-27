@@ -406,11 +406,15 @@ class BandStructure(EnergyUnit):
                 return
 
         self._ivbm_sp_kp = np.sum(is_occ, axis=2) - 1
+        _logger.debug("HOMO index per spin per kpoint")
+        for i in range(self._nspins):
+            _logger.debug("Spin %d: %r", i + 1, self._ivbm_sp_kp[i, :])
         # when any two indices of ivbm differ, the system is metal
         if np.max(self._ivbm_sp_kp) == np.min(self._ivbm_sp_kp):
             self._is_metal = False
         else:
             self._is_metal = True
+        _logger.debug("is_metal? %s", self._is_metal)
         self._icbm_sp_kp = self._ivbm_sp_kp + 1
         # avoid IndexError when ivbm is the last band by imposing icbm = ivbm in this case
         ivbIsLast = self._ivbm_sp_kp == self.nbands - 1
@@ -1149,7 +1153,9 @@ def resolve_band_crossing(kx, bands, pwav=None, deriv_thres=None):
         raise ValueError("Inconsistent shape of bands and kx")
     nbands = shape_bands[1]
     if pwav is not None:
+        _logger.debug("parsing pwav in band crossing resolution")
         shape_pwav = np.shape(pwav)
+        _logger.debug("pwav shape: %r", shape_pwav)
         if len(shape_pwav) < 4 or shape_pwav[0] != nk or shape_pwav[1] != nbands:
             raise ValueError("Invalid shape of pwav, should be 4d: (nk, nbands, :, :)")
 
@@ -1206,10 +1212,15 @@ def resolve_band_crossing(kx, bands, pwav=None, deriv_thres=None):
             _logger.info("permutation: %r", permuts[arg])
             _logger.debug("kx: %f %f %f", kl, kx[i], kr)
             for ib in range(nbands):
-                _logger.debug("related band energies: %r", bands_adjacent[ib, :])
+                _logger.debug("related %d-th band energies: %r", ib, bands_adjacent[ib, :])
             temp = bands[i + 1:, :]
             temp = temp[:, permuts[arg]]
             bands[i + 1:, :] = temp[:, :]
+            if pwav is not None:
+                _logger.debug("permuting pwav")
+                temp = pwav[i + 1:, :, :, :]
+                temp = temp[:, permuts[arg], :, :]
+                pwav[i + 1:, :, :, :] = temp[:, :, :, :]
 
     _logger.debug("multi-band resolve done")
     # return the disentangled bands
