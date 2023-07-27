@@ -54,8 +54,7 @@ def grep(pattern, filename, is_binary: bool = False, error_not_found: bool = Fal
         if from_behind:
             ln = size - 1 - index
         return ln
-    if not isinstance(pattern, re.Pattern):
-        pattern = re.compile(pattern)
+    pattern = re.compile(pattern)
     if isinstance(filename, (str, os.PathLike)):
         filename = pathlib.Path(filename)
         if not filename.is_file():
