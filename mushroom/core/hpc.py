@@ -148,7 +148,7 @@ class SbatchScript:
             slist.append(self._commands)
         return "\n".join(slist)
 
-    def write(fn="run.sh"):
+    def write(self, fn="run.sh"):
         if self._commands is None:
             _logger.warning("You are writing no commands to sbatch script!")
         with open(fn, 'w') as h:

@@ -5,6 +5,7 @@ import os
 import fnmatch
 import pathlib
 import re
+import logging
 from contextlib import contextmanager
 from io import TextIOWrapper, StringIO
 from collections import OrderedDict
