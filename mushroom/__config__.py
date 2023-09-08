@@ -14,11 +14,13 @@ config_files = [
     fn,
 ]
 
+module_name = __NAME__ + '.__config__'
+
 # pylint: disable=no-value-for-parameter,W1505
 for config_file in config_files:
     if os.path.isfile(config_file):
         # may replace load_module later
-        machinery.SourceFileLoader(__NAME__ + '.__config__', config_file).load_module()
+        machinery.SourceFileLoader(module_name, config_file).load_module()
 
-del (config_files, config_file, machinery, os, sys)
+del (config_files, config_file, machinery, module_name, os, sys)
 
