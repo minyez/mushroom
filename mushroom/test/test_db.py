@@ -14,8 +14,10 @@ try:
 except KeyError:
     force_copy = False
 
+
 class test_initialize_internal(ut.TestCase):
     """test initialization of internal database"""
+
     def test_dbcell(self):
         """cell database"""
         dbc = DBCell()
@@ -49,6 +51,7 @@ class test_initialize_internal(ut.TestCase):
             with tempfile.TemporaryDirectory() as td:
                 dbdt.copy_doctemp(i, dst=td)
 
+
 class test_dbcell(ut.TestCase):
     """test methods of cell database instance"""
 
@@ -56,7 +59,8 @@ class test_dbcell(ut.TestCase):
 
     def test_extract_raise(self):
         """test extracting cell entry"""
-        self.assertRaises(ValueError, self.dbc.extract, 0, writer="unknown reader")
+        if self.dbc.N > 0:
+            self.assertRaises(ValueError, self.dbc.extract, 0, writer="unknown reader")
         self.assertRaises(DBEntryNotFoundError, self.dbc.extract, "unknown cell sample")
 
     def test_write(self):
@@ -93,10 +97,12 @@ class test_dbcell(ut.TestCase):
 
     def test_register_new_cell(self):
         """register new cell entry"""
-        entry = self.dbc.get_cell(0)
-        self.assertIsNone(self.dbc.register(entry))
-        self.assertEqual(self.dbc.register(entry, overwrite=True),
-                         os.path.join(self.dbc._db_path, entry))
+        if self.dbc.N > 0:
+            entry = self.dbc.get_cell(0)
+            self.assertIsNone(self.dbc.register(entry))
+            self.assertEqual(self.dbc.register(entry, overwrite=True),
+                             os.path.join(self.dbc._db_path, entry))
+
 
 if __name__ == "__main__":
     ut.main()

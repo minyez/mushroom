@@ -42,13 +42,13 @@ class _DBBase:
         glob_regex (Iterable)
     """
 
-    def __init__(self, name: str, glob_regex: Iterable, excludes: Iterable = None,
+    def __init__(self, dbpath: str, glob_regex: Iterable, excludes: Iterable = None,
                  dir_only: bool = False):
-        name = pathlib.Path(name)
-        if name.is_absolute():
-            self._db_path = name
+        dbpath = pathlib.Path(dbpath)
+        if dbpath.is_absolute():
+            self._db_path = dbpath
         else:
-            self._db_path = mushroom_db_home / name
+            self._db_path = mushroom_db_home / dbpath
         self._excludes = []
         self._dir_only = dir_only
         if excludes is not None:
@@ -188,14 +188,21 @@ class _DBBase:
 
 
 class DBCell(_DBBase):
-    """database of crystall structure cells"""
+    """database of crystall structure cells
+
+    The path of"""
     avail_writers = list(Cell.avail_exporters) + ["w2k", ]
     avail_readers = list(Cell.avail_readers) + ["w2k", ]
     default_writer = "vasp"
     assert default_writer in avail_writers
 
-    def __init__(self):
-        _DBBase.__init__(self, "cell", ["**/*.json", "**/*.cif"])
+    def __init__(self, db_cell_path: str = None):
+        if db_cell_path is None:
+            try:
+                from mushroom.__config__ import db_cell_path
+            except ImportError:
+                db_cell_path = "cell"
+        _DBBase.__init__(self, db_cell_path, ["**/*.json", "**/*.cif"])
         self.get_cell = self.get_entry
         self.get_cell_path = self.get_entry_path
         self.get_avail_cells = self.get_avail_entries

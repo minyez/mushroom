@@ -37,6 +37,8 @@ db/workflow/*/vasp.sh
 db/workflow/*/w2k.sh
 db/workflow/*/common.sh
 !db/workflow/libs/*.sh
+# ignore cell database, for license issue
+db/cell
 
 # test scripts with underscore prefix
 scripts/_*

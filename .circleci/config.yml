@@ -40,5 +40,8 @@ jobs:
           command: |
             export PYTHONPATH="~/mushroom:$PYTHONPATH"
             export FORCE_COPY=1
+            # prepare a test cell database for unit test
+            mkdir -p ~/mushroom/db/cell/NaCl
+            cp -a ~/mushroom/mushroom/core/test/data/rocksalt.cif ~/mushroom/db/cell/NaCl
             pytest --cov=./
             codecov
