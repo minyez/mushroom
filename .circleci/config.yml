@@ -18,6 +18,7 @@ jobs:
       - image: cimg/python:3.10.11 # every job must define an image for the docker executor and subsequent jobs may define a different image.
         environment:
           PIPENV_VENV_IN_PROJECT: false
+          CODECOV_TOKEN: 01359775-2d3e-4223-a0ef-ecc88779e801
     steps:
       - checkout
       # - run: sudo chown -R circleci:circleci /usr/local/bin

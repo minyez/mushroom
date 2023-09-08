@@ -1,7 +1,7 @@
 # mushroom
 
-[![CircleCI](https://circleci.com/gh/minyez/mushroom.svg?style=svg&circle-token=ffe7a030a0398a96231dfde5ab97f5e797256fd2)](https://app.circleci.com/pipelines/github/minyez/mushroom/)
-[![codecov](https://codecov.io/gh/minyez/mushroom/branch/master/graph/badge.svg?token=SM7R1XB2VW)](https://codecov.io/gh/minyez/mushroom)
+[![CircleCI](https://dl.circleci.com/status-badge/img/gh/minyez/mushroom/tree/master.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/minyez/mushroom/tree/master)
+[![codecov](https://codecov.io/github/minyez/mushroom/graph/badge.svg?token=SM7R1XB2VW)](https://codecov.io/github/minyez/mushroom)
 
 A **M**ulti-f**U**nctional, **S**imple and **H**elpful **R**esearch t**OO**lkit for **M**aterial science (build time)
 
