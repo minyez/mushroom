@@ -2,6 +2,7 @@
 # pylint: disable=C0209
 """this module defines some common used utilities for file and string I/O"""
 import os
+import fnmatch
 import pathlib
 import re
 from contextlib import contextmanager
@@ -11,8 +12,11 @@ from collections.abc import Iterable, Callable
 from sys import stdout
 from typing import List, Union, Sequence, Tuple
 
-from mushroom.core.logger import create_logger
-from mushroom.core.typehint import TextIO
+# make it work as a standalone module
+try:
+    from mushroom.core.logger import create_logger
+except ImportError:
+    create_logger = logging.getLogger
 
 lower_greeks = ["alpha", "beta", "gamma", "theta", "omega", "lambda",
                 "delta", "zeta", "epsilon"]
@@ -344,6 +348,14 @@ def check_duplicates_in_tag_tuple(tagtuple) -> int:
 #         and second the coordinate where it reaches the extreme
 #     '''
 #     pass
+
+def find_files(rootdir, pat):
+    """find the files under directory `dir` matching pattern ``pat``"""
+    for root, dirs, files in os.walk(rootdir):
+        for basename in files:
+            if fnmatch.fnmatch(basename, pat):
+                filename = os.path.join(root, basename)
+                yield filename
 
 
 def find_vol_dirs(path=".", voldir_pat=None, separator="_", index=1):
@@ -712,7 +724,7 @@ def fortran_read(fstring: str, fortran_format: str):
 
 
 @contextmanager
-def open_textio(f: TextIO, mode: str = 'r', encoding: str = 'utf-8'):
+def open_textio(f: Union[str, os.PathLike, StringIO, TextIOWrapper], mode: str = 'r', encoding: str = 'utf-8'):
     """open, and read/write text from a filename(str)/path/TextIOWrapper/StringIO
 
     Note that whatever instance f is, it will be closed when exiting ``with``.

@@ -103,6 +103,7 @@ def m_quickgrace():
 
     for fn in args.data_files:
         datastrings = readtext_split_emptyline(fn)
+        print(len(datastrings))
 
         for s in datastrings:
             data_cols = np.loadtxt(StringIO(s), unpack=True, ndmin=2,
@@ -118,7 +119,8 @@ def m_quickgrace():
             if ncols == 1:
                 if args.sort:
                     data_cols[0].sort()
-                ax.plot(list(range(1, len(data_cols[0]) + 1)), data_cols[0], **kwargs)
+                label = next(legends)
+                ax.plot(list(range(1, len(data_cols[0]) + 1)), data_cols[0], label=label, **kwargs)
                 continue
             if args.xy is not None:
                 for xy in args.xy:

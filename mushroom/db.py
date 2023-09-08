@@ -101,6 +101,9 @@ class _DBBase:
             str, the path to the entry if the entry does not exist or overwrite is switched on.
             None, otherwise.
         """
+        if entry is None:
+            _logger.warning("None Entry is parsed, skip")
+            return None
         entry_path = self._db_path / entry
         if not entry_path.exists() or overwrite:
             makedirs(entry_path.parent, exist_ok=True)

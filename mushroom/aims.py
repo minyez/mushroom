@@ -673,6 +673,7 @@ class Species:
                 e.g. "cc-pVDZ" and set category to "non-standard"
         """
         species_defaults = get_species_defaults_directory()
+        pspecies = get_specie_filename(elem, directory, species_defaults)
         return cls.read(pspecies)
 
 
@@ -687,10 +688,33 @@ def get_specie_filename(elem: str, directory: str, species_defaults: str = None)
     Returns:
         str
     """
+    directory_aliases = {
+        "light": "defaults_2020/light",
+        "light_spd": "defaults_2020/light_spd",
+        "intermediate": "defaults_2020/intermediate",
+        "tight": "defaults_2020/tight",
+        "really_tight": "defaults_2020/really_tight",
+        "cc-pvdz": "non-standard/gaussian_tight_770/cc-pVDZ",
+        "cc-pvtz": "non-standard/gaussian_tight_770/cc-pVTZ",
+        "cc-pvqz": "non-standard/gaussian_tight_770/cc-pVQZ",
+        "cc-pv5z": "non-standard/gaussian_tight_770/cc-pV5Z",
+        "cc-pv6z": "non-standard/gaussian_tight_770/cc-pV6Z",
+        "aug-cc-pvdz": "non-standard/gaussian_tight_770/aug-cc-pVDZ",
+        "aug-cc-pvtz": "non-standard/gaussian_tight_770/aug-cc-pVTZ",
+        "aug-cc-pvqz": "non-standard/gaussian_tight_770/aug-cc-pVQZ",
+        "aug-cc-pv5z": "non-standard/gaussian_tight_770/aug-cc-pV5Z",
+        "aug-cc-pv6z": "non-standard/gaussian_tight_770/aug-cc-pV6Z",
+        "aug-cc-pcvdz": "non-standard/gaussian_tight_770/aug-cc-pCVDZ",
+        "aug-cc-pcvtz": "non-standard/gaussian_tight_770/aug-cc-pCVTZ",
+        "aug-cc-pcvqz": "non-standard/gaussian_tight_770/aug-cc-pCVQZ",
+        "aug-cc-pcv5z": "non-standard/gaussian_tight_770/aug-cc-pCV5Z",
+    }
+    elem_id = get_atomic_number(elem, False)
     if species_defaults is None:
         species_defaults = get_species_defaults_directory()
     directories_avail = search_basis_directories(species_defaults)
-    elem_id = get_atomic_number(elem, False)
+    directory = directory.strip("/")
+    directory = directory_aliases.get(directory.lower(), directory)
     if directory not in directories_avail:
         raise ValueError("{} is not found in available basis directories {}"
                          .format(directory, directories_avail))
@@ -757,18 +781,25 @@ class Control:
             value (str-able): the new value of the tag
                 If set to None, the tag will be deleted
         """
-        if value or value is False:
-            try:
-                v = {True: ".true.", False: ".false."}.get(value, str(value))
-                self.tags[tag] = v
-                _logger.info("tag '%s' updated to: %s", tag, v)
-            except ValueError as _e:
-                raise ValueError(f"cannot turn value into string: {value}") from _e
-        else:
+        if value is None:
             try:
                 _logger.info("removed tag '%s', original value: %s", tag, self.tags.pop(tag))
             except KeyError:
                 _logger.info("tag '%s' to remove is not defined, skip", tag)
+            return
+        if value is True or value is False:
+            try:
+                v = {True: ".true.", False: ".false."}.get(value, str(value))
+                self.tags[tag] = v
+                _logger.info("bool tag '%s' updated to: %s", tag, v)
+            except ValueError as _e:
+                raise ValueError(f"cannot turn value into string: {value}") from _e
+        else:
+            try:
+                self.tags[tag] = value
+                _logger.info("tag '%s' updated to: %s", tag, self.tags[tag])
+            except ValueError as _e:
+                raise ValueError(f"cannot turn value into string: {value}") from _e
 
     def update_output(self, output_tag, value):
         """update the output tag value
@@ -800,8 +831,7 @@ class Control:
             tag (str): the species basic tag
             value : the new value of tag. See ``update_basic_tag``
         """
-        s = self.get_species(elem)
-        s.update_basic_tag(tag, value)
+        self.get_species(elem).update_basic_tag(tag, value)
 
     def get_basis(self, elem, *args, **kwargs):
         """get the basis of element ``elem``
@@ -810,8 +840,7 @@ class Control:
             elem (str or int): name of element, or its index in the control
             args and kwargs: parsed to the Species.get_basis method
         """
-        s = self.get_species(elem)
-        return s.get_basis(*args, **kwargs)
+        return self.get_species(elem).get_basis(*args, **kwargs)
 
     def get_abf(self, elem, *args, **kwargs):
         """get the abf of element ``elem``
@@ -820,8 +849,7 @@ class Control:
             elem (str or int): name of element, or its index in the control
             args and kwargs: parsed to the Species.get_abf method
         """
-        s = self.get_species(elem)
-        return s.get_abf(*args, **kwargs)
+        return self.get_species(elem).get_abf(*args, **kwargs)
 
     def add_basis(self, elem, *args, **kwargs):
         """add basis to speices of element ``elem``
@@ -830,8 +858,7 @@ class Control:
             elem (str or int): name of element, or its index in the control
             args and kwargs: parsed to the Species.add_basis method
         """
-        s = self.get_species(elem)
-        s.add_basis(*args, **kwargs)
+        self.get_species(elem).add_basis(*args, **kwargs)
 
     def add_abf(self, elem, *args, **kwargs):
         """add abf to speices of element ``elem``
@@ -840,8 +867,7 @@ class Control:
             elem (str or int): name of element, or its index in the control
             args and kwargs: parsed to the Species.add_abf method
         """
-        s = self.get_species(elem)
-        s.add_abf(*args, **kwargs)
+        self.get_species(elem).add_abf(*args, **kwargs)
 
     def modify_basis(self, elem, *args, **kwargs):
         """modify basis in speices of element ``elem``
@@ -850,8 +876,7 @@ class Control:
             elem (str or int): name of element, or its index in the control
             args and kwargs: parsed to the Species.modify_basis method
         """
-        s = self.get_species(elem)
-        s.modify_basis(*args, **kwargs)
+        self.get_species(elem).modify_basis(*args, **kwargs)
 
     def modify_abf(self, elem, *args, **kwargs):
         """modify ABFs in speices of element ``elem``
@@ -1018,7 +1043,7 @@ class StdOut:
 
     aims_version = "230214-9c10ff0ac"
 
-    def __init__(self, pstdout: Path):
+    def __init__(self, pstdout: Path, lazy_load: bool = False):
         self._path = pstdout
 
         with open(pstdout, 'r', encoding='utf-8') as h:
@@ -1090,13 +1115,8 @@ class StdOut:
             raise ValueError("cannot extract aims version, incomplete calculation")
 
         self._divide_output_lines(lines)
-        self._handle_system()
-        self._handle_prep()
-        self._handle_pbc_lists_init()
-        self._handle_scf_init()
-        self._handle_scf()
-        self._handle_postscf()
-        self._handle_timing_statistics()
+        if not lazy_load:
+            self._handle()
 
     def _divide_output_lines(self, lines):
         """coarsely devide the lines into sections"""
@@ -1129,9 +1149,9 @@ class StdOut:
                 self._finished_scf_init = True
                 self._scf_init_lines = self._scf_init_lines[:self._scf_init_lines.index(l)]
                 self._scf_lines = lines[i:]
-            # use the start of constructing auxillary basis as a mark for post-scf calculations
-            if l.startswith("  Constructing auxiliary basis"):
-                self._scf_lines = self._scf_lines[:self._scf_lines.index(l)]
+            # if l.startswith("  Post-SCF correlation calculation starts"):
+            if l.startswith("  End decomposition of the XC Energy"):
+                self._scf_lines = self._scf_lines[:self._scf_lines.index(l) + 1]
                 self._postscf_lines = lines[i:]
             if l.startswith("          Leaving FHI-aims.") and not self._not_converged:
                 # in case that SCF is not converged, it will leave aims without starting postscf
@@ -1141,6 +1161,16 @@ class StdOut:
                 self._timestat_lines = lines[i + 1:]
             if l.startswith("          Partial memory accounting:"):
                 self._timestat_lines = self._timestat_lines[:self._timestat_lines.index(l)]
+
+    def _handle(self):
+        """handle the data processing"""
+        self._handle_system()
+        self._handle_prep()
+        self._handle_pbc_lists_init()
+        self._handle_scf_init()
+        self._handle_scf()
+        self._handle_postscf()
+        self._handle_timing_statistics()
 
     def _handle_system(self):
         """process the system environment information"""
@@ -1155,7 +1185,12 @@ class StdOut:
                         self._node_names = []
                     self._node_names.append(m.group(2).strip())
             if l.startswith("  *** Environment variable OMP_NUM_THREADS"):
-                self._omp_threads = int(self._system_lines[i + 1].strip())
+                try:
+                    self._omp_threads = int(self._system_lines[i + 1].strip())
+                # when unset
+                except ValueError:
+                    self._omp_threads = 1
+
         if self._node_names is not None:
             self._node_names_unique = set(self._node_names)
             self._ntasks = len(self._node_names)

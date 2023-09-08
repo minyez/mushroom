@@ -54,7 +54,7 @@ def _parser():
     g = p.add_mutually_exclusive_group()
     g.add_argument("--sym", dest="ksymbols", type=str, default=None, nargs="+",
                    help="Symbols of high symmetry points, overwrite control")
-    g.add_argument("--sym-cf", dest="ksymbols_cf", type=str, default=None,
+    g.add_argument("--sym-cf", dest="ksymbols_cf", type=str, const="control.in", nargs="?",
                    help="read ksymbols in band output fromm the path to the control file")
     return p
 
