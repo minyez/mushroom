@@ -5,8 +5,10 @@ from typing import Union
 
 from mushroom.core.elements import element_symbols, get_atomic_number, l_channels
 from mushroom.core.ioutils import open_textio
+from mushroom.core.logger import loggers
 
-from mushroom.aims.common import _logger
+
+_logger = loggers["aims"]
 
 
 def search_basis_directories(aims_species_defaults=None):

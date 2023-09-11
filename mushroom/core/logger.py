@@ -45,9 +45,9 @@ def _set_handler(flevel, slevel):
         logfile_mode = 'w'
     file_hand = None
     stream_hand = None
-    fform = logging.Formatter(fmt='%(asctime)s - %(name)7s:%(levelname)8s - %(message)s',
+    fform = logging.Formatter(fmt='%(asctime)s - %(name)10s:%(levelname)8s - %(message)s',
                               datefmt='%Y-%m-%d %H:%M:%S')
-    sform = logging.Formatter(fmt='%(name)7s:%(levelname)8s - %(message)s')
+    sform = logging.Formatter(fmt='%(name)10s:%(levelname)8s - %(message)s')
     if flevel != logging.NOTSET:
         file_hand = logging.FileHandler("mushroom.log", mode=logfile_mode)
         file_hand.setFormatter(fform)
@@ -101,3 +101,37 @@ def create_logger(name: str, level: str = None,
         logger.addHandler(_shand)
     return logger
 
+
+class LoggersManager:
+    """Object to manage a set of loggers"""
+
+    def __init__(self):
+        self._loggers = {}
+
+    def has_logger(self, name: str) -> bool:
+        """check if the logger with name is available"""
+        return self._loggers.get(name, None) is not None
+
+    def register(self, name: str, level: str = None,
+                 f_handler: bool = None, s_handler: bool = None) -> None:
+        """register a logger with name to the logger manager"""
+        if not self.has_logger(name):
+            logger = create_logger(name, level, f_handler, s_handler)
+            self._loggers[name] = logger
+            logger.debug("Logger registered")
+
+    def get(self, name: str) -> logging.Logger:
+        """get the logger corresponding to the name"""
+        logger = self._loggers.get(name, None)
+        if logger is None:
+            raise KeyError("logger not registered: %s" % name)
+        return self._loggers.get(name)
+
+    def __getitem__(self, name: str) -> logging.Logger:
+        logger = self._loggers.get(name, None)
+        if logger is None:
+            self.register(name)
+        return self._loggers.get(name)
+
+
+loggers = LoggersManager()

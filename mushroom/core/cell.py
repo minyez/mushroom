@@ -32,7 +32,7 @@ from mushroom.core.crystutils import (get_latt_consts_from_latt_vecs,
 from mushroom.core.ioutils import (grep, get_str_indices, open_textio,
                                    trim_comment, get_file_ext, raise_no_module,
                                    print_file_or_iowrapper)
-from mushroom.core.logger import create_logger
+from mushroom.core.logger import loggers
 from mushroom.core.typehint import Latt3T3, RealVec3D, Path
 
 __all__ = [
@@ -46,8 +46,7 @@ class CellError(Exception):
     """
 
 
-_logger = create_logger("cell")
-del create_logger
+_logger = loggers["cell"]
 
 
 class Cell(LengthUnit):

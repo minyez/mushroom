@@ -7,7 +7,7 @@ TODO:
 import struct
 import pathlib
 import numpy as np
-from mushroom.core.logger import create_logger
+from mushroom.core.logger import loggers
 from mushroom.core.typehint import Path
 from mushroom.core.bs import BandStructure
 from mushroom.core.ioutils import conv_string
@@ -15,8 +15,7 @@ from mushroom.core.data import reshape_2n_float_n_cmplx
 
 from mushroom.w2k import get_casename
 
-_logger = create_logger("gap")
-del create_logger
+_logger = loggers["gap"]
 
 gwmethod_suffices = {'g0w0': 'GW', 'gw0': 'GW0'}
 

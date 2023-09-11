@@ -3,13 +3,12 @@
 from typing import Sequence
 import numpy as np
 
-from mushroom.core.logger import create_logger
+from mushroom.core.logger import loggers
 from mushroom.core.elements import get_atomic_number
 from mushroom.core.unit import LengthUnit
 from mushroom.core.typehint import RealVec3D, Latt3T3, Key, TextIO
 
-_logger = create_logger('cube')
-del create_logger
+_logger = loggers['cube']
 
 
 class Cube(LengthUnit):

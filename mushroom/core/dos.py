@@ -3,18 +3,17 @@
 import numpy as np
 
 from mushroom.core.unit import EnergyUnit
-from mushroom.core.logger import create_logger
 from mushroom.core.data import export_2d_data
 from mushroom.core.ioutils import (get_str_indices_by_iden,
                                    split_comma)
+from mushroom.core.logger import loggers
 
 __all__ = [
-        "DensityOfStates",
-        "split_ap",
-        ]
+    "DensityOfStates",
+    "split_ap",
+]
 
-_logger = create_logger("dos")
-del create_logger
+_logger = loggers["dos"]
 
 KEYS_DOS_PROJ = ("atms", "prjs", "pdos")
 """Tuple. Required keys for projected DOS input
@@ -27,8 +26,10 @@ pdos: array-like, floats as elements.
 The shape should be (nspins, nedos, natms, nprjs)
 """
 
+
 class DosError(Exception):
     """exception for density of states object"""
+
 
 class DensityOfStates(EnergyUnit):
     """class for analyzing density of states (DOS) data
@@ -113,6 +114,7 @@ class DensityOfStates(EnergyUnit):
     def atms(self):
         """list of str. atomic symbols"""
         return self._atms
+
     @atms.setter
     def atms(self, new):
         if self._pdos is None:
@@ -130,6 +132,7 @@ class DensityOfStates(EnergyUnit):
     def prjs(self):
         """list of str. name of projectors"""
         return self._prjs
+
     @prjs.setter
     def prjs(self, new):
         if self._pdos is None:
@@ -252,7 +255,7 @@ class DensityOfStates(EnergyUnit):
             raise ValueError("parse prjs first for projector string")
         return get_str_indices_by_iden(self._prjs, prj)
 
-    def get_tdos(self, ispin: int=None, reverse_spindn: bool=False):
+    def get_tdos(self, ispin: int = None, reverse_spindn: bool = False):
         """get the total dos data
 
         Args:
@@ -318,6 +321,7 @@ class DensityOfStates(EnergyUnit):
             raise TypeError("tdos shape is wrong, contact developer")
         return export_2d_data(data, transpose=transpose, form=form, sep=sep)
 
+
 def split_ap(ap: str):
     """split an atom-projector string into lists containing corresponding identifiers
 
@@ -341,4 +345,3 @@ def split_ap(ap: str):
         raise ValueError("should contain two colons") from err
 
     return split_comma(a, int), split_comma(p, int)
-

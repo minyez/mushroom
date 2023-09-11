@@ -4,6 +4,10 @@ from typing import Tuple, List
 
 from mushroom.core.typehint import RealVec3D
 from mushroom.core.bs import BandStructure
+from mushroom.core.logger import loggers
+
+
+_logger = loggers["aims"]
 
 
 def read_band_output(

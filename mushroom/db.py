@@ -8,7 +8,7 @@ from collections.abc import Iterable
 from typing import Union
 
 from mushroom.core.pkg import detect
-from mushroom.core.logger import create_logger
+from mushroom.core.logger import loggers
 from mushroom.core.cell import Cell
 from mushroom.core.typehint import Path
 from mushroom.w2k import Struct
@@ -20,8 +20,7 @@ __all__ = [
     "DBDoctemp",
 ]
 
-_logger = create_logger("db")
-del create_logger
+_logger = loggers["db"]
 
 # database directory of mushroom
 mushroom_db_home = pathlib.Path(__file__).parent.parent / "db"

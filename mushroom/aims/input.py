@@ -10,16 +10,17 @@ import numpy as np
 
 from mushroom.core.cell import Cell
 from mushroom.core.ioutils import readlines_remove_comment, grep, open_textio, greeks, greeks_latex
+from mushroom.core.logger import loggers
 
 from mushroom.aims.species import Species
-from mushroom.aims.common import _logger
-
 
 __all__ = [
     "read_geometry",
     "Control",
     "read_control"
 ]
+
+_logger = loggers["aims"]
 
 read_geometry = Cell.read_aims
 

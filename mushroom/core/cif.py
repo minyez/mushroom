@@ -9,10 +9,10 @@ from io import StringIO
 from mushroom.core.crystutils import get_latt_vecs_from_latt_consts, get_all_atoms_from_symops
 from mushroom.core.ioutils import open_textio
 from mushroom.core.data import conv_estimate_number, closest_frac
-from mushroom.core.logger import create_logger
+from mushroom.core.logger import loggers
 
-_logger = create_logger("cif")
-del create_logger
+_logger = loggers["cif"]
+
 
 class CifFile:
     """
@@ -33,6 +33,7 @@ class CifFile:
     This object is intended to replace the external CifFile object.
     The main reason is to remove the PyCIFRW dependency.
     """
+
     def __init__(self, *blks):
         self._blks = blks
 
@@ -74,10 +75,11 @@ class CifFile:
             lines = h.readlines()
         # search data block
         blks_st = [i for i, l in enumerate(lines) if l.startswith("data_")]
-        blks = [CifBlk.read(StringIO(''.join(lines[st:blks_st[i+1]])))
+        blks = [CifBlk.read(StringIO(''.join(lines[st:blks_st[i + 1]])))
                 for i, st in enumerate(blks_st[:-1])]
         blks.append(CifBlk.read(StringIO(''.join(lines[blks_st[-1]:]))))
         return cls(*blks)
+
 
 class CifBlk:
     """Object to handle CIF data block
@@ -88,6 +90,7 @@ class CifBlk:
         loops: a list, each member is a dict containing "keys" (a list) and "values" (list of lists)
             the member of values list is one entry containing data corresponding to "keys".
     """
+
     def __init__(self, name: str, items: dict, loops: List[dict]):
         self._name = name
         self._items = items
@@ -237,10 +240,11 @@ class CifBlk:
                      for g in re.finditer(r'([\'\"])?(?(1).*?\1|\S+)', datastr)]
                 nentries = len(m) // nkeys
                 for ie in range(nentries):
-                    loop["values"].append(m[nkeys*ie:nkeys*(ie+1)])
+                    loop["values"].append(m[nkeys * ie:nkeys * (ie + 1)])
                 loops.append(loop)
                 _logger.info("loaded %d loop data, in %d entries", len(m), nentries)
         return cls(name, items, loops)
+
 
 class Cif:
     """Class to read CIF files and initialize atomic data by PyCIFRW
@@ -399,6 +403,7 @@ class Cif:
             self.ref = ref.replace('\n', ' ')
         return self.ref
 
+
 def decode_equiv_pos_string(s):
     """Convert a string representing symmetry operation in CIF file
     to a rotation matrix R and a translation vector t
@@ -451,4 +456,3 @@ def decode_equiv_pos_string(s):
             # deal with fractional number x/y
             trans[i] = float(st[0]) / float(st[-1])
     return rot, trans
-

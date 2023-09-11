@@ -16,7 +16,7 @@ from mushroom.core.ioutils import (grep, print_file_or_iowrapper,
 from mushroom.core.crystutils import (get_latt_vecs_from_latt_consts,
                                       atms_from_sym_nat,
                                       get_latt_consts_from_latt_vecs)
-from mushroom.core.logger import create_logger
+from mushroom.core.logger import loggers
 from mushroom.core.bs import BandStructure
 from mushroom.core.dos import DensityOfStates
 
@@ -28,8 +28,7 @@ __all__ = [
     "In1",
 ]
 
-_logger = create_logger("w2k")
-del create_logger
+_logger = loggers["w2k"]
 
 npt_default = 781
 rzero_default_elements = {}

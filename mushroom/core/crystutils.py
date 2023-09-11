@@ -6,10 +6,9 @@ import numpy as np
 from numpy import cos, sin
 from mushroom.core.typehint import Latt3T3
 from mushroom.core.constants import PI
-from mushroom.core.logger import create_logger
+from mushroom.core.logger import loggers
 
-_logger = create_logger("cryutil")
-del create_logger
+_logger = loggers["cryutil"]
 
 
 def get_recp_latt(latt: Latt3T3):

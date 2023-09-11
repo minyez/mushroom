@@ -24,7 +24,7 @@ from mushroom.core.data import Data
 from mushroom.core.typehint import Path
 from mushroom.core.ioutils import (greeks, open_textio, grep,
                                    get_file_ext)
-from mushroom.core.logger import create_logger
+from mushroom.core.logger import loggers
 
 __all__ = [
     "Plot",
@@ -32,8 +32,7 @@ __all__ = [
     "merge_graphs",
 ]
 
-_logger = create_logger("grace")
-del create_logger
+_logger = loggers["grace"]
 
 GREEK_PATTERN = dict((r"\\{}".format(_g), r"\\x%s\\f{}" % _g[0]) for _g in greeks)
 SPECIAL_CHAR_PATTERN = {

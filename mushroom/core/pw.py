@@ -6,10 +6,10 @@ import numpy as np
 from mushroom.core.typehint import Latt3T3, RealVec3D, IntVec3D
 from mushroom.core.unit import LengthUnit, EnergyUnit
 from mushroom.core.crystutils import get_recp_latt
-from mushroom.core.logger import create_logger
+from mushroom.core.logger import loggers
 
-_logger = create_logger('pw')
-del create_logger
+_logger = loggers['pw']
+
 
 class PWBasis(LengthUnit, EnergyUnit):
     """plane-wave basis
@@ -21,8 +21,13 @@ class PWBasis(LengthUnit, EnergyUnit):
         order_kind
     """
     known_order_kind = (None, "vasp")
-    def __init__(self, cutoff: float, latt: Latt3T3,
-                 eunit: str = "ry", lunit: str = "au", order_kind: str = None):
+
+    def __init__(self,
+                 cutoff: float,
+                 latt: Latt3T3,
+                 eunit: str = "ry",
+                 lunit: str = "au",
+                 order_kind: str = None):
         LengthUnit.__init__(self, lunit=lunit)
         EnergyUnit.__init__(self, eunit=eunit)
         self.latt = np.array(latt)
@@ -52,6 +57,7 @@ class PWBasis(LengthUnit, EnergyUnit):
     def eunit(self):
         """energy unit"""
         return self._eunit.lower()
+
     @eunit.setter
     def eunit(self, new: str):
         coef = self._get_eunit_conversion(new.lower())
@@ -68,6 +74,7 @@ class PWBasis(LengthUnit, EnergyUnit):
     def lunit(self):
         """length unit"""
         return self._lunit.lower()
+
     @lunit.setter
     def lunit(self, new: str):
         coef = self._get_lunit_conversion(new.lower())
@@ -87,20 +94,22 @@ class PWBasis(LengthUnit, EnergyUnit):
             np.add(kpt, np.zeros(3))
         except ValueError as err:
             raise ValueError("invalid kpoint vector") from err
-        nmax = list(int(x)+1 for x in self.gmax * np.reciprocal(self.blen))
+        nmax = list(int(x) + 1 for x in self.gmax * np.reciprocal(self.blen))
         if order_kind is None:
             order_kind = self.order_kind
         else:
             self._check_order_kind(order_kind)
         if order_kind is None:
-            ipw = np.array(tuple(product(*map(lambda n: range(-n, n+1), nmax))))
+            ipw = np.array(
+                tuple(product(*map(lambda n: range(-n, n + 1), nmax))))
             folded = ()
         if order_kind == "vasp":
             nmax.reverse()
-            ipw = np.array(list(list(reversed(xyz)) for xyz in \
-                                product(*map(lambda n: [(n+i) % (2*n+1) - n for i in range(2*n+1)],
-                                              nmax))))
-        indices = np.linalg.norm(np.dot(ipw+kpt, self.b), axis=1) <= self.gmax
+            ipw = np.array(list(list(reversed(xyz)) for xyz in
+                                product(*map(lambda n: [(n + i) % (2 * n + 1) - n for i in range(2 * n + 1)],
+                                             nmax))))
+        indices = np.linalg.norm(np.dot(ipw + kpt, self.b),
+                                 axis=1) <= self.gmax
         ipw = ipw[indices, :]
         folded = ()
         if symmetrize:
@@ -109,10 +118,12 @@ class PWBasis(LengthUnit, EnergyUnit):
             folded = symmetrize_G(ipw, kpt, symops)
         return ipw, folded
 
+
 def symmetrize_G(ipw: Sequence[IntVec3D], kpt: RealVec3D, symops: dict):
     """symmetrize G-vectors according to symops"""
     # TODO consider symmetries
     raise NotImplementedError
+
 
 def fold_small_G_semisphere(ipw: Sequence[IntVec3D], kpt: RealVec3D):
     """find the G-vectors that can be folded back to positive axis
@@ -158,4 +169,3 @@ def fold_small_G_semisphere(ipw: Sequence[IntVec3D], kpt: RealVec3D):
         folded.append((ismG, np.where(np.all(np.equal(ipw, smGf), axis=1))[0][0]))
 
     return tuple(folded)
-

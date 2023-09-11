@@ -13,7 +13,7 @@ try:
 except ImportError:
     BeautifulSoup = None
 
-from mushroom.core.logger import create_logger
+from mushroom.core.logger import loggers
 from mushroom.core.ioutils import conv_string, raise_no_module
 from mushroom.core.dos import DensityOfStates
 from mushroom.core.bs import BandStructure
@@ -22,16 +22,16 @@ from mushroom.core.cell import Cell, latt_equal
 from mushroom.core.typehint import Path
 from mushroom.visual.cube import Cube
 
-_logger = create_logger("vasp")
-del create_logger
+_logger = loggers["vasp"]
 
 __all__ = [
-        "read_eigen",
-        "read_procar",
-        "read_doscar",
-        "read_poscar",
-        "read_xml",
-        ]
+    "read_eigen",
+    "read_procar",
+    "read_doscar",
+    "read_poscar",
+    "read_xml",
+]
+
 
 # pylint: disable=R0914
 def _dict_read_doscar(path: str = "DOSCAR",

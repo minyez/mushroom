@@ -12,9 +12,9 @@ from re import split as rsplit
 from typing import Union, Iterable
 from os import PathLike
 from mushroom.core.env import username, hostname
-from mushroom.core.logger import create_logger
-_logger = create_logger("hpc")
-del create_logger
+from mushroom.core.logger import loggers
+
+_logger = loggers["hpc"]
 
 __all__ = ["SbatchOptions", "get_scheduler_header", "add_scheduler_header"]
 try:

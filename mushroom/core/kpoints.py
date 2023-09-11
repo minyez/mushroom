@@ -9,16 +9,16 @@ try:
 except ImportError:
     spglib = None
 
-from mushroom.core.logger import create_logger
+from mushroom.core.logger import loggers
 from mushroom.core.ioutils import raise_no_module
 
 __all__ = [
-        "KPath",
-        "MPGrid",
-        ]
+    "KPath",
+    "MPGrid",
+]
 
-_logger = create_logger("kpoints")
-del create_logger
+_logger = loggers["kpoints"]
+
 
 class KPath:
     """object to manipulate path in reciprocal k space
@@ -31,7 +31,7 @@ class KPath:
             If parsed, it will be used to convert the kpts to Cartisian coordiantes.
     """
 
-    def __init__(self, kpts, recp_latt=None, unify_x: bool=False):
+    def __init__(self, kpts, recp_latt=None, unify_x: bool = False):
         self._nkpts = len(kpts)
         if np.shape(kpts) != (self._nkpts, 3):
             raise ValueError("bad shape of parsed kpoints")
@@ -56,15 +56,16 @@ class KPath:
         for i, (st, ed) in enumerate(self._ksegs):
             l = np.linalg.norm(self.kpts[st, :] - self.kpts[ed, :])
             # remove duplicate
-            if not st in ispks and not st-1 in ispks:
+            if st not in ispks and st - 1 not in ispks:
                 ispks.append(st)
             ispks.append(ed)
             # skip the starting point if it is the same as the endpoint of last segment
             skip = 0
             if i > 0:
-                if st == self._ksegs[i-1][1]:
+                if st == self._ksegs[i - 1][1]:
                     skip = 1
-            x = accumu_l + np.linalg.norm(self.kpts[st:ed+1, :] - self.kpts[st, :], axis=1)[skip:]
+            x = accumu_l + np.linalg.norm(
+                self.kpts[st:ed + 1, :] - self.kpts[st, :], axis=1)[skip:]
             xs.extend(x)
             accumu_l += l
         self._x = np.array(xs)
@@ -164,7 +165,7 @@ def find_k_segments(kpts):
     kpts = np.array(kpts, dtype='float64')
     deltak = kpts[1:, :] - kpts[:-1, :]
     l = np.linalg.norm(deltak, axis=1)
-    for i in range(nkpts-1):
+    for i in range(nkpts - 1):
         if np.isclose(l[i], 0):
             deltak[i, :] = 0.
         else:
@@ -175,18 +176,18 @@ def find_k_segments(kpts):
     while ed < nkpts:
         # a new segment when direction of delta vector changes
         # i.e. dot product is not 1 any more
-        if not np.isclose(dotprod[ed-2], 1.):
-            ksegs.append((st, ed-1))
+        if not np.isclose(dotprod[ed - 2], 1.):
+            ksegs.append((st, ed - 1))
             st = ed - 1
             # introduce a gap if the adjacent points are the same,
             # or the next segment starts from a new point
-            if np.allclose(deltak[ed-1,:], 0.) or \
-                    (ed < nkpts - 1 and not np.isclose(dotprod[ed-1], 1.)):
+            if np.allclose(deltak[ed - 1, :], 0.) or \
+                    (ed < nkpts - 1 and not np.isclose(dotprod[ed - 1], 1.)):
                 st += 1
                 ed += 1
         ed += 1
     if ed - st >= 2:
-        ksegs.append((st, ed-1))
+        ksegs.append((st, ed - 1))
     return ksegs
 
 
@@ -207,7 +208,7 @@ def uniform_int_kmesh(nk1: int, nk2: int, nk3: int,
     centering = (divisions - 1) // 2
     ikmesh = ikmesh - centering
     if sort:
-        indices = list(range(nk1*nk2*nk3))
+        indices = list(range(nk1 * nk2 * nk3))
         norm = np.linalg.norm(ikmesh, axis=1)
         indices.sort(key=norm.__getitem__)
         ikmesh = ikmesh[indices]
@@ -215,4 +216,3 @@ def uniform_int_kmesh(nk1: int, nk2: int, nk3: int,
         return ikmesh + 0.5 * np.array(shift)
     except ValueError as err:
         raise ValueError("expected Iterable for shift, got %s" % type(shift)) from err
-

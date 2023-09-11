@@ -10,7 +10,7 @@ from numbers import Real
 
 import numpy as np
 
-from mushroom.core.logger import create_logger
+from mushroom.core.logger import loggers
 from mushroom.core.unit import EnergyUnit
 from mushroom.core.ioutils import get_str_indices_by_iden, split_comma
 from mushroom.core.typehint import Key
@@ -39,8 +39,7 @@ THRES_OCC = 1.0 - THRES_EMP
 
 AtmPrjToken = Union[Key, Sequence[Key]]
 
-_logger = create_logger("bs")
-del create_logger
+_logger = loggers["bs"]
 
 
 class BandStructureError(Exception):

@@ -7,11 +7,11 @@ from os.path import splitext, basename
 from re import match
 from typing import Union
 from mushroom.core.ioutils import get_file_ext, grep
-from mushroom.core.logger import create_logger
+from mushroom.core.logger import loggers
 
 __all__ = ["detect", "package_names"]
-_logger = create_logger("pkg")
-del create_logger
+
+_logger = loggers["pkg"]
 
 # package-specific tokens and corresponding name of the packages
 package_names = {
@@ -23,7 +23,8 @@ package_names = {
     "qe": "Quantum ESPRESSO",
     "bgw": "BerkeleyGW",
     "cp2k": "CP2k",
-    }
+}
+
 
 def detect(path: Union[str, PathLike], fail_with_ext: bool = False) -> str:
     """detect the package of a file at `path`
@@ -39,14 +40,15 @@ def detect(path: Union[str, PathLike], fail_with_ext: bool = False) -> str:
             return pkg
     return fail
 
+
 _package_specific_prefix = {
     r"aims.out": "aims",
-    }
+}
 _package_specific_exts = {
     "POSCAR": "vasp",
     "gpw": "gpaw",
     "struct": "w2k",
-    }
+}
 _package_specific_exts.update(dict((k, k) for k in package_names))
 _package_specific_fullnames = {
     "POSCAR": "vasp",
@@ -57,7 +59,7 @@ _package_specific_fullnames = {
     "pw.in": "qe",
     "ph.in": "qe",
     "geometry.in": "aims",
-    }
+}
 
 # check consistency
 for v in _package_specific_prefix.values():
@@ -69,6 +71,7 @@ for v in _package_specific_fullnames.values():
 for v in _package_specific_exts.values():
     if v not in package_names:
         raise ValueError(f"invalid pkg name in extension match: {v}")
+
 
 def detect_matchfn(path: Union[str, PathLike, TextIOWrapper], fail_with_ext: bool = False) -> str:
     """detect the package of a file at `path` by matching its file name
@@ -88,7 +91,7 @@ def detect_matchfn(path: Union[str, PathLike, TextIOWrapper], fail_with_ext: boo
     detected_str = "detected by matchfn %r -> %s"
     if isinstance(path, TextIOWrapper):
         path = path.name
-    path =pathlib.Path(path)
+    path = pathlib.Path(path)
     fail = {True: get_file_ext(path)}.get(fail_with_ext, None)
     if path.is_dir():
         return None
@@ -112,15 +115,16 @@ def detect_matchfn(path: Union[str, PathLike, TextIOWrapper], fail_with_ext: boo
     _logger.debug("fail detecting by matchfn %s", full)
     return fail
 
+
 # key: a tuple, (pattern to match, maxdepth for searching)
 #      maxdepth to None to remove the depth limit
 _package_specific_head_patterns = {
     (r"&control", 1): "qe",
     (r"^[ ]+Invoking FHI-aims", 2): "aims",
-    }
+}
 _package_specific_tail_patterns = {
     (r"Voluntary context switches", 1): "vasp",
-    }
+}
 
 # check consistency
 for v in _package_specific_head_patterns.values():
@@ -129,6 +133,7 @@ for v in _package_specific_head_patterns.values():
 for v in _package_specific_tail_patterns.values():
     if v not in package_names:
         raise ValueError(f"invalid pkg name in tail match: {v}")
+
 
 def detect_matchhead(path: Union[str, PathLike]) -> str:
     """detect the package of a file by matching its head"""
@@ -143,6 +148,7 @@ def detect_matchhead(path: Union[str, PathLike]) -> str:
             return pkg
     return None
 
+
 def detect_matchtail(path: Union[str, PathLike]) -> str:
     """detect the package of a file by matching its tail"""
     if isinstance(path, TextIOWrapper):
@@ -155,4 +161,3 @@ def detect_matchtail(path: Union[str, PathLike]) -> str:
         if found:
             return pkg
     return None
-

@@ -7,8 +7,10 @@ import numpy as np
 from mushroom.core.bs import BandStructure
 from mushroom.core.typehint import Path
 from mushroom.core.ioutils import conv_string
+from mushroom.core.logger import loggers
 
-from mushroom.aims.common import _logger
+
+_logger = loggers["aims"]
 
 
 def split_aimsout_region(lines):

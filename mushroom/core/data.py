@@ -5,18 +5,18 @@ from typing import List
 import numpy as np
 
 from mushroom.core.ioutils import trim_after
-from mushroom.core.logger import create_logger
+from mushroom.core.logger import loggers
 
 __all__ = [
-        "Data",
-        "export_2d_data",
-        "conv_estimate_number",
-        "closest_frac",
-        "fraction",
-        ]
+    "Data",
+    "export_2d_data",
+    "conv_estimate_number",
+    "closest_frac",
+    "fraction",
+]
 
-_logger = create_logger("data")
-del create_logger
+_logger = loggers["data"]
+
 
 def conv_estimate_number(s: str, reserved: bool = False) -> float:
     """Convert a string representing a number with error to a float number.
@@ -34,6 +34,7 @@ def conv_estimate_number(s: str, reserved: bool = False) -> float:
         return float(re.sub(r"[\(\)]", "", s))
     return float(trim_after(s, r"\("))
 
+
 def get_divisors(n: int) -> List[int]:
     """get all divisors of integer n, including itself and excluding 1
 
@@ -46,6 +47,7 @@ def get_divisors(n: int) -> List[int]:
         if n % i == 0:
             divs.append(i)
     return divs
+
 
 def get_mutual_primes(n):
     """find all mutual primer of integer n that are smaller than n
@@ -94,7 +96,7 @@ def closest_frac(decimal: float, maxn=100, thres=None, ret=1):
             1: num / denom,
             2: (num, denom),
             3: (num, denom, error),
-            }
+        }
         return d.get(ret, "{:d}/{:d}".format(num, denom))
 
     f = decimal
@@ -124,6 +126,7 @@ def closest_frac(decimal: float, maxn=100, thres=None, ret=1):
                 num = _nu
                 den = _de
     raise ValueError
+
 
 def fraction(s: str) -> float:
     """compute the value of a string of fraction, e.g. '1/2'
@@ -189,7 +192,7 @@ class Data:
         'bardydy': (2, ['dy', 'dyl']),
         'xydxdy': (2, ['dx', 'dy']),
         'xydxdxdydy': (2, ['dx', 'dxl', 'dy', 'dyl']),
-        }
+    }
     available_types = tuple(DATATYPES.keys())
 
     def __init__(self, *xyz, datatype: str = None, label: str = None, comment: str = None,
@@ -442,6 +445,7 @@ class Data:
         # some error is parsed
         return t, extra_cols
 
+
 def export_2d_data(data, form: str = None, transpose: bool = False, sep: str = None) -> List[str]:
     """print the 2-dimension data into list of strings
 
@@ -475,6 +479,7 @@ def export_2d_data(data, form: str = None, transpose: bool = False, sep: str = N
         slist.append(s)
     return slist
 
+
 def reshape_2n_float_n_cmplx(data):
     """convert 2n-float 1d-array into an n-complex 1d-array
 
@@ -485,7 +490,8 @@ def reshape_2n_float_n_cmplx(data):
         data (1d-array): array consisting of 2n floats
     """
     n = len(data)
-    if n%2 != 0:
+    if n % 2 != 0:
         raise ValueError("odd length is invalid: {}".format(n))
     data = np.array(data)
-    return data[0::2] + data[1::2]*1.0j
+    return data[0::2] + data[1::2] * 1.0j
+
