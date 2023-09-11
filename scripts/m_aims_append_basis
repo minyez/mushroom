@@ -5,7 +5,7 @@ from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from mushroom.core.elements import element_symbols
 from mushroom.aims.species import get_specie_filename, search_basis_directories, \
     get_basis_directory_from_alias
-from mushroom.aims.input import read_divide_control_lines
+from mushroom.aims.input import divide_control_lines
 
 
 def _parser():
@@ -24,8 +24,9 @@ def _parser():
 
 def m_aims_apppend_basis(control_file, directory, *elem, species_defaults=None):
     """the main stream"""
-    gl, sl = read_divide_control_lines(control_file)
-    if sl != []:
+    regions = divide_control_lines(control_file)
+    gl = regions[0]
+    if len(regions) > 1:
         print("Replacing existing basis information in control file {}".format(control_file))
     sl = []
     for el in elem:

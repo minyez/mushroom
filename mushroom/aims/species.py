@@ -120,11 +120,13 @@ class Species:
     angular_grids_tag = ["angular_grids", "outer_grid", "division"]
     basis_tag = ["valence", "ion_occ", "hydro", "ionic", "gaussian", "sto"]
 
-    def __init__(self, elem: str, tags: dict = None, basis: dict = None, abf: dict = None):
+    def __init__(self, elem: str, tags: dict = None, basis: dict = None, abf: dict = None,
+                 header: str = None):
         self.elem = elem
         self.tags = tags
         self.basis = basis
         self.abf = abf
+        self.header = header
 
     def update_basic_tag(self, tag, value):
         """update the value of basic species tag
@@ -275,7 +277,7 @@ class Species:
         self._modify_basis_common(self.abf, btype, index, None, l_channel)
 
     @classmethod
-    def _export_basis_common(cls, basis: dict, prefix: str):
+    def _export_basis_common(cls, basis: dict, prefix: str, padding: int = 0):
         """export the basis set configuration
 
         The order follows the ``basis_tag`` class attribute
@@ -290,44 +292,51 @@ class Species:
                 continue
             if bt != 'gaussian':
                 for b in basis[bt]:
-                    slist.append(f"{prefix}{bt} {b}")
+                    slist.append(" " * padding + f"{prefix}{bt} {b}")
             else:
                 for b in basis[bt]:
                     n = b.split()[1]
                     # pGTO
                     if int(n) == 1:
-                        slist.append(f"{prefix}{bt} {b}")
+                        slist.append(" " * padding + f"{prefix}{bt} {b}")
                     # cGTO
                     else:
                         cgto = b.split()
-                        slist.append(f"{prefix}{bt} {cgto[0]} {cgto[1]}")
+                        slist.append(" " * padding + f"{prefix}{bt} {cgto[0]} {cgto[1]}")
                         for i in range(int(n)):
-                            slist.append(f"{cgto[2*i+2]:>17s}  {cgto[2*i+3]:>13s}")
+                            slist.append(" " * padding + f"{cgto[2*i+2]:>17s}  {cgto[2*i+3]:>13s}")
         return "\n".join(slist)
 
-    def _export_basis(self):
+    def _export_basis(self, padding: int = 0):
         """export the basis to a string"""
-        return self._export_basis_common(self.basis, '')
+        return self._export_basis_common(self.basis, '', padding)
 
-    def _export_abf(self):
+    def _export_abf(self, padding: int = 0):
         """export the ABFs to a string"""
-        return self._export_basis_common(self.abf, 'for_aux ')
+        return self._export_basis_common(self.abf, 'for_aux ', padding)
 
-    def export(self):
+    def export(self, padding: int = 0):
         """export the species to a string"""
-        slist = ["### Start species ###",
-                 f"species  {self.elem}"]
+        header = "### Start species ###"
+        if self.header is not None:
+            header = self.header
+        slist = [header,
+                 " " * padding + f"species  {self.elem}"]
+        padding = padding + 2
         for t in self.tags:
             if t in self.species_basic_tag:
-                slist.append(f"  {t}  {self.tags[t]}")
+                slist.append(" " * padding + f"{t}  {self.tags[t]}")
             if t == 'angular_grids':
-                slist.append(f"  {t}  {self.tags[t]['method']}")
+                slist.append(" " * padding + f"{t}  {self.tags[t]['method']}")
                 for div in self.tags[t]['division']:
-                    slist.append(f"    division  {div}")
-                slist.append(f"    outer_grid  {self.tags[t]['outer_grid']}")
-        slist.append(self._export_basis())
-        slist.append(self._export_abf())
-        slist.append("###   End species ###")
+                    slist.append(" " * padding + f"  division  {div}")
+                slist.append(" " * padding + f"  outer_grid  {self.tags[t]['outer_grid']}")
+        if self.basis is not None and self.basis.keys():
+            slist.append(self._export_basis(padding))
+        if self.abf is not None and self.abf.keys():
+            slist.append(self._export_abf(padding))
+        if self.header is None:
+            slist.append("###   End species ###")
         return "\n".join(slist)
 
     def write(self, pspecies):
@@ -347,13 +356,21 @@ class Species:
         abf = {}
         agt = cls.angular_grids_tag[0]
         i = 0
+        headerl = []
         while i < len(_ls):
-            if _ls[i].strip().startswith('#') or _ls[i].strip() == '':
+            l = _ls[i].strip()
+            # print(l, elem, l.startswith("species"))
+            if elem is None and not l.startswith("species"):
+                headerl.append(l)
+            if l.startswith('#') or l == '':
                 i += 1
                 continue
             tagk, tagv = _ls[i].strip().split(maxsplit=1)
             # handle general species tags
-            if tagk in cls.species_basic_tag:
+            if tagk == "species":
+                # skip the element identifier
+                elem = tagv
+            elif tagk in cls.species_basic_tag:
                 tags[tagk] = tagv
             elif tagk in cls.angular_grids_tag:
                 if agt not in tags:
@@ -393,9 +410,6 @@ class Species:
                     else:
                         basis_dict[tagk].append(tagv)
                         _logger.debug("append %s %s: %s", tagk, basis_key, tagv)
-            elif tagk == "species":
-                # skip the element identifier
-                elem = tagv
             else:
                 info = "Unknown species tag {} on line {}, break for safety".format(tagk, i + 1)
                 _logger.error(info)
@@ -404,7 +418,10 @@ class Species:
         if elem not in element_symbols[1:]:
             raise ValueError(f"Unknown element: {elem}")
         _logger.info("handling species of element: %s", elem)
-        return cls(elem, tags, basis, abf)
+        header = None
+        if len(headerl) > 0:
+            header = "\n".join(headerl)
+        return cls(elem, tags, basis, abf, header=header)
 
     @classmethod
     def read_multiple(cls, pspecies):

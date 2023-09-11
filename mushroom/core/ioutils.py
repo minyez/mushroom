@@ -724,6 +724,18 @@ def fortran_read(fstring: str, fortran_format: str):
     raise NotImplementedError
 
 
+def get_banner(msg: str, char: str = "#", spacing: int = 4, prefix: str = None):
+    """get banner string"""
+    msg = msg.strip()
+    len_msg = len(msg)
+    banner_header_footer = char * ((len_msg + spacing * 2) // len(char) + 2)
+    banner_msg = char + " " * spacing + msg + " " * spacing + char
+    banner_list = [banner_header_footer, banner_msg, banner_header_footer]
+    if prefix is None:
+        return "\n".join(banner_list)
+    return "\n".join(prefix + x for x in banner_list)
+
+
 @contextmanager
 def open_textio(f: Union[str, os.PathLike, StringIO, TextIOWrapper], mode: str = 'r', encoding: str = 'utf-8'):
     """open, and read/write text from a filename(str)/path/TextIOWrapper/StringIO

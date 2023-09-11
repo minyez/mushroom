@@ -9,7 +9,7 @@ from copy import deepcopy
 import numpy as np
 
 from mushroom.core.cell import Cell
-from mushroom.core.ioutils import readlines_remove_comment, grep, open_textio, greeks, greeks_latex
+from mushroom.core.ioutils import readlines_remove_comment, grep, open_textio, greeks, greeks_latex, get_banner
 from mushroom.core.logger import loggers
 
 from mushroom.aims.species import Species
@@ -25,37 +25,49 @@ _logger = loggers["aims"]
 read_geometry = Cell.read_aims
 
 
-def read_divide_control_lines(pcontrol):
+def divide_control_lines(pcontrol: Union[str, os.PathLike]) -> List[List[str]]:
     """read and divide control file into general lines and species lines
 
     Args:
         pcontrol (pathlike)
 
     Returns:
-        two list of str
+        list. Each member is a list of str.
+        The first is the lines of general and output setting.
+        The reset are lines of the basis set setting for each species
     """
-    first_specie_line = None
+    specie_lines = []
     with open_textio(pcontrol, 'r') as h:
         lines = h.readlines()
         for i, l in enumerate(lines):
             if l.strip().startswith("species    "):
-                first_specie_line = i
+                specie_lines.append(i)
+
+    # no species lines are found, all lines are for general setting
+    if len(specie_lines) == 0:
+        return [lines,]
+
+    divisions = [0, ]  # 0 for the general setting line
+    # search backward to include the comment lines on top of species
+    for isl, specie_line in enumerate(specie_lines):
+        previous_specie = 0
+        if isl != 0:
+            previous_specie = specie_lines[isl - 1]
+        for i in range(specie_line, previous_specie, -1):
+            l = lines[i].strip()
+            # empty line
+            # TODO: filter out commented out basis set or general control line
+            if not l.startswith("species") and not l.startswith("#") or i == previous_specie:
+                divisions.append(i + 1)
                 break
-
-    # no species lines are found
-    if first_specie_line is None:
-        return lines, []
-
-    general_l = []
-    species_l = lines
-    # include the comment lines on top of species
-    for i in range(first_specie_line - 1, 0, -1):
-        l = lines[i].strip()
-        if not l.startswith("#"):
-            general_l = lines[:i + 1]
-            species_l = lines[i + 1:]
-            break
-    return general_l, species_l
+    regions = []
+    for i, isl in enumerate(divisions):
+        if i == 0:
+            continue
+        regions.append(lines[divisions[i - 1]:isl])
+        if i == len(divisions) - 1:
+            regions.append(lines[isl:])
+    return regions
 
 
 def handle_control_ksymbol(pcontrol: str) -> List:
@@ -100,26 +112,26 @@ def _read_output_tags(lines):
     d = {}
     warn = "bad output tag line: %s"
     for l in lines:
-        words = l.split()
-        otag, ovalue = words[0], words[1:]
-        if not ovalue:
-            d[otag] = True
-        elif len(ovalue) == 1:
-            d[otag] = ovalue[0]
+        words = l.split(maxsplit=1)
+        # single output keyword
+        if len(words) == 1:
+            tag, value = words[0], True
         else:
-            if otag == 'band':
-                d['band'] = d.get('band', [])
-                if len(ovalue) in [7, 9]:
-                    kpts = list(map(float, ovalue[:6]))
-                    try:
-                        kseg = [kpts[:3], kpts[3:], int(ovalue[6]), ovalue[7], ovalue[8]]
-                    except IndexError:
-                        kseg = [kpts[:3], kpts[3:], int(ovalue[6]), None, None]
-                    d['band'].append(kseg)
-                else:
-                    _logger.warning(warn, l)
+            tag, value = words
+        if tag == 'band':
+            d['band'] = d.get('band', [])
+            value = value.split()
+            if len(value) in [7, 9]:
+                kpts = list(map(float, value[:6]))
+                try:
+                    kseg = [kpts[:3], kpts[3:], int(value[6]), value[7], value[8]]
+                except IndexError:
+                    kseg = [kpts[:3], kpts[3:], int(value[6]), None, None]
+                d['band'].append(kseg)
             else:
-                d[otag] = ovalue
+                _logger.warning(warn, l)
+        else:
+            d[tag] = value
     return d
 
 
@@ -135,6 +147,18 @@ class Control:
         output (dict): tag controlling output
         species (dict)
     """
+
+    tags_general_run = [
+        "restart",
+        "override_illconditioning",
+        "basis_threshold",
+    ]
+    tags_ksampling = [
+        "k_grids",
+        "k_offset",
+    ]
+    tags_gw = []
+    tags_scf_convergence = []
 
     def __init__(self, tags: Dict = None, output: Dict = None, species: List[Species] = None):
         self.tags = tags
@@ -345,11 +369,13 @@ class Control:
 
     def export(self):
         """export the control object to a string"""
-        slist = ["# normal tags"]
-        # normal tags
+        # General tags
+        slist = [get_banner("General Tags"), ]
         slist.extend(f"{k} {v}" for k, v in self.tags.items())
-        # output tags
-        slist.append("# output tags")
+        slist.append("")
+
+        # Output tags
+        slist.append(get_banner("Output Tags"))
         for k, v in self.output.items():
             if k != 'band':
                 if v is True:
@@ -363,8 +389,13 @@ class Control:
                     if kseg[-1] is not None:
                         kstr.extend(kseg[-2:])
                     slist.append(f"output {k} {' '.join(str(x) for x in kstr)}")
-        # species information
-        slist.extend(s.export() for s in self.species)
+        slist.append("")
+
+        # Basis sets
+        slist.append(get_banner("Basis Sets"))
+        slist.append("")
+        slist.extend(s.export() + "\n" for s in self.species)
+
         return slist
 
     def write(self, pcontrol):
@@ -374,33 +405,42 @@ class Control:
 
     @classmethod
     def read(cls, pcontrol: str = "control.in"):
-        """Read aims control file and return an control object
+        """Read aims control file and return a control object
 
         Note that global flags after species are excluded and all the comment are removed.
         """
         _logger.info("Reading control file: %s", pcontrol)
-        _ls = readlines_remove_comment(pcontrol, keep_empty_lines=False, trim_leading_space=True)
-        tags = {}
-        # line number of each specie header
-        species_ln = grep(r'species', _ls, return_linenum=True)
-        if species_ln[1]:
-            _logger.debug("Detected species: %r", [x.split()[1:] for x in species_ln[0]])
-        else:
+
+        regions = divide_control_lines(pcontrol)
+        tags_lines = regions[0]
+        lines_species_all = regions[1:]
+
+        if len(lines_species_all) == 0:
             _logger.warning("No species tag is found in control")
+        else:
+            for lines_specie in lines_species_all:
+                for line in lines_specie:
+                    l = line.strip()
+                    if l.startswith("speices"):
+                        _logger.debug("Detected species: %r", l.split()[1])
+                        break
 
         # read all species information
         # delegate the reading to the Species object
-        species_region = [*species_ln[1], len(_ls)]
         species = []
-        for i, st in enumerate(species_region[:-1]):
-            ed = species_region[i + 1]
-            species.append(Species.read(StringIO("\n".join(_ls[st:ed]))))
+        for lines_specie in lines_species_all:
+            species.append(Species.read(StringIO(("".join(lines_specie)).strip())))
 
-        # read other setup, including general tags and output tags
-        i = 0
+        tags = {}
         output = []
-        while i < len(_ls[:species_region[0]]):
-            tagkv = _ls[i].split(maxsplit=1)
+        # read general tags and output tags
+        i = 0
+        while i < len(tags_lines):
+            l = tags_lines[i].strip()
+            if l.startswith("#") or len(l) == 0:
+                i += 1
+                continue
+            tagkv = l.split(maxsplit=1)
             if len(tagkv) > 1:
                 tagk, tagv = tagkv[0], tagkv[1]
             else:
