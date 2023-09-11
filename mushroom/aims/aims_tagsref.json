@@ -1,0 +1,141 @@
+{
+    "general_run":
+    {
+        "section": "Run settings",
+        "tags":
+        {
+            "restart": [],
+            "restart_save_iterations": [],
+            "restart_periodic_gw": [],
+            "override_illconditioning": [],
+            "basis_threshold": [],
+            "KS_method": [],
+            "output_level": [],
+            "postprocess_anyway": [],
+            "use_density_matrix": [],
+            "empty_states": [],
+            "partition_acc": [],
+            "packed_matrix_format": [],
+            "use_full_symmetry": [],
+            "elsi_output_matrix": [],
+            "distributed_spline_storage": [],
+            "use_local_index": [],
+            "load_balancing": [],
+            "packed_matrix_threshold": [],
+            "use_logsbt": [],
+            "global_memory_tracking": [],
+            "calculate_all_eigenstates": []
+        }
+    },
+    "relativistic":
+    {
+        "section": "Relativistic settings",
+        "tags":
+        {
+            "include_spin_orbit": [],
+            "relativistic": []
+        }
+    },
+    "scfconv":
+    {
+        "section": "SCF convergence setting",
+        "tags":
+        {
+            "preconditioner": [],
+            "mixer": [],
+            "n_max_pulay": [],
+            "charge_mix_param": [],
+            "occupation_acc": [],
+            "occupation_type": [],
+            "sc_accuracy_rho": [],
+            "sc_accuracy_eev": [],
+            "sc_accuracy_etot": [],
+            "sc_accuracy_forces": [],
+            "sc_iter_limit": [],
+            "sc_init_iter": []
+        }
+    },
+    "relax":
+    {
+        "section": "Relaxation setting",
+        "tags":
+        {
+            "relax_geometry": []
+        }
+    },
+    "kgrids":
+    {
+        "section": "K-grids setup",
+        "tags":
+        {
+            "k_grid": [],
+            "symmetry_reduced_k_grid": [],
+            "k_offset": []
+        }
+    },
+    "physical_model":
+    {
+        "section": "Physical model",
+        "tags":
+        {
+            "xc": [],
+            "spin": [],
+            "charge": [],
+            "total_energy_method": [],
+            "default_initial_moment": []
+        }
+    },
+    "hybrid":
+    {
+        "section": "Hartree-Fock setup",
+        "tags":
+        {
+            "hf_version": [],
+            "use_density_matrix_hf": [],
+            "hartree_potential_version": [],
+            "exx_band_structure_version": [],
+            "calculate_fock_matrix_version": [],
+            "hse_unit": []
+        }
+    },
+    "postscf":
+    {
+        "section": "Post-SCF Setting",
+        "tags":
+        {
+            "RI_method": [],
+            "auxil_basis": [],
+            "prodbas_threshold": [],
+            "frozen_core_postscf": [],
+            "default_prodbas_acc": []
+        }
+    },
+    "gwrpa":
+    {
+        "section": "GW/RPA Setting",
+        "tags":
+        {
+            "qpe_calc": [],
+            "state_upper_limit": [],
+            "state_lower_limit": [],
+            "anacon_type": [],
+            "n_anacon_par": [],
+            "freq_grid_type": [],
+            "frequency_points": [],
+            "periodic_gw_optimize_kgrid_symmetry": [],
+            "periodic_gw_optimize_use_gpu": [],
+            "periodic_gw_optimize_single_precision": [],
+            "periodic_gw_optimize_init": [],
+            "periodic_gw_modify_head_with_dielec_func": [],
+            "print_input_librpa": [],
+            "read_sigc_imagfreq_grid": []
+        }
+    },
+    "uncategorized":
+    {
+        "section": "Uncategorized options",
+        "tags":
+        {
+        }
+    }
+}

@@ -2,6 +2,7 @@
 """FHI-aims related"""
 import os
 import pathlib
+import json
 from typing import Tuple, List, Dict, Union
 from io import StringIO
 from copy import deepcopy
@@ -148,17 +149,9 @@ class Control:
         species (dict)
     """
 
-    tags_general_run = [
-        "restart",
-        "override_illconditioning",
-        "basis_threshold",
-    ]
-    tags_ksampling = [
-        "k_grids",
-        "k_offset",
-    ]
-    tags_gw = []
-    tags_scf_convergence = []
+    basic_tags_ref_json = os.path.join(os.path.dirname(__file__), "aims_tagsref.json")
+    with open(basic_tags_ref_json, 'r') as h:
+        basic_tags_ref = json.load(h)
 
     def __init__(self, tags: Dict = None, output: Dict = None, species: List[Species] = None):
         self.tags = tags
@@ -370,9 +363,21 @@ class Control:
     def export(self):
         """export the control object to a string"""
         # General tags
-        slist = [get_banner("General Tags"), ]
-        slist.extend(f"{k} {v}" for k, v in self.tags.items())
-        slist.append("")
+        slist = [get_banner("General Basic Tags"), ]
+        tags_local = deepcopy(self.tags)
+        for section in self.basic_tags_ref.values():
+            tags = {}
+            for tag in section["tags"].keys():
+                if tag in tags_local.keys():
+                    tags[tag] = tags_local.pop(tag)
+            if tags.keys():
+                slist.append("# " + section["section"])
+                slist.extend(f"{k} {v}" for k, v in tags.items())
+                slist.append("")
+        if tags_local.keys():
+            slist.append("# Unrecognized tags")
+            slist.extend(f"{k} {v}" for k, v in tags_local.items())
+            slist.append("")
 
         # Output tags
         slist.append(get_banner("Output Tags"))
