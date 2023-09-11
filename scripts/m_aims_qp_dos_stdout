@@ -6,7 +6,7 @@ The name of file storing the DOS data is controled by ``-o`` option.
 """
 # -*- coding: utf-8 -*-
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
-from mushroom.aims import StdOut
+from mushroom.aims.analyse import StdOut
 
 
 def _parser():
@@ -48,7 +48,8 @@ def m_aims_qp_dos_stdout():
     emax = None
     if args.filter_above_ef:
         emax = bs.efermi + args.filter_above_ef
-    dos = bs.get_dos(emin=bs.efermi-args.filter_below_ef, emax=emax,
+    dos = bs.get_dos(emin=bs.efermi - args.filter_below_ef,
+                     emax=emax,
                      sigma=sigma)
     print(f"Smearing: {sigma} {bs.unit}")
     with open(args.output, 'w') as h:
@@ -65,4 +66,3 @@ def m_aims_qp_dos_stdout():
 
 if __name__ == "__main__":
     m_aims_qp_dos_stdout()
-

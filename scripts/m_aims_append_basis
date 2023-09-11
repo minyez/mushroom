@@ -3,8 +3,9 @@
 import os
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from mushroom.core.elements import element_symbols
-from mushroom.aims import get_specie_filename, search_basis_directories, \
-    get_basis_directory_from_alias, read_divide_control_lines
+from mushroom.aims.species import get_specie_filename, search_basis_directories, \
+    get_basis_directory_from_alias
+from mushroom.aims.input import read_divide_control_lines
 
 
 def _parser():

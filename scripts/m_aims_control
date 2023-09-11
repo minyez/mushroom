@@ -14,7 +14,9 @@ Currently an template including the species is required.
 """
 from sys import stdout
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
-from mushroom.aims import Control, Species
+
+from mushroom.aims.input import Control
+from mushroom.aims.species import Species
 
 
 def _parser():

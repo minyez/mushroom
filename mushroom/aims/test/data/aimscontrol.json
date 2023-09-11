@@ -1,5 +1,5 @@
 {
-  "1.control.in": {
+  "ScN.control.in": {
     "name": "ScN.band.spin of regression test",
     "tags": {
       "xc": "pw-lda",

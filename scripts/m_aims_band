@@ -6,7 +6,8 @@ from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 import numpy as np
 
-from mushroom.aims import read_band_output, handle_control_ksymbol
+from mushroom.aims.band import read_band_output
+from mushroom.aims.input import handle_control_ksymbol
 from mushroom.core.bs import display_band_analysis, resolve_band_crossing
 from mushroom.core.cell import Cell
 from mushroom.core.kpoints import KPath

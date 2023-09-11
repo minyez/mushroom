@@ -2,7 +2,7 @@
 """analyze the QP energies from aims stdout file"""
 # -*- coding: utf-8 -*-
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
-from mushroom.aims import StdOut
+from mushroom.aims.analyse import StdOut
 from mushroom.core.bs import display_band_analysis, display_transition_energies
 
 

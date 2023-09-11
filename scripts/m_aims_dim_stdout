@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
-from mushroom.aims import StdOut, display_dimensions
+from mushroom.aims.analyse import StdOut, display_dimensions
 
 
 def _parser():
