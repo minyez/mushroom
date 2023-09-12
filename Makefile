@@ -16,7 +16,7 @@ CHANGELOG_FILE = ./doc/changelog.rst
 
 include .objects
 
-.PHONY: default distrc push clean remote pytest test version dist
+.PHONY: default distrc push clean remote pytest lint test version dist
 
 default: pytest
 
@@ -28,6 +28,13 @@ clean:
 pytest:
 	$(MAKE) clean
 	@echo "Run pytest"; pytest --cov=./
+
+lint:
+	# flake8 commands from https://github.com/logsdail/carmm/blob/master/.github/workflows/linter.yml
+	# stop the build if there are Python syntax errors or undefined names
+	flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+	# exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+	flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
 test: pytest remote
 

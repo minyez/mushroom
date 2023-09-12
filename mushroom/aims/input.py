@@ -123,7 +123,7 @@ def _read_output_tags(lines):
             d['band'] = d.get('band', [])
             value = value.split()
             if len(value) in [7, 9]:
-                kpts = list(map(float, value[:6]))
+                kpts = value[:6]
                 try:
                     kseg = [kpts[:3], kpts[3:], int(value[6]), value[7], value[8]]
                 except IndexError:
@@ -365,13 +365,14 @@ class Control:
         # General tags
         slist = [get_banner("General Basic Tags"), ]
         tags_local = deepcopy(self.tags)
-        for section in self.basic_tags_ref.values():
+        # export by group
+        for group in self.basic_tags_ref.values():
             tags = {}
-            for tag in section["tags"].keys():
+            for tag in group["tags"].keys():
                 if tag in tags_local.keys():
                     tags[tag] = tags_local.pop(tag)
             if tags.keys():
-                slist.append("# " + section["section"])
+                slist.append("# " + group["section"])
                 slist.extend(f"{k} {v}" for k, v in tags.items())
                 slist.append("")
         if tags_local.keys():
@@ -381,20 +382,21 @@ class Control:
 
         # Output tags
         slist.append(get_banner("Output Tags"))
-        for k, v in self.output.items():
-            if k != 'band':
-                if v is True:
-                    slist.append(f"output {k}")
+        if self.output.items():
+            for k, v in self.output.items():
+                if k != 'band':
+                    if v is True:
+                        slist.append(f"output {k}")
+                    else:
+                        slist.append(f"output {k} {v}")
                 else:
-                    slist.append(f"output {k} {v}")
-            else:
-                for kseg in v:
-                    kstr = kseg[0] + kseg[1] + [kseg[2],]
-                    # if the ksymbols are specied
-                    if kseg[-1] is not None:
-                        kstr.extend(kseg[-2:])
-                    slist.append(f"output {k} {' '.join(str(x) for x in kstr)}")
-        slist.append("")
+                    for kseg in v:
+                        kstr = kseg[0] + kseg[1] + [kseg[2],]
+                        # if the ksymbols are specied
+                        if kseg[-1] is not None:
+                            kstr.extend(kseg[-2:])
+                        slist.append(f"output {k} {' '.join(str(x) for x in kstr)}")
+            slist.append("")
 
         # Basis sets
         slist.append(get_banner("Basis Sets"))

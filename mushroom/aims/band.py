@@ -2,9 +2,13 @@
 """utilities for parsing standard output of FHI-aims"""
 from typing import Tuple, List
 
+import numpy as np
+
 from mushroom.core.typehint import RealVec3D
 from mushroom.core.bs import BandStructure
 from mushroom.core.logger import loggers
+from mushroom.core.ioutils import grep
+from mushroom.core.elements import l_channels
 
 
 _logger = loggers["aims"]

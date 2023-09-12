@@ -1,7 +1,10 @@
-""""""
+# -*- coding: utf-8 -*-
+"""Class to handle basis set for atom species"""
 import os
 import glob
 from typing import Union
+from io import StringIO
+from copy import deepcopy
 
 from mushroom.core.elements import element_symbols, get_atomic_number, l_channels
 from mushroom.core.ioutils import open_textio

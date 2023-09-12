@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """utilities for parsing standard output of FHI-aims"""
 import re
+from io import StringIO
 
 import numpy as np
 
@@ -11,6 +12,11 @@ from mushroom.core.logger import loggers
 
 
 _logger = loggers["aims"]
+
+
+class AimsNotFinishedError(Exception):
+    """Exception for aims calculation is not finished"""
+    pass
 
 
 def split_aimsout_region(lines):
@@ -316,6 +322,7 @@ class StdOut:
 
     def get_control(self):
         """return a Control object"""
+        from mushroom.aims.input import Control
         if self._control is None:
             if not self._finished_control:
                 raise ValueError("control.in in the output is not complete")

@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """convenient functions to analyse FHI-aims input/output"""
+import os
 import pathlib
+from typing import Union
 
 from mushroom.aims.stdout import StdOut
 
@@ -34,7 +36,7 @@ def display_dimensions(aimsout):
             print(format_str % (sd[0], "(NOT FOUND)"))
 
 
-def is_finished_aimsdir(dirpath: Path, aimsout_pat: str = "aims.out*") -> str:
+def is_finished_aimsdir(dirpath: Union[str, os.PathLike], aimsout_pat: str = "aims.out*") -> str:
     """check if the calculation inside dirpath is completed.
 
     This is done by searching aims output files matching pattern ``aimsout_pat``
