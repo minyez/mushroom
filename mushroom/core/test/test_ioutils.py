@@ -8,13 +8,15 @@ import unittest as ut
 
 from mushroom.core.ioutils import (split_comma, decode_int_range, decode_float_ends, grep,
                                    get_dirpath, get_file_ext, get_filename_wo_ext,
-                                   get_cwd_name, get_matched_files, trim_after,# trim_comment,
+                                   get_cwd_name, get_matched_files, trim_after,  # trim_comment,
                                    trim_before, trim_both_sides, conv_string,
-                                   readtext_split_emptyline,
+                                   readtext_split_emptyline, get_similar_str,
                                    cycler)
+
 
 class test_string_decoding(ut.TestCase):
     """string decoding"""
+
     def test_decode_float_ends(self):
         """ends as two float numbers"""
         self.assertTupleEqual(decode_float_ends("-8.0~1"), (-8.0, 1.0))
@@ -51,6 +53,7 @@ class test_string_decoding(ut.TestCase):
 
 class test_grep(ut.TestCase):
     """test grep emulation"""
+
     def test_raise(self):
         """raise for bad filename and wrong type"""
         self.assertRaises(FileNotFoundError, grep, "test", "this_is_a_fake_file.extext",
@@ -98,14 +101,17 @@ class test_grep(ut.TestCase):
         matched = grep("ut", s, maxdepth=1)
         self.assertListEqual([], matched)
 
+
 class test_trim(ut.TestCase):
     """string trimming functions"""
+
     def test_trim_before(self):
         """trim before"""
         self.assertEqual("defg", trim_before("abc#defg", r'#'))
         self.assertEqual("#defg", trim_before("abc#defg", r'#', include_pattern=True))
         self.assertEqual("comment", trim_before("I have Fortran!comment", r'!'))
-        self.assertEqual("!comment", \
+        self.assertEqual(
+            "!comment",
             trim_before("I have Fortran!comment", r'!', include_pattern=True))
         self.assertEqual("P", trim_before("Fe1P", r'\d'))
         self.assertEqual("1P", trim_before("Fe1P", r'\d', include_pattern=True))
@@ -116,24 +122,21 @@ class test_trim(ut.TestCase):
         """trim after"""
         self.assertEqual("abc", trim_after("abc#defg", r'#'))
         self.assertEqual("abc#", trim_after("abc#defg", r'#', include_pattern=True))
-        self.assertEqual("I have Fortran", \
-            trim_after("I have Fortran!comment", r'!'))
-        self.assertEqual("I have Fortran!", \
-            trim_after("I have Fortran!comment", r'!', include_pattern=True))
+        self.assertEqual("I have Fortran", trim_after("I have Fortran!comment", r'!'))
+        self.assertEqual("I have Fortran!", trim_after("I have Fortran!comment", r'!', include_pattern=True))
         self.assertEqual("Fe", trim_after("Fe1", r'\d'))
         self.assertEqual("Cd2", trim_after("Cd2Fe", r'\d', include_pattern=True))
 
     def test_trim_both_sides(self):
         """trim both"""
         string = "WFFIL  EF=0.9725 (WFFIL, WFPRI, ENFIL, SUPWF)"
-        self.assertEqual("0.9725 ", \
-            trim_both_sides(string, r"=", r"\("))
-        self.assertEqual("=0.9725 (", \
-            trim_both_sides(string, r"=", r"\(", include_pattern=True))
+        self.assertEqual("0.9725 ", trim_both_sides(string, r"=", r"\("))
+        self.assertEqual("=0.9725 (", trim_both_sides(string, r"=", r"\(", include_pattern=True))
 
 
 class test_textio_operations(ut.TestCase):
     """test textio"""
+
     def test_readtext_split_emptyline(self):
         """test readtext"""
         tests = (
@@ -141,7 +144,7 @@ class test_textio_operations(ut.TestCase):
             ("\n\nabc\n\ndef\n\nghi \n", 3, ["abc\n", "def\n", "ghi \n"]),
             ("\n\nabc\n\ndef\n \n", 2, ["abc\n", "def\n"]),
             ("\n\nabc\ncba\n\ndef\n \n", 2, ["abc\ncba\n", "def\n"]),
-            )
+        )
         for s, n, correct in tests:
             strings = readtext_split_emptyline(StringIO(s))
             self.assertEqual(len(strings), n)
@@ -150,6 +153,7 @@ class test_textio_operations(ut.TestCase):
 
 class test_file_path(ut.TestCase):
     """test of utilities related to file and path"""
+
     def test_get_cwd_name(self):
         """get cwd name"""
         try:
@@ -190,15 +194,27 @@ class test_file_path(ut.TestCase):
         self.assertTupleEqual(("test_ioutils.py",),
                               get_matched_files(regex=r".*ioutils.*", relative=True))
 
+
+class test_search_similar_str(ut.TestCase):
+    """test similar strings search"""
+
+    def test_word(self):
+        s = "k_grids"
+        slist = ["k_grid", "k_offset", "_kgrids"]
+        s_sim = get_similar_str(s, slist)
+        print(s_sim)
+
+
 class test_number(ut.TestCase):
     """test number related utilities"""
+
     def test_cycler(self):
         lt = ["abc", "def", "123"]
         self.assertEqual(0, cycler(len(lt), lt, return_int=True))
-        self.assertEqual("def", cycler(len(lt)+1, lt))
+        self.assertEqual("def", cycler(len(lt) + 1, lt))
 
 #   trim_comment,
 
+
 if __name__ == "__main__":
     ut.main()
-

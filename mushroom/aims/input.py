@@ -10,7 +10,7 @@ from copy import deepcopy
 import numpy as np
 
 from mushroom.core.cell import Cell
-from mushroom.core.ioutils import readlines_remove_comment, grep, open_textio, greeks, greeks_latex, get_banner
+from mushroom.core.ioutils import open_textio, greeks, greeks_latex, get_banner, get_similar_str
 from mushroom.core.logger import loggers
 
 from mushroom.aims.species import Species
@@ -161,6 +161,10 @@ class Control:
         if self.species is not None:
             self._elements = [s.elem for s in self.species]
 
+    def copy(self):
+        """copy the control"""
+        return deepcopy(self)
+
     def get_species(self, elem: Union[int, str]) -> Species:
         """get the species object of element in the control"""
         if isinstance(elem, str):
@@ -178,7 +182,11 @@ class Control:
         except KeyError:
             if default:
                 return default[0]
-            raise KeyError(f"no tag {tag} is found in control")
+            sim_key = get_similar_str(tag, list(self.tags.keys()))
+            if sim_key is None:
+                raise KeyError(f"no tag {tag} is found in control")
+            else:
+                raise KeyError(f"no tag {tag} is found in control, do you mean '{sim_key}'?")
 
     # pylint: disable=W0707
     def get_output(self, tag, *default):
@@ -190,7 +198,7 @@ class Control:
                 return default[0]
             raise KeyError(f"no output tag {tag} is found in control")
 
-    def update_tag(self, tag, value):
+    def update_tag(self, tag: str, value: str):
         """update the value of tag
 
         Args:
@@ -217,6 +225,11 @@ class Control:
                 _logger.info("tag '%s' updated to: %s", tag, self.tags[tag])
             except ValueError as _e:
                 raise ValueError(f"cannot turn value into string: {value}") from _e
+
+    def update_tags(self, tags: dict):
+        """collective update tag values"""
+        for k, v in tags.items():
+            self.update_tag(k, v)
 
     def update_output(self, output_tag, value):
         """update the output tag value
@@ -347,7 +360,7 @@ class Control:
         else:
             _logger.warning("%s, no replace", info)
 
-    def add_species(self, *ss, error_replace=True):
+    def add_species(self, *ss, error_replace: bool = True):
         """add species to the control file"""
         for s in ss:
             info = f"{s.elem} is already included in species"
@@ -360,10 +373,16 @@ class Control:
                 self.species.append(s)
                 self._if_species_changed = True
 
-    def export(self):
-        """export the control object to a string"""
-        # General tags
-        slist = [get_banner("General Basic Tags"), ]
+    def add_default_species(self, directory: str, *elems,
+                            error_replace: bool = True,
+                            species_defaults: str = None):
+        """add species to the control file"""
+        ss = [Species.read_default(elem, directory=directory) for elem in elems]
+        self.add_species(*ss, error_replace=error_replace)
+
+    def _export_basic_tags(self):
+        """export basic tags into a list of string for later process"""
+        slist = []
         tags_local = deepcopy(self.tags)
         # export by group
         for group in self.basic_tags_ref.values():
@@ -379,9 +398,11 @@ class Control:
             slist.append("# Unrecognized tags")
             slist.extend(f"{k} {v}" for k, v in tags_local.items())
             slist.append("")
+        return slist
 
-        # Output tags
-        slist.append(get_banner("Output Tags"))
+    def _export_output_tags(self):
+        """export output tags into a list of string for later process"""
+        slist = []
         if self.output.items():
             for k, v in self.output.items():
                 if k != 'band':
@@ -396,7 +417,18 @@ class Control:
                         if kseg[-1] is not None:
                             kstr.extend(kseg[-2:])
                         slist.append(f"output {k} {' '.join(str(x) for x in kstr)}")
-            slist.append("")
+        slist.append("")
+        return slist
+
+    def export(self):
+        """export the control object to a string"""
+        # General tags
+        slist = [get_banner("General Basic Tags"), ]
+        slist.extend(self._export_basic_tags())
+
+        # Output tags
+        slist.append(get_banner("Output Tags"))
+        slist.extend(self._export_output_tags())
 
         # Basis sets
         slist.append(get_banner("Basis Sets"))
@@ -405,13 +437,18 @@ class Control:
 
         return slist
 
+    def __str__(self):
+        return "\n".join(self.export())
+
     def write(self, pcontrol):
         """write the control content to file ``pcontrol``"""
+        if len(self.species) == 0:
+            _logger.warning("Writing control to file %s with no species info!" % pcontrol)
         with open_textio(pcontrol, 'w') as h:
-            print("\n".join(self.export()), file=h)
+            print(self.__str__(), file=h)
 
     @classmethod
-    def read(cls, pcontrol: str = "control.in"):
+    def read(cls, pcontrol: Union[str, os.PathLike] = "control.in"):
         """Read aims control file and return a control object
 
         Note that global flags after species are excluded and all the comment are removed.
@@ -485,4 +522,3 @@ def read_control(pcontrol: str = "control.in") -> Control:
         Control object
     """
     return Control.read(pcontrol)
-

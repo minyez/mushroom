@@ -736,6 +736,16 @@ def get_banner(msg: str, char: str = "#", spacing: int = 4, prefix: str = None):
     return "\n".join(prefix + x for x in banner_list)
 
 
+def get_similar_str(s: str, slist: List[str]) -> str:
+    """get the string in ``slist`` most similar to ``s``"""
+    from difflib import SequenceMatcher
+
+    similar_ratios = [SequenceMatcher(None, s, x).ratio() for x in slist]
+    if len(similar_ratios) > 0:
+        return slist[similar_ratios.index(max(similar_ratios))]
+    return None
+
+
 @contextmanager
 def open_textio(f: Union[str, os.PathLike, StringIO, TextIOWrapper], mode: str = 'r', encoding: str = 'utf-8'):
     """open, and read/write text from a filename(str)/path/TextIOWrapper/StringIO

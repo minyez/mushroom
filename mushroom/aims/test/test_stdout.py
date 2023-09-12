@@ -14,7 +14,7 @@ class test_stdout(ut.TestCase):
 
     # pylint: disable=R0201
     def test_aimsout_reading(self):
-        fns_qp = ["mole_ZnO.aims.out",]
+        fns_qp = ["mole_ZnO.gw.aims.out", "ZrO2_sc222.pgw_kgrid.aims.out"]
         dir_control = pathlib.Path(__file__).parent / "data"
         index_json = dir_control / "aimsout.json"
         with index_json.open('r') as h:
@@ -23,7 +23,9 @@ class test_stdout(ut.TestCase):
             print(f"Testing {fn}")
             s = StdOut(dir_control / fn)
             if fn in fns_qp:
-                qpbs = s.get_QP_bandstructure()
+                qpbs, _ = s.get_QP_bandstructure()
+                if "gwfundgap" in verify:
+                    self.assertAlmostEqual(qpbs.fund_gap(), verify["gwfundgap"], places=4)
 
 
 if __name__ == "__main__":

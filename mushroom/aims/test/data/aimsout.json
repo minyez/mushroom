@@ -1,10 +1,16 @@
 {
-  "mole_ZnO.aims.out": {
+  "mole_ZnO.gw.aims.out": {
     "nspins": 2,
     "nkpts": 1
   },
-  "pgw_Si.aims.out": {
+  "Si.pgw_band.aims.out": {
     "nspins": 1,
-    "nkpts": 27
+    "nkpts": 27,
+    "gwfundgap": 1.7063
+  },
+  "ZrO2_sc222.pgw_kgrid.aims.out": {
+    "nspins": 1,
+    "nkpts": 27,
+    "gwfundgap": 5.3084
   }
 }

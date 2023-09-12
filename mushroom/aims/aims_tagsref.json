@@ -6,7 +6,6 @@
         {
             "restart": [],
             "restart_save_iterations": [],
-            "restart_periodic_gw": [],
             "override_illconditioning": [],
             "basis_threshold": [],
             "KS_method": [],
@@ -25,6 +24,18 @@
             "use_logsbt": [],
             "global_memory_tracking": [],
             "calculate_all_eigenstates": []
+        }
+    },
+    "physical_model":
+    {
+        "section": "Physical model",
+        "tags":
+        {
+            "xc": [],
+            "spin": [],
+            "charge": [],
+            "total_energy_method": [],
+            "default_initial_moment": []
         }
     },
     "relativistic":
@@ -73,18 +84,6 @@
             "k_offset": []
         }
     },
-    "physical_model":
-    {
-        "section": "Physical model",
-        "tags":
-        {
-            "xc": [],
-            "spin": [],
-            "charge": [],
-            "total_energy_method": [],
-            "default_initial_moment": []
-        }
-    },
     "hybrid":
     {
         "section": "Hartree-Fock setup",
@@ -116,6 +115,7 @@
         "tags":
         {
             "qpe_calc": [],
+            "restart_periodic_gw": [],
             "state_upper_limit": [],
             "state_lower_limit": [],
             "anacon_type": [],
