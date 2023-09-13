@@ -43,6 +43,9 @@ def _parser():
         dest="deriv_thres", nargs="+", default=None, type=float,
         help="derivative threshold for band resolution. Try some negative value when you need resolution earlier"
     )
+    p.add_argument("--transparent", action="store_true",
+                   help="Set background of Grace graph to transparent")
+
     g = p.add_mutually_exclusive_group()
     g.add_argument("--skbz", dest="isikib_zero", default=None, type=str,
                    help="use enk as energy zero, 'is:ik:ib', ib as a band identifier")
@@ -63,7 +66,7 @@ def _parser():
 def m_aims_band():
     """the main stream"""
     args = _parser().parse_args()
-    p, ax = Plot.subplots(1, 1, background=False)
+    p, ax = Plot.subplots(1, 1, background=args.transparent)
     bs, kpts = read_band_output(*args.out_files, unit=args.unit,
                                 filter_k_before=args.remove_k_before,
                                 filter_k_behind=args.remove_k_behind)
