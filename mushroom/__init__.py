@@ -3,8 +3,9 @@
 """
 
 __NAME__ = "mushroom"
-__version__ = "0.0.4"
+__version__ = "0.1.0"
 __author__ = "Minye Zhang"
+
 
 def get_version():
     """return the version of mushroom"""
