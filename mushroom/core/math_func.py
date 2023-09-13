@@ -7,6 +7,7 @@ from mushroom.core.constants import PI
 from mushroom.core.typehint import RealVec3D
 from mushroom.core.ioutils import raise_no_module
 
+
 def solid_angle(xyz: Sequence[RealVec3D], polar_positive=True):
     """compute the solid angles from Cartisian coordinates
 
@@ -39,6 +40,7 @@ def solid_angle(xyz: Sequence[RealVec3D], polar_positive=True):
         theta += np.pi / 2.0
     return theta, phi
 
+
 def sph_harm(l: Sequence[int], m: Sequence[int], theta: Sequence[float], phi: Sequence[float]):
     """wrapper of scipy.special.sph_harm
 
@@ -49,6 +51,7 @@ def sph_harm(l: Sequence[int], m: Sequence[int], theta: Sequence[float], phi: Se
     from scipy import special
     return special.sph_harm(m, l, phi, theta)
 
+
 def sph_harm_xyz(l: Sequence[int], m: Sequence[int], xyz: Sequence[RealVec3D]):
     """compute spherical harmonics with Cartisian coordiantes
 
@@ -58,6 +61,7 @@ def sph_harm_xyz(l: Sequence[int], m: Sequence[int], xyz: Sequence[RealVec3D]):
     """
     theta, phi = solid_angle(xyz, polar_positive=True)
     return sph_harm(l, m, theta, phi)
+
 
 def rising_factor(N: Real, k: Real):
     """compute rising factor by Gamma function
@@ -72,12 +76,14 @@ def rising_factor(N: Real, k: Real):
     from scipy import special
     return special.gamma(np.add(N, k)) / special.gamma(N)
 
+
 def gamma_negahalf(n):
     """compute gamma function at negative half integer, Gamma(1/2-n)"""
     g = np.sqrt(np.pi) * (-2)**n
     for i in range(n):
-        g /= 2*i + 1
+        g /= 2 * i + 1
     return g
+
 
 def general_comb(N: Real, k: Real):
     """comupte a general combination number by Gamma function and rising factor
@@ -86,7 +92,8 @@ def general_comb(N: Real, k: Real):
         C(N, k) = N!/k!/(N-k)! = rising_factor(N-k+1, k)/Gamma(k+1)
     """
     from scipy import special
-    return rising_factor(np.subtract(N, k)+1, k) / special.gamma(np.add(k, 1))
+    return rising_factor(np.subtract(N, k) + 1, k) / special.gamma(np.add(k, 1))
+
 
 def hyp2f2_1f1_series(a1: int, a2: int, b1: int, b2: int, x: Sequence[Real], scale=1.0):
     '''compute generalized hypergeometric function 2F2 from finite series of 1F1
@@ -111,19 +118,21 @@ def hyp2f2_1f1_series(a1: int, a2: int, b1: int, b2: int, x: Sequence[Real], sca
     if upper < 0:
         raise ValueError("a2 is smaller than b2, {} < {}".format(a2, b2))
     if upper - np.rint(upper) != 0:
-        raise ValueError("expect a2-b2 an integer, obtained {}".format(a2-b2))
+        raise ValueError("expect a2-b2 an integer, obtained {}".format(a2 - b2))
     upper = int(upper)
-    n = np.array(list(range(int(upper)+1)))
-    comb = general_comb(upper, n) * general_comb(a1+n-1, n) \
-           / general_comb(b1+n-1, n) / general_comb(b2+n-1, n) / special.factorial(n)
-    hyp1f1_xn = np.zeros((len(x), upper+1), dtype="float64")
+    n = np.array(list(range(int(upper) + 1)))
+    numer = general_comb(upper, n) * general_comb(a1 + n - 1, n)
+    denom = general_comb(b1 + n - 1, n) * general_comb(b2 + n - 1, n) * special.factorial(n)
+    comb = numer / denom
+    hyp1f1_xn = np.zeros((len(x), upper + 1), dtype="float64")
     if np.all(x < 0):
         for i in n:
-            hyp1f1_xn[:, i] = special.hyp1f1(a1+i, b1+i, x) * np.power(x, i) * scale
+            hyp1f1_xn[:, i] = special.hyp1f1(a1 + i, b1 + i, x) * np.power(x, i) * scale
     else:
         for i in n:
-            hyp1f1_xn[:, i] = special.hyp1f1(b1-a1, b1+i, -x) * np.power(x, i) * np.exp(x) * scale
+            hyp1f1_xn[:, i] = special.hyp1f1(b1 - a1, b1 + i, -x) * np.power(x, i) * np.exp(x) * scale
     return np.dot(hyp1f1_xn, comb)
+
 
 class Smearing:
     """class with different smearing schemes implemented as static method
@@ -133,9 +142,5 @@ class Smearing:
     def gaussian(x, x0, sigma):
         """Gaussian smearing
         """
-        return (
-            np.exp(-np.subtract(x, x0) ** 2 / sigma ** 2 / 2.0)
-            / sigma
-            / np.sqrt(2.0 * PI)
-        )
+        return (np.exp(-np.subtract(x, x0)**2 / sigma**2 / 2.0) / sigma / np.sqrt(2.0 * PI))
 

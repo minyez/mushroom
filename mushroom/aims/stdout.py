@@ -175,12 +175,16 @@ class StdOut:
                     if self._node_names is None:
                         self._node_names = []
                     self._node_names.append(m.group(2).strip())
+                continue
             if l.startswith("  *** Environment variable OMP_NUM_THREADS"):
                 try:
                     self._omp_threads = int(self._system_lines[i + 1].strip())
                 # when unset
-                except ValueError:
-                    self._omp_threads = 1
+                except (IndexError, ValueError):
+                    pass
+                continue
+            if l.startswith("  | Environment variable OMP_NUM_THREADS correctly set to"):
+                self._omp_threads = int(l[:-2].split()[-1])
 
         if self._node_names is not None:
             self._node_names_unique = set(self._node_names)
@@ -221,8 +225,10 @@ class StdOut:
             if l.startswith("*** Environment variable OMP_NUM_THREADS is set to"):
                 try:
                     self._omp_threads = int(self._prep_lines[i + 1].strip())
-                except IndexError:
+                except (IndexError, ValueError):
                     pass
+            if l.startswith("  | Environment variable OMP_NUM_THREADS correctly set to"):
+                self._omp_threads = int(l[:-2].split()[-1])
 
     def _handle_pbc_lists_init(self):
         """process the data in initializing pbc list by the subroutine initialize_bc_dependent_lists"""
@@ -250,6 +256,10 @@ class StdOut:
                 self._n_cells_H = conv_string(l, int, -1)
             if l.startswith("  | Size of matrix packed + index"):
                 self._n_matrix_size_H = conv_string(l, int, -1)
+        # For molecular systems, there is no k-point session
+        # Set to 1 for consistent handling of solids and molecules
+        if self._nkpts is None:
+            self._nkpts = 1
 
     def _handle_scf_init(self):
         """process the data in the self-consistency loop initialization"""

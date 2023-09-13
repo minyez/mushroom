@@ -6,7 +6,7 @@ import pathlib
 import json
 
 
-from mushroom.aims.input import Control
+from mushroom.aims.input import Control, get_path_ksymbols
 
 
 class test_control(ut.TestCase):
@@ -19,6 +19,7 @@ class test_control(ut.TestCase):
         for f, verify in verifies.items():
             print(f"Testing {f}")
             fpath = dir_control / f
+
             c = Control.read(fpath)
             for k, v in verify.items():
                 if k == "elements":
@@ -30,6 +31,7 @@ class test_control(ut.TestCase):
                     for ko, vo in v.items():
                         vo_read = c.get_output(ko)
                         if ko == "band":
+                            self.assertListEqual(verify["bandpathksym"], get_path_ksymbols(c.get_output("band")))
                             for band_read, band_veri in zip(vo_read, vo):
                                 self.assertListEqual(band_read[0], band_veri[0])
                                 self.assertListEqual(band_read[1], band_veri[1])

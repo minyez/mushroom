@@ -1,16 +1,34 @@
 {
   "mole_ZnO.gw.aims.out": {
+    "is_finished": true,
+    "nnodes": 32,
+    "ntasks": 1024,
+    "nthreads": 1,
     "nspins": 2,
-    "nkpts": 1
+    "nkpts": 1,
+    "nbands": 126,
+    "nbasis": 126,
+    "nbasbas": 1349
   },
   "Si.pgw_band.aims.out": {
+    "is_finished": true,
+    "nnodes": 1,
+    "ntasks": 4,
+    "nthreads": 1,
     "nspins": 1,
     "nkpts": 27,
+    "nbands": 28,
+    "nbasis": 28,
+    "nbasbas": 184,
     "gwfundgap": 1.7063
   },
   "ZrO2_sc222.pgw_kgrid.aims.out": {
+    "is_finished": true,
     "nspins": 1,
     "nkpts": 27,
+    "nbands": 1000,
+    "nbasis": 1000,
+    "nbasbas": 11808,
     "gwfundgap": 5.3084
   }
 }

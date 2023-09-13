@@ -1,0 +1,112 @@
+############################
+#    General Basic Tags    #
+############################
+# Run settings
+restart wf
+override_illconditioning .true.
+basis_threshold 1e-07
+
+# Physical model
+xc pbe
+spin none
+
+# Relativistic settings
+relativistic atomic_zora scalar
+
+# SCF convergence setting
+charge_mix_param 0.01
+occupation_type gaussian 0.01
+sc_iter_limit 300
+sc_init_iter 301
+
+# K-grids setup
+k_grid 8  8  8
+
+# GW/RPA Setting
+qpe_calc gw_expt
+restart_periodic_gw restart_pgw
+anacon_type 0
+frequency_points 60
+
+#####################
+#    Output Tags    #
+#####################
+output band 0.00000 0.00000 0.00000 0.50000 0.00000 0.50000 21 G X
+output band 0.50000 0.00000 0.50000 0.50000 0.25000 0.75000 21 X W
+output band 0.50000 0.25000 0.75000 0.37500 0.37500 0.75000 21 W K
+output band 0.37500 0.37500 0.75000 0.00000 0.00000 0.00000 21 K G
+output band 0.00000 0.00000 0.00000 0.50000 0.50000 0.50000 21 G L
+output band 0.50000 0.50000 0.50000 0.62500 0.25000 0.62500 21 L U
+output band 0.62500 0.25000 0.62500 0.50000 0.25000 0.75000 21 U W
+output band 0.50000 0.25000 0.75000 0.50000 0.50000 0.50000 21 W L
+output band 0.50000 0.50000 0.50000 0.37500 0.37500 0.75000 21 L K
+output band 0.62500 0.25000 0.62500 0.50000 0.00000 0.50000 21 U X
+
+####################
+#    Basis Sets    #
+####################
+
+################################################################################
+#
+#  FHI-aims code project
+#  Volker Blum, 2019
+#
+#  Suggested "intermediate" defaults for B atom (to be pasted into control.in file)
+#
+################################################################################
+species  B
+  nucleus  5
+  mass  10.811
+  l_hartree  6
+  cut_pot  4.0  2.0  1.0
+  basis_dep_cutoff  1e-4
+  radial_base  32 7.0
+  radial_multiplier  2
+  angular_grids  specified
+    division  0.3742  110
+    division  0.5197  194
+    division  0.5753  302
+    division  0.7664  434
+    outer_grid  434
+  valence 2  s   2.
+  valence 2  p   1.
+  ion_occ 2  s   1.
+  hydro 2 p 1.4
+  hydro 3 d 4.8
+  hydro 2 s 4
+  hydro 4 f 7.8
+  for_aux hydro 5 g 11.2
+
+################################################################################
+#
+#  FHI-aims code project
+#  Volker Blum, Maria Dragoumi, Sebastian Kokott 2020
+#
+#  Suggested "intermediate" defaults for P atom (to be pasted into control.in file)
+#
+################################################################################
+species  P
+  nucleus  15
+  mass  30.973762
+  l_hartree  6
+  cut_pot  4.0          2.0  1.0
+  basis_dep_cutoff  1e-4
+  radial_base  43 7.0
+  radial_multiplier  2
+  angular_grids  specified
+    division  0.2995   50
+    division  0.5998  110
+    division  0.9240  194
+    division  1.0921  302
+    division  1.2863  434
+    outer_grid  434
+  valence 3  s   2.
+  valence 3  p   3.
+  ion_occ 3  s   1.
+  ion_occ 3  p   2.
+  hydro 4 f 6.2
+  ionic 3 d auto
+  ionic 3 p auto
+  ionic 3 s auto
+  for_aux hydro 5 g 8.6
+

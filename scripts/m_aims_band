@@ -7,7 +7,7 @@ from argparse import ArgumentParser, RawDescriptionHelpFormatter
 import numpy as np
 
 from mushroom.aims.band import read_band_output
-from mushroom.aims.input import handle_control_ksymbol
+from mushroom.aims.input import Control, get_path_ksymbols
 from mushroom.core.bs import display_band_analysis, resolve_band_crossing
 from mushroom.core.cell import Cell
 from mushroom.core.kpoints import KPath
@@ -111,8 +111,14 @@ def m_aims_band():
         ksymbols = args.ksymbols
         if len(args.ksymbols) == 1:
             ksymbols = args.ksymbols[0].split()
+
     if args.ksymbols_cf is not None:
-        ksymbols = handle_control_ksymbol(args.ksymbols_cf)
+        c_ksym = Control.read(args.ksymbols_cf)
+        band_c_ksym = c_ksym.get_output("band", None)
+        if band_c_ksym is None:
+            raise ValueError("%s does not include output band" % args.ksymbols_cf)
+        ksymbols = get_path_ksymbols(band_c_ksym)
+
     ax.x.set_spec(kp.special_x, labels=ksymbols)
     if args.energy_range is not None:
         try:

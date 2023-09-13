@@ -148,9 +148,7 @@ class BandStructure(EnergyUnit):
             self.set_occupations(occ)
 
         _logger.info("Read bandstructure. Dimensions")
-        _logger.info(">> nspins = %d", self._nspins)
-        _logger.info(">>  nkpts = %d", self._nkpts)
-        _logger.info(">> nbands = %d", self._nbands)
+        _logger.info(">> nspins = %d, nkpts = %d, nbands = %d", self._nspins, self._nkpts, self._nbands)
 
         self._pwav = None
         self._atms = None

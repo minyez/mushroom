@@ -10,7 +10,7 @@ from copy import deepcopy
 import numpy as np
 
 from mushroom.core.cell import Cell
-from mushroom.core.ioutils import open_textio, greeks, greeks_latex, get_banner, get_similar_str
+from mushroom.core.ioutils import open_textio, get_banner, get_similar_str
 from mushroom.core.logger import loggers
 
 from mushroom.aims.species import Species
@@ -41,7 +41,7 @@ def divide_control_lines(pcontrol: Union[str, os.PathLike]) -> List[List[str]]:
     with open_textio(pcontrol, 'r') as h:
         lines = h.readlines()
         for i, l in enumerate(lines):
-            if l.strip().startswith("species    "):
+            if l.strip().startswith("species "):
                 specie_lines.append(i)
 
     # no species lines are found, all lines are for general setting
@@ -71,33 +71,33 @@ def divide_control_lines(pcontrol: Union[str, os.PathLike]) -> List[List[str]]:
     return regions
 
 
-def handle_control_ksymbol(pcontrol: str) -> List:
-    """get the ksymbol list from the control file
+def get_path_ksymbols(ctrl_output_band: List) -> List[Union[str, None]]:
+    """get the ksymbol list for band plot from the output band tag of a control object
 
     Args:
-        pcontrol (str): path to the control file"""
-    c = Control.read(pcontrol)
-    bands = c.get_output("band", [])
-    if not bands:
-        raise ValueError(f"control containing no output band tag: {pcontrol}")
+        ctrl_output_band (list): list of kpath segments, obtained by Control.get_output("band")
+    """
+    from mushroom.core.ioutils import greeks, greeks_latex
+
+    if ctrl_output_band is None or len(ctrl_output_band) == 0:
+        return []
     sym_ksegs = []
-    for x in bands:
+    for x in ctrl_output_band:
         ksym = x[3:5]
         for i in range(2):
             if ksym[i] in greeks:
                 ksym[i] = greeks_latex[greeks.index(ksym[i])]
         sym_ksegs.append(ksym)
-    err = ValueError("ksymbols in control are incomplete! use --sym option instead")
+    # include the ends of first band
     sym = [*sym_ksegs[0]]
-    if None in sym:
-        raise err
+    # appending the left
     for st, ed in sym_ksegs[1:]:
         if st is None or ed is None:
-            raise err
+            sym.append(None)
+            continue
         if not st == sym[-1]:
             sym[-1] = f"{sym[-1]}|{st}"
         sym.append(ed)
-    # print(f"Extracted symbols: {sym}")
     return sym
 
 
@@ -522,3 +522,4 @@ def read_control(pcontrol: str = "control.in") -> Control:
         Control object
     """
     return Control.read(pcontrol)
+
