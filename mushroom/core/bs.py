@@ -1168,29 +1168,33 @@ def resolve_band_crossing(kx, bands, pwav=None, deriv_thres=None):
     del permuts[permuts.index(element_permut)]
     derivs_crossband = np.zeros((len(permuts), nbands, 2))
     bands_adjacent = np.zeros((nbands, 4))
+
+    sumediff_thres = 0.001
+
     # If there is less than 3 points, we have no idea if we need to resolve.
     # The following loop will not be executed unless there are more than 3 points
     for i in range(1, nk - 1):
-        # find the left non-end-point for point i
-        for j in range(i - 1, -1, -1):
-            kl = kx[j]
-            if kl != kx[i]:
-                break
-            if j == 0:
-                raise ValueError
+        # skip the permutation if i and i+1 are the same kpoint
+        # by checking the absolute difference between the band energies
+        sumediff = np.sum(np.abs(bands[i, :] - bands[i + 1, :]))
+        if sumediff < sumediff_thres:
+            _logger.debug("Current and next k-point the same, sum(ediff) < %f: %d", sumediff_thres, i)
+            continue
+
         # left side
+        # find the left non-end-point for point i
+        j = max(j for j in range(i - 1, -1, -1) if kx[j] != kx[i])
+        kl = kx[j]
         bands_adjacent[:, 0] = bands[j, :]
         bands_adjacent[:, 1] = bands[j + 1, :]
-        # find the right non-end-point for point i
-        for j in range(i + 1, nk):
-            kr = kx[j]
-            if kr != kx[i]:
-                break
-            if j == nk - 1:
-                raise ValueError
+
         # right side
+        # find the right non-end-point for point i
+        j = min(j for j in range(i + 1, nk) if kx[j] != kx[i])
+        kr = kx[j]
         bands_adjacent[:, 2] = bands[j - 1, :]
         bands_adjacent[:, 3] = bands[j, :]
+
         # inband derivatives
         derivs_inband[:, 0] = (bands_adjacent[:, 1] - bands_adjacent[:, 0]) / (kx[i] - kl)
         derivs_inband[:, 1] = (bands_adjacent[:, 2] - bands_adjacent[:, 3]) / (kx[i] - kr)
@@ -1205,21 +1209,21 @@ def resolve_band_crossing(kx, bands, pwav=None, deriv_thres=None):
         arg = np.argmin(diff_derivs_crossband)
         _logger.debug("deriv. diff: inband %f vs min-crossband %f, at %d",
                       diff_derivs_inband, diff_derivs_crossband[arg], i)
-        if diff_derivs_inband > diff_derivs_crossband[arg] + deriv_thres:
-            _logger.info("deriv. diff: inband %f > crossband %f, possible crossing at %d, switch bands",
-                         diff_derivs_inband, diff_derivs_crossband[arg], i)
-            _logger.info("permutation: %r", permuts[arg])
-            _logger.debug("kx: %f %f %f", kl, kx[i], kr)
-            for ib in range(nbands):
-                _logger.debug("related %d-th band energies: %r", ib, bands_adjacent[ib, :])
-            temp = bands[i + 1:, :]
-            temp = temp[:, permuts[arg]]
-            bands[i + 1:, :] = temp[:, :]
-            if pwav is not None:
-                _logger.debug("permuting pwav")
-                temp = pwav[i + 1:, :, :, :]
-                temp = temp[:, permuts[arg], :, :]
-                pwav[i + 1:, :, :, :] = temp[:, :, :, :]
+        if diff_derivs_inband < diff_derivs_crossband[arg] + deriv_thres:
+            continue
+        _logger.info("deriv. diff: inband %f >= crossband %f + (%f), possible crossing at %d, switch bands, permut %r",
+                     diff_derivs_inband, diff_derivs_crossband[arg], deriv_thres, i, permuts[arg])
+        _logger.debug("kx: %f %f %f", kl, kx[i], kr)
+        for ib in range(nbands):
+            _logger.debug("related %d-th band energies: %r", ib, bands_adjacent[ib, :])
+        temp = bands[i + 1:, :]
+        temp = temp[:, permuts[arg]]
+        bands[i + 1:, :] = temp[:, :]
+        if pwav is not None:
+            _logger.debug("permuting pwav")
+            temp = pwav[i + 1:, :, :, :]
+            temp = temp[:, permuts[arg], :, :]
+            pwav[i + 1:, :, :, :] = temp[:, :, :, :]
 
     _logger.debug("multi-band resolve done")
     # return the disentangled bands

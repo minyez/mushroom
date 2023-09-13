@@ -95,7 +95,7 @@ def m_aims_band():
             deriv_thres = [None,] * len(args.resolve)
         else:
             if len(args.deriv_thres) == 1:
-                deriv_thres = [args.deriv_thres,] * len(args.resolve)
+                deriv_thres = [args.deriv_thres[0],] * len(args.resolve)
             elif len(args.deriv_thres) == len(args.resolve):
                 deriv_thres = args.deriv_thres
             else:
