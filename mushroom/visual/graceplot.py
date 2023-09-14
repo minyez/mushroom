@@ -6,6 +6,11 @@ The main purpose of this implementation is to write grace plot file
 with similar methods to matplotlib, and without any concern about
 whether xmgrace is installed or not.
 Therefore, platform-related functions are generally discarded. (minyez)
+
+Note
+- 2023-09-14:
+    Looked into the graceplot.py in jscatter project for handling DPI.
+    To enable
 """
 import sys
 import time
@@ -39,7 +44,7 @@ SPECIAL_CHAR_PATTERN = {
     r"\\AA": r"\\cE\\C",
 }
 
-has_gracebat = which("gracebat")
+HAS_GRACEBAT = which("gracebat")
 del which
 ext2device = {
     "ps": "PostScript",
@@ -2768,6 +2773,7 @@ def _set_graph_alignment(rows, cols, hgap=0.02, vgap=0.02, width_ratios=None, he
 
 TypePlot = TypeVar('TypePlot', bound="Plot")
 
+
 # ===== main object =====
 class Plot:
     """the general control object for the grace plot
@@ -2995,7 +3001,7 @@ class Plot:
             g.tight_graph(nxticks=nxticks, nyticks=nyticks,
                           xscale=xscale, yscale=yscale)
 
-    def savefig(self, figname, device: str = None):
+    def savefig(self, figname, device: str = None, dpi: int = 300):
         """export to a figure file `figname` by the gracebat engine
 
         This method is adapted from PyGrace.grace
@@ -3011,7 +3017,7 @@ class Plot:
             except KeyError as err:
                 raise ValueError("No detected device for extension {}".format(ext)) from err
         _logger.info("save figure to %s", figname)
-        _run_gracebat(str(self), figname, device)
+        _run_gracebat(str(self), figname, device, dpi)
 
     # Templates
     @classmethod
@@ -3128,19 +3134,20 @@ def extract_data_from_agr(pagr):
     return types, data, legends
 
 
-def _run_gracebat(agr, figname, device):
+def _run_gracebat(agr, figname, device, dpi):
     """run a gracebat command for figure exporting
 
     Args:
         agr (str) : contents of grace file
     """
-    if has_gracebat is None:
+    if HAS_GRACEBAT is None:
         raise FileNotFoundError("gracebat is not found in PATH")
-    cmds = [has_gracebat, "-hardcopy",
+    cmds = [HAS_GRACEBAT, "-hardcopy",
             "-hdevice", device,
             "-printfile", figname,
-            "-pipe"]
+            "-pipe",]
     p = subprocess.Popen(cmds, stdin=subprocess.PIPE)
+    _logger.debug("Run grace bat with: %s", " ".join(cmds))
     p.stdin.write(agr.encode())
 
 

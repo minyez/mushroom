@@ -66,7 +66,7 @@ def _parser():
 def m_aims_band():
     """the main stream"""
     args = _parser().parse_args()
-    p, ax = Plot.subplots(1, 1, background=args.transparent)
+    p, ax = Plot.subplots(1, 1, background=not args.transparent)
     bs, kpts = read_band_output(*args.out_files, unit=args.unit,
                                 filter_k_before=args.remove_k_before,
                                 filter_k_behind=args.remove_k_behind)
