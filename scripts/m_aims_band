@@ -105,7 +105,7 @@ def m_aims_band():
             eigen[:, bands_tuple] = resolve_band_crossing(kp.x, eigen[:, bands_tuple], deriv_thres=thres)
 
     ax.plot(kp.x, eigen.transpose() - ref, color="k", symbol="none")
-    ax.x.set_major(grid=True, color="grey", lw=3, ls="dashed")
+    ax.x.set_major(grid=True, size=0.0, color="grey", lw=3, ls="longdashed")
     ksymbols = None
     if args.ksymbols is not None:
         ksymbols = args.ksymbols
@@ -119,7 +119,25 @@ def m_aims_band():
             raise ValueError("%s does not include output band" % args.ksymbols_cf)
         ksymbols = get_path_ksymbols(band_c_ksym)
 
+    if len(kp.special_x) != len(ksymbols):
+        raise ValueError("Number of k segments different from number of symbols! Contact developer")
+
     ax.x.set_spec(kp.special_x, labels=ksymbols)
+    # check non-continuous special kx
+    x_break = []
+    ksym_break = []
+    for x, ksym in zip(kp.special_x, ksymbols):
+        if "|" in ksym:
+            x_break.append(x)
+            ksym_break.append(ksym)
+    if len(ksym_break) > 0:
+        ax.altx.set(switch="on")
+        ax.altx.set_bar(switch="off")
+        ax.altx.set_tick(switch="off")
+        ax.altx.set_ticklabel(switch="off")
+        ax.altx.set_spec(x_break, labels=ksym_break)
+        ax.altx.set_major(grid=True, size=0.0, color="black", lw=3, ls="solid")
+
     if args.energy_range is not None:
         try:
             emin, emax = decode_float_ends(args.energy_range)

@@ -684,7 +684,7 @@ class _BaseOutput:
 
         for attr, (typ, _, f) in self._attrs.items():
             attrv = self.__getattribute__(attr)
-            _logger.debug("parsed export: %s , %s, %r", type(self).__name__, attr, attrv)
+            _logger.debug("parsed export: %s, %s, %r, %s", type(self).__name__, attr, attrv, typ)
             if typ in [list, tuple, set]:
                 temps = attr.replace("_", " ") + " " + f.format(*attrv)
             # special property marked by the type as bool
@@ -710,8 +710,9 @@ class _BaseOutput:
                 temps = temps.replace(self._marker, "").replace("_", " ")
             else:
                 temps = attr.replace("_", " ") + " " + f.format(attrv)
+            temps = temps.strip()
             s = prefix + " " + temps
-            _logger.debug("exporting: %s", s)
+            _logger.debug("exporting: %s = '%s' + '%s'", s, prefix, temps)
             slist.append(s)
 
         # cover extra lines with an _extra_export attribute
@@ -2401,6 +2402,16 @@ class Graph(_Graph):
     def y(self):
         """y axis"""
         return self._yaxis
+
+    @property
+    def altx(self):
+        """alt x axis"""
+        return self._altxaxis
+
+    @property
+    def alty(self):
+        """y axis"""
+        return self._altyaxis
 
     def set_xaxis(self, **kwargs):
         """set x axis"""
