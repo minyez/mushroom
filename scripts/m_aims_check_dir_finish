@@ -1,0 +1,18 @@
+#!/usr/bin/env python3
+"""check if at least one FHI-aims calculation in the current directory is finished"""
+import sys
+import argparse
+from mushroom.aims.analyse import is_finished_aimsdir
+
+p = argparse.ArgumentParser(description=__doc__)
+p.add_argument("-d", dest="directory", default=".", type=str,
+               help="the path of directory to check, defatult: .")
+p.add_argument("-o", dest="aimsout_pat", default="aims.out*", type=str,
+               help="the pattern of aimsout to check, defatult: aims.out*")
+
+args = p.parse_args()
+f = is_finished_aimsdir(args.directory, aimsout_pat=args.aimsout_pat)
+if f is None:
+    sys.exit(1)
+else:
+    print(f)
