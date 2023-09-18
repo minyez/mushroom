@@ -3,8 +3,6 @@
 import re
 from io import StringIO
 
-import numpy as np
-
 from mushroom.core.bs import BandStructure
 from mushroom.core.typehint import Path
 from mushroom.core.ioutils import conv_string
@@ -322,7 +320,8 @@ class StdOut:
     @property
     def nelect(self):
         """the integer number of electrons"""
-        return int(np.rint(self._nelect))
+        from numpy import rint
+        return int(rint(self._nelect))
 
     def _handle_scf(self):
         """process the data in the self-consistency iterations"""
@@ -378,6 +377,8 @@ class StdOut:
         Returns:
             a dict
         """
+        import numpy as np
+
         errmsg = "QP calculations is not {} from the standard output"
         if self._gw_kgrid_result is not None and self._gw_kgrid_kpts is not None:
             return self._gw_kgrid_result, self._gw_kgrid_kpts
