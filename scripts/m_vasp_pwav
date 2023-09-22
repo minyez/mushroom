@@ -14,7 +14,7 @@ import numpy as np
 from mushroom.core.logger import create_logger
 from mushroom.core.cell import Cell
 from mushroom.core.bs import split_apb
-from mushroom.core.kpoints import KPath
+from mushroom.core.kpoints import KPathLinearizer
 from mushroom.core.data import export_2d_data
 from mushroom.core.ioutils import decode_float_ends, get_filename_wo_ext
 from mushroom.visual.graceplot import Plot, prefer_gracecolors
@@ -22,6 +22,7 @@ from mushroom.vasp import read_procar
 
 _logger = create_logger("mv_pwav")
 del create_logger
+
 
 def _parser():
     """the parser"""
@@ -50,6 +51,7 @@ def _parser():
                    help="energy range, e.g. 'm8~5' for -8.0 to 5.0")
     return p
 
+
 # pylint: disable=R0914
 def plot_pwav(graph, x, bs, apbs, spin, scale, colors=None, prop_area=False):
     """
@@ -72,20 +74,23 @@ def plot_pwav(graph, x, bs, apbs, spin, scale, colors=None, prop_area=False):
             eigen = bs.get_eigen(bands)[spin, :, :] - bs.efermi
             kwargs = {
                 "datatype": "xysize",
-                "color": colors[i%len(colors)],
+                "color": colors[i % len(colors)],
                 "label": "-".join(str(x) for x in apb.split(":")[:2]),
                 "ls": "none",
-                }
+            }
             if prop_area:
-                graph.plot(x, eigen.transpose(),
-                           size=np.sqrt(pwav.transpose())*scale,
+                graph.plot(x,
+                           eigen.transpose(),
+                           size=np.sqrt(pwav.transpose()) * scale,
                            **kwargs)
             else:
-                graph.plot(x, eigen.transpose(),
-                           size=pwav.transpose()*scale,
+                graph.plot(x,
+                           eigen.transpose(),
+                           size=pwav.transpose() * scale,
                            **kwargs)
             print("#atom-projector-band:{}".format(apb), file=pwav_dat)
             print("\n".join(export_2d_data(pwav)), file=pwav_dat, end="\n\n")
+
 
 def m_vasp_pwav():
     """main stream"""
@@ -93,7 +98,7 @@ def m_vasp_pwav():
     c = Cell.read(args.poscar)
     bs, kpts = read_procar(args.procar, filter_k_before=args.removek)
     bs.atms = c.atms
-    kp = KPath(kpts, c.b)
+    kp = KPathLinearizer(kpts, c.b)
     if args.spin >= bs.nspins:
         raise ValueError("ispin {} >= nspins = {}".format(args.spin, bs.nspins))
     p, ax = Plot.subplots(1, 1, description=" ".join(argv))
@@ -136,4 +141,3 @@ def m_vasp_pwav():
 
 if __name__ == "__main__":
     m_vasp_pwav()
-

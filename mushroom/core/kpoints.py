@@ -20,7 +20,7 @@ __all__ = [
 _logger = loggers["kpoints"]
 
 
-class KPath:
+class KPathLinearizer:
     """object to manipulate path in reciprocal k space
 
     Special kpoints are recognized automatically.

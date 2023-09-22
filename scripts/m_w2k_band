@@ -5,11 +5,12 @@
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 import numpy as np
 
-from mushroom.core.kpoints import KPath
+from mushroom.core.kpoints import KPathLinearizer
 from mushroom.core.bs import split_apb
 from mushroom.core.ioutils import decode_float_ends, get_filename_wo_ext, greeks
 from mushroom.visual.graceplot import Plot, prefer_gracecolors
 from mushroom.w2k import Struct, read_energy, get_inputs, read_qtl
+
 
 def _parser():
     """the parser"""
@@ -51,9 +52,10 @@ def _parser():
                    help="atom-projector-band (apb) string, separated by whitespace")
     return p
 
+
 # pylint: disable=R0914
 def get_bs_kpath(casename, dirpath, energyfile, efermi, unify_x=False):
-    """return BandStructure and KPath objects"""
+    """return BandStructure and KPathLinearizer objects"""
     pstruct, penergy, pin1 = get_inputs("struct", "energy", "in1",
                                         casename=casename,
                                         dirpath=dirpath, relative="CWD")
@@ -64,17 +66,18 @@ def get_bs_kpath(casename, dirpath, energyfile, efermi, unify_x=False):
     # set to angstrom unit for standard and possible comparison with VASP/GPAW/abinit results
     cell.unit = "ang"
     bs, _, kpts, symbols = read_energy(penergy, efermi=efermi)
-    kp = KPath(kpts, recp_latt=cell.b, unify_x=unify_x)
+    kp = KPathLinearizer(kpts, recp_latt=cell.b, unify_x=unify_x)
     # convert greek letters to latex for grace encoding
     ksymbols = []
     if symbols:
         for _, s in symbols:
             sc = s.capitalize()
             if sc in greeks:
-                ksymbols.append("\\"+sc)
+                ksymbols.append("\\" + sc)
             else:
                 ksymbols.append(sc)
     return bs, kp, [x[:2].strip() for x in struct.atms_types], ksymbols
+
 
 def plot_pwav(graph, x, bs, apbs, spin, ref, scale, colors=None, prop_area=False):
     """
@@ -95,17 +98,19 @@ def plot_pwav(graph, x, bs, apbs, spin, ref, scale, colors=None, prop_area=False
         eigen = bs.get_eigen(bands)[spin, :, :] - ref
         kwargs = {
             "datatype": "xysize",
-            "color": colors[i%len(colors)],
+            "color": colors[i % len(colors)],
             "label": "-".join(str(x) for x in apb.split(":")[:2]),
             "ls": "none",
-            }
+        }
         if prop_area:
-            graph.plot(x, eigen.transpose(),
-                       size=np.sqrt(pwav.transpose())*scale,
+            graph.plot(x,
+                       eigen.transpose(),
+                       size=np.sqrt(pwav.transpose()) * scale,
                        **kwargs)
         else:
-            graph.plot(x, eigen.transpose(),
-                       size=pwav.transpose()*scale,
+            graph.plot(x,
+                       eigen.transpose(),
+                       size=pwav.transpose() * scale,
                        **kwargs)
 
 
@@ -163,4 +168,3 @@ def m_w2k_band():
 
 if __name__ == "__main__":
     m_w2k_band()
-

@@ -4,7 +4,7 @@
 import pathlib
 from mushroom.visual.graceplot import Plot
 from mushroom.core.cell import Cell
-from mushroom.core.kpoints import KPath
+from mushroom.core.kpoints import KPathLinearizer
 from mushroom.vasp import read_doscar, read_eigen
 
 p = Plot.band_dos()
@@ -20,7 +20,7 @@ p[1].plot(tdos, dos.egrid, symbol="none")
 # get band energies from EIGENVAL
 path = dirname / "EIGENVAL"
 bs, _, kpts = read_eigen(path)
-kp = KPath(kpts, c.b)
+kp = KPathLinearizer(kpts, c.b)
 print(kp.x.shape)
 print(bs.eigen[0, :, :].transpose().shape)
 p[0].plot(kp.x, bs.eigen[0, :, :].transpose(), color="k", symbol="none")

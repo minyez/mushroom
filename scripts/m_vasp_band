@@ -4,11 +4,12 @@
 """
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from mushroom.core.cell import Cell
-from mushroom.core.kpoints import KPath
+from mushroom.core.kpoints import KPathLinearizer
 from mushroom.core.ioutils import get_filename_wo_ext, decode_float_ends
 from mushroom.core.bs import display_band_analysis
 from mushroom.visual.graceplot import Plot
 from mushroom.vasp import read_eigen
+
 
 def _parser():
     """the parser"""
@@ -36,6 +37,7 @@ def _parser():
                    help="use VBM as energy zero")
     return p
 
+
 def m_vasp_band():
     """main stream"""
     args = _parser().parse_args()
@@ -52,7 +54,7 @@ def m_vasp_band():
         ref = bs.vbm
     if args.fermi_zero:
         ref = bs.efermi
-    kp = KPath(kpts, c.b)
+    kp = KPathLinearizer(kpts, c.b)
     ax.plot(kp.x, bs.eigen[0, :, :].transpose() - ref, color="k", symbol="none")
     ax.x.set_major(grid=True, color="grey", lw=3, ls="dashed")
     ksymbols = None
