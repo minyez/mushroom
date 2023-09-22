@@ -9,11 +9,12 @@ from pathlib import Path
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 from mushroom.core.logger import create_logger
-from mushroom.core.hpc import add_scheduler_header, current_platform, current_use_pbs
+from mushroom.hpc import add_scheduler_header, current_platform, current_use_pbs
 from mushroom.db import DBWorkflow
 
 _logger = create_logger("workflow")
 del create_logger
+
 
 def _parser():
     """the argument parser"""
@@ -59,6 +60,7 @@ def m_workflow():
                            copy_readme=args.copy_readme)
         pscript = Path(args.dst) / "run_{}.sh".format(wf)
         add_scheduler_header(pscript, current_platform, current_use_pbs)
+
 
 if __name__ == "__main__":
     m_workflow()

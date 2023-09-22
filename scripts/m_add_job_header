@@ -3,7 +3,7 @@
 """add job control headers to script for running on an HPC"""
 from pathlib import Path
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
-from mushroom.core.hpc import add_scheduler_header, current_platform, current_use_pbs
+from mushroom.hpc import add_scheduler_header, current_platform, current_use_pbs
 
 
 def _parser():
