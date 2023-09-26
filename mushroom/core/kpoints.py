@@ -13,7 +13,7 @@ from mushroom.core.logger import loggers
 from mushroom.core.ioutils import raise_no_module
 
 __all__ = [
-    "KPath",
+    "KPathLinearizer",
     "MPGrid",
 ]
 
