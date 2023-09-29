@@ -19,6 +19,7 @@ jobs:
         environment:
           PIPENV_VENV_IN_PROJECT: false
           CODECOV_TOKEN: 01359775-2d3e-4223-a0ef-ecc88779e801
+          AIMS_SPECIES_DEFAULTS: ~/fake-FHI-aims/species_defaults
     steps:
       - checkout
       # - run: sudo chown -R circleci:circleci /usr/local/bin
@@ -43,6 +44,9 @@ jobs:
             # prepare a test cell database for unit test
             mkdir -p ~/mushroom/db/cell/NaCl
             cp -a ~/mushroom/mushroom/core/test/data/rocksalt.cif ~/mushroom/db/cell/NaCl
+            # prepare a fake FHI-aims directory and a H specie for passing the pytest
+            mkdir -p $AIMS_SPECIES_DEFAULTS/defaults_2010/tight
+            touch $AIMS_SPECIES_DEFAULTS/defaults_2010/tight/01_H_default
       - run:
           name: "Linting"
           command: |

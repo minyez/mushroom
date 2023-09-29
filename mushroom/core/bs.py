@@ -607,6 +607,22 @@ class BandStructure(EnergyUnit):
         """The minimal direct gap between VBM and CBM, float"""
         return np.min(self.direct_gap_sp())
 
+    def direct_gap_vbm(self):
+        """Direct gap at VBM
+
+        float
+        """
+        is_vb, ik_vb = self.ivbm[0], self.ivbm[1]
+        return self.direct_gaps()[is_vb, ik_vb]
+
+    def direct_gap_cbm(self):
+        """Direct gap at CBM
+
+        float
+        """
+        is_cb, ik_cb = self.icbm[0], self.icbm[1]
+        return self.direct_gaps()[is_cb, ik_cb]
+
     def is_gap_direct(self) -> bool:
         """True if the bandstructure belongs to a direct gap material"""
         return all(self.fund_gap_sp() >= self.direct_gap())

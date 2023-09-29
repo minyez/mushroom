@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Class to handle basis set for atom species"""
 import os
-import glob
+import pathlib
 from typing import Union
 from io import StringIO
 from copy import deepcopy
@@ -13,6 +13,8 @@ from mushroom.core.logger import loggers
 
 _logger = loggers["aims"]
 
+_SPECIES_DEFAULTS_ENV = "AIMS_SPECIES_DEFAULTS"
+
 
 def search_basis_directories(aims_species_defaults=None):
     if aims_species_defaults is None:
@@ -20,9 +22,11 @@ def search_basis_directories(aims_species_defaults=None):
     if not os.path.isdir(aims_species_defaults):
         raise ValueError("specified aims_species_defaults {} is not a directory"
                          .format(aims_species_defaults))
+    root_dir = pathlib.Path(aims_species_defaults)
     paths = []
-    for path in glob.glob('**/01_H_default', root_dir=aims_species_defaults, recursive=True):
-        paths.append(os.path.dirname(path))
+    for path in root_dir.glob('**/01_H_default'):
+        spath = str(path)
+        paths.append(os.path.dirname(spath[len(os.path.commonprefix([path, root_dir])) + 1:]))
 
     return paths
 
@@ -44,16 +48,15 @@ def get_basis_directory_from_alias(directory_alias):
 
 
 def get_species_defaults_directory():
-    """get the directory of species_default from environment variable and configuration"""
-    species_defaults_ev = "AIMS_SPECIES_DEFAULTS"
+    """get the directory of species_defaults from environment variable and configuration"""
     try:
-        species_defaults = os.environ[species_defaults_ev]
+        species_defaults = os.environ[_SPECIES_DEFAULTS_ENV]
     except KeyError as _e:
         try:
             from mushroom.__config__ import aims_species_defaults as species_defaults
         except ImportError:
             raise KeyError("Environment variable {} or aims_species_defaults in config file is required"
-                           .format(species_defaults_ev))
+                           .format(_SPECIES_DEFAULTS_ENV))
     if not os.path.isdir(species_defaults):
         raise ValueError("species_defaults {} is not a directory".format(species_defaults))
     return species_defaults
