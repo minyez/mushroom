@@ -45,7 +45,7 @@ if __name__ == '__main__':
     if args.elements is None:
         if args.pgeometry is None:
             raise ValueError("specify elements either by -e or -i")
-        from mushroom.aims import read_geometry
+        from mushroom.aims.input import read_geometry
         elements = read_geometry(args.pgeometry).atom_types
     else:
         elements = args.elements
