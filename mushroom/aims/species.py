@@ -16,10 +16,10 @@ _logger = loggers["aims"]
 _SPECIES_DEFAULTS_ENV = "AIMS_SPECIES_DEFAULTS"
 
 
-def search_basis_directories(aims_species_defaults=None):
+def search_basis_directories(aims_species_defaults=None, error_dir_not_found: bool = True):
     if aims_species_defaults is None:
         aims_species_defaults = get_species_defaults_directory()
-    if not os.path.isdir(aims_species_defaults):
+    if error_dir_not_found and not os.path.isdir(aims_species_defaults):
         raise ValueError("specified aims_species_defaults {} is not a directory"
                          .format(aims_species_defaults))
     root_dir = pathlib.Path(aims_species_defaults)
@@ -62,45 +62,27 @@ def get_species_defaults_directory():
     return species_defaults
 
 
-def get_specie_filename(elem: str, directory: str, species_defaults: str = None):
+def get_specie_filename(elem: str,
+                        directory: str,
+                        species_defaults: str = None,
+                        error_dir_not_found: bool = True):
     """get the name of specie file of a particular basis
 
     Args:
         elem (str)
-        directory (str)
+        directory (str): directory of species category or its alias
         species_defaults (str)
 
     Returns:
         str
     """
-    directory_aliases = {
-        "light": "defaults_2020/light",
-        "light_spd": "defaults_2020/light_spd",
-        "intermediate": "defaults_2020/intermediate",
-        "tight": "defaults_2020/tight",
-        "really_tight": "defaults_2020/really_tight",
-        "cc-pvdz": "non-standard/gaussian_tight_770/cc-pVDZ",
-        "cc-pvtz": "non-standard/gaussian_tight_770/cc-pVTZ",
-        "cc-pvqz": "non-standard/gaussian_tight_770/cc-pVQZ",
-        "cc-pv5z": "non-standard/gaussian_tight_770/cc-pV5Z",
-        "cc-pv6z": "non-standard/gaussian_tight_770/cc-pV6Z",
-        "aug-cc-pvdz": "non-standard/gaussian_tight_770/aug-cc-pVDZ",
-        "aug-cc-pvtz": "non-standard/gaussian_tight_770/aug-cc-pVTZ",
-        "aug-cc-pvqz": "non-standard/gaussian_tight_770/aug-cc-pVQZ",
-        "aug-cc-pv5z": "non-standard/gaussian_tight_770/aug-cc-pV5Z",
-        "aug-cc-pv6z": "non-standard/gaussian_tight_770/aug-cc-pV6Z",
-        "aug-cc-pcvdz": "non-standard/gaussian_tight_770/aug-cc-pCVDZ",
-        "aug-cc-pcvtz": "non-standard/gaussian_tight_770/aug-cc-pCVTZ",
-        "aug-cc-pcvqz": "non-standard/gaussian_tight_770/aug-cc-pCVQZ",
-        "aug-cc-pcv5z": "non-standard/gaussian_tight_770/aug-cc-pCV5Z",
-    }
     elem_id = get_atomic_number(elem, False)
     if species_defaults is None:
         species_defaults = get_species_defaults_directory()
-    directories_avail = search_basis_directories(species_defaults)
+    directories_avail = search_basis_directories(species_defaults, error_dir_not_found=error_dir_not_found)
     directory = directory.strip("/")
-    directory = directory_aliases.get(directory.lower(), directory)
-    if directory not in directories_avail:
+    directory = get_basis_directory_from_alias(directory)
+    if error_dir_not_found and directory not in directories_avail:
         raise ValueError("{} is not found in available basis directories {}"
                          .format(directory, directories_avail))
     pspecies = [species_defaults, directory, f"{elem_id:02d}_{elem}_default"]
