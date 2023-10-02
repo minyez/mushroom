@@ -8,10 +8,12 @@ from importlib import machinery
 from mushroom import __NAME__
 
 # a global configuration file
-fn = "." + __NAME__ + "rc"
+fn = __NAME__ + "rc"
+dotfn = "." + fn
 config_files = [
-    os.path.join(os.environ["HOME"], fn),
-    fn,
+    os.path.join(os.environ["HOME"], "." + __NAME__, fn),
+    os.path.join(os.environ["HOME"], dotfn),
+    dotfn,
 ]
 
 module_name = __NAME__ + '.__config__'
