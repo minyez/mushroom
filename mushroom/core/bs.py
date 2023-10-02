@@ -137,6 +137,9 @@ class BandStructure(EnergyUnit):
         self._vbm = None
         self._cbm = None
         self._band_width = None
+
+        self._bandedge_calculated = False
+
         # compute occupations from eigen and efermi
         # NOTE: zero temperature is used here
         if occ is None:
@@ -395,12 +398,8 @@ class BandStructure(EnergyUnit):
         if self._occ is None:
             raise BandStructureError("need occupation number before computing band edges!")
         is_occ = self._occ > THRES_OCC
-        vbm = self.__getattribute__("_vbm")
-        if vbm is None:
-            pass
-        else:
-            if not reload:
-                return
+        if self._bandedge_calculated and not reload:
+            return
 
         self._ivbm_sp_kp = np.sum(is_occ, axis=2) - 1
         _logger.debug("HOMO index per spin per kpoint")
@@ -463,18 +462,18 @@ class BandStructure(EnergyUnit):
         self._icbm[1:3] = self._icbm_sp[self._icbm[0], :]
         self._cbm = self._cbm_sp[self._icbm[0]]
 
+        # set the state to ready
+        self._bandedge_calculated = True
+
     def __lazy_bandedge_return(self, attr: str = None):
         """lazy return of attribute related to band edges
 
         Args:
             attr (str): name of attribute
         """
+        self.compute_band_edges()
         if attr is None:
-            self.compute_band_edges()
             return None
-        v = self.__getattribute__(attr)
-        if v is None:
-            self.compute_band_edges()
         v = self.__getattribute__(attr)
         if v is None:
             raise ValueError("attribute {} is not available for band".format(attr.strip("_")))
@@ -834,7 +833,9 @@ class BandStructure(EnergyUnit):
                 return self
             newbs = deepcopy(self)
             newbs._eigen = newbs._eigen + y
-            newbs._efermi = None
+            if newbs._efermi is not None:
+                newbs._efermi += y
+            newbs._bandedge_calculated = False
             return newbs
         raise TypeError("expected a Real, got {}".format(type(y)))
 
@@ -862,6 +863,7 @@ class BandStructure(EnergyUnit):
         else:
             raise TypeError("expected BandStructure or float, got {}".format(type(y)))
         # must reset Fermi energy in this case
+        newbs._bandedge_calculated = False
         newbs._efermi = None
         return newbs
 
@@ -925,7 +927,7 @@ class BandStructure(EnergyUnit):
 # pylint: disable=R0914
 def random_band_structure(nspins: int = 1, nkpts: int = 1, nbands: int = 2,
                           natms: int = 1, nprjs: int = 1,
-                          has_proj: bool = False, is_metal: bool = False):
+                          has_proj: bool = False, is_metal: bool = False) -> BandStructure:
     """Return a BandStructure object with fake band energies, occupations and
     projections
 
@@ -1075,7 +1077,7 @@ def _decode_itrans_string(s):
     """
 
     Args:
-        s (list of str): "ivk:ick:ivb:icb", the last two can be omitted
+        s (list of str): either "ivk:ick", "ivck:ivb:icb" or "ivk:ick:ivb:icb"
     """
     itrans = [x.strip() for x in s.split(":")]
     if len(itrans) == 2:
@@ -1083,12 +1085,16 @@ def _decode_itrans_string(s):
         ivb = None
         icb = None
     elif len(itrans) == 3:
-        ivk, ick = list(map(int, itrans[:2]))
+        ivk = int(itrans[0])
+        ick = ivk
         try:
-            ivb = int(itrans[2])
+            ivb = int(itrans[1])
         except ValueError:
-            ivb = itrans[2]
-        icb = None
+            ivb = itrans[1]
+        try:
+            icb = int(itrans[2])
+        except ValueError:
+            icb = itrans[2]
     else:
         ivk, ick = list(map(int, itrans[:2]))
         try:
@@ -1110,7 +1116,7 @@ def display_transition_energies(trans: Sequence[str],
     """display the transitions
 
     Args:
-        trans (list of str): "ivk:ick:ivb:icb", the last two can be omitted
+        trans (list of str): either "ivk:ick", "ivck:ivb:icb" or "ivk:ick:ivb:icb"
     """
     if bs.nspins != 1:
         raise NotImplementedError("spin-polarized BS analysis")

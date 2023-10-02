@@ -37,6 +37,7 @@ class test_control(ut.TestCase):
                                 self.assertListEqual(band_read[1], band_veri[1])
                                 for i in range(2, 5):
                                     self.assertEqual(band_read[i], band_veri[i])
+            c.export()
 
     def test_species_handling(self):
         dir_control = pathlib.Path(__file__).parent / "data"

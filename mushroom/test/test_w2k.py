@@ -13,8 +13,10 @@ from mushroom.w2k import (Struct, _energy_kpt_line, read_energy,
                           _read_efermi_from_second_to_last_el,
                           get_casename, get_inputs, In1)
 
+
 class test_struct(ut.TestCase):
     """test struct file processing"""
+
     def test_read(self):
         """read from test struct files"""
         dir_struct = pathlib.Path(__file__).parent / "data"
@@ -39,23 +41,25 @@ class test_struct(ut.TestCase):
                 s.write(h)
             tf.close()
 
+
 class test_match_lines(ut.TestCase):
     """test matching Fortran-formatted lines"""
+
     # pylint: disable=C0301
     def test_match_one_energy_kpt_line(self):
         """kpt line"""
         valid_lines = [
             " 0.000000000000E+00 0.000000000000E+00 0.000000000000E+00         1  1017   113  1.0\n",
             " 0.000000000000E+00 0.000000000000E+00 0.000000000000E+00M           1017   113  1.0\n",
-            ]
+        ]
         valid_kpts = [
             [0.0, 0.0, 0.0],
             [0.0, 0.0, 0.0],
-            ]
+        ]
         valid_nbands = [
             113,
             113,
-            ]
+        ]
         for l, refk, refnb in zip(valid_lines, valid_kpts, valid_nbands):
             kpt_line = _energy_kpt_line.match(l)
             self.assertTrue(kpt_line is not None)
@@ -67,6 +71,7 @@ class test_match_lines(ut.TestCase):
 
 class test_energy(ut.TestCase):
     """test energy file processing"""
+
     def test_read(self):
         """read from test struct files"""
         dir_energy = pathlib.Path(__file__).parent / "data"
@@ -81,6 +86,7 @@ class test_energy(ut.TestCase):
             self.assertTrue(np.allclose(kpts, verify["kpts"]))
             if symbols:
                 self.assertDictEqual(verify["symbols"], symbols)
+
 
 class test_utilities(ut.TestCase):
     """test utilities for wien2k analysis"""
@@ -115,8 +121,10 @@ class test_utilities(ut.TestCase):
         s = "198.98000200.44970  0.44970  0.44970  0.44970  0.44970  0.44970  0.44970  0.44970  0.44970  0.44970  0.44970  0.44970  0.00000"
         self.assertAlmostEqual(0.64971, _read_efermi_from_second_to_last_el(s))
 
+
 class test_in1(ut.TestCase):
     """test reading in1 """
+
     def test_read(self):
         """reading existing in1 file"""
         dir_in1 = pathlib.Path(__file__).parent / "data"
@@ -140,6 +148,8 @@ class test_in1(ut.TestCase):
                     self.assertEqual(objv, v, msg=msg)
                 elif isinstance(v, list):
                     self.assertTrue(np.array_equal(objv, v), msg)
+
+# TODO: add qtl and dos reader test
 
 
 if __name__ == "__main__":

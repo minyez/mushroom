@@ -11,7 +11,8 @@ import numpy as np
 from mushroom.core.bs import BandStructure as BS
 from mushroom.core.bs import BandStructureError as BSErr
 from mushroom.core.bs import random_band_structure
-from mushroom.core.bs import split_apb, resolve_band_crossing
+from mushroom.core.bs import split_apb, resolve_band_crossing, _decode_itrans_string
+from mushroom.core.bs import display_band_analysis, display_transition_energies
 from mushroom.core.constants import EV2RY
 from mushroom.core.ioutils import get_matched_files
 
@@ -90,6 +91,24 @@ class test_BS_no_projection(ut.TestCase):
         self.assertEqual(efermi * EV2RY, bs.efermi)
         self.assertEqual(vbm * EV2RY, bs.vbm)
 
+    def test_arithmetics(self):
+        nsp, nkp, nb = 1, 4, 4
+        eigen = np.ones((nsp, nkp, nb * 2))
+        occ = np.zeros((nsp, nkp, nb * 2))
+        eigen[:, :, :nb] = 0.0
+        occ[:, :, :nb] = 2.0 / nsp
+        bs = BS(eigen, occ)
+        self.assertRaises(TypeError, bs.__add__, "string")
+        self.assertRaises(TypeError, bs.__sub__, "string")
+        self.assertAlmostEqual(bs.vbm, 0.0)
+        self.assertAlmostEqual(bs.cbm, 1.0)
+        bs = bs + 1.0
+        self.assertAlmostEqual(bs.vbm, 1.0)
+        self.assertAlmostEqual(bs.cbm, 2.0)
+        bs = bs - 4.0
+        self.assertAlmostEqual(bs.vbm, -3.0)
+        self.assertAlmostEqual(bs.cbm, -2.0)
+
     def test_get_band_indices(self):
         bs = BS(goodEigen, goodOcc, goodWeight, efermi=efermi)
         bs.compute_band_edges()
@@ -134,6 +153,8 @@ class test_BS_no_projection(ut.TestCase):
         nsp, nkp, nb = 1, 4, 4
         eigen = np.zeros((nsp, nkp, nb * 2))
         eigen[:, :, :nb] = 1.0
+        bs = BS(eigen)
+        bs.get_dos()
 
     def test_reading_in_good_eigen(self):
         good = 0
@@ -260,6 +281,10 @@ class test_BS_randomize(ut.TestCase):
             self.assertEqual(bs.nbands, nb)
             self.assertFalse(bs.is_metal())
             self.assertTrue(np.all(bs.fund_gap() > 0))
+            # TODO: implement the spin-polarized analysis
+            if bs.nspins == 1:
+                display_band_analysis(bs)
+                display_transition_energies(["0:1", "0:0:1", "0:0:0:1"], bs)
 
     def test_metal(self):
         """check random-generated metal-like band"""
@@ -275,33 +300,31 @@ class test_BS_randomize(ut.TestCase):
         """check randomize with projection"""
         bs = random_band_structure(has_proj=True)
         self.assertIsInstance(bs, BS)
+        if bs.nspins == 1:
+            display_band_analysis(bs)
 
 
-class test_split_apb(ut.TestCase):
-    """test splitting of apb"""
+class test_bs_utilites(ut.TestCase):
 
-    def test_raise(self):
-        """raise for whitesapce and missing members"""
+    def test_decode_itrans_string(self):
+        """test decoding band transition"""
+        # only kpoints
+        self.assertTupleEqual(_decode_itrans_string("1:2"), (1, 2, None, None))
+        # direct transition
+        self.assertTupleEqual(_decode_itrans_string("1:2:3"), (1, 1, 2, 3))
+        # general
+        self.assertTupleEqual(_decode_itrans_string("1:2:3:4"), (1, 2, 3, 4))
+
+    def test_split_apb(self):
+        """test splitting of apb"""
         self.assertRaises(ValueError, split_apb, "Fe :3:10")
         self.assertRaises(ValueError, split_apb, "Fe :3")
-
-    def test_correct_splitting(self):
-        """correct split of a string"""
         atms, prjs, bands = split_apb("Fe:4:12")
-        self.assertListEqual(atms, [
-            "Fe",
-        ])
-        self.assertListEqual(prjs, [
-            4,
-        ])
-        self.assertListEqual(bands, [
-            12,
-        ])
+        self.assertListEqual(atms, ["Fe",])
+        self.assertListEqual(prjs, [4,])
+        self.assertListEqual(bands, [12,])
 
-
-class test_BS_resolve_crossing(ut.TestCase):
-
-    def test_resolve_two_bands(self):
+    def test_BS_resolve_crossing(self):
         datafile = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 'data', 'BandStructure_crossing_0.json')
         with open(datafile, 'r') as f:
