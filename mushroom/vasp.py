@@ -72,17 +72,17 @@ def _dict_read_doscar(path: str = "DOSCAR",
     _logger.info(">> ISPIN = %d", nspins)
     _logger.info(">> NEDOS = %d", nedos)
 
-    egrid = np.array([x[0] for x in lines[6:6+nedos]])
+    egrid = np.array([x[0] for x in lines[6:6 + nedos]])
     # total density of states
-    tdos = [x[1:1+nspins] for x in lines[6:6+nedos]]
+    tdos = [x[1:1 + nspins] for x in lines[6:6 + nedos]]
     tdos = np.array(tdos).transpose()
     pdos = None
     if read_pdos and len(lines) > nedos + 7:
-        nprjs = (len(lines[nedos+7]) - 1) // nspins
+        nprjs = (len(lines[nedos + 7]) - 1) // nspins
         pdos = np.zeros((nspins, nedos, natms, nprjs))
         for ia in range(natms):
-            start = (ia+1) * (nedos+1) + 6
-            pdos[:, :, ia, :] = __read_splitted_atom_data(lines[start:start+nedos], nspins=nspins)
+            start = (ia + 1) * (nedos + 1) + 6
+            pdos[:, :, ia, :] = __read_splitted_atom_data(lines[start:start + nedos], nspins=nspins)
 
     return {"egrid": egrid,
             "tdos": tdos,
@@ -109,6 +109,7 @@ def read_doscar(path: str = "DOSCAR", read_pdos: bool = True,
     if reset_fermi:
         d["efermi"] = None
     return DensityOfStates(**d, unit='ev')
+
 
 # pylint: disable=R0914
 def _dict_read_procar(path: str = "PROCAR") -> dict:
@@ -141,8 +142,8 @@ def _dict_read_procar(path: str = "PROCAR") -> dict:
     # remove the ion index and tot
     prjs = lines[7].split()[1:-1]
     nprjs = len(prjs)
-    kpt_span = nbands*(natms+4+has_tot_line)+3
-    if len(lines) > (1+nkpts*kpt_span):
+    kpt_span = nbands * (natms + 4 + has_tot_line) + 3
+    if len(lines) > (1 + nkpts * kpt_span):
         nspins = 2
     eigen = np.zeros((nspins, nkpts, nbands))
     occ = np.zeros((nspins, nkpts, nbands))
@@ -150,20 +151,22 @@ def _dict_read_procar(path: str = "PROCAR") -> dict:
     pwav = np.zeros((nspins, nkpts, nbands, natms, nprjs))
     for ispin in range(nspins):
         for ikpt in range(nkpts):
-            kptw[ikpt, :] = np.array(conv_string(lines[ikpt*kpt_span+2], float, 3, 4, 5, -1))
+            kptw[ikpt, :] = np.array(conv_string(lines[ikpt * kpt_span + 2], float, 3, 4, 5, -1))
             for ib in range(nbands):
                 # the line index with prefix band
-                start = ispin * (1+nkpts*kpt_span) + \
-                        1 + ikpt * kpt_span + ib*(natms+4+has_tot_line) + 3
+                start = ispin * (1 + nkpts * kpt_span) + \
+                    1 + ikpt * kpt_span + ib * (natms + 4 + has_tot_line) + 3
                 eigen[ispin, ikpt, ib], occ[ispin, ikpt, ib], pwav[ispin, ikpt, ib, :, :] \
-                        = __read_band_data(lines[start:start+natms+3])
-    return {"eigen": eigen,
-            "occ": occ,
-            "weight": kptw[:, 3],
-            "kpoints": kptw[:, :3],
-            "pwav": pwav,
-            "prjs": prjs,
-            }
+                    = __read_band_data(lines[start:start + natms + 3])
+    return {
+        "eigen": eigen,
+        "occ": occ,
+        "weight": kptw[:, 3],
+        "kpoints": kptw[:, :3],
+        "pwav": pwav,
+        "prjs": prjs,
+    }
+
 
 # pylint: disable=R0914
 def read_procar(path: str = "PROCAR", filter_k_before: int = 0,
@@ -187,6 +190,7 @@ def read_procar(path: str = "PROCAR", filter_k_before: int = 0,
     pwav = pwav[:, filter_k_before:filter_k_behind, :, :, :]
     return BandStructure(eigen, occ, weight, unit='ev', pwav=pwav, prjs=prjs), kpoints
 
+
 def read_xml(*datakey, path: str = "vasprun.xml") -> dict:
     """read vasprun.xml to extract data.
 
@@ -204,7 +208,7 @@ def read_xml(*datakey, path: str = "vasprun.xml") -> dict:
     objects = {}
     avail_keys = {
         "kpoints": __read_xml_kpoints,
-        }
+    }
     if not datakey:
         _logger.warning("no identifier specified in XML")
         return objects
@@ -218,14 +222,17 @@ def read_xml(*datakey, path: str = "vasprun.xml") -> dict:
             raise ValueError("datakey {} is not supported for vasp xml parser".format(key)) from err
     return objects
 
+
 def __read_xml_dos(xml: BeautifulSoup):
     """get the density of states from xml"""
+
 
 def __read_xml_kpoints(xml: BeautifulSoup):
     """get the kpoints from xml"""
     kpts = "".join(k.string for k in xml.find(name="varray", attrs={"name": "kpointlist"}))
     kpts = np.loadtxt(StringIO(kpts))
     return kpts
+
 
 def _dict_read_eigen(path="EIGENVAL") -> dict:
     """read band structure from EIGENVAL
@@ -258,20 +265,23 @@ def _dict_read_eigen(path="EIGENVAL") -> dict:
     kptw = np.zeros((nkpts, 4))
 
     for ik in range(nkpts):
-        start = ik * (nbands+2) + 1
+        start = ik * (nbands + 2) + 1
         kptw[ik, :] = np.array(lines[start].split())
         eigen[:, ik, :], occ[:, ik, :] = \
-            __read_kpt_data(lines[start+1:start+1+nbands], nspins=nspins)
+            __read_kpt_data(lines[start + 1:start + 1 + nbands], nspins=nspins)
     if nspins == 1:
         occ *= 2.0
-    d = {"eigen": eigen,
-         "occ": occ,
-         "weight": kptw[:, 3],
-         "kpoints": kptw[:, :3],
-         "natms": natms,}
+    d = {
+        "eigen": eigen,
+        "occ": occ,
+        "weight": kptw[:, 3],
+        "kpoints": kptw[:, :3],
+        "natms": natms,
+    }
     return d
 
-def read_eigen(path: str="EIGENVAL", filter_k_before: int=0, filter_k_behind: int=None):
+
+def read_eigen(path: str = "EIGENVAL", filter_k_before: int = 0, filter_k_behind: int = None):
     """read band structure from EIGENVAL
 
     Args:
@@ -293,7 +303,9 @@ def read_eigen(path: str="EIGENVAL", filter_k_before: int=0, filter_k_behind: in
     kpoints = kpoints[filter_k_before:filter_k_behind, :]
     return BandStructure(eigen, occ, weight), natms, kpoints
 
+
 read_poscar = Cell.read_vasp
+
 
 class WaveCar:
     """object to read Wavecar
@@ -305,10 +317,11 @@ class WaveCar:
     """
     known_nprec = {
         45200: ('complex64', 16, False),
-        #45210: ('complex128', 32, False),
-        #53300: ('complex64', 16, True),
-        #53310: ('complex128', 32, True),
-        }
+        # 45210: ('complex128', 32, False),
+        # 53300: ('complex64', 16, True),
+        # 53310: ('complex128', 32, True),
+    }
+
     def __init__(self, pwavecar: Path):
         _logger.info("reading wavecar: %s", str(pwavecar))
         with open(pwavecar, 'rb') as h:
@@ -326,7 +339,7 @@ class WaveCar:
         # 12 double: nkpts, nbands, encut, latt 3x3
         with open(self.pwavecar, 'rb') as h:
             h.seek(self._recl)
-            data = struct.unpack('d'*12, h.read(96))
+            data = struct.unpack('d' * 12, h.read(96))
             self._nkpts, self._nbands = map(int, data[:2])
             self._encut = data[2]
             self.latt = np.array(data[3:]).reshape((3, 3))
@@ -402,12 +415,13 @@ class WaveCar:
         with open(self.pwavecar, 'rb') as h:
             for ispin, ikpt in product(*map(range, [self._nspins, self._nkpts])):
                 h.seek(self._seek_record(ispin, ikpt, iband=-1))
-                data = struct.unpack('d'*n, h.read(8*n))
+                data = struct.unpack('d' * n, h.read(8 * n))
                 nplanes.append(int(data[0]))
                 kpts.append(data[1:4])
                 eigen.extend(data[4::interval])
-                occ.extend(data[3+interval::interval])
-        eigen = np.array(eigen).reshape((self._nspins, self._nkpts, self._nbands))
+                occ.extend(data[3 + interval::interval])
+        eigen = np.array(eigen).reshape(
+            (self._nspins, self._nkpts, self._nbands))
         occ = np.array(occ).reshape((self._nspins, self._nkpts, self._nbands))
         nplanes = np.array(nplanes).reshape((self._nspins, self._nkpts))
         self._bs = BandStructure(eigen, occ)
@@ -449,7 +463,7 @@ class WaveCar:
             self._fhandle = open(self.pwavecar, 'rb')
         self._fhandle.seek(self._seek_record(ispin, ikpt, iband))
         nplane = self.nplanes[ispin, ikpt]
-        data = self._fhandle.read(nplane*self.width)
+        data = self._fhandle.read(nplane * self.width)
         coef = np.frombuffer(data, dtype=self._dtype, count=nplane)
         if cache:
             self._coeffs[(ispin, ikpt, iband)] = coef
@@ -488,7 +502,7 @@ class WaveCar:
         # here 1 stands for the information line of each kpt
         index = self._blk_ispin * ispin + self._blk_ikpt * ikpt + iband + 1
         # here 2 stands for the first two lines of size and lattice information
-        return (index+2)*self._recl
+        return (index + 2) * self._recl
 
 
 class ChgLike:
@@ -496,6 +510,7 @@ class ChgLike:
 
     In these files, the charge data are recorded in F order, i.e. x fastest.
     """
+
     def __init__(self, cell: Cell, rawdata):
         self._cell = cell
         self.shape = np.shape(rawdata)
@@ -541,11 +556,12 @@ class ChgLike:
                     voxel_vecs=voxel_vecs,
                     atms=self._cell.atms,
                     posi=self._cell.posi,
-                    origin=[0.,0.,0.], unit="ang",
+                    origin=[0., 0., 0.], unit="ang",
                     )
         if was_d:
             self._cell.coord_sys = "D"
         return cube.export()
+
 
 def read_chg(pchg: Path):
     """read a CHG/CHGCAR file and return a ChgLike object"""
@@ -564,10 +580,9 @@ def read_chg(pchg: Path):
         # check columns, since CHG has 10 while CHGCAR has 5
         ncols = len(lines[0].split())
         size = np.prod(shape)
-        lines = lines[:size//ncols + 1]
+        lines = lines[:size // ncols + 1]
         datastring = StringIO(" ".join(x.strip() for x in lines))
         data = np.loadtxt(datastring)
         rawdata = data.reshape(shape, order='F')
         return ChgLike(cell, rawdata)
     raise IOError("fail to read charge file {}".format(pchg))
-
