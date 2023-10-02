@@ -7,6 +7,12 @@ from numpy import cos, sin
 from mushroom.core.typehint import Latt3T3
 from mushroom.core.constants import PI
 from mushroom.core.logger import loggers
+from mushroom.core.ioutils import raise_no_module
+
+try:
+    import spglib
+except ImportError:
+    spglib = None
 
 _logger = loggers["cryutil"]
 
@@ -279,3 +285,36 @@ def axis_list(axis) -> tuple:
                 if _a in range(1, 4):
                     _aList.append(_a)
     return tuple(_aList)
+
+
+SPGNUMBER2NAME = {
+    186: "Wurtzite",
+    216: "Zincblende",
+    223: "Weaire–Phelan",
+    225: "Rock-salt",
+}
+
+
+def display_symmetry_info(latt, posi, atms):
+    """display the symmetry of the input crystal cell"""
+    raise_no_module(spglib, "spglib")
+    ds = spglib.get_symmetry_dataset((latt, posi, atms))
+    spg_number = ds["number"]
+    if spg_number in SPGNUMBER2NAME:
+        info_spacegroup = "{} (#{}, {})".format(ds["international"], spg_number, SPGNUMBER2NAME[spg_number])
+    else:
+        info_spacegroup = "{} (#{})".format(ds["international"], spg_number)
+    print("Space group:", info_spacegroup)
+    print("Point group:", ds["pointgroup"])
+    print("Hall: {} (#{})".format(ds["hall"], ds["hall_number"]))
+    # ds["choice"]
+    # ds["transformation_matrix"]
+    # ds["origin shift"]
+    # ds["wyckoffs"]
+    # ds["site_symmetry_symbols"]
+    # ds["equivalent_atoms"]
+    # ds["crystallographic_orbits"]
+    # ds["primitive_lattice"]
+    # ds["mapping_to_primitive"]
+    # ds["rotations"]
+    # ds["translations"]
