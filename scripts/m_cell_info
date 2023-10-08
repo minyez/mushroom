@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 """Show the symmetry of input structure"""
 import argparse
+try:
+    import spglib
+except ImportError:
+    spglib = None
 
 from mushroom.core.cell import Cell
-from mushroom.core.crystutils import display_symmetry_info
+from mushroom.core.crystutils import display_symmetry_info, get_density
+
 
 def _parser():
     """the parse"""
@@ -17,4 +22,8 @@ def _parser():
 if __name__ == '__main__':
     args = _parser().parse_args()
     cell = Cell.read(args.input_cell, form=args.input_format)
-    display_symmetry_info(*(cell.get_spglib_input()))
+    density_n, density_m = get_density(cell.latt, cell.atms, latt_unit=cell.unit)
+    print("Number density (per ang^3):", density_n)
+    print("Mass density (kg per m^3):", density_m)
+    if spglib is not None:
+        display_symmetry_info(*(cell.get_spglib_input()))

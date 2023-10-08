@@ -90,7 +90,7 @@ def m_aims_control():
             c.update_tag(*_handle_tag_pair(t))
     if args.output_tags is not None:
         for t in args.output_tags:
-            c.update_output(*_handle_tag_pair(t))
+            c.update_output_tag(*_handle_tag_pair(t))
     if args.species_tags is not None:
         for t in args.species_tags:
             c.update_species_basic_tag(*_handle_elem_tag_pair(t))

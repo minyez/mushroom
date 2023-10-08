@@ -150,14 +150,18 @@ class Control:
     """
 
     basic_tags_ref_json = os.path.join(os.path.dirname(__file__), "aims_tagsref.json")
+
     with open(basic_tags_ref_json, 'r') as h:
         basic_tags_ref = json.load(h)
 
-    def __init__(self, tags: Dict = None, output: Dict = None, species: List[Species] = None):
-        self.tags = tags
-        self.output = output
+    def __init__(self, tags: Dict = None, output_tags: Dict = None, species: List[Species] = None):
+        self.tags = {}
+        self.update_tags(tags)
+        self.output = {}
+        self.update_output_tags(output_tags)
         self.species = species
         self._if_species_changed = False
+        self._elements = []
         if self.species is not None:
             self._elements = [s.elem for s in self.species]
 
@@ -231,27 +235,27 @@ class Control:
         for k, v in tags.items():
             self.update_tag(k, v)
 
-    def update_output(self, output_tag, value):
+    def update_output_tag(self, output_tag, value):
         """update the output tag value
 
         Args:
             output_tag (str): the output tag to be updated
-            value (str-able): the new value of the output tag
-                set to False or None to delete the tag
+            value: the new value of the output tag
+                set to None to delete the tag
         """
-        if value:
-            try:
-                v = {True: ""}.get(value, str(value))
-                self.output[output_tag] = v
-                _logger.info("output tag '%s' updated to: %s", output_tag, v)
-            except ValueError as _e:
-                raise ValueError(f"cannot turn value into string: {value}") from _e
-        else:
+        if value is None:
             try:
                 _logger.info("removed output 'tag' %s, original value: %s", output_tag,
                              self.output.pop(output_tag))
             except KeyError:
                 _logger.info("output tag '%s' to remove is not defined, skip", output_tag)
+            return
+        self.output[output_tag] = value
+
+    def update_output_tags(self, output_tags: Dict):
+        """collective update output tag values"""
+        for k, v in output_tags.items():
+            self.update_output_tag(k, v)
 
     def update_species_basic_tag(self, elem, tag, value):
         """update the species basic tag of element ``elem``
@@ -370,8 +374,10 @@ class Control:
                 _logger.warning("%s, will replace", info)
                 self.replace_specie(s)
             else:
+                if self.species is None:
+                    self.species = []
                 self.species.append(s)
-                self._if_species_changed = True
+            self._if_species_changed = True
 
     def add_default_species(self, directory: str, *elems,
                             error_replace: bool = True,

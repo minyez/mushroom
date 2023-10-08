@@ -23,6 +23,7 @@ rsync_cmd = ["rsync", "-qazrul", "--inplace"]
 tar_cmd = ["tar", "-zxp"]
 homerc = pathlib.Path("~/.mushroomrc").expanduser().resolve()
 
+
 def rsync_and_untar(tarball: pathlib.PosixPath, remote_ip: str, dirpath: str,
                     verbose: bool = False):
     """distribute mushroom tarball to dirpath on remote_ip by rsync"""
@@ -37,7 +38,7 @@ def rsync_and_untar(tarball: pathlib.PosixPath, remote_ip: str, dirpath: str,
 
     try:
         # following cmds create bash error: No such file or directory
-        #cmds = ["ssh", remote_ip] + ["\"cd", dirpath + ";"] + tar_cmd + ["-f", tarball.name, "\""]
+        # cmds = ["ssh", remote_ip] + ["\"cd", dirpath + ";"] + tar_cmd + ["-f", tarball.name, "\""]
         cmds = ["ssh", remote_ip] + tar_cmd + \
                ["-f", "{}/{}".format(dirpath, tarball.name), "-C", dirpath]
         if verbose:
@@ -46,6 +47,7 @@ def rsync_and_untar(tarball: pathlib.PosixPath, remote_ip: str, dirpath: str,
     except sp.CalledProcessError:
         warnings.warn("fail to extract {} at {}:{}".format(tarball.name, remote_ip, dirpath))
     print("Done rsyncing", str(tarball), "to", "{}:{}".format(remote_ip, dirpath))
+
 
 def rsync_rc(remote_ip: str, verbose: bool = False):
     """distribute home rc file to remote_ip"""
@@ -58,6 +60,7 @@ def rsync_rc(remote_ip: str, verbose: bool = False):
     except sp.CalledProcessError:
         warnings.warn("fail to rsync home rcfile to {}:~/".format(remote_ip))
     print("Done rsyncing homerc to", "{}:~/.mushroomrc".format(remote_ip))
+
 
 def _parser():
     """the parser"""
@@ -79,11 +82,9 @@ def dist_rsync():
     tarball = args.tarball
     if not tarball:
         if args.test:
-            tarball = pathlib.Path(__file__).parent \
-                      / ".." / "dist" / "mushroom-{}-test.tar.gz".format(__version__)
+            tarball = pathlib.Path(__file__).parent / ".." / "dist" / "mushroom-{}-test.tar.gz".format(__version__)
         else:
-            tarball = pathlib.Path(__file__).parent \
-                      / ".." / "dist" / "mushroom-{}.tar.gz".format(__version__)
+            tarball = pathlib.Path(__file__).parent / ".." / "dist" / "mushroom-{}.tar.gz".format(__version__)
     else:
         tarball = pathlib.Path(tarball)
     if not tarball.is_file or not tarball.name.endswith(".tar.gz"):
@@ -105,4 +106,3 @@ def dist_rsync():
 
 if __name__ == "__main__":
     dist_rsync()
-

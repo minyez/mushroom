@@ -45,6 +45,8 @@ def _parser():
     )
     p.add_argument("--transparent", action="store_true",
                    help="Set background of Grace graph to transparent")
+    p.add_argument("-v", "--value", dest="value_only", action="store_true",
+                   help="show values only when displaying band")
 
     g = p.add_mutually_exclusive_group()
     g.add_argument("--skbz", dest="isikib_zero", default=None, type=str,
@@ -73,7 +75,7 @@ def m_aims_band():
     nbands = bs.nbands
     c = Cell.read(args.geometry, form="aims")
 
-    display_band_analysis(bs, kpts)
+    display_band_analysis(bs, kpts, value_only=args.value_only)
     if args.data_only:
         return
     ref = 0.0

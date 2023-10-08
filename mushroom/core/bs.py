@@ -1065,9 +1065,16 @@ def display_band_analysis(bs: BandStructure, kpts=None, unit="eV", value_only=Fa
                           .format(eg_dir, unit, ik_eg_dir, *kpts[ik_eg_dir, :]))
         else:
             if bs.is_gap_direct():
-                print("{:8.4f}".format(eg_dir))
+                if kpts is None:
+                    print("{:8.4f}".format(eg_dir))
+                else:
+                    print("{:8.4f} ({:f},{:f},{:f})".format(eg_dir, *kpts[ik_eg_dir, :]))
             else:
-                print("{:8.4f} {:8.4f} {:8.4f}".format(eg_ind, direct_gaps[ik_vb], direct_gaps[ik_cb]))
+                if kpts is None:
+                    print("{:8.4f} {:8.4f} {:8.4f}".format(eg_ind, direct_gaps[ik_vb], direct_gaps[ik_cb]))
+                else:
+                    print("{:8.4f} {:8.4f} {:8.4f} ({:f},{:f},{:f}) ({:f},{:f},{:f})"
+                          .format(eg_ind, direct_gaps[ik_vb], direct_gaps[ik_cb], *kpts[ik_vb], *kpts[ik_cb]))
         bs.unit = was_unit
     except BandStructureError as err:
         raise BandStructureError("fail to display band analysis") from err

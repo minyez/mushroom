@@ -3,6 +3,7 @@
 """utilities related to k-mesh"""
 from itertools import product
 from collections.abc import Iterable
+from typing import List, Tuple
 import numpy as np
 try:
     import spglib
@@ -216,3 +217,8 @@ def uniform_int_kmesh(nk1: int, nk2: int, nk3: int,
         return ikmesh + 0.5 * np.array(shift)
     except ValueError as err:
         raise ValueError("expected Iterable for shift, got %s" % type(shift)) from err
+
+
+def join_ksymbol_strings(ksymbols_segments: List[Tuple[str, str]]) -> List[str]:
+    """
+    """

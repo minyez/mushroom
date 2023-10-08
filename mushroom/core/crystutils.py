@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 """Utilities for processing crystall-related quantities"""
 from copy import deepcopy
-from typing import List, Iterable, Tuple
+from typing import List, Iterable, Tuple, Union
 import numpy as np
 from numpy import cos, sin
 from mushroom.core.typehint import Latt3T3
-from mushroom.core.constants import PI
+from mushroom.core.constants import PI, AU2ANG, NAV
+from mushroom.core.elements import get_atomic_weight
 from mushroom.core.logger import loggers
 from mushroom.core.ioutils import raise_no_module
 
@@ -20,6 +21,11 @@ _logger = loggers["cryutil"]
 def get_recp_latt(latt: Latt3T3):
     """get the reciprocal lattice vectors from the real vectors"""
     return np.cross(latt[(1, 2, 0), :], latt[(2, 0, 1), :]) / np.linalg.det(latt) * 2.0E0 * PI
+
+
+def get_volume(latt: Latt3T3):
+    """get the volume from the real vectors"""
+    return np.linalg.det(latt)
 
 
 def get_latt_vecs_from_latt_consts(a: float, b: float, c: float,
@@ -293,6 +299,29 @@ SPGNUMBER2NAME = {
     223: "Weaire–Phelan",
     225: "Rock-salt",
 }
+
+
+def get_density(latt: Latt3T3, atms: List[Union[int, str]], latt_unit: str = "ang") -> Tuple[float, float]:
+    """get the number and mass density of the crystal
+
+    Args:
+        latt: lattice vectors
+        atms: atomic symbol or number of each atom in the cell
+        latt_unit (str): the unit of length of the input lattice vectors
+
+    Returns:
+        2 floats, number (in ang^-3) and mass (in kg m^-3) density
+    """
+    vol = get_volume(latt)
+    density_n = len(atms) / vol
+    mass = 0.0
+    for elem in set(atms):
+        mass += get_atomic_weight(elem) * atms.count(elem)
+    density_m = mass / vol * 10**30 / 10**3 / NAV
+    if latt_unit == "au":
+        density_n /= AU2ANG ** 3
+        density_m /= AU2ANG ** 3
+    return density_n, density_m
 
 
 def display_symmetry_info(latt, posi, atms):

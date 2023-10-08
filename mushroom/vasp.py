@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 """utilities of vasp"""
+import os
 import struct
 from io import StringIO
-from os.path import realpath
+from copy import deepcopy
 from itertools import product
-from typing import Tuple
+from typing import Tuple, List, Union
 import pathlib
 
 import numpy as np
@@ -57,7 +58,7 @@ def _dict_read_doscar(path: str = "DOSCAR",
         # first convert to (nedos, nspins, nprjs), then switch the first two axis
         return data.reshape((nedos, nspins, nprjs), order='F').swapaxes(0, 1)
 
-    _logger.info("Reading DOSCAR from %s", realpath(path))
+    _logger.info("Reading DOSCAR from %s", os.path.realpath(path))
     with open(path, 'r') as h:
         lines = [l.split() for l in h.readlines()]
     natms = int(lines[0][0])
@@ -586,3 +587,112 @@ def read_chg(pchg: Path):
         rawdata = data.reshape(shape, order='F')
         return ChgLike(cell, rawdata)
     raise IOError("fail to read charge file {}".format(pchg))
+
+
+class KPoints:
+    """handling the KPOINTS file
+
+    Args:
+        mode: the mode of KPOINTS file. Available options:
+            - "band_recp": band path in unit of reciprocal lattice vector
+            - "band_cart": band path in unit of inverse cartisian
+            - "A": fully automatic grid (Gamma-centered MP with k-point density)
+            - "G": M-P even grids, centered on Gamma
+            - "M": M-P even grids, shifted from Gamma
+        kpaths: a list of paths in BZ. Each member as a tuple/list, containing
+            [coord_start, coord_end, symbol_start, symbol_end].
+            coord_start/end are strings, while symbol_start/end can be string or None.
+    """
+    modes_avail = {
+        "band_recp": ["_kpaths", "_ngrids_kpath"],
+        "band_cart": ["_kpaths", "_ngrids_kpath"],
+        "A": ["_kdense",],
+        "G": ["_nkgrids", "_kshifts"],
+        "M": ["_nkgrids", "_kshifts"],
+    }
+
+    def __init__(self, mode: str,
+                 nkgrids: Tuple[int] = None,
+                 kshifts: Tuple[int] = None,
+                 kdense: int = None,
+                 kpts: List[Tuple[float]] = None,
+                 kpaths: List[Tuple[str, str, Union[str, None], Union[str, None]]] = None,
+                 ngrids_kpath: int = None,
+                 comment: str = None):
+        self._mode = mode
+        self._nkgrids = nkgrids
+        self._kshifts = kshifts
+        self._kdense = kdense
+        self._kpts = kpts
+        self._kpaths = kpaths
+        self._ngrids_kpath = ngrids_kpath
+        self._comment = comment
+        self._check_attr_consistency()
+
+    def _check_attr_consistency(self):
+        """check the consistency"""
+        if self._mode not in self.modes_avail:
+            raise ValueError
+        for attr in self.modes_avail.get(self._mode):
+            if self.__getattribute__(attr) is None:
+                raise ValueError("Required attribute {} is not parsed".format(attr[1:]))
+
+    def export(self):
+        """export to string"""
+        raise NotImplemented
+
+    @classmethod
+    def read(cls, path_kpoints: Union[os.PathLike, str] = "KPOINTS"):
+        """read from a KPOINTS file ``path_kpoints``
+
+        Args:
+            path_kpoints (path-like)
+        """
+        with open(path_kpoints, 'r') as h:
+            lines = h.readlines()
+        comment = lines[0].strip()
+        # remove the comment line
+        ngrids = int(lines[1])
+        # automatic mode of Monkhorst-Pack grid
+        if ngrids == 0:
+            mode = lines[2][0].upper()
+            nkgrids = None
+            kshifts = None
+            kdense = None
+            if mode in ["G", "M"]:
+                nkgrids = list(map(int, lines[3].split()))
+                kshifts = list(map(int, lines[4].split()))
+            elif mode == "A":
+                kdense = int(lines[3].strip())
+            else:
+                raise ValueError("Unknown mode {} from input {}".format(mode, path_kpoints))
+            return cls(mode, nkgrids=nkgrids, kshifts=kshifts, kdense=kdense, comment=comment)
+
+        # line mode or explicit mode
+        if lines[2].strip().lower().startswith("l"):  # "line"
+            if lines[3].strip().lower().startswith("r"):  # "rec"
+                mode = "band_recp"
+            elif lines[3].strip().lower().startswith("c"):  # "rec"
+                mode = "band_cart"
+            else:
+                raise ValueError("line mode not supported: {}".format(path_kpoints))
+            lines = lines[4:]
+            kpaths = []
+            for l in lines:
+                if l.strip() == "":
+                    continue
+                kpt = l.replace("!", "").split()
+                if len(kpt) == 3:
+                    kpaths.append([" ".join(kpt), None])
+                elif len(kpt) == 4:
+                    kpaths.append([" ".join(kpt[:3]), kpt[3]])
+                else:
+                    raise ValueError("Invalid kpoint end: {}".format(l))
+            # check odd number of end points
+            if len(kpaths) % 2 == 1:
+                raise ValueError("Odd number of kpoint ends, check input: {}".format(path_kpoints))
+            kpaths = [[
+                kpaths[i][0], kpaths[i + 1][0], kpaths[i][1], kpaths[i + 1][1]
+            ] for i in range(0, len(kpaths), 2)]
+            return cls(mode, kpaths=kpaths, ngrids_kpath=ngrids, comment=comment)
+        raise IOError("Error when reading {}".format(path_kpoints))
