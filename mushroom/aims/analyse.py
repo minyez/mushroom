@@ -4,7 +4,11 @@ import os
 import pathlib
 from typing import Union
 
+from mushroom.core.logger import loggers
 from mushroom.aims.stdout import StdOut
+
+
+_logger = loggers["aims"]
 
 
 def display_dimensions(aimsout):

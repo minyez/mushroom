@@ -8,7 +8,7 @@ import numpy as np
 
 from mushroom.aims.band import read_band_output
 from mushroom.aims.input import Control, get_path_ksymbols
-from mushroom.core.bs import display_band_analysis, resolve_band_crossing
+from mushroom.core.bs import display_band_analysis, display_transition_energies, resolve_band_crossing
 from mushroom.core.cell import Cell
 from mushroom.core.kpoints import KPathLinearizer
 from mushroom.core.ioutils import get_filename_wo_ext, decode_float_ends, decode_int_ends
@@ -45,6 +45,8 @@ def _parser():
     )
     p.add_argument("--transparent", action="store_true",
                    help="Set background of Grace graph to transparent")
+    p.add_argument("-t", dest="trans", type=str, default=None, nargs="+",
+                   help="transitions of interest, in the form of 'ivk:ick'")
     p.add_argument("-v", "--value", dest="value_only", action="store_true",
                    help="show values only when displaying band")
 
@@ -55,6 +57,8 @@ def _parser():
                    help="use Fermi energy as energy zero")
     g.add_argument("--vbmz", dest="vbm_zero", action="store_true",
                    help="use VBM as energy zero")
+    g.add_argument("--cbmz", dest="cbm_zero", action="store_true",
+                   help="use CBM as energy zero")
     p.add_argument("--ef", dest="efermi", type=float, default=None,
                    help="Fermi energy")
     g = p.add_mutually_exclusive_group()
@@ -76,11 +80,16 @@ def m_aims_band():
     c = Cell.read(args.geometry, form="aims")
 
     display_band_analysis(bs, kpts, value_only=args.value_only)
+    if args.trans is not None:
+        display_transition_energies(args.trans, bs, kpts, value_only=args.value_only)
+
     if args.data_only:
         return
     ref = 0.0
     if args.vbm_zero:
         ref = bs.vbm
+    if args.cbm_zero:
+        ref = bs.cbm
     if args.fermi_zero:
         ref = bs.efermi
     if args.isikib_zero:

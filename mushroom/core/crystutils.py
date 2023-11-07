@@ -324,7 +324,7 @@ def get_density(latt: Latt3T3, atms: List[Union[int, str]], latt_unit: str = "an
     return density_n, density_m
 
 
-def display_symmetry_info(latt, posi, atms):
+def display_symmetry_info(latt, posi, atms, n_sym_cols: int = 4):
     """display the symmetry of the input crystal cell"""
     raise_no_module(spglib, "spglib")
     ds = spglib.get_symmetry_dataset((latt, posi, atms))
@@ -336,6 +336,28 @@ def display_symmetry_info(latt, posi, atms):
     print("Space group:", info_spacegroup)
     print("Point group:", ds["pointgroup"])
     print("Hall: {} (#{})".format(ds["hall"], ds["hall_number"]))
+    print("Symmetry operations")
+    fmtstr = "{:2s} {:2d} {:2d} {:2d} | {:.2f}"
+    rowsep = "-" * 18
+    rowsep = (rowsep + "  ") * (n_sym_cols - 1) + rowsep
+    print(rowsep)
+    nsyms = len(ds["rotations"])
+    nrows = nsyms // n_sym_cols + int(nsyms % n_sym_cols != 0)
+
+    def p(*s):
+        print(*s, sep="  ")
+
+    for irow in range(nrows):
+        rots = ds["rotations"][irow * n_sym_cols:(irow + 1) * n_sym_cols]
+        trans = ds["translations"][irow * n_sym_cols:(irow + 1) * n_sym_cols]
+        p(*[fmtstr.format("", *rot[0, :], tran[0])
+            for rot, tran in zip(rots, trans)])
+        p(*[fmtstr.format(str(i + 1 + irow * n_sym_cols), *rot[1, :], tran[1])
+            for i, (rot, tran) in enumerate(zip(rots, trans))])
+        p(*[fmtstr.format("", *rot[2, :], tran[2])
+            for rot, tran in zip(rots, trans)])
+        print(rowsep)
+
     # ds["choice"]
     # ds["transformation_matrix"]
     # ds["origin shift"]
@@ -345,5 +367,3 @@ def display_symmetry_info(latt, posi, atms):
     # ds["crystallographic_orbits"]
     # ds["primitive_lattice"]
     # ds["mapping_to_primitive"]
-    # ds["rotations"]
-    # ds["translations"]
