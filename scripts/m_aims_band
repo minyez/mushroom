@@ -38,6 +38,9 @@ def _parser():
                    help="range of bands to plot, e.g. ~m2 for bands except the highest two")
     p.add_argument("--resolve", nargs="+", default=None, type=str,
                    help="resolve band crossing, e.g. 5,6,7")
+    p.add_argument("--no-band-line", action="store_true", help="do not draw band lines, use marker")
+    p.add_argument("--marker", default="none", help="marker")
+    p.add_argument("--ms", dest="marker_size", default=1.0, help="marker size")
     p.add_argument(
         "--resolve-dthres",
         dest="deriv_thres", nargs="+", default=None, type=float,
@@ -115,7 +118,13 @@ def m_aims_band():
             bands_tuple = tuple(map(int, resband.split(',')))
             eigen[:, bands_tuple] = resolve_band_crossing(kp.x, eigen[:, bands_tuple], deriv_thres=thres)
 
-    ax.plot(kp.x, eigen.transpose() - ref, color="k", symbol="none")
+    marker = args.marker
+    ls = None
+    if args.no_band_line:
+        ls = "none"
+        if marker == "none":
+            marker = "o"
+    ax.plot(kp.x, eigen.transpose() - ref, color="k", symbol=marker, ls=ls, ssize=args.marker_size)
     ax.x.set_major(grid=True, size=0.0, color="grey", lw=3, ls="longdashed")
     ksymbols = None
     if args.ksymbols is not None:

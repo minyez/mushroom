@@ -2,15 +2,18 @@
 """wrapper and help functions for matplotlib.pyplot"""
 try:
     import matplotlib as mpl
-    import matplotlib.pyplot as plt
 except ImportError:
     mpl = None
+
+try:
+    import matplotlib.pyplot as plt
+except ImportError:
     plt = None
 
 from mushroom.core.ioutils import raise_no_module
 
 
-def rc_gracify(transparent: bool = False, dpi: int = 300):
+def rc_gracify(transparent: bool = False, dpi: int = 300, cmap: str = "RdBu"):
     """setup rcParams to mimic the style of XmGrace"""
     raise_no_module(plt, "matplotlib")
     plt.rcParams["font.family"] = ["serif",] + plt.rcParams["font.family"]
@@ -25,7 +28,7 @@ def rc_gracify(transparent: bool = False, dpi: int = 300):
     plt.rcParams["savefig.dpi"] = dpi
     plt.rcParams["savefig.transparent"] = transparent
     plt.rcParams["axes.linewidth"] = 1.5
-    plt.rcParams["image.cmap"] = "RdBu"
+    plt.rcParams["image.cmap"] = cmap
     plt.rcParams["font.size"] = 16
     plt.rcParams["lines.markersize"] = 12
     plt.rcParams["xtick.major.size"] *= 1.5     # major tick size in points
