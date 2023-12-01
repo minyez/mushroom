@@ -23,6 +23,7 @@
             "packed_matrix_threshold": [],
             "use_logsbt": [],
             "global_memory_tracking": [],
+            "use_full_spectrum": [],
             "calculate_all_eigenstates": []
         }
     },
@@ -115,13 +116,16 @@
         "tags":
         {
             "qpe_calc": [],
+            "qpe_solver": [],
             "restart_periodic_gw": [],
             "state_upper_limit": [],
             "state_lower_limit": [],
+            "state_limits_ewin": [],
             "anacon_type": [],
             "n_anacon_par": [],
             "freq_grid_type": [],
             "frequency_points": [],
+            "periodic_gw_optimize": [],
             "periodic_gw_optimize_kgrid_symmetry": [],
             "periodic_gw_optimize_use_gpu": [],
             "periodic_gw_optimize_single_precision": [],
