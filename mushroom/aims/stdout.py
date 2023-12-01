@@ -97,7 +97,7 @@ class StdOut:
 
         # determine the version before dividing regions
         for l in lines:
-            if l.startswith("  FHI-aims version"):
+            if l.startswith("  FHI-aims version") or l.startswith("          Version "):
                 self._aims_version = l.split()[-1]
                 break
         if self._aims_version is None:

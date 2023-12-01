@@ -139,17 +139,18 @@ def m_aims_band():
             raise ValueError("%s does not include output band" % args.ksymbols_cf)
         ksymbols = get_path_ksymbols(band_c_ksym)
 
-    if len(kp.special_x) != len(ksymbols):
+    if ksymbols is not None and len(kp.special_x) != len(ksymbols):
         raise ValueError("Number of k segments different from number of symbols! Contact developer")
 
     ax.x.set_spec(kp.special_x, labels=ksymbols)
     # check non-continuous special kx
     x_break = []
     ksym_break = []
-    for x, ksym in zip(kp.special_x, ksymbols):
-        if "|" in ksym:
-            x_break.append(x)
-            ksym_break.append(ksym)
+    if ksymbols is not None:
+        for x, ksym in zip(kp.special_x, ksymbols):
+            if "|" in ksym:
+                x_break.append(x)
+                ksym_break.append(ksym)
     if len(ksym_break) > 0:
         ax.altx.set(switch="on")
         ax.altx.set_bar(switch="off")
