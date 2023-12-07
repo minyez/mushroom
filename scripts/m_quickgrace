@@ -47,6 +47,9 @@ def _parser():
                    help="output agr filename")
     p.add_argument("-d", dest="delimiter", type=str, default=None,
                    help="delimiter parsed to numpy.loadtxt")
+    p.add_argument("--no-label", action="store_true",
+                   help="insert legend to dataset comment, not to label")
+
     # data column options
     d = p.add_mutually_exclusive_group()
     d.add_argument("-x", dest="ix", type=int, help="xcol", default=0)
@@ -120,39 +123,51 @@ def m_quickgrace():
             if ncols == 1:
                 if args.sort:
                     data_cols[0].sort()
-                label = next(legends)
-                ax.plot(list(range(1, len(data_cols[0]) + 1)), data_cols[0], label=label, **kwargs)
+                legend = next(legends)
+                label = legend
+                if args.no_label:
+                    label = None
+                ax.plot(list(range(1, len(data_cols[0]) + 1)), data_cols[0], label=label, comment=legend, **kwargs)
                 continue
             if args.xy is not None:
                 for xy in args.xy:
                     ix, iy = tuple(map(int, xy.split(':')))
-                    label = next(legends)
-                    if label is None:
-                        label = "{}:{}".format(ix, iy)
-                    ax.plot(data_cols[ix], data_cols[iy], label=label, comment=label,
+                    legend = next(legends)
+                    if legend is None:
+                        legend = "{}:{}".format(ix, iy)
+                    label = legend
+                    if args.no_label:
+                        label = None
+                    ax.plot(data_cols[ix], data_cols[iy], label=label, comment=legend,
                             **kwargs)
                 continue
             if args.xyz is not None:
                 for xyz in args.xyz:
                     ix, iy, iz = tuple(map(int, xyz.split(':')))
-                    label = next(legends)
-                    if label is None:
-                        label = "{}:{}:".format(ix, iy, iz)
-                    ax.plot(data_cols[ix], data_cols[iy], data_cols[iz], label=label, comment=label,
+                    legend = next(legends)
+                    if legend is None:
+                        legend = "{}:{}:".format(ix, iy, iz)
+                    label = legend
+                    if args.no_label:
+                        label = None
+                    ax.plot(data_cols[ix], data_cols[iy], data_cols[iz], label=label, comment=legend,
                             **kwargs)
                 continue
             for iy in range(ncols):
                 # skip plotting against itself
                 if iy == args.ix:
                     continue
-                label = next(legends)
-                if label is None:
-                    label = "{}:{}".format(args.ix, iy)
+                legend = next(legends)
+                if legend is None:
+                    legend = "{}:{}".format(args.ix, iy)
                 if args.leg_add_fn:
-                    label = "{}:{}:{}".format(fn, args.ix, iy)
+                    legend = "{}:{}:{}".format(fn, args.ix, iy)
                 if args.leg_fn_only:
-                    label = fn
-                ax.plot(data_cols[args.ix], data_cols[iy], label=label, comment=label, **kwargs)
+                    legend = fn
+                label = legend
+                if args.no_label:
+                    label = None
+                ax.plot(data_cols[args.ix], data_cols[iy], label=label, comment=legend, **kwargs)
 
     if args.xrange is not None:
         ax.set_xlim(*decode_float_ends(args.xrange))
