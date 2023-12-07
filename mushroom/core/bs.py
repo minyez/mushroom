@@ -1144,7 +1144,11 @@ def display_transition_energies(trans: Sequence[str],
                     print(">> {:8.4f} {:<3d} ({:7.4f},{:7.4f},{:7.4f}) -> {:<3d} ({:7.4f},{:7.4f},{:7.4f})"
                           .format(et, ivk, *kpts[ivk, :], ick, *kpts[ick, :]))
             else:
-                print("{:8.4f}".format(et), end="")
+                if kpts is None:
+                    print("{:8.4f}".format(et))
+                else:
+                    print("{:8.4f} ({:f},{:f},{:f}) ({:f},{:f},{:f})"
+                          .format(et, *kpts[ivk, :], *kpts[ick, :]))
         if value_only:
             print("")
         bs.unit = was_unit
