@@ -51,6 +51,7 @@ def _parser():
     d = p.add_mutually_exclusive_group()
     d.add_argument("-x", dest="ix", type=int, help="xcol", default=0)
     d.add_argument("--xy", nargs="+", type=str, help="xcol:ycol")
+    d.add_argument("--xyz", nargs="+", type=str, help="xcol:ycol:zcol")
     # sort options
     s = p.add_mutually_exclusive_group()
     s.add_argument("--sort", action="store_true",
@@ -112,7 +113,7 @@ def m_quickgrace():
             # no data
             if ncols == 0:
                 continue
-            kwargs = {"comment": fn, "symbol": args.symbol,
+            kwargs = {"symbol": args.symbol,
                       "lw": args.linewidth,
                       "color": args.color}
             # only one data column, plot it against index (starting from 1)
@@ -129,6 +130,15 @@ def m_quickgrace():
                     if label is None:
                         label = "{}:{}".format(ix, iy)
                     ax.plot(data_cols[ix], data_cols[iy], label=label, comment=label,
+                            **kwargs)
+                continue
+            if args.xyz is not None:
+                for xyz in args.xyz:
+                    ix, iy, iz = tuple(map(int, xyz.split(':')))
+                    label = next(legends)
+                    if label is None:
+                        label = "{}:{}:".format(ix, iy, iz)
+                    ax.plot(data_cols[ix], data_cols[iy], data_cols[iz], label=label, comment=label,
                             **kwargs)
                 continue
             for iy in range(ncols):

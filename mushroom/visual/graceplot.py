@@ -1803,7 +1803,7 @@ class Dataset(_Dataset):
 
     Args:
         index
-        xy (arraylike)
+        data_array (arraylike)
         label (str)
         datatype (str)
         color (str) : global color control
@@ -1820,7 +1820,7 @@ class Dataset(_Dataset):
         keyword arguments (arraylike): error data
     """
 
-    def __init__(self, index, *xy, label=None, color=None, datatype=None, comment=None,
+    def __init__(self, index, *data_array, label=None, color=None, datatype=None, comment=None,
                  symbol=None, ssize=None, sc=None, sp=None, sfc=None, sfp=None,
                  slw=None, sls=None, char=None, charfont=None, skip=None,
                  line=None, lw=None, lc=None, ls=None, lp=None,
@@ -1835,7 +1835,7 @@ class Dataset(_Dataset):
             label = ""
         if comment is None:
             comment = ""
-        self.data = Data(*xy, datatype=datatype, label=label, comment=comment, **extras)
+        self.data = Data(*data_array, datatype=datatype, label=label, comment=comment, **extras)
 
         _Dataset.__init__(self, index, type=self.data.datatype, comment=comment, legend=label)
         if sc is None:
@@ -2433,13 +2433,18 @@ class Graph(_Graph):
         """add datasets to the graph"""
         self._datasets.extend(dss)
 
-    def plot(self, x, ys, **kwargs):
+    def plot(self, x, ys, zs=None, **kwargs):
         """plot a dataset with abscissa ``x`` and data ``ys``
 
         As the name indicates, multiple y can be parsed along with one x.
         In this case, the keyword arguments except `label`
         will be parsed for each y. `label` will be parsed
         only for the first set!
+
+        Args:
+            x (1d-array)
+            ys (1d or 2d-array)
+            zs: optional z data. For error data, use kwargs (dx,dy,dz,dxl,dyl,dzl)
         """
         # check if multiple y data are parsed
         if 'color' not in kwargs or kwargs['color'] is None:
@@ -2447,6 +2452,8 @@ class Graph(_Graph):
         if 'symbol' not in kwargs or kwargs['symbol'] is None:
             kwargs['symbol'] = self._symbol_cycler.get()
         if len(shape(ys)) == 2:
+            if zs is not None and len(shape(zs)) != 2:
+                raise ValueError("2-d y requires also 2-d z data")
             n = self.ndata
             # check error in keyword arguments as well
             extras = {}
@@ -2454,14 +2461,25 @@ class Graph(_Graph):
                 if t in kwargs:
                     extras[t] = kwargs.pop(t)
             extras_first = {k: v[0] for k, v in extras.items()}
-            ds = [Dataset(n, x, ys[0], **extras_first, **kwargs),]
+            if zs is None:
+                ds = [Dataset(n, x, ys[0], **extras_first, **kwargs),]
+            else:
+                ds = [Dataset(n, x, ys[0], zs[0], **extras_first, **kwargs),]
             kwargs.pop("label", None)
-            for i, y in enumerate(ys[1:]):
-                extra = {k: v[i + 1] for k, v in extras.items()}
-                ds.append(Dataset(n + i + 1, x, y, **kwargs, **extra))
+            if zs is None:
+                for i, y in enumerate(ys[1:]):
+                    extra = {k: v[i + 1] for k, v in extras.items()}
+                    ds.append(Dataset(n + i + 1, x, y, **kwargs, **extra))
+            else:
+                for i, (y, z) in enumerate(zip(ys[1:], zs[1:])):
+                    extra = {k: v[i + 1] for k, v in extras.items()}
+                    ds.append(Dataset(n + i + 1, x, y, z, **kwargs, **extra))
             self.add_datasets(*ds)
         else:
-            ds = Dataset(self.ndata, x, ys, **kwargs)
+            if zs is None:
+                ds = Dataset(self.ndata, x, ys, **kwargs)
+            else:
+                ds = Dataset(self.ndata, x, ys, zs, **kwargs)
             self.add_datasets(ds)
 
     def plot_group(self, xs, ys, **kwargs):
