@@ -128,7 +128,7 @@ def m_quickgrace():
                     label = next(legends)
                     if label is None:
                         label = "{}:{}".format(ix, iy)
-                    ax.plot(data_cols[ix], data_cols[iy], label=label,
+                    ax.plot(data_cols[ix], data_cols[iy], label=label, comment=label,
                             **kwargs)
                 continue
             for iy in range(ncols):
@@ -142,7 +142,7 @@ def m_quickgrace():
                     label = "{}:{}:{}".format(fn, args.ix, iy)
                 if args.leg_fn_only:
                     label = fn
-                ax.plot(data_cols[args.ix], data_cols[iy], label=label, **kwargs)
+                ax.plot(data_cols[args.ix], data_cols[iy], label=label, comment=label, **kwargs)
 
     if args.xrange is not None:
         ax.set_xlim(*decode_float_ends(args.xrange))

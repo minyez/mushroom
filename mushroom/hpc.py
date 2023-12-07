@@ -110,9 +110,14 @@ class SbatchScript:
     def __init__(self,
                  commands: Union[str, Iterable[str]] = None,
                  sheban: str = "#!/usr/bin/env bash",
+                 template: str = None,
                  commands_template: str = None,
                  sbatch_options_template: str = None,
                  **kwargs):
+        if template is not None and commands_template is None:
+            commands_template = template
+        if template is not None and sbatch_options_template is None:
+            sbatch_options_template = template
         self._sbatch_options = SbatchOptions(template=sbatch_options_template, **kwargs)
         self._commands = None
         self._sheban = sheban

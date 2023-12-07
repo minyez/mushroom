@@ -302,16 +302,18 @@ class StdOut:
         # name a subset of recorded timing
         names = (("Total time", "total"),
                  ("Initialization for periodic correlated calc", "post_scf_pbc_init"),
+                 ("The exact-exchange part of GW calc.", "exx_xc_k"),
                  ("Total time for polarizability calc.", "polar"),
                  ("Total time for polarizability of k space", "polar_k"),
                  ("Total time for GW self-energy (regular k) c", "gwse_k"),
                  ("Total time for GW band self-energy calc.", "gwse_b"),
+                 ("Total time for EXX&XC calc. for GW band", "exx_xc_b")
                  )
         for key, name in names:
             try:
                 self._timestat[name] = timestat.pop(key)
             except KeyError:
-                pass
+                self._timestat[name] = None
 
     def is_finished(self):
         """check if the calculation is finished successfully"""

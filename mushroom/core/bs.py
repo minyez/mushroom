@@ -1141,7 +1141,7 @@ def display_transition_energies(trans: Sequence[str],
                 if kpts is None:
                     print(">> {:8.4f} {:<29d} -> {:<29d}".format(et, ivk, ick))
                 else:
-                    print(">> {:4.8f} {:<3d} ({:7.4f},{:7.4f},{:7.4f}) -> {:<3d} ({:7.4f},{:7.4f},{:7.4f})"
+                    print(">> {:8.4f} {:<3d} ({:7.4f},{:7.4f},{:7.4f}) -> {:<3d} ({:7.4f},{:7.4f},{:7.4f})"
                           .format(et, ivk, *kpts[ivk, :], ick, *kpts[ick, :]))
             else:
                 print("{:8.4f}".format(et), end="")
