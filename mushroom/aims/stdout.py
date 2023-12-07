@@ -300,7 +300,7 @@ class StdOut:
                 timestat[m.group(1)] = (float(m.group(2)), float(m.group(3)))
         # print(timestat)
         # name a subset of recorded timing
-        names = (("Total time", "total"),
+        items = (("Total time", "total"),
                  ("Initialization for periodic correlated calc", "post_scf_pbc_init"),
                  ("The exact-exchange part of GW calc.", "exx_xc_k"),
                  ("Total time for polarizability calc.", "polar"),
@@ -309,11 +309,11 @@ class StdOut:
                  ("Total time for GW band self-energy calc.", "gwse_b"),
                  ("Total time for EXX&XC calc. for GW band", "exx_xc_b")
                  )
-        for key, name in names:
+        for item, key in items:
             try:
-                self._timestat[name] = timestat.pop(key)
+                self._timestat[key] = timestat.pop(item)
             except KeyError:
-                self._timestat[name] = None
+                pass
 
     def is_finished(self):
         """check if the calculation is finished successfully"""
