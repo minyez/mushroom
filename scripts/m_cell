@@ -34,7 +34,7 @@ def _parser():
                    help="create super cell")
     p.add_argument('--prim', dest='primitize', action="store_true",
                    help="primitize the cell (spglib required)")
-    p.add_argument('--std', dest='primitize', action="store_true",
+    p.add_argument('--std', dest='standardize', action="store_true",
                    help="standardize the cell (spglib required)")
     p.add_argument('-i', dest='input_format', choices=DBCell.avail_readers,
                    type=str, default=None,
@@ -60,11 +60,13 @@ def build_cell():
             raise FileNotFoundError(args.input_file)
         cdb.convert(args.input_file, output_path=args.output_path,
                     reader=args.input_format, writer=args.output_format,
-                    primitize=args.primitize, supercell=args.supercell)
+                    primitize=args.primitize, standardize=args.standardize,
+                    supercell=args.supercell)
         return
     if args.cell is not None:
         cdb.extract(args.cell, output_path=args.output_path, writer=args.output_format,
-                    primitize=args.primitize, supercell=args.supercell)
+                    primitize=args.primitize, standardize=args.standardize,
+                    supercell=args.supercell)
         return
     if args.show or args.search:
         if cdb.N == 0:

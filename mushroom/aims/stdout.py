@@ -327,9 +327,10 @@ class StdOut:
 
     def _handle_scf(self):
         """process the data in the self-consistency iterations"""
-        for i, l in enumerate(self._scf_lines):
-            if l.startswith("  End self-consistency iteration #    "):
-                self._nscf_ite = conv_string(l, int, 4)
+        if self._scf_lines is not None:
+            for i, l in enumerate(self._scf_lines):
+                if l.startswith("  End self-consistency iteration #    "):
+                    self._nscf_ite = conv_string(l, int, 4)
 
     def get_control(self):
         """return a Control object"""

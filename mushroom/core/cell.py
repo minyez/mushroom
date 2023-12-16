@@ -557,13 +557,16 @@ When other keyword are parsed, they will be filtered out and no exception will b
         """
         return self.__spglib_convert("find_primitive")
 
-    def standardize(self, to_primitive: bool = False):
+    def standardize(self, to_primitive: bool = False, no_idealize: bool = False, **kwargs):
         """standardize a crystal structure
 
         Args:
             to_primitive (bool)
         """
-        return self.__spglib_convert("standardize_cell", to_primitive=to_primitive)
+        return self.__spglib_convert("standardize_cell",
+                                     to_primitive=to_primitive,
+                                     no_idealize=no_idealize,
+                                     **kwargs)
 
     # TODO move atom
     def __move(self, ia):
