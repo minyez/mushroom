@@ -165,6 +165,15 @@ class Control:
         if self.species is not None:
             self._elements = [s.elem for s in self.species]
 
+    def __getitem__(self, key):
+        return self.tags[key]
+
+    def __setitem__(self, key, value):
+        self.tags[key] = value
+
+    def __delitem__(self, key):
+        self.tags.pop(key)
+
     def copy(self):
         """copy the control"""
         return deepcopy(self)

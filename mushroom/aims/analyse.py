@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """convenient functions to analyse FHI-aims input/output"""
 import os
+import re
 import pathlib
 from typing import Union
 
@@ -40,7 +41,8 @@ def display_dimensions(aimsout):
             print(format_str % (sd[0], "(NOT FOUND)"))
 
 
-def is_finished_aimsdir(dirpath: Union[str, os.PathLike], aimsout_pat: str = "aims.out*") -> str:
+def is_finished_aimsdir(dirpath: Union[str, os.PathLike], aimsout_pat: str = "aims.out*",
+                        use_regex: bool = False) -> str:
     """check if the calculation inside dirpath is completed.
 
     This is done by searching aims output files matching pattern ``aimsout_pat``
@@ -49,14 +51,25 @@ def is_finished_aimsdir(dirpath: Union[str, os.PathLike], aimsout_pat: str = "ai
     Args:
         dirpath (str and PathLike): the directory containing aims input and output (if exists)
         aimsout_pat (str): wildcard pattern to match the aims output file.
+        use_regex (bool): if True, `aimsout_pat` will be treated as regular expression to
+            match the file name pattern instead of wildcard.
 
     Returns:
         str, path of finished aims stdout, or None if there is no finished calculation
     """
-    dirpath = pathlib.Path(dirpath)
-    for aimsout in dirpath.glob(aimsout_pat):
-        stdout = StdOut(aimsout)
-        if stdout.is_finished():
-            return aimsout.name
+    if use_regex:
+        for aimsout in pathlib.Path(dirpath).glob(aimsout_pat):
+            # use lazy load to check only the last finishing line
+            stdout = StdOut(aimsout, lazy_load=True)
+            if stdout.is_finished():
+                return aimsout.name
+    else:
+        pattern = re.compile(aimsout_pat)
+        for f in os.listdir(dirpath):
+            if os.path.isdir(f):
+                continue
+            matched = pattern.match(f)
+            if matched is not None:
+                return matched.group(0)
     return None
 

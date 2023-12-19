@@ -38,8 +38,11 @@ class StdOut:
         with open(pstdout, 'r', encoding='utf-8') as h:
             lines = h.readlines()
         _logger.info("Reading standard output from: %s", pstdout)
-        self._not_converged = lines[-2].strip() == '*** scf_solver: SCF cycle not converged.'
-        self._finished = self._not_converged or lines[-2].strip() == 'Have a nice day.'
+        self._not_converged = True
+        self._finished = False
+        if len(lines) > 1:
+            self._not_converged = lines[-2].strip() == '*** scf_solver: SCF cycle not converged.'
+            self._finished = self._not_converged or lines[-2].strip() == 'Have a nice day.'
 
         self._aims_version = None
 
@@ -100,8 +103,6 @@ class StdOut:
             if l.startswith("  FHI-aims version") or l.startswith("          Version "):
                 self._aims_version = l.split()[-1]
                 break
-        if self._aims_version is None:
-            raise ValueError("cannot extract aims version, incomplete calculation")
 
         self._divide_output_lines(lines)
         if not lazy_load:
@@ -109,18 +110,30 @@ class StdOut:
 
     def _divide_output_lines(self, lines):
         """coarsely devide the lines into sections"""
-        for i, l in enumerate(lines):
+        i = 0
+        l = ''
+
+        def debug(msg):
+            _logger.debug(msg + ": %d %s", i, l.strip("\n"))
+
+        while i < len(lines):
+            l = lines[i]
             if l.startswith("  Obtaining array dimensions for all initial allocations:"):
+                debug("end system lines")
                 self._finished_system = True
                 self._system_lines = lines[:i]
             if l.startswith("  Parsing control.in "):
+                debug("start control lines")
                 self._control_lines = lines[i:]
             if l.startswith("  Completed first pass over input file control.in"):
+                debug("end control lines")
                 self._finished_control = True
                 self._control_lines = self._control_lines[:self._control_lines.index(l)]
             if l.startswith("  Parsing geometry.in (first pass over file, find array dimensions only)."):
+                debug("start geometry lines")
                 self._geometry_lines = lines[i:]
             if l.startswith("  Completed first pass over input file geometry.in"):
+                debug("end geometry lines")
                 self._finished_geometry = True
                 self._geometry_lines = self._geometry_lines[:self._geometry_lines.index(l)]
                 self._prep_lines = lines[i:]
@@ -134,22 +147,26 @@ class StdOut:
                 if self._pbc_lists_init_lines is not None:
                     self._pbc_lists_init_lines = self._pbc_lists_init_lines[:self._pbc_lists_init_lines.index(l)]
                 self._scf_init_lines = lines[i:]
-            if l.startswith("          Begin self-consistency iteration #    1"):
-                self._finished_scf_init = True
+            if l.startswith("  End scf initialization - timings"):
                 self._scf_init_lines = self._scf_init_lines[:self._scf_init_lines.index(l)]
+                self._finished_scf_init = True
+            if l.startswith("          Begin self-consistency iteration #    1"):
                 self._scf_lines = lines[i:]
-            # if l.startswith("  Post-SCF correlation calculation starts"):
             if l.startswith("  End decomposition of the XC Energy"):
-                self._scf_lines = self._scf_lines[:self._scf_lines.index(l) + 1]
+                debug("end XC energy decomp, treated end of SCF and begining of post-SCF")
+                if self._scf_lines is not None:
+                    self._scf_lines = self._scf_lines[:self._scf_lines.index(l) + 1]
                 self._postscf_lines = lines[i:]
             if l.startswith("          Leaving FHI-aims.") and not self._not_converged:
                 # in case that SCF is not converged, it will leave aims without starting postscf
                 if self._postscf_lines is not None:
+                    debug("End of post-SCF")
                     self._postscf_lines = self._postscf_lines[:self._postscf_lines.index(l)]
             if l.startswith("          Detailed time accounting"):
                 self._timestat_lines = lines[i + 1:]
             if l.startswith("          Partial memory accounting:"):
                 self._timestat_lines = self._timestat_lines[:self._timestat_lines.index(l)]
+            i += 1
 
     def _handle(self):
         """handle the data processing"""
@@ -281,6 +298,9 @@ class StdOut:
         for i, l in enumerate(self._postscf_lines):
             if l.startswith("  | Shrink_full_auxil_basis : there are totally"):
                 self._nbasbas = int(l.split()[-5])
+            if l.startswith("  Using"):
+                if " ".join(l.split()[2:]).startswith("eigenvalues out of rank"):
+                    self._nbasbas = int(l.split()[6])
 
     def _handle_timing_statistics(self):
         """process the timing statistics at the end of calculation"""
@@ -315,8 +335,10 @@ class StdOut:
             except KeyError:
                 pass
 
-    def is_finished(self):
+    def is_finished(self, require_converge: bool = True):
         """check if the calculation is finished successfully"""
+        if require_converge:
+            return self._finished and not self._not_converged
         return self._finished
 
     @property
@@ -461,17 +483,21 @@ class StdOut:
 
         Args:
             kind (str): the key of QP energies, default to "eqp".
-                using "eps" can be viewed as a helper function to get the KS band structure
+                use "exx" or "hf" to get the EXX band structure, and
+                use "eps" to get the KS band structure,
 
         Returns
-            BandStructure object
+            BandStructure object, k-points list
         """
         d, kpts = self.get_QP_result()
-        if kind not in ["eqp", "eps"]:
-            raise ValueError("Use eqp/eps for QP/KS band structure")
+        if kind in ["eqp", "eps"]:
+            return BandStructure(d[kind], d["occ"], unit='ev'), kpts
+        elif kind in ["exx", "hf"]:
+            eigen = d["eps"] - d["vxc"] + d["exx"]
+            return BandStructure(eigen, d["occ"], unit='ev'), kpts
         # TODO: which case does the occupation number refer to when
         #       there is a band reordering?
-        return BandStructure(d[kind], d["occ"], unit='ev'), kpts
+        raise ValueError("Use eqp/eps for QP/KS and exx/hf for EXX/HF band structure")
 
     def get_cpu_time(self):
         """get CPU time accounting (in seconds)"""
