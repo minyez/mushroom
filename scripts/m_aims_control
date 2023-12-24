@@ -2,15 +2,15 @@
 # -*- coding: utf-8 -*-
 """create the aims control object and dump to file
 
-Allow the user the handle the basis functions and ABFs in the species setup,
-by using the ``--handle-basis`` and ``--handle-abf`` options, respectively.
+Allow the user to handle the basis functions and ABFs in the species setup,
+by using the ``--handle-basis`` options, respectively.
 The option value should be a string like "x:arg1:arg2:...".
 For example of ``--handle-basis``
 The letter "x" should be a, m or d, corresponding to ``add_basis``, ``modify_basis``,
 and ``delete_basis`` methods of the ``Species`` object.
 The left string is splited by ``:`` and parsed in the same order to the method.
 
-Currently an template including the species is required.
+Currently a template including the species is required.
 """
 from sys import stdout
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
@@ -40,8 +40,6 @@ def _parser():
                    help="the elements in species setup")
     p.add_argument("--handle-basis", type=str, nargs="+", default=None,
                    help="handle the basis, see description")
-    p.add_argument("--handle-abf", type=str, nargs="+", default=None,
-                   help="handle the ABFs, see description")
     p.add_argument("--reload-species", type=str, default=None,
                    help="reload species from file. remove all species data if set to ''")
     return p
@@ -100,14 +98,6 @@ def m_aims_control():
         for hb in args.handle_basis:
             bargs = hb.split(':')
             f = {"a": c.add_basis, "m": c.modify_basis, "d": c.delete_basis}.get(bargs[0], None)
-            if f is None:
-                raise ValueError(f"Support basis method a/m/d, parsed: {bargs[0]}")
-            f(*bargs[1:])
-    # handle abf
-    if args.handle_abf is not None:
-        for hb in args.handle_abf:
-            bargs = hb.split(':')
-            f = {"a": c.add_abf, "m": c.modify_abf, "d": c.delete_abf}.get(bargs[0], None)
             if f is None:
                 raise ValueError(f"Support basis method a/m/d, parsed: {bargs[0]}")
             f(*bargs[1:])

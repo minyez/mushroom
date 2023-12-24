@@ -221,21 +221,21 @@ class Control:
         """
         if value is None:
             try:
-                _logger.info("removed tag '%s', original value: %s", tag, self.tags.pop(tag))
+                _logger.debug("removed tag '%s', original value: %s", tag, self.tags.pop(tag))
             except KeyError:
-                _logger.info("tag '%s' to remove is not defined, skip", tag)
+                _logger.debug("tag '%s' to remove is not defined, skip", tag)
             return
         if value is True or value is False:
             try:
                 v = {True: ".true.", False: ".false."}.get(value, str(value))
                 self.tags[tag] = v
-                _logger.info("bool tag '%s' updated to: %s", tag, v)
+                _logger.debug("bool tag '%s' updated to: %s", tag, v)
             except ValueError as _e:
                 raise ValueError(f"cannot turn value into string: {value}") from _e
         else:
             try:
                 self.tags[tag] = value
-                _logger.info("tag '%s' updated to: %s", tag, self.tags[tag])
+                _logger.debug("tag '%s' updated to: %s", tag, self.tags[tag])
             except ValueError as _e:
                 raise ValueError(f"cannot turn value into string: {value}") from _e
 
@@ -254,10 +254,10 @@ class Control:
         """
         if value is None:
             try:
-                _logger.info("removed output 'tag' %s, original value: %s", output_tag,
-                             self.output.pop(output_tag))
+                _logger.debug("removed output 'tag' %s, original value: %s", output_tag,
+                              self.output.pop(output_tag))
             except KeyError:
-                _logger.info("output tag '%s' to remove is not defined, skip", output_tag)
+                _logger.debug("output tag '%s' to remove is not defined, skip", output_tag)
             return
         self.output[output_tag] = value
 

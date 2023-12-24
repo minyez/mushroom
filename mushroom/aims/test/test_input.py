@@ -51,7 +51,7 @@ class test_control(ut.TestCase):
         c = Control.read(dir_control / cfile)
         elements = c.elements
         c.add_basis(elements[0], "hydro", "3 d 5.0")
-        self.assertEqual("3 d 5.0", c.get_basis(elements[0], "hydro")[-1])
+        self.assertEqual("3 d 5.0", c.get_basis(elements[0], "hydro")[-1][1])
 
 
 if __name__ == "__main__":

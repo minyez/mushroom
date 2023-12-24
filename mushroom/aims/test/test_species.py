@@ -7,7 +7,7 @@ import os
 import json
 
 
-from mushroom.aims.species import _SPECIES_DEFAULTS_ENV, \
+from mushroom.aims.species import _SPECIES_DEFAULTS_ENV, Species, \
     search_basis_directories, get_species_defaults_directory, get_basis_directory_from_alias, \
     get_specie_filename
 
@@ -48,6 +48,18 @@ class test_species(ut.TestCase):
         d = get_species_defaults_directory()
         self.assertEqual(os.path.join(d, "defaults_2010", "tight", "01_H_default"),
                          get_specie_filename("H", "defaults_2010/tight"))
+
+    def test_read_species(self):
+        datadir = pathlib.Path(__file__).parent / "data"
+        testcases_json = datadir / "testcases_species.json"
+        with testcases_json.open('r') as h:
+            verifies = json.load(h)
+        for f, verify in verifies.items():
+            s = Species.read(datadir / f)
+
+    def test_export_species(self):
+        s = Species("H", {}, [("valence", "1 s 1.0", False, 0, True)])
+        s.export()
 
 
 if __name__ == '__main__':

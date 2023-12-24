@@ -94,10 +94,17 @@ class Species:
     """object handling species
 
     Args:
-        basis (dict): the basis set configuration.
-            Each key should be in the ``basis_tag``.
-            The value is a list, each element as a single string to specify the basis function.
-        abf (dict): the same as basis, but used as auxiliary basis function (ABF)
+        basis (list): the basis set configuration.
+            The value is a list, each element representes a basis function.
+            Each member should be a list ``[basis_type, basis_string, is_aux, tier, enabled]``,
+            where
+            - ``basis_type`` should be one of the basis type in ``Species.basis_types``.
+            - ``basis_string`` is string representing the left information to define the basis
+            - ``is_aux`` should be a bool, whether this basis is only used for constructing
+              auxliary basis
+            - ``tier`` should be a non-negative integer or None.
+              0 stands for minimal basis, 1 for tier1 and so on so forth.
+            - ``enabled`` is a bool. When True, the basis will be exported but commented out.
     """
     species_basic_tag = ["nucleus", "mass", "l_hartree", "cut_pot", "basis_dep_cutoff",
                          "radial_base", "radial_multiplier", "angular_min", "angular_acc",
@@ -106,15 +113,20 @@ class Species:
                          "plus_u"]
     # TODO: accept multiple plus_u, so we need a list to store it
     angular_grids_tag = ["angular_grids", "outer_grid", "division"]
-    basis_tag = ["valence", "ion_occ", "hydro", "ionic", "gaussian", "sto"]
+    basis_types = ["valence", "ion_occ", "hydro", "ionic", "gaussian", "sto", "confined"]
+    # TODO: use regular expression pattern to match the basis function lines
 
-    def __init__(self, elem: str, tags: dict = None, basis: dict = None, abf: dict = None,
+    def __init__(self, elem: str, tags: dict = None, basis: list = None,
                  header: str = None):
         self.elem = elem
         self.tags = tags
         self.basis = basis
-        self.abf = abf
         self.header = header
+
+    @classmethod
+    def _check_basis_type(cls, basis_type: str):
+        if basis_type not in cls.basis_types:
+            raise ValueError(f"Unsupported basis type: {basis_type}")
 
     def update_basic_tag(self, tag, value):
         """update the value of basic species tag
@@ -139,67 +151,71 @@ class Species:
             except KeyError:
                 _logger.info("tag '%s' to remove is not defined, skip", tag)
 
-    @classmethod
-    def _add_basis_common(cls, basis: dict, btype: str, bparam: str, *bparams):
-        """add basis function to basis dictionary.
-
-        The basis is defined by its type ``btype`` and a string with
-        all required parameters ``bparam``.
-        """
-        if btype not in cls.basis_tag:
-            raise ValueError(f"Invalid basis type: {btype}")
-        if btype not in basis:
-            basis[btype] = [bparam,]
-        else:
-            basis[btype].append(bparam)
-        if bparams:
-            basis[btype].extend(bparams)
-
-    @classmethod
-    def _get_basis_common(cls, basis: dict, btype: str = None):
-        """get the basis function from the basis dictionary
+    def add_basis(self, basis_type: str, basis_string: str, *basis_strings: str,
+                  is_aux: bool = False, tier: int = -1, enabled: bool = True):
+        """Add basis function to the species
 
         Args:
-            btype (str)
-
-        Returns:
-            dict if btype is None, otherwise list
+            basis_type (str)
+            basis_string (str)
+            basis_strings (str)
+            is_aux (bool): whether this function is used only to construct ABF
+            tier (int): if the basis belongs to some tier.
+                0 for minimal and < 0 for not belong to any tier
+            enabled (bool): if the basis is enabled when exporting.
+                If False, the basis is commented out when exporting
         """
-        if btype is None:
-            return deepcopy(basis)
-        if btype not in cls.basis_tag:
-            raise ValueError(f"Invalid basis type: {btype}")
-        return basis.get(btype, None)
+        self._check_basis_type(basis_type)
+        basis_string = " ".join(basis_string.split())
+        new_basis = [basis_type, basis_string, is_aux, tier, enabled]
+        self.basis.append(new_basis)
+        _logger.debug("add basis '%s'", new_basis)
+        if basis_strings is not None:
+            for bs in basis_strings:
+                new_basis = [basis_type, " ".join(bs.split()), is_aux, tier, enabled]
+                _logger.debug("add basis '%s'", new_basis)
+                self.basis.append(new_basis)
 
-    def get_basis(self, btype: str = None):
-        """get the basis of the species
+    def add_abf(self, basis_type: str, basis_string: str, *basis_strings: str,
+                tier: int = -1, enabled: bool = True):
+        """A wrapper of add_basis method for auxliary basis functions"""
+        self.add_basis(basis_type, basis_string, *basis_strings, is_aux=True, tier=tier, enabled=enabled)
+
+    def get_basis(self,
+                  basis_type: str = None,
+                  is_aux: bool = None,
+                  tier: int = None):
+        """get the basis functions
 
         Args:
-            btype (str)
+            basis_type (str)
+            is_aux (bool)
+            tier (int)
 
         Returns:
-            dict if btype is None, otherwise list
+            list
         """
-        return self._get_basis_common(self.basis, btype)
+        if basis_type is not None:
+            self._check_basis_type(basis_type)
+        basis = []
+        if basis_type is None and is_aux is None and tier is None:
+            return deepcopy(self.basis)
 
-    def get_abf(self, btype: str = None):
-        """get the ABFs of the species
+        for b in self.basis:
+            if basis_type is not None and b[0] != basis_type:
+                continue
+            if is_aux is not None and b[2] != is_aux:
+                continue
+            if tier is not None and b[3] != tier:
+                continue
+            basis.append(b)
+        return basis
 
-        Args:
-            btype (str)
-
-        Returns:
-            dict if btype is None, otherwise list
-        """
-        return self._get_basis_common(self.abf, btype)
-
-    def add_basis(self, btype: str, bparam: str, *bparams: str):
-        """add basis function"""
-        self._add_basis_common(self.basis, btype, bparam, *bparams)
-
-    def add_abf(self, btype: str, bparam: str, *bparams: str):
-        """add ABF"""
-        self._add_basis_common(self.abf, btype, bparam, *bparams)
+    def get_abf(self,
+                basis_type: str = None,
+                tier: int = None):
+        """A wrapper of get_basis method for auxliary basis functions"""
+        return self.get_basis(basis_type=basis_type, is_aux=True, tier=tier)
 
     @classmethod
     def _modify_basis_common(cls, basis: dict, btype: str, index: Union[int, str], bparam: str,
@@ -213,40 +229,41 @@ class Species:
             l_channel (str): name of l channel, i.e. s, p, d, f, etc.
                 If not None, the index will counted within the particular l channel
         """
-        if btype not in cls.basis_tag:
-            raise ValueError(f"Invalid basis type: {btype}")
-        if btype not in basis:
-            raise ValueError(f"No {btype} type basis found in parsed basis dictionary")
-        # the basis type list to be modified
-        b = basis[btype]
-        if l_channel is None:
-            indices = list(range(len(b)))
-        else:
-            # l at column 2: hydro, valence, ion_occ, ionic
-            if btype in ["hydro", "valence", "ion_occ", "ionic"]:
-                indices = [i for i, v in enumerate(b) if v.split()[1] == l_channel]
-            # l at column 1: gaussian in angular momentum
-            elif btype in ["gaussian",]:
-                indices = [i for i, v in enumerate(b)
-                           if l_channels[int(v.split()[0])] == l_channel]
-            else:
-                raise NotImplementedError
-        if isinstance(index, str):
-            try:
-                index = int(index)
-            except ValueError as _e:
-                raise ValueError(f"invalid index: {index}") from _e
-        try:
-            index = indices[index]
-        except IndexError as _e:
-            info = f"basis of index {index} is not available"
-            if l_channel is not None:
-                info = f"basis of index {index} in {l_channel} is not available"
-            raise IndexError(info) from _e
-        if bparam is None:
-            del b[index]
-        else:
-            b[index] = bparam
+        raise NotImplementedError
+        # if btype not in cls.basis_types:
+        #     raise ValueError(f"Invalid basis type: {btype}")
+        # if btype not in basis:
+        #     raise ValueError(f"No {btype} type basis found in parsed basis dictionary")
+        # # the basis type list to be modified
+        # b = basis[btype]
+        # if l_channel is None:
+        #     indices = list(range(len(b)))
+        # else:
+        #     # l at column 2: hydro, valence, ion_occ, ionic
+        #     if btype in ["hydro", "valence", "ion_occ", "ionic"]:
+        #         indices = [i for i, v in enumerate(b) if v.split()[1] == l_channel]
+        #     # l at column 1: gaussian in angular momentum
+        #     elif btype in ["gaussian",]:
+        #         indices = [i for i, v in enumerate(b)
+        #                    if l_channels[int(v.split()[0])] == l_channel]
+        #     else:
+        #         raise NotImplementedError
+        # if isinstance(index, str):
+        #     try:
+        #         index = int(index)
+        #     except ValueError as _e:
+        #         raise ValueError(f"invalid index: {index}") from _e
+        # try:
+        #     index = indices[index]
+        # except IndexError as _e:
+        #     info = f"basis of index {index} is not available"
+        #     if l_channel is not None:
+        #         info = f"basis of index {index} in {l_channel} is not available"
+        #     raise IndexError(info) from _e
+        # if bparam is None:
+        #     del b[index]
+        # else:
+        #     b[index] = bparam
 
     def modify_basis(self, btype: str, index: Union[int, str], bparam: str, l_channel: str = None):
         """modify basis function"""
@@ -264,44 +281,52 @@ class Species:
         """delete ABF"""
         self._modify_basis_common(self.abf, btype, index, None, l_channel)
 
-    @classmethod
-    def _export_basis_common(cls, basis: dict, prefix: str, padding: int = 0):
+    def export_basis(self, padding: int = 0):
         """export the basis set configuration
 
         The order follows the ``basis_tag`` class attribute
 
         Args:
-            basis (dict)
+            basis_key (str)
             prefix (str): added just before the tag of ``basis_tag``
         """
         slist = []
-        for bt in cls.basis_tag:
-            if bt not in basis:
-                continue
-            if bt != 'gaussian':
-                for b in basis[bt]:
-                    slist.append(" " * padding + f"{prefix}{bt} {b}")
-            else:
-                for b in basis[bt]:
+        tier_export_list = [0, 1, 2, 3, 4, 5, -1]
+        tier_string_dict = {
+            0: "Minimal basis",
+            1: "First Tier",
+            2: "Second Tier",
+            3: "Third Tier",
+            4: "Fourth Tier",
+            5: "Fifth Tier",
+            -1: "Further basis functions"
+        }
+
+        for tier_export in tier_export_list:
+            slist_tier = []
+            for btype, bstr, is_aux, tier, enabled in self.basis:
+                comment = {True: "", False: "# "}[enabled]
+                for_aux = {True: "for_aux ", False: ""}[is_aux]
+                if tier != tier_export:
+                    continue
+                _logger.debug("Exporting basis %s %s %r %s %r", btype, bstr, is_aux, tier, enabled)
+                if btype != 'gaussian':
+                    slist_tier.append(comment + " " * padding + f"{for_aux}{btype} {bstr}")
+                else:
                     n = b.split()[1]
                     # pGTO
                     if int(n) == 1:
-                        slist.append(" " * padding + f"{prefix}{bt} {b}")
+                        slist_tier.append(comment + " " * padding + f"{for_aux}{btype} {bstr}")
                     # cGTO
                     else:
-                        cgto = b.split()
-                        slist.append(" " * padding + f"{prefix}{bt} {cgto[0]} {cgto[1]}")
+                        cgto = bstr.split()
+                        slist_tier.append(comment + " " * padding + f"{for_aux}{btype} {cgto[0]} {cgto[1]}")
                         for i in range(int(n)):
-                            slist.append(" " * padding + f"{cgto[2*i+2]:>17s}  {cgto[2*i+3]:>13s}")
+                            slist_tier.append(comment + " " * padding + f"{cgto[2*i+2]:>17s}  {cgto[2*i+3]:>13s}")
+            if len(slist_tier) > 0:
+                slist.append("#  " + tier_string_dict[tier_export])
+                slist.extend(slist_tier)
         return "\n".join(slist)
-
-    def _export_basis(self, padding: int = 0):
-        """export the basis to a string"""
-        return self._export_basis_common(self.basis, '', padding)
-
-    def _export_abf(self, padding: int = 0):
-        """export the ABFs to a string"""
-        return self._export_basis_common(self.abf, 'for_aux ', padding)
 
     def export(self, padding: int = 0):
         """export the species to a string"""
@@ -319,12 +344,8 @@ class Species:
                 for div in self.tags[t]['division']:
                     slist.append(" " * padding + f"  division  {div}")
                 slist.append(" " * padding + f"  outer_grid  {self.tags[t]['outer_grid']}")
-        if self.basis is not None and self.basis.keys():
-            slist.append(self._export_basis(padding))
-        if self.abf is not None and self.abf.keys():
-            slist.append(self._export_abf(padding))
-        if self.header is None:
-            slist.append("###   End species ###")
+        slist.append(self.export_basis(padding))
+        slist.append("###   End species ###")
         return "\n".join(slist)
 
     def write(self, pspecies):
@@ -337,23 +358,65 @@ class Species:
     def read(cls, pspecies):
         """read in the species from a filelike object"""
         with open_textio(pspecies, 'r') as h:
-            _ls = h.readlines()
+            _ls_splited = [x.split() for x in h.readlines()]
+
         elem = None
         tags = {}
-        basis = {}
-        abf = {}
+        basis = []
+        abf = []
         agt = cls.angular_grids_tag[0]
-        i = 0
+
+        i = -1
         headerl = []
-        while i < len(_ls):
-            l = _ls[i].strip()
+        tier = -1
+        is_aux = False
+        enabled = True
+
+        while i < len(_ls_splited) - 1:
+            i += 1
+            words = _ls_splited[i]
+            l = " ".join(words)
+            # print(words)
             # print(l, elem, l.startswith("species"))
+            # header lines before species tag
             if elem is None and not l.startswith("species"):
                 headerl.append(l)
-            if l.startswith('#') or l == '':
-                i += 1
+            # skip when empty line
+            if len(words) == 0:
                 continue
-            tagk, tagv = _ls[i].strip().split(maxsplit=1)
+            # skip when the line is a comment that do not involve basis set:
+            if l.startswith('#'):
+                if len(words) == 1:
+                    tier = -1
+                    continue
+                if not l.startswith("# valence basis states") \
+                        and (words[1] == "for_aux" or words[1] in cls.basis_types):
+                    enabled = False
+                    words = words[1:]
+                    l = " ".join(words)
+                else:
+                    # check the tier information
+                    # minimal basis functions
+                    if l == "# Definition of \"minimal\" basis" \
+                            or l.startswith("# ion occupancy") \
+                            or l.startswith("# valence basis states") \
+                            or l.startswith("# Necessary addition to the minimal basis"):
+                        tier = 0
+                        continue
+                    # basis included as a tier
+                    elif len(words) > 2:
+                        l = l.replace("\"", "").replace("\'", "")
+                        words = [x.lower() for x in l.split()]
+                        if words[2] == "tier":
+                            tier = {"first": 1, "second": 2, "third": 3, "fourth": 4, "fifth": 5}[words[1]]
+                    # reset the tier after an irrelevant comment line
+                    # this include the case "# Further basis functions"
+                    else:
+                        tier = -1
+                    continue
+            else:
+                enabled = True
+            tagk, tagv = l.split(maxsplit=1)
             # handle general species tags
             if tagk == "species":
                 # skip the element identifier
@@ -370,46 +433,47 @@ class Species:
                 else:
                     tags[agt][tagk] = tagv
             # handle basis set configuration
-            elif tagk == "for_aux" or tagk in cls.basis_tag:
-                basis_dict = basis
-                basis_key = 'basis'
+            elif tagk == "for_aux" or tagk in cls.basis_types:
+                is_aux = False
+                basis_key = "OBS"
                 if tagk == 'for_aux':
-                    basis_dict = abf
-                    basis_key = 'abf'
+                    is_aux = True
+                    basis_key = "ABF"
                     tagk, tagv = tagv.strip().split(maxsplit=1)
-                if tagk in cls.basis_tag:
-                    if tagk not in basis_dict:
-                        basis_dict[tagk] = []
-                    vals = tagv.split()
+                # now tagk should be one of the basis_types
+                if tagk in cls.basis_types:
                     if tagk == 'gaussian':
+                        vals = tagv.split()
                         # pGTO
                         if int(vals[1]) == 1:
-                            basis_dict[tagk].append(tagv)
-                            _logger.debug("append pGTO %s: %s", basis_key, tagv)
+                            new_basis = [tagk, tagv, is_aux, tier, enabled]
                         # cGTO
                         else:
                             # head plus the following vals[1] _ls
                             cgtos = [tagv,]
-                            for x in _ls[i + 1:i + 1 + int(vals[1])]:
-                                cgtos.extend(x.split())
-                            basis_dict[tagk].append(" ".join(cgtos))
+                            for x in _ls_splited[i + 1:i + 1 + int(vals[1])]:
+                                cgtos.extend(x)
+                            new_basis = [tagk, " ".join(cgtos), is_aux, tier, enabled]
                             i += int(vals[1])
-                            _logger.debug("append cGTO %s: %s", basis_key, " ".join(cgtos))
                     else:
-                        basis_dict[tagk].append(tagv)
-                        _logger.debug("append %s %s: %s", tagk, basis_key, tagv)
+                        new_basis = [tagk, tagv, is_aux, tier, enabled]
+                    basis.append(new_basis)
+                    _logger.debug("append %s %s: %s", tagk, basis_key, new_basis)
+                else:
+                    info = "Unknown basis type {} on line {}, break for safety".format(tagk, i + 1)
+                    _logger.error(info)
+                    raise ValueError(info)
             else:
                 info = "Unknown species tag {} on line {}, break for safety".format(tagk, i + 1)
                 _logger.error(info)
                 raise ValueError(info)
-            i += 1
         if elem not in element_symbols[1:]:
             raise ValueError(f"Unknown element: {elem}")
-        _logger.info("handling species of element: %s", elem)
+        _logger.info("finished reading species file of element: %s, instantializing", elem)
         header = None
         if len(headerl) > 0:
             header = "\n".join(headerl)
-        return cls(elem, tags, basis, abf, header=header)
+        return cls(elem, tags, basis, header=header)
 
     @classmethod
     def read_multiple(cls, pspecies):
