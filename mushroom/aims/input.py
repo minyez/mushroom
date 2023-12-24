@@ -351,6 +351,14 @@ class Control:
         s = self.get_species(elem)
         s.delete_abf(*args, **kwargs)
 
+    def switch_tier(self, tier: int, enable: bool, elem: str = None, **kwargs):
+        if elem is None:
+            for s in self.species:
+                s.switch_tier(tier, enable, **kwargs)
+        else:
+            s = self.get_species(elem)
+            s.switch_tier(tier, enable, **kwargs)
+
     @property
     def elements(self):
         """the element name of the species"""

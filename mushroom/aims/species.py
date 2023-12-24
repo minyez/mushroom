@@ -90,6 +90,10 @@ def get_specie_filename(elem: str,
     return pspecies
 
 
+class NaoBasis:
+    """"""
+
+
 class Species:
     """object handling species
 
@@ -115,6 +119,7 @@ class Species:
     angular_grids_tag = ["angular_grids", "outer_grid", "division"]
     basis_types = ["valence", "ion_occ", "hydro", "ionic", "gaussian", "sto", "confined"]
     # TODO: use regular expression pattern to match the basis function lines
+    # TODO: move basis set reading to NaoBasis class
 
     def __init__(self, elem: str, tags: dict = None, basis: list = None,
                  header: str = None):
@@ -184,7 +189,8 @@ class Species:
     def get_basis(self,
                   basis_type: str = None,
                   is_aux: bool = None,
-                  tier: int = None):
+                  tier: int = None,
+                  enabled: bool = None):
         """get the basis functions
 
         Args:
@@ -198,7 +204,7 @@ class Species:
         if basis_type is not None:
             self._check_basis_type(basis_type)
         basis = []
-        if basis_type is None and is_aux is None and tier is None:
+        if basis_type is None and is_aux is None and tier is None and enabled is None:
             return deepcopy(self.basis)
 
         for b in self.basis:
@@ -207,6 +213,8 @@ class Species:
             if is_aux is not None and b[2] != is_aux:
                 continue
             if tier is not None and b[3] != tier:
+                continue
+            if enabled is not None and b[4] != enabled:
                 continue
             basis.append(b)
         return basis
@@ -280,6 +288,14 @@ class Species:
     def delete_abf(self, btype: str, index: Union[int, str], l_channel: str = None):
         """delete ABF"""
         self._modify_basis_common(self.abf, btype, index, None, l_channel)
+
+    def switch_tier(self, tier: int, enable: bool, switch_aux: bool = True):
+        """Switch the status of functions within a tier"""
+        for b in self.basis:
+            if b[3] == tier:
+                if not switch_aux and b[2]:
+                    continue
+                b[4] = enable
 
     def export_basis(self, padding: int = 0):
         """export the basis set configuration

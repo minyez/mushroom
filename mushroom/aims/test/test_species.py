@@ -61,6 +61,37 @@ class test_species(ut.TestCase):
         s = Species("H", {}, [("valence", "1 s 1.0", False, 0, True)])
         s.export()
 
+    def test_get_basis(self):
+        basis_raw = [
+            ["valence", "1 s 1.0", False, 0, True],
+            ["hydro", "2 s 1.0", False, 1, False],
+            ["hydro", "3 s 1.0", False, 2, False],
+            ["hydro", "4 s 1.0", True, -1, False],
+            ["hydro", "2 p 1.0", True, -1, False],
+        ]
+        s = Species("H", {}, basis_raw)
+        self.assertEqual(len(s.get_basis()), 5)
+        self.assertEqual(len(s.get_basis("valence")), 1)
+        self.assertEqual(len(s.get_basis("hydro")), 4)
+        self.assertEqual(len(s.get_basis(is_aux=True)), 2)
+        self.assertEqual(len(s.get_abf()), 2)
+        self.assertEqual(len(s.get_basis(enabled=False)), 4)
+
+    def test_switch_tier(self):
+        basis_raw = [
+            ["valence", "1 s 1.0", False, 0, True],
+            ["hydro", "2 s 1.0", False, 1, False],
+            ["hydro", "3 s 1.0", False, 2, False],
+            ["hydro", "4 s 1.0", True, -1, False],
+            ["hydro", "2 p 1.0", True, -1, False],
+        ]
+        s = Species("H", {}, basis_raw)
+        self.assertEqual(len(s.get_basis(enabled=False)), 4)
+        s.switch_tier(-1, True, True)
+        self.assertEqual(len(s.get_basis(enabled=False)), 2)
+        s.switch_tier(0, False, False)
+        self.assertEqual(len(s.get_basis(enabled=False)), 3)
+
 
 if __name__ == '__main__':
     ut.main()
