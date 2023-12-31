@@ -329,7 +329,7 @@ class Species:
                 if btype != 'gaussian':
                     slist_tier.append(comment + " " * padding + f"{for_aux}{btype} {bstr}")
                 else:
-                    n = b.split()[1]
+                    n = bstr.split()[1]
                     # pGTO
                     if int(n) == 1:
                         slist_tier.append(comment + " " * padding + f"{for_aux}{btype} {bstr}")

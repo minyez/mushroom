@@ -58,12 +58,6 @@ def is_finished_aimsdir(dirpath: Union[str, os.PathLike], aimsout_pat: str = "ai
         str, path of finished aims stdout, or None if there is no finished calculation
     """
     if use_regex:
-        for aimsout in pathlib.Path(dirpath).glob(aimsout_pat):
-            # use lazy load to check only the last finishing line
-            stdout = StdOut(aimsout, lazy_load=True)
-            if stdout.is_finished():
-                return aimsout.name
-    else:
         pattern = re.compile(aimsout_pat)
         for f in os.listdir(dirpath):
             if os.path.isdir(f):
@@ -71,5 +65,11 @@ def is_finished_aimsdir(dirpath: Union[str, os.PathLike], aimsout_pat: str = "ai
             matched = pattern.match(f)
             if matched is not None:
                 return matched.group(0)
+    else:
+        for aimsout in pathlib.Path(dirpath).glob(aimsout_pat):
+            # use lazy load to check only the last finishing line
+            stdout = StdOut(aimsout, lazy_load=True)
+            if stdout.is_finished():
+                return aimsout.name
     return None
 
