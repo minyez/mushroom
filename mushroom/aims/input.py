@@ -423,7 +423,7 @@ class Control:
                     if v is True:
                         slist.append(f"output {k}")
                     else:
-                        slist.append(f"output {k} {bool2str(b, True)}")
+                        slist.append(f"output {k} {bool2str(v, True)}")
                 else:
                     for kseg in v:
                         kstr = kseg[0] + kseg[1] + [kseg[2],]
