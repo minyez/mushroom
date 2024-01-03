@@ -15,13 +15,13 @@ class test_stdout(ut.TestCase):
     # pylint: disable=R0201
     def test_aimsout_reading(self):
         fns_qp = ["mole_ZnO.gw.aims.out", "ZrO2_sc222.pgw_kgrid.aims.out"]
-        dir_control = pathlib.Path(__file__).parent / "data"
-        index_json = dir_control / "aimsout.json"
+        datadir = pathlib.Path(__file__).parent / "data"
+        index_json = datadir / "aimsout.json"
         with index_json.open('r') as h:
             fn_dict = json.load(h)
         for fn, verify in fn_dict.items():
             print(f"Testing {fn}")
-            s = StdOut(dir_control / fn)
+            s = StdOut(datadir / fn)
 
             s.get_control()
             s.get_n_spin_kpt_band_basis()

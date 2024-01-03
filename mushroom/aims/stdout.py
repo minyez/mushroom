@@ -41,8 +41,10 @@ class StdOut:
         self._not_converged = True
         self._finished = False
         if len(lines) > 1:
-            self._not_converged = lines[-2].strip() == '*** scf_solver: SCF cycle not converged.'
-            self._finished = self._not_converged or lines[-2].strip() == 'Have a nice day.'
+            testline = lines[-2].strip()
+            self._finished = testline == 'Have a nice day.' or testline == '*** scf_solver: SCF cycle not converged.'
+            if testline == 'Have a nice day.':
+                self._not_converged = False
 
         self._aims_version = None
 

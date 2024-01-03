@@ -11,7 +11,7 @@ from io import TextIOWrapper, StringIO
 from collections import OrderedDict
 from collections.abc import Iterable, Callable
 from sys import stdout
-from typing import List, Union, Sequence, Tuple
+from typing import List, Union, Sequence, Tuple, Any
 
 # make it work as a standalone module
 try:
@@ -744,6 +744,50 @@ def get_similar_str(s: str, slist: List[str]) -> str:
     if len(similar_ratios) > 0:
         return slist[similar_ratios.index(max(similar_ratios))]
     return None
+
+
+def str2bool(s: Any) -> Any:
+    """Return a bool type according to input s
+
+    Args:
+        s (any type): if s is a string, check if it is one of the following (case insensitive):
+            "true", ".true.", "false", ".false."
+
+            If it is the case, a bool type representing it will be returned.
+
+    Returns:
+        Any type
+    """
+    if isinstance(s, str):
+        if s.lower() in ["true", ".true."]:
+            return True
+        if s.lower() in ["false", ".false."]:
+            return False
+    return s
+
+
+def bool2str(b: Any, fortran_flavor: bool = False, uppercase: bool = False) -> Any:
+    """Return a bool string according to input s
+
+    Args:
+        s (any type): if s is a bool, convert to it to a corresponding string and return
+        fortran_flavor (bool)
+        uppercase (bool)
+
+    Returns:
+        Any type
+    """
+    if isinstance(b, bool):
+        if b:
+            s = "true"
+        else:
+            s = "false"
+        if uppercase:
+            s = s.upper()
+        if fortran_flavor:
+            s = "." + s + "."
+        return s
+    return b
 
 
 @contextmanager

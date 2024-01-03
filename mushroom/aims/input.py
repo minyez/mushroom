@@ -10,7 +10,7 @@ from copy import deepcopy
 import numpy as np
 
 from mushroom.core.cell import Cell
-from mushroom.core.ioutils import open_textio, get_banner, get_similar_str
+from mushroom.core.ioutils import open_textio, get_banner, get_similar_str, str2bool, bool2str
 from mushroom.core.logger import loggers
 
 from mushroom.aims.species import Species
@@ -18,7 +18,8 @@ from mushroom.aims.species import Species
 __all__ = [
     "read_geometry",
     "Control",
-    "read_control"
+    "read_control",
+    "get_path_ksymbols"
 ]
 
 _logger = loggers["aims"]
@@ -225,19 +226,9 @@ class Control:
             except KeyError:
                 _logger.debug("tag '%s' to remove is not defined, skip", tag)
             return
-        if value is True or value is False:
-            try:
-                v = {True: ".true.", False: ".false."}.get(value, str(value))
-                self.tags[tag] = v
-                _logger.debug("bool tag '%s' updated to: %s", tag, v)
-            except ValueError as _e:
-                raise ValueError(f"cannot turn value into string: {value}") from _e
         else:
-            try:
-                self.tags[tag] = value
-                _logger.debug("tag '%s' updated to: %s", tag, self.tags[tag])
-            except ValueError as _e:
-                raise ValueError(f"cannot turn value into string: {value}") from _e
+            self.tags[tag] = str2bool(value)
+            _logger.debug("tag '%s' updated to: %s", tag, self.tags[tag])
 
     def update_tags(self, tags: dict):
         """collective update tag values"""
@@ -259,7 +250,7 @@ class Control:
             except KeyError:
                 _logger.debug("output tag '%s' to remove is not defined, skip", output_tag)
             return
-        self.output[output_tag] = value
+        self.output[output_tag] = str2bool(value)
 
     def update_output_tags(self, output_tags: Dict):
         """collective update output tag values"""
@@ -415,11 +406,11 @@ class Control:
                     tags[tag] = tags_local.pop(tag)
             if tags.keys():
                 slist.append("# " + group["section"])
-                slist.extend(f"{k} {v}" for k, v in tags.items())
+                slist.extend(f"{k} {bool2str(v, True)}" for k, v in tags.items())
                 slist.append("")
         if tags_local.keys():
             slist.append("# Unrecognized tags")
-            slist.extend(f"{k} {v}" for k, v in tags_local.items())
+            slist.extend(f"{k} {bool2str(v, True)}" for k, v in tags_local.items())
             slist.append("")
         return slist
 
@@ -432,7 +423,7 @@ class Control:
                     if v is True:
                         slist.append(f"output {k}")
                     else:
-                        slist.append(f"output {k} {v}")
+                        slist.append(f"output {k} {bool2str(b, True)}")
                 else:
                     for kseg in v:
                         kstr = kseg[0] + kseg[1] + [kseg[2],]
@@ -535,14 +526,4 @@ class Control:
         return cls(tags, output, species)
 
 
-def read_control(pcontrol: str = "control.in") -> Control:
-    """Read in a control.in file
-
-    Args:
-        pcontrol (str): path to the control file
-
-    Returns:
-        Control object
-    """
-    return Control.read(pcontrol)
-
+read_control = Control.read

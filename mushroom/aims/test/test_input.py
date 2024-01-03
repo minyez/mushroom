@@ -6,10 +6,11 @@ import pathlib
 import json
 
 
-from mushroom.aims.input import Control, get_path_ksymbols
+from mushroom.aims.input import *
 
 
 class test_control(ut.TestCase):
+
     # pylint: disable=R0914,R1702
     def test_control_read(self):
         dir_control = pathlib.Path(__file__).parent / "data"
@@ -39,6 +40,23 @@ class test_control(ut.TestCase):
                                     self.assertEqual(band_read[i], band_veri[i])
             c.export()
 
+    def test_update_tag(self):
+        ctrl = Control({}, {}, [])
+        ctrl.update_tags({"sometag": 1, "sometag2": None, "booltag": ".false."})
+        self.assertEqual(ctrl["sometag"], 1)
+        self.assertEqual(ctrl["booltag"], False)
+        self.assertNotIn("sometag2", ctrl.tags)
+
+    def test_update_output_tag(self):
+        ctrl = Control({}, {}, [])
+        ctrl.update_output_tags({"sometag": 1, "sometag2": None, "booltag": ".false."})
+        # they are not in the tags, but in output tags
+        self.assertNotIn("sometag", ctrl.tags)
+        # check output tags
+        self.assertIn("sometag", ctrl.output)
+        self.assertNotIn("sometag2", ctrl.output)
+        self.assertEqual(ctrl.get_output("booltag"), False)
+
     def test_species_handling(self):
         dir_control = pathlib.Path(__file__).parent / "data"
         index_json = dir_control / "aimscontrol.json"
@@ -48,10 +66,13 @@ class test_control(ut.TestCase):
             return
         # use the first to test
         cfile = cfiles[0]
-        c = Control.read(dir_control / cfile)
+        c = read_control(dir_control / cfile)
         elements = c.elements
         c.add_basis(elements[0], "hydro", "3 d 5.0")
         self.assertEqual("3 d 5.0", c.get_basis(elements[0], "hydro")[-1][1])
+        c.switch_tier(1, True)
+        c.switch_tier(2, True, elements[0])
+        c.purge_species()
 
 
 if __name__ == "__main__":

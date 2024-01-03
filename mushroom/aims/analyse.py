@@ -12,8 +12,16 @@ from mushroom.aims.stdout import StdOut
 _logger = loggers["aims"]
 
 
-def display_dimensions(aimsout):
-    """display dimensions in the FHI-aims calculation from aimsout"""
+def get_dimensions(aimsout):
+    """display dimensions in the FHI-aims calculation from aimsout
+
+    Args:
+        aimsout: aims stdout file
+
+    Returns:
+        str, format string for the key-value pair
+        dict, entry of dimension and its value
+    """
     s = StdOut(aimsout)
     dict_str_dim = {
         "Spins": s._nspins,
@@ -34,11 +42,7 @@ def display_dimensions(aimsout):
     }
     lstr = max([len(x) for x in dict_str_dim.keys()])
     format_str = "# %-{}s : %s".format(lstr)
-    for sd in dict_str_dim.items():
-        if sd[1] is not None:
-            print(format_str % sd)
-        else:
-            print(format_str % (sd[0], "(NOT FOUND)"))
+    return format_str, dict_str_dim
 
 
 def is_finished_aimsdir(dirpath: Union[str, os.PathLike], aimsout_pat: str = "aims.out*",
@@ -64,7 +68,10 @@ def is_finished_aimsdir(dirpath: Union[str, os.PathLike], aimsout_pat: str = "ai
                 continue
             matched = pattern.match(f)
             if matched is not None:
-                return matched.group(0)
+                aimsout = os.path.join(dirpath, f)
+                stdout = StdOut(aimsout, lazy_load=True)
+                if stdout.is_finished():
+                    return aimsout
     else:
         for aimsout in pathlib.Path(dirpath).glob(aimsout_pat):
             # use lazy load to check only the last finishing line
@@ -72,4 +79,3 @@ def is_finished_aimsdir(dirpath: Union[str, os.PathLike], aimsout_pat: str = "ai
             if stdout.is_finished():
                 return aimsout.name
     return None
-
