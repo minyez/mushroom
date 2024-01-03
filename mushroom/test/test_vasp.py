@@ -9,8 +9,10 @@ import numpy as np
 from mushroom import vasp
 from mushroom.core.cell import Cell
 
+
 class test_read_doscar(ut.TestCase):
     """test reading in DOSCAR to get a DensityOfStates object"""
+
     def test_read_testdata(self):
         """read test DOSCARs in data directory"""
         dir_doscar = pathlib.Path(__file__).parent / "data"
@@ -24,8 +26,10 @@ class test_read_doscar(ut.TestCase):
             for k, v in verify.items():
                 self.assertEqual(dos.__getattribute__(k), v)
 
+
 class test_read_procar(ut.TestCase):
     """test reading in PROCAR to get a BandStructure object"""
+
     def test_read_testdata(self):
         """read test PROCARs in data directory"""
         dir_procar = pathlib.Path(__file__).parent / "data"
@@ -39,8 +43,10 @@ class test_read_procar(ut.TestCase):
             for k, v in verify.items():
                 self.assertEqual(bs.__getattribute__(k), v)
 
+
 class test_read_xml(ut.TestCase):
     """test reading vasprunxml"""
+
     def test_read_kpts(self):
         """kpoints"""
         dir_xml = pathlib.Path(__file__).parent / "data"
@@ -57,6 +63,7 @@ class test_read_xml(ut.TestCase):
 
 class test_eigenval(ut.TestCase):
     """test reading vasprunxml"""
+
     def test_read_eigenval(self):
         """kpoints"""
         dir_eigen = pathlib.Path(__file__).parent / "data"
@@ -73,11 +80,14 @@ class test_eigenval(ut.TestCase):
                 print(">> {} ?= {}".format(k, v))
                 self.assertTrue(np.allclose(bsv, v))
 
+
 class test_poscar(ut.TestCase):
     """test poscar reader. Actually tested in Cell"""
 
+
 class test_wavecar(ut.TestCase):
     """test wavecar object"""
+
     def test_read_wavecar(self):
         """reading the predefined cases"""
         dir_wavecar = pathlib.Path(__file__).parent / "data"
@@ -99,8 +109,10 @@ class test_wavecar(ut.TestCase):
                     self.assertEqual(v, wv)
             wc.close()
 
+
 class test_chglike(ut.TestCase):
     """test CHG and CHGCAR object"""
+
     def test_read_chgcar(self):
         """reading the predefined cases"""
         dir_chgcar = pathlib.Path(__file__).parent / "data"
@@ -140,4 +152,3 @@ class test_chglike(ut.TestCase):
 
 if __name__ == "__main__":
     ut.main()
-
