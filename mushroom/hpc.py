@@ -11,6 +11,8 @@ import pathlib
 from re import split as rsplit
 from typing import Union, Iterable
 from os import PathLike
+from io import StringIO
+from mushroom.core.ioutils import open_textio
 from mushroom.core.env import username, hostname
 from mushroom.core.logger import loggers
 
@@ -58,7 +60,7 @@ class SbatchOptions:
     def __init__(self, template=None, **kwargs):
         self._keywords_values = {}
         if template is not None:
-            with open(template, 'r') as h:
+            with open_textio(template, 'r') as h:
                 slines = [
                     x[8:].strip() for x in h.readlines() if x.strip().startswith("#SBATCH ")
                 ]
@@ -111,8 +113,8 @@ class SbatchScript:
                  commands: Union[str, Iterable[str]] = None,
                  sheban: str = "#!/usr/bin/env bash",
                  template: str = None,
-                 commands_template: str = None,
-                 sbatch_options_template: str = None,
+                 commands_template: Union[str, PathLike, StringIO] = None,
+                 sbatch_options_template: Union[str, PathLike, StringIO] = None,
                  **kwargs):
         if template is not None and commands_template is None:
             commands_template = template
@@ -122,12 +124,12 @@ class SbatchScript:
         self._commands = None
         self._sheban = sheban
         if commands is not None:
-            if isinstance(commands, Iterable):
+            if isinstance(commands, (list, tuple, set)):
                 self._commands = "\n".join(commands)
             else:
                 self._commands = commands
         elif commands_template is not None:
-            with open(commands_template, 'r') as h:
+            with open_textio(commands_template, 'r') as h:
                 # prune sheban and sbatch directives
                 self._commands = "".join([
                     x for x in h.readlines()
@@ -178,7 +180,9 @@ def get_scheduler_header(platform: str, use_pbs: bool = False) -> str:
         from mushroom.__config__ import pbs_headers
     except ImportError:
         pbs_headers = {}
-    avail_platforms = {True: pbs_headers}.get(use_pbs, sbatch_headers)
+    avail_platforms = sbatch_headers
+    if use_pbs:
+        avail_platforms = pbs_headers
     prefix = {True: "PBS"}.get(use_pbs, "SBATCH")
     head = avail_platforms.get(platform, None)
     if head is None:
@@ -200,7 +204,9 @@ def add_scheduler_header(pscript: Union[str, PathLike],
     with open(pscript, "r") as h:
         lines = h.readlines()
     # avoid duplicate insertion by checking the second line of script
-    prefix = {True: "#PBS"}.get(use_pbs, "#SBATCH")
+    prefix = "#SBATCH"
+    if use_pbs:
+        prefix = "#PBS"
     if len(lines) > 1:
         if not lines[1].startswith(prefix):
             lines[0] += head
@@ -213,8 +219,12 @@ def is_slurm_enabled() -> bool:
 
     This is achieved by calling sacct and reading its returncode"""
     import subprocess as sp
-    p = sp.Popen(["sacct", "-h"], stderr=sp.PIPE, stdout=sp.PIPE)
-    ret = p.wait()
-    if ret == 0:
-        return True
+    try:
+        p = sp.Popen(["sacct", "-h"], stderr=sp.PIPE, stdout=sp.PIPE)
+        ret = p.wait()
+        if ret == 0:
+            return True
+    except FileNotFoundError:
+        # sacct not found
+        pass
     return False

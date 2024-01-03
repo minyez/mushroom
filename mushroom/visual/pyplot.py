@@ -13,6 +13,11 @@ except ImportError:
 from mushroom.core.ioutils import raise_no_module
 
 
+__all__ = [
+    "rc_gracify",
+]
+
+
 def rc_gracify(transparent: bool = False, dpi: int = 300, cmap: str = "RdBu"):
     """setup rcParams to mimic the style of XmGrace"""
     raise_no_module(plt, "matplotlib")

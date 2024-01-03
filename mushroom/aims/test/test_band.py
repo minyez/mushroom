@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import unittest as ut
+import pathlib
+import json
 
-from mushroom.aims.band import decode_band_output_line
+from mushroom.aims.band import decode_band_output_line, read_band_output, read_band_mulliken_output
 
 
 class test_decode_band_output_line(ut.TestCase):
@@ -20,6 +22,34 @@ class test_decode_band_output_line(ut.TestCase):
             self.assertListEqual(kpt, kpt_d)
             self.assertListEqual(occ, occ_d)
             self.assertListEqual(ene, ene_d)
+
+
+class test_read_band_output(ut.TestCase):
+
+    def test_read_testcases(self):
+        datadir = pathlib.Path(__file__).parent / "data"
+        testcases_json = datadir / "testcases_band.json"
+        with testcases_json.open('r') as h:
+            verifies = json.load(h)
+        for case, verify in verifies.items():
+            bandfiles = [datadir / x for x in verify.pop("files")]
+            bs, kpts = read_band_output(*bandfiles)
+            for k, v in verify.items():
+                self.assertEqual(bs.__getattribute__(k), v)
+
+
+class test_read_band_mulliken_output(ut.TestCase):
+
+    def test_read_testcases(self):
+        datadir = pathlib.Path(__file__).parent / "data"
+        testcases_json = datadir / "testcases_bandmlk.json"
+        with testcases_json.open('r') as h:
+            verifies = json.load(h)
+        for case, verify in verifies.items():
+            bandfiles = [datadir / x for x in verify.pop("files")]
+            bs, kpts = read_band_mulliken_output(*bandfiles)
+            for k, v in verify.items():
+                self.assertEqual(bs.__getattribute__(k), v)
 
 
 if __name__ == "__main__":

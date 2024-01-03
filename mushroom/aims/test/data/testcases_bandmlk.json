@@ -1,0 +1,11 @@
+{
+  "Si_PBE_k444_GX": {
+    "_nkpts": 5,
+    "_nbands": 25,
+    "_nelect": 28,
+    "_nspins": 1,
+    "_nprjs": 3,
+    "_natms": 2,
+    "files": ["Si_bandmlk1001.out"]
+  }
+}

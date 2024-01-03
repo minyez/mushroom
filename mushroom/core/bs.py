@@ -305,6 +305,11 @@ class BandStructure(EnergyUnit):
         '''Int. number of bands'''
         return self._nbands
 
+    @property
+    def nstates(self):
+        '''Int. number of bands'''
+        return self._nbands
+
     def parse_proj(self, pwav=None, atms: Sequence[str] = None, prjs: Sequence[str] = None):
         """Parse the partial wave information
         """

@@ -1,0 +1,9 @@
+{
+  "Si_GW_k444_GX": {
+    "_nkpts": 5,
+    "_nbands": 10,
+    "_nelect": 8,
+    "_nspins": 1,
+    "files": ["Si_GW_band1001.out"]
+  }
+}

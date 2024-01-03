@@ -806,7 +806,12 @@ def open_textio(f: Union[str, os.PathLike, StringIO, TextIOWrapper], mode: str =
     try:
         yield f
     finally:
-        f.close()
+        # rewind StringIO for future use
+        if isinstance(f, StringIO):
+            f.seek(0)
+        # otherwise is a file, we need to close it
+        else:
+            f.close()
 
 
 def raise_no_module(mod, modname: str, msg: str = None):
