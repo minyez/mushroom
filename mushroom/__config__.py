@@ -18,9 +18,12 @@ config_files = [
 
 module_name = __NAME__ + '.__config__'
 
+found_config = False
+
 # pylint: disable=no-value-for-parameter,W1505
 for config_file in config_files:
     if os.path.isfile(config_file):
+        found_config = True
         # may replace load_module later
         machinery.SourceFileLoader(module_name, config_file).load_module()
 

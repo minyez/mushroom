@@ -195,5 +195,6 @@ get_atomic_mass = get_atomic_weight
 
 #     return atomType, natomList, compositions
 
-l_channels = ['s', 'p', 'd', 'f', 'g', 'h', 'i']
+l_channels = ['s', 'p', 'd', 'f', 'g', 'h', 'i', 'j', 'k']
+l_int = {v: i for i, v in enumerate(l_channels)}
 

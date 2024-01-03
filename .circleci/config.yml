@@ -46,7 +46,7 @@ jobs:
             cp -a ~/mushroom/mushroom/core/test/data/rocksalt.cif ~/mushroom/db/cell/NaCl
             # prepare a fake FHI-aims directory and a H specie for passing the pytest
             mkdir -p $AIMS_SPECIES_DEFAULTS/defaults_2010/tight
-            touch $AIMS_SPECIES_DEFAULTS/defaults_2010/tight/01_H_default
+            cat "species H" > $AIMS_SPECIES_DEFAULTS/defaults_2010/tight/01_H_default
       - run:
           name: "Linting"
           command: |

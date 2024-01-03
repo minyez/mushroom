@@ -6,7 +6,7 @@ from typing import Union
 from io import StringIO
 from copy import deepcopy
 
-from mushroom.core.elements import element_symbols, get_atomic_number, l_channels
+from mushroom.core.elements import element_symbols, get_atomic_number, l_channels, l_int
 from mushroom.core.ioutils import open_textio
 from mushroom.core.logger import loggers
 
@@ -14,6 +14,60 @@ from mushroom.core.logger import loggers
 _logger = loggers["aims"]
 
 _SPECIES_DEFAULTS_ENV = "AIMS_SPECIES_DEFAULTS"
+
+BASIS_KEYS = ["valence", "ion_occ", "hydro", "ionic", "gaussian", "sto", "confined"]
+
+
+def get_num_obfs(basis_key, basis_string):
+    """Get the number of orbital basis functions of ``basis_key`` basis represented by ``basis_string``
+
+    Args:
+        basis_key (str)
+        basis_string (str)
+
+    Return:
+        int
+    """
+    if basis_key in ["valence", "ion_occ"]:
+        n, lstr, _ = basis_string.split()
+        l = l_int[lstr]
+        return (2 * l + 1) * (int(n) - l)
+    elif basis_key in ["hydro", "ionic", "confined"]:
+        n, lstr, _ = basis_string.split()
+        return 2 * l_int[lstr] + 1
+    elif basis_key == "sto":
+        n, l, _ = basis_string.split()
+        return 2 * int(l) + 1
+    elif basis_key == "gaussian":
+        l, n_pgto = basis_string.split()[:2]
+        return (2 * int(l) + 1) * int(n_pgto)
+    raise ValueError("Unknown basis type with key: {}".format(basis_key))
+
+
+def get_l_nrad(basis_key, basis_string):
+    """Get angular momentum number and number of radial functions of ``basis_key`` basis represented by ``basis_string``
+
+    Args:
+        basis_key (str)
+        basis_string (str)
+
+    Return:
+        int
+    """
+    if basis_key in ["valence", "ion_occ"]:
+        n, lstr, _ = basis_string.split()
+        l = l_int[lstr]
+        return l, int(n) - l
+    elif basis_key in ["hydro", "ionic", "confined"]:
+        _, lstr, _ = basis_string.split()
+        return l_int[lstr], 1
+    elif basis_key == "sto":
+        _, l, _ = basis_string.split()
+        return int(l), 1
+    elif basis_key == "gaussian":
+        l, n_pgto = basis_string.split()[:2]
+        return int(l), int(n_pgto)
+    raise ValueError("Unknown basis type with key: {}".format(basis_key))
 
 
 def search_basis_directories(aims_species_defaults=None, error_dir_not_found: bool = True):
@@ -44,6 +98,8 @@ def get_basis_directory_from_alias(directory_alias):
         directory = os.path.join("NAO-J-n", directory.upper())
     elif directory in ["nao-vcc-2z", "nao-vcc-3z", "nao-vcc-4z", "nao-vcc-5z"]:
         directory = os.path.join("NAO-VCC-nZ", directory.upper())
+    else:
+        raise ValueError("Unknown alias for basis directory: {}".format(directory_alias))
     return directory
 
 
@@ -81,7 +137,9 @@ def get_specie_filename(elem: str,
         species_defaults = get_species_defaults_directory()
     directories_avail = search_basis_directories(species_defaults, error_dir_not_found=error_dir_not_found)
     directory = directory.strip("/")
-    directory = get_basis_directory_from_alias(directory)
+    # possibly an alias
+    if "/" not in directory:
+        directory = get_basis_directory_from_alias(directory)
     if error_dir_not_found and directory not in directories_avail:
         raise ValueError("{} is not found in available basis directories {}"
                          .format(directory, directories_avail))
@@ -90,7 +148,7 @@ def get_specie_filename(elem: str,
     return pspecies
 
 
-class NaoBasis:
+class NaoBasisPool:
     """"""
 
 
@@ -117,7 +175,7 @@ class Species:
                          "plus_u"]
     # TODO: accept multiple plus_u, so we need a list to store it
     angular_grids_tag = ["angular_grids", "outer_grid", "division"]
-    basis_types = ["valence", "ion_occ", "hydro", "ionic", "gaussian", "sto", "confined"]
+    basis_types = BASIS_KEYS
     # TODO: use regular expression pattern to match the basis function lines
     # TODO: move basis set reading to NaoBasis class
 
@@ -132,6 +190,9 @@ class Species:
     def _check_basis_type(cls, basis_type: str):
         if basis_type not in cls.basis_types:
             raise ValueError(f"Unsupported basis type: {basis_type}")
+
+    def __getitem__(self, tag):
+        return self.tags[tag]
 
     def update_basic_tag(self, tag, value):
         """update the value of basic species tag
@@ -307,7 +368,6 @@ class Species:
             prefix (str): added just before the tag of ``basis_tag``
         """
         slist = []
-        tier_export_list = [0, 1, 2, 3, 4, 5, -1]
         tier_string_dict = {
             0: "Minimal basis",
             1: "First Tier",
@@ -317,6 +377,7 @@ class Species:
             5: "Fifth Tier",
             -1: "Further basis functions"
         }
+        tier_export_list = [0, 1, 2, 3, 4, 5, -1]
 
         for tier_export in tier_export_list:
             slist_tier = []
@@ -339,6 +400,7 @@ class Species:
                         slist_tier.append(comment + " " * padding + f"{for_aux}{btype} {cgto[0]} {cgto[1]}")
                         for i in range(int(n)):
                             slist_tier.append(comment + " " * padding + f"{cgto[2*i+2]:>17s}  {cgto[2*i+3]:>13s}")
+            # only export existing tiers
             if len(slist_tier) > 0:
                 slist.append("#  " + tier_string_dict[tier_export])
                 slist.extend(slist_tier)

@@ -46,3 +46,8 @@ EV2K = E / KB
 KJ_PER_MOL2EV_PER_FU = 1000 / (EV2J * NAV)
 # eV/A^3 to GPa
 EV_PER_ANG_CUB2GPA = E * 1.0e21
+
+# ==================================================
+INV_KBYTE = 1.0 / 1024
+INV_MEGABYTE = INV_KBYTE ** 2
+INV_GIGABYTE = INV_KBYTE ** 3
