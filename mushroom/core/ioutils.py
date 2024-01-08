@@ -236,20 +236,20 @@ def trim_comment(string: str, comment_regex=r'[\#\!]') -> str:
 
 
 def readlines_remove_comment(filename, comment_regex=r'[\#\!]',
-                             keep_empty_lines=True, trim_leading_space=False):
+                             keep_empty_lines=True, trim_space=False):
     """read lines of a file
 
     Args:
         filename (path-like, StringIO)
         comment_regex (regex): regular expression parsed to ``trim_comment``
         keep_empty_lines (bool): exclude empty lines after comments are trimmed
-        trim_starting_space (bool): trim out starting spaces including whitespace, tab, etc
+        trim_space (bool): trim spaces including whitespace, tab, etc
 
     Returns:
         list, each member being a line without trailing \\n"""
     lines = []
     tc = "\n"
-    if trim_leading_space:
+    if trim_space:
         tc = None
     with open_textio(filename) as h:
         l = h.readline()
@@ -297,18 +297,18 @@ def trim_both_sides(string: str, regex_left: str, regex_right: str, include_patt
     return trim_after(string, regex_right, include_pattern=include_pattern)
 
 
-def check_duplicates_in_tag_tuple(tagtuple) -> int:
-    """Check if there is duplicate in a tag tuple, case sensitive
-
-    Args:
-        tagTuple (tuple) : the tag tuple to check
-    """
-    dup = -1
-    for i, k in enumerate(tagtuple):
-        if k in tagtuple[:i]:
-            dup = i
-            break
-    return dup
+# def check_duplicates_in_tag_tuple(tagtuple) -> int:
+#     """Check if there is duplicate in a tag tuple, case sensitive
+#
+#     Args:
+#         tagTuple (tuple) : the tag tuple to check
+#     """
+#     dup = -1
+#     for i, k in enumerate(tagtuple):
+#         if k in tagtuple[:i]:
+#             dup = i
+#             break
+#     return dup
 
 
 # def data_normalization(data, scale=1.0, normByPeak=True):

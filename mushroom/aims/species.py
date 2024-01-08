@@ -423,7 +423,8 @@ class Species:
                     slist.append(" " * padding + f"  division  {div}")
                 slist.append(" " * padding + f"  outer_grid  {self.tags[t]['outer_grid']}")
         slist.append(self.export_basis(padding))
-        slist.append("###   End species ###")
+        if self.header is not None:
+            slist.append("###   End species ###")
         return "\n".join(slist)
 
     def write(self, pspecies):
@@ -485,8 +486,9 @@ class Species:
                     elif len(words) > 2:
                         l = l.replace("\"", "").replace("\'", "")
                         words = [x.lower() for x in l.split()]
-                        if words[2] == "tier":
-                            tier = {"first": 1, "second": 2, "third": 3, "fourth": 4, "fifth": 5}[words[1]]
+                        tier_dict = {"first": 1, "second": 2, "third": 3, "fourth": 4, "fifth": 5}
+                        if words[2] == "tier" and words[1] in tier_dict:
+                            tier = tier_dict[words[1]]
                     # reset the tier after an irrelevant comment line
                     # this include the case "# Further basis functions"
                     else:

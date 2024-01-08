@@ -5,13 +5,15 @@
 from io import StringIO
 import os
 import unittest as ut
+import tempfile as tf
 
-from mushroom.core.ioutils import (split_comma, decode_int_range, decode_float_ends, grep,
+from mushroom.core.ioutils import (split_comma, decode_int_ends, decode_int_range, decode_float_ends, grep,
                                    get_dirpath, get_file_ext, get_filename_wo_ext,
-                                   get_cwd_name, get_matched_files, trim_after,  # trim_comment,
+                                   get_cwd_name, get_matched_files, trim_after,
+                                   get_first_last_line, readlines_remove_comment,
                                    trim_before, trim_both_sides, conv_string,
                                    readtext_split_emptyline, get_similar_str,
-                                   cycler)
+                                   cycler, raise_no_module, bool2str, str2bool)
 
 
 class test_string_decoding(ut.TestCase):
@@ -27,7 +29,14 @@ class test_string_decoding(ut.TestCase):
         self.assertRaises(ValueError, decode_float_ends, "-8.0")
         self.assertRaises(ValueError, decode_float_ends, "m8.0~1", m_minus=False)
 
+    def test_decode_int_ends(self):
+        """ends as two integer numbers"""
+        self.assertTupleEqual(decode_int_ends("-8~1"), (-8, 1))
+        self.assertTupleEqual(decode_int_ends("-8~"), (-8, None))
+        self.assertTupleEqual(decode_int_ends("~1"), (None, 1))
+
     def test_decode_int_range(self):
+        self.assertListEqual(decode_int_range("a~b"), ["a~b"])
         self.assertListEqual(decode_int_range("5~9"), [5, 6, 7, 8, 9])
         self.assertListEqual(decode_int_range("vbm+5~+6"),
                              ["vbm+5", "vbm+6"])
@@ -49,6 +58,14 @@ class test_string_decoding(ut.TestCase):
         self.assertEqual(1, conv_string(string, int, 0, strips=";"))
         # multiple values
         self.assertListEqual([1, 5], conv_string(string, int, 0, 2, sep=r"[;=]", strips="."))
+
+    def test_bool2str(self):
+        self.assertEqual(bool2str(True), "true")
+        self.assertEqual(bool2str(False), "false")
+        self.assertEqual(bool2str(True, uppercase=True), "TRUE")
+        self.assertEqual(bool2str(False, uppercase=True), "FALSE")
+        self.assertEqual(bool2str(True, fortran_flavor=True), ".true.")
+        self.assertEqual(bool2str(False, fortran_flavor=True), ".false.")
 
 
 class test_grep(ut.TestCase):
@@ -127,6 +144,18 @@ class test_trim(ut.TestCase):
         self.assertEqual("Fe", trim_after("Fe1", r'\d'))
         self.assertEqual("Cd2", trim_after("Cd2Fe", r'\d', include_pattern=True))
 
+    def test_readlines_remove_comment(self):
+        """readlines_remove_comment"""
+        tempf = tf.NamedTemporaryFile()
+        with open(tempf.name, 'w') as h:
+            print("abc#defg", file=h)
+            print(" defg!abc", file=h)
+        lines = readlines_remove_comment(tempf.name, trim_space=False)
+        self.assertEqual("\n".join(lines), "abc\n defg")
+        lines = readlines_remove_comment(tempf.name, trim_space=True)
+        self.assertEqual("\n".join(lines), "abc\ndefg")
+        tempf.close()
+
     def test_trim_both_sides(self):
         """trim both"""
         string = "WFFIL  EF=0.9725 (WFFIL, WFPRI, ENFIL, SUPWF)"
@@ -149,6 +178,15 @@ class test_textio_operations(ut.TestCase):
             strings = readtext_split_emptyline(StringIO(s))
             self.assertEqual(len(strings), n)
             self.assertListEqual(strings, correct)
+
+
+class test_check(ut.TestCase):
+    """test check facilitiers"""
+
+    def test_raise_no_module(self):
+        """"""
+        self.assertRaises(ModuleNotFoundError, raise_no_module, None, "fake-module-name")
+        self.assertRaises(ModuleNotFoundError, raise_no_module, None, "fake-module-name", "for test")
 
 
 class test_file_path(ut.TestCase):
@@ -194,6 +232,18 @@ class test_file_path(ut.TestCase):
         self.assertTupleEqual(("test_ioutils.py",),
                               get_matched_files(regex=r".*ioutils.*", relative=True))
 
+    def test_get_first_last_line(self):
+        """"""
+        tempf = tf.NamedTemporaryFile()
+        with open(tempf.name, 'w') as h:
+            print("This is first line.", file=h)
+            print("Second line.", file=h)
+            print("Now is last line.", file=h)
+        first_line, last_line = get_first_last_line(tempf.name)
+        tempf.close()
+        self.assertEqual("This is first line.\n", first_line)
+        self.assertEqual("Now is last line.\n", last_line)
+
 
 class test_search_similar_str(ut.TestCase):
     """test similar strings search"""
@@ -212,8 +262,6 @@ class test_number(ut.TestCase):
         lt = ["abc", "def", "123"]
         self.assertEqual(0, cycler(len(lt), lt, return_int=True))
         self.assertEqual("def", cycler(len(lt) + 1, lt))
-
-#   trim_comment,
 
 
 if __name__ == "__main__":
