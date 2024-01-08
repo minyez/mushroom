@@ -12,6 +12,7 @@ except OSError:
     # get_terminal_size may fail when using pipe
     term_columns = 80
 
+
 def set_np_linewidth_ratio(ratio: float = 0.75, thres: int = 100):
     """set the array print linewidth to a ratio of terminal columns
 
@@ -20,15 +21,20 @@ def set_np_linewidth_ratio(ratio: float = 0.75, thres: int = 100):
         thres (int)
     """
     if term_columns > thres:
-        np.set_printoptions(linewidth=int(term_columns*ratio))
+        np.set_printoptions(linewidth=int(term_columns * ratio))
+
 
 def block_banner(info: str, width: int = 80) -> str:
     """return a three-line block banner with info centered at the second line"""
     n = len(info)
     if n >= width:
         width = n
-    slist = ["="*width, one_line_center_banner(info, width, fill=" "), "="*width]
+    slist = [
+        "=" * width,
+        one_line_center_banner(info, width, fill=" "), "=" * width
+    ]
     return "\n".join(slist)
+
 
 def one_line_center_banner(info: str, width: int = 80, fill: str = "=") -> str:
     """return a string with centered information by fill with ``fill`` on both sides
@@ -41,8 +47,7 @@ def one_line_center_banner(info: str, width: int = 80, fill: str = "=") -> str:
     width = width - 2
     if n >= width:
         return info
-    lf = (width-n) // 2
+    lf = (width - n) // 2
     rf = width - n - lf
-    slist = [fill*lf, info, fill*rf]
+    slist = [fill * lf, info, fill * rf]
     return "{} {} {}".format(*slist)
-
