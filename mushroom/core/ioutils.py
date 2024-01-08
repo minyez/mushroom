@@ -814,6 +814,36 @@ def open_textio(f: Union[str, os.PathLike, StringIO, TextIOWrapper], mode: str =
             f.close()
 
 
+def block_banner(info: str, width: int = 80, fence: str = "=", fill: str = " ") -> str:
+    """return a three-line block banner with info centered at the second line"""
+    n = len(info)
+    if n >= width:
+        width = n
+    slist = [
+        fence * width,
+        one_line_center_banner(info, width, fill=fill),
+        fence * width
+    ]
+    return "\n".join(slist)
+
+
+def one_line_center_banner(info: str, width: int = 80, fill: str = "=") -> str:
+    """return a string with centered information by fill with ``fill`` on both sides
+
+    newline in info will be replaced by space
+    """
+    info = info.replace("\n", " ")
+    n = len(info)
+    # remove two spaces for join
+    width = width - 2
+    if n >= width:
+        return info
+    lf = (width - n) // 2
+    rf = width - n - lf
+    slist = [fill * lf, info, fill * rf]
+    return "{} {} {}".format(*slist)
+
+
 def raise_no_module(mod, modname: str, msg: str = None):
     """
     Raise when a module is not found (set to None) when it is required

@@ -13,7 +13,8 @@ from mushroom.core.ioutils import (split_comma, decode_int_ends, decode_int_rang
                                    get_first_last_line, readlines_remove_comment,
                                    trim_before, trim_both_sides, conv_string,
                                    readtext_split_emptyline, get_similar_str,
-                                   cycler, raise_no_module, bool2str, str2bool)
+                                   cycler, raise_no_module, bool2str, str2bool,
+                                   one_line_center_banner, block_banner)
 
 
 class test_string_decoding(ut.TestCase):
@@ -262,6 +263,24 @@ class test_number(ut.TestCase):
         lt = ["abc", "def", "123"]
         self.assertEqual(0, cycler(len(lt), lt, return_int=True))
         self.assertEqual("def", cycler(len(lt) + 1, lt))
+
+
+class test_banner(ut.TestCase):
+    """test banner printing"""
+
+    def test_one_line_center_banner(self):
+        s = one_line_center_banner("Hello World", width=30, fill="=")
+        self.assertEqual(s, "=" * 8 + " Hello World " + "=" * 9)
+        s = one_line_center_banner("Hello World!", width=30, fill="=")
+        self.assertEqual(s, "=" * 8 + " Hello World! " + "=" * 8)
+
+    def test_block_banner(self):
+        s = block_banner("Hello World!", width=30, fence="=", fill=" ")
+        self.assertEqual(s,
+                         "=" * 30 + "\n" + " " * 8 + " Hello World! " + " " * 8 + "\n" + "=" * 30)
+        s = block_banner("Hello World!", width=30, fence="-", fill="-")
+        self.assertEqual(s,
+                         "-" * 30 + "\n" + "-" * 8 + " Hello World! " + "-" * 8 + "\n" + "-" * 30)
 
 
 if __name__ == "__main__":
