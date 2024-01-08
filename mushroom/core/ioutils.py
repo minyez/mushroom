@@ -11,7 +11,7 @@ from io import TextIOWrapper, StringIO
 from collections import OrderedDict
 from collections.abc import Iterable, Callable
 from sys import stdout
-from typing import List, Union, Sequence, Tuple, Any
+from typing import List, Union, Sequence, Tuple, Any, Set
 
 # make it work as a standalone module
 try:
@@ -842,6 +842,47 @@ def one_line_center_banner(info: str, width: int = 80, fill: str = "=") -> str:
     rf = width - n - lf
     slist = [fill * lf, info, fill * rf]
     return "{} {} {}".format(*slist)
+
+
+def conv_integers_to_series(container_int: Union[List[int], Tuple[int], Set[int]], joint: str = "-") -> str:
+    """Convert a list/tuple/set of integers to an integer series.
+
+    Args:
+        container_int (list/tuple/set of integer): a container of integers.
+            Duplicate will be discarded.
+
+    Returns:
+        str
+    """
+    if any(not isinstance(x, int) for x in container_int):
+        raise ValueError("all members must be integers")
+    set_int = sorted(set(container_int))
+    slist = []
+    n_int = len(set_int)
+
+    consecutive = 0
+    for i, x in enumerate(set_int):
+        if i == 0:
+            begin = x
+            last = x
+            consecutive = 0
+        if x == last + 1:
+            consecutive += 1
+        elif x > last + 1:
+            if consecutive == 0:
+                slist.append(str(last))
+            else:
+                slist.append(joint.join([str(begin), str(last)]))
+            begin = x
+            consecutive = 0
+        if i == n_int - 1:
+            if consecutive == 0:
+                slist.append(str(x))
+            else:
+                slist.append(joint.join([str(begin), str(x)]))
+        last = x
+
+    return slist
 
 
 def raise_no_module(mod, modname: str, msg: str = None):

@@ -14,7 +14,8 @@ from mushroom.core.ioutils import (split_comma, decode_int_ends, decode_int_rang
                                    trim_before, trim_both_sides, conv_string,
                                    readtext_split_emptyline, get_similar_str,
                                    cycler, raise_no_module, bool2str, str2bool,
-                                   one_line_center_banner, block_banner)
+                                   one_line_center_banner, block_banner,
+                                   conv_integers_to_series)
 
 
 class test_string_decoding(ut.TestCase):
@@ -67,6 +68,17 @@ class test_string_decoding(ut.TestCase):
         self.assertEqual(bool2str(False, uppercase=True), "FALSE")
         self.assertEqual(bool2str(True, fortran_flavor=True), ".true.")
         self.assertEqual(bool2str(False, fortran_flavor=True), ".false.")
+
+    def test_conv_integers_to_series(self):
+        self.assertListEqual(conv_integers_to_series([]), [])
+        self.assertListEqual(conv_integers_to_series([123]), ["123"])
+        self.assertListEqual(conv_integers_to_series([123, 124]), ["123-124"])
+        self.assertListEqual(conv_integers_to_series([123, 124, 125]), ["123-125"])
+        self.assertListEqual(conv_integers_to_series([123, 124, 127]), ["123-124", "127"])
+        self.assertListEqual(conv_integers_to_series([123, 124, 127, 129, 130]),
+                             ["123-124", "127", "129-130"])
+        self.assertListEqual(conv_integers_to_series([123, 124, 127, 129, 130], joint="~"),
+                             ["123~124", "127", "129~130"])
 
 
 class test_grep(ut.TestCase):
