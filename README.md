@@ -3,7 +3,7 @@
 [![CircleCI](https://dl.circleci.com/status-badge/img/gh/minyez/mushroom/tree/master.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/minyez/mushroom/tree/master)
 [![codecov](https://codecov.io/github/minyez/mushroom/graph/badge.svg?token=SM7R1XB2VW)](https://codecov.io/github/minyez/mushroom)
 
-A **M**ulti-f**U**nctional, **S**imple and **H**elpful **R**esearch t**OO**lkit for **M**aterial science (build time)
+A **M**ulti-f**U**nctional, **S**imple and **H**elpful **R**esearch t**OO**lkit for **M**aterial science
 
 This is just a contrived name for yet another analysis tool for scientific computations in material science.
 
@@ -17,7 +17,7 @@ Any suggestions concerning code style, feature, etc, are totally welcome.
 - NumPy
 - SciPy (for special functions)
 - Spglib (for symmtery detection)
-- BeautifulSoup4 (for scrapper and XML parser)
+- BeautifulSoup4 (for XML parser)
 - Bash >= 4.4 (for using workflow scripts)
 
 Run `pip install -r requirements.txt` to install dependencies.
@@ -47,12 +47,6 @@ You may test the Python pacakge by running `pytest`
 
 ```bash
 pytest
-```
-
-or just
-
-```bash
-make pytest
 ```
 
 ## Usage
