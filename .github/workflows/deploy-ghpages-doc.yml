@@ -7,10 +7,16 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-python@v4
-      - run: pip3 install -r doc/requirements.txt
-      - uses: actions/upload-pages-artifact@v1
+      - name: Install documentation dependencies
+        run: pip3 install -r doc/requirements.txt
+      - name: Build documentation
+        run: cd doc && make html
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v3
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v1
         with:
           path: ./doc/_build/html/
 
