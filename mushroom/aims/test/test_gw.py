@@ -3,13 +3,32 @@
 import unittest as ut
 import pathlib
 import json
+import tempfile
 
 import numpy as np
 
-from mushroom.aims.gw import read_aims_self_energy_dir
+from mushroom.aims.gw import read_aims_self_energy_dir, _read_aims_single_sigc_dat
 
 
 class test_read_self_energy_directory(ut.TestCase):
+
+    def test_read_sing_sigc_dat(self):
+        tf = tempfile.NamedTemporaryFile()
+
+        # invalid format, cannot extra frequency
+        with open(tf.name, 'w') as h:
+            print("0.1-100000006.20", file=h)
+        self.assertRaises(ValueError, _read_aims_single_sigc_dat, tf.name)
+
+        # invalid format, cannot separate real and imaginary part due to pathological self energy
+        with open(tf.name, 'w') as h:
+            print("1.0  0.1-0.2", file=h)
+        omegas, sigc = _read_aims_single_sigc_dat(tf.name)
+        self.assertEqual(len(omegas), 1)
+        self.assertAlmostEqual(0.0, sigc[0].real)
+        self.assertAlmostEqual(0.0, sigc[0].imag)
+
+        tf.close()
 
     def test_read_self_energy_directory(self):
         datadir = pathlib.Path(__file__).parent / "data"
