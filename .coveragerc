@@ -1,6 +1,8 @@
 [run]
 source = mushroom
-omit = */test_*.py
+omit =
+  */test_*.py
+  mushroom/core/timing.py
 
 [report]
 ignore_errors = True
