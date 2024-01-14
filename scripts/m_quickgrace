@@ -107,7 +107,7 @@ def m_quickgrace():
 
     for fn in args.data_files:
         datastrings = readtext_split_emptyline(fn)
-        print(len(datastrings))
+        # print(len(datastrings))
 
         for s in datastrings:
             data_cols = np.loadtxt(StringIO(s), unpack=True, ndmin=2,
@@ -134,7 +134,12 @@ def m_quickgrace():
                     ix, iy = tuple(map(int, xy.split(':')))
                     legend = next(legends)
                     if legend is None:
-                        legend = "{}:{}".format(ix, iy)
+                        if args.leg_add_fn:
+                            legend = "{}:{}:{}".format(fn, ix, iy)
+                        elif args.leg_fn_only:
+                            legend = fn
+                        else:
+                            legend = "{}:{}".format(ix, iy)
                     label = legend
                     if args.no_label:
                         label = None
@@ -146,7 +151,12 @@ def m_quickgrace():
                     ix, iy, iz = tuple(map(int, xyz.split(':')))
                     legend = next(legends)
                     if legend is None:
-                        legend = "{}:{}:".format(ix, iy, iz)
+                        if args.leg_add_fn:
+                            legend = "{}:{}:{}:{}".format(fn, ix, iy, iz)
+                        elif args.leg_fn_only:
+                            legend = fn
+                        else:
+                            legend = "{}:{}:{}".format(ix, iy, iz)
                     label = legend
                     if args.no_label:
                         label = None
@@ -159,11 +169,12 @@ def m_quickgrace():
                     continue
                 legend = next(legends)
                 if legend is None:
-                    legend = "{}:{}".format(args.ix, iy)
-                if args.leg_add_fn:
-                    legend = "{}:{}:{}".format(fn, args.ix, iy)
-                if args.leg_fn_only:
-                    legend = fn
+                    if args.leg_add_fn:
+                        legend = "{}:{}:{}".format(fn, args.ix, iy)
+                    elif args.leg_fn_only:
+                        legend = fn
+                    else:
+                        legend = "{}:{}".format(args.ix, iy)
                 label = legend
                 if args.no_label:
                     label = None
