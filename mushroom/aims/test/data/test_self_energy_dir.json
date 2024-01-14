@@ -1,0 +1,12 @@
+{
+  "self_energy_1": {
+    "_comment": "Si k444",
+    "nspins": 1,
+    "nstates": 3,
+    "nfreqs": 6,
+    "state_low": 12,
+    "nkpts_grid": 3,
+    "nkpaths": 1,
+    "nkpts_band": [5]
+  }
+}
