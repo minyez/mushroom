@@ -144,3 +144,9 @@ class Smearing:
         """
         return (np.exp(-np.subtract(x, x0)**2 / sigma**2 / 2.0) / sigma / np.sqrt(2.0 * PI))
 
+    @staticmethod
+    def lorentzian(x, x0, gamma):
+        """Gaussian smearing
+        """
+        return gamma / (np.subtract(x, x0)**2 + gamma**2) / PI
+

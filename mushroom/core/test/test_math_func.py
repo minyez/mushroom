@@ -8,7 +8,7 @@ try:
 except ImportError:
     special = None
 from mushroom.core.math_func import hyp2f2_1f1_series, rising_factor, general_comb, \
-    solid_angle, sph_harm, sph_harm_xyz, gamma_negahalf
+    solid_angle, sph_harm, sph_harm_xyz, gamma_negahalf, Smearing
 
 
 class test_math_func(ut.TestCase):
@@ -37,8 +37,9 @@ class test_math_func(ut.TestCase):
     def test_gamma_negahalf(self):
         """test Gamma(0.5-n)"""
         ns = np.array([0, 1, 2, 3, 4, 5])
-        results = np.array([1.0, -2.0, 4.0/3.0, -8.0/15.0, 16.0/105.0, -32.0/945.0]) * \
-                np.sqrt(np.pi)
+        results = np.array([
+            1.0, -2.0, 4.0 / 3.0, -8.0 / 15.0, 16.0 / 105.0, -32.0 / 945.0
+        ]) * np.sqrt(np.pi)
         for n, gnh in zip(ns, results):
             print(gnh)
             self.assertAlmostEqual(gnh, gamma_negahalf(n))
@@ -113,6 +114,29 @@ class test_math_func(ut.TestCase):
             gc = general_comb(N, k)
             print(gc, value)
             self.assertTrue(np.allclose(gc, value))
+
+
+class test_smearing(ut.TestCase):
+    """Test smearing function"""
+
+    def test_gaussian(self):
+        x = np.linspace(-5, 5, 1000)
+        step = x[1] - x[0]
+        gaussian = Smearing.gaussian(x, 0.0, 0.1)
+        # naive integration
+        integral = np.sum(gaussian) * step
+        # check normalization
+        self.assertAlmostEqual(integral, 1.0, places=4)
+
+    def test_lorentzian(self):
+        x = np.linspace(-5, 5, 1000)
+        step = x[1] - x[0]
+        lorentzian = Smearing.lorentzian(x, 0.0, 0.02)
+        # naive integration
+        integral = np.sum(lorentzian) * step
+        # check normalization
+        # Lorentzian decays slower than Gaussian, thus is not very accurate
+        self.assertAlmostEqual(integral, 1.0, places=2)
 
 
 if __name__ == "__main__":
