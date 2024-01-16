@@ -148,6 +148,24 @@ class test_BS_no_projection(ut.TestCase):
         self.assertEqual(bs.direct_gap(), gap)
         self.assertTrue(bs.is_gap_direct())
 
+    def test_scissor(self):
+        """test scissor operator"""
+        nsp, nkp, nb = 1, 4, 4
+        gap = 1.0
+        # create a gap of 1 eV
+        eigen = np.ones((nsp, nkp, nb))
+        eigen[:, :, nb // 2:] += gap
+        occ = np.zeros((nsp, nkp, nb))
+        # occupied
+        occ[:, :, :nb // 2] += 1.0
+        weight = np.ones(nkp)
+        bs = BS(eigen, occ, weight)
+
+        # scissor should not transform the band structure into a metal state
+        self.assertRaises(ValueError, bs.apply_scissor, -gap - 0.5)
+        bs_new = bs.apply_scissor(1.0)
+        self.assertAlmostEqual(bs_new.fund_gap(), gap + 1.0)
+
     def test_get_dos(self):
         """test dos generation from band structure"""
         nsp, nkp, nb = 1, 4, 4

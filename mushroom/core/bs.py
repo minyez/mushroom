@@ -470,6 +470,26 @@ class BandStructure(EnergyUnit):
         # set the state to ready
         self._bandedge_calculated = True
 
+    def apply_scissor(self, scissor: float):
+        """apply scissor operator and return a new BandStructure object
+
+        Args:
+            scissor (float): scissor operator, value in the same unit as current object
+
+        Returns:
+            BandStructure object
+        """
+        gap = self.fund_gap()
+        if gap < 0:
+            raise NotImplementedError("Scissor operator not yet implemented for metal")
+        if gap + scissor < 0:
+            raise ValueError("Scissor operator will leads to a metal state")
+        icb = self.icbm[2]
+        eigen = deepcopy(self.eigen)
+        eigen[:, :, icb:] += scissor
+        return type(self)(eigen, self.occ, self.weight, self.unit, self._efermi,
+                          self._pwav, self._atms, self._prjs)
+
     def __lazy_bandedge_return(self, attr: str = None):
         """lazy return of attribute related to band edges
 
