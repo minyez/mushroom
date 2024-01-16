@@ -3,4 +3,4 @@ scipy
 spglib>=1.9.0
 lxml
 BeautifulSoup4
-matplotlib
+matplotlib>=3.5.0
