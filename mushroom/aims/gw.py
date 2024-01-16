@@ -92,21 +92,32 @@ def read_aims_self_energy_dir(sedir: str = "self_energy"):
     # assume all files have the same frequencies (should be the case)
     nomegas = len(omegas)
 
-    nspins = max([x for x, _, _ in data_dict_kgrid.keys()]) + 1
-    nkpts_grid = max([x for _, x, _ in data_dict_kgrid.keys()]) + 1
+    nkpts_grid = 0
+    if data_dict_kgrid:
+        nspins = max([x for x, _, _ in data_dict_kgrid.keys()]) + 1
+        nkpts_grid = max([x for _, x, _ in data_dict_kgrid.keys()]) + 1
+        state_low = min([x for _, _, x in data_dict_kgrid.keys()])
+        state_high = max([x for _, _, x in data_dict_kgrid.keys()])
+    else:
+        try:
+            nspins = max([x for x, _, _, _ in data_dict_band.keys()]) + 1
+        except ValueError:
+            raise ValueError("Cannot determine nspins")
+        state_low = min([x for _, _, _, x in data_dict_band.keys()])
+        state_high = max([x for _, _, _, x in data_dict_band.keys()])
 
-    # not all states are calculated, check the minimal and maximal index
-    state_low = min([x for _, _, x in data_dict_kgrid.keys()])
-    state_high = max([x for _, _, x in data_dict_kgrid.keys()])
+    # not all states are calculated, get it from the indices of lowest and highest state
     nstates = state_high - state_low + 1
 
     data_kgrid = np.zeros((nomegas, nspins, nkpts_grid, nstates), dtype='complex64')
     for (isp, ik, istate), sigc_freq in data_dict_kgrid.items():
         data_kgrid[:, isp, ik, istate - state_low] = sigc_freq[:]
 
-    nkpaths = max([x for _, x, _, _ in data_dict_band.keys()]) + 1
+    nkpaths = 0
+    if data_dict_band:
+        nkpaths = max([x for _, x, _, _ in data_dict_band.keys()]) + 1
     # Assume nomegas, nspins and nstates are the same as in the kgrid calculation
-    # Furhter, since each band path can have different number of kpoints,
+    # Further, since each band path can have different number of kpoints,
     # we export a list instead of a single 5d array
     data_bands = []
     for ikpath in range(nkpaths):
