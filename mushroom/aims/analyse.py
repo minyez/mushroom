@@ -45,6 +45,26 @@ def get_dimensions(aimsout):
     return format_str, dict_str_dim
 
 
+def get_chemical_potential(aimsout):
+    """Get chemical potential
+
+    Args:
+        aimsout (str): aims output file
+
+    Returns:
+        float, last chemical potential printed in FHIaims output, in eV
+
+    Caveat:
+        not tested for nspins=2
+    """
+    chempot = None
+    with open(aimsout, 'r') as h:
+        for l in h.readlines():
+            if l.startswith("  | Chemical Potential"):
+                chempot = float(l.split()[-2])
+    return chempot
+
+
 def is_finished_aimsdir(dirpath: Union[str, os.PathLike], aimsout_pat: str = "aims.out*",
                         use_regex: bool = False) -> str:
     """check if the calculation inside dirpath is completed.

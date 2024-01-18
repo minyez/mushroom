@@ -10,6 +10,15 @@ from mushroom.aims.analyse import *
 
 class test_analyse_stdout(ut.TestCase):
 
+    def test_chemical_potential(self):
+        datadir = pathlib.Path(__file__).parent / "data"
+        index_json = datadir / "aimsout.json"
+        with index_json.open('r') as h:
+            fn_dict = json.load(h)
+        for fn, verify in fn_dict.items():
+            if "chemical_potential" in verify:
+                self.assertAlmostEqual(get_chemical_potential(datadir / fn), verify["chemical_potential"])
+
     def test_display_dimensions(self):
         datadir = pathlib.Path(__file__).parent / "data"
         index_json = datadir / "aimsout.json"

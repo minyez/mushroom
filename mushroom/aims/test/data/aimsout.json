@@ -1,6 +1,7 @@
 {
   "mole_ZnO.gw.aims.out": {
     "is_finished": true,
+    "chemical_potential": 1.41906823,
     "nnodes": 32,
     "ntasks": 1024,
     "nthreads": 1,
@@ -12,6 +13,7 @@
   },
   "Si.pgw_band.aims.out": {
     "is_finished": true,
+    "chemical_potential": -5.01384488,
     "nnodes": 1,
     "ntasks": 4,
     "nthreads": 1,
@@ -24,6 +26,7 @@
   },
   "ZrO2_sc222.pgw_kgrid.aims.out": {
     "is_finished": true,
+    "chemical_potential": -9.06471053,
     "nspins": 1,
     "nkpts": 27,
     "nbands": 1000,
