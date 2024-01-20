@@ -94,6 +94,7 @@ class StdOut:
 
         # scf
         self._nscf_ite = None
+        self._chemical_potential = None
 
         # postscf stuff
         self._nbasbas = None
@@ -355,6 +356,12 @@ class StdOut:
             for i, l in enumerate(self._scf_lines):
                 if l.startswith("  End self-consistency iteration #    "):
                     self._nscf_ite = conv_string(l, int, 4)
+                if l.startswith("  | Chemical Potential"):
+                    self._chemical_potential = float(l.split()[-2])
+
+    def get_chemical_potential(self):
+        """Get chemical potential when SCF is converged"""
+        return self._chemical_potential
 
     def get_control(self):
         """return a Control object"""
@@ -376,7 +383,9 @@ class StdOut:
 
     def get_geometry(self):
         """return a Cell object representing the geometry"""
-        raise NotImplementedError
+        from mushroom.aims.input import read_geometry
+        slines = self._geometry_lines
+        return read_geometry(StringIO("".join(slines)))
 
     def get_n_spin_kpt_band_basis(self):
         """get the most requested dimensions of the system

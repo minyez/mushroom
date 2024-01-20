@@ -130,3 +130,48 @@ def read_aims_self_energy_dir(sedir: str = "self_energy"):
         data_bands.append(data_band)
 
     return omegas, state_low, data_kgrid, data_bands
+
+
+def _read_aims_single_specfunc_dat(specfuncdat_fn, unit: str = "ev"):
+    """read single spectral function data file "spectral_function.dat" in 'spectral_function/' directory
+
+    Args:
+        sigcdat_fn (path-like)
+        unit (str): "ev" or "au", unit to export
+
+    Retunrs:
+        float: Kohn-Sham eigenvalue
+        float:
+        nd-array: 1d real array for frequencies
+        nd-array: 1d real array for real-part of self-energy
+        nd-array: 1d real array for imag-part of self-energy
+        nd-array: 1d real array for spectral function
+    """
+    from mushroom.core.constants import HA2EV
+
+    assert unit in ["ev", "au"]
+
+    with open(specfuncdat_fn, 'r') as h:
+        eKS = float(h.readline().split()[1])
+        eQP_wo_c = float(h.readline().split()[1])
+        unit_file = "ev"
+        if "Ha" in h.readline():
+            unit_file = "au"
+
+    omegas, real_part, imag_part, specfunc = np.loadtxt(specfuncdat_fn, usecols=[0, 1, 2, 3], unpack=True)
+
+    conv = None
+    if unit != unit_file:
+        conv = HA2EV
+        if unit == "ha":
+            conv = 1.0 / conv
+
+    if conv is not None:
+        omegas *= conv
+        eKS *= conv
+        eQP_wo_c *= conv
+        real_part *= conv
+        imag_part *= conv
+        specfunc /= conv
+
+    return eKS, eQP_wo_c, omegas, real_part, imag_part, specfunc

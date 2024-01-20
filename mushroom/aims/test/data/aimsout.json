@@ -22,7 +22,10 @@
     "nbands": 28,
     "nbasis": 28,
     "nbasbas": 184,
-    "gwfundgap": 1.7063
+    "gwfundgap": 1.7063,
+    "geometry": {
+      "atms": ["Si", "Si"]
+    }
   },
   "ZrO2_sc222.pgw_kgrid.aims.out": {
     "is_finished": true,

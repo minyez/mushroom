@@ -1127,16 +1127,16 @@ When other keyword are parsed, they will be filtered out and no exception will b
         Comment and reference are not loaded automatically
 
         Args:
-            pgeo (str): path to the aims geometry file, default to geometry.in
+            pgeo (Path-like or StringIO): path to the aims geometry file, default to geometry.in
         """
-        with open(pgeo, 'r') as h:
+        with open_textio(pgeo, 'r') as h:
             data = [l.strip() for l in h.readlines()]
         atms = []
         posi = []
         latt = []
         coord_sys = []
-        for dl in data:
-            words = dl.split()
+        for l in data:
+            words = l.split()
             if not words:
                 continue
             if words[0] in ["atom", "atom_frac"]:
@@ -1145,6 +1145,10 @@ When other keyword are parsed, they will be filtered out and no exception will b
                 posi.append(list(map(float, words[1:4])))
             if words[0] == "lattice_vector":
                 latt.append(list(map(float, words[1:4])))
+            # TODO: other keywords
+        # aims support molecular calculation
+        if not latt:
+            latt = [[100, 0, 0], [0, 100, 0], [0, 0, 100]]
         return cls(latt, atms, posi, unit='ang', coord_sys=coord_sys)
 
     @classmethod

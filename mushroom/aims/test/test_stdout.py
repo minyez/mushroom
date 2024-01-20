@@ -37,18 +37,26 @@ class test_stdout(ut.TestCase):
                 ("nbasis", s._nbasis),
                 ("nbasbas", s._nbasbas),
                 ("is_finished", s.is_finished()),
+                ("chemical_potential", s.get_chemical_potential()),
             ]
             for k, v in assert_equal:
                 if k in verify:
-                    print("Testing key", k)
+                    print("- testing key", k)
                     self.assertEqual(verify[k], v)
 
+            if "geometry" in verify:
+                print("- testing geometry")
+                geo = s.get_geometry()
+                self.assertListEqual(geo.atms, verify["geometry"]["atms"])
+
             if fn in fns_qp:
+                print("- testing QP band")
                 qpbs, _ = s.get_QP_bandstructure()
                 if "gwfundgap" in verify:
                     self.assertAlmostEqual(qpbs.fund_gap(), verify["gwfundgap"], places=4)
 
             if s.is_finished():
+                print("- testing timing statistics")
                 s.get_cpu_time()
                 s.get_wall_time()
                 s.get_wall_time_total()
