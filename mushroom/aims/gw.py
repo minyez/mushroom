@@ -4,9 +4,13 @@ import os
 import re
 import numpy as np
 
+from mushroom.core.logger import loggers
+
 __all__ = [
     "read_aims_self_energy_dir"
 ]
+
+_logger = loggers["aims"]
 
 
 def _read_aims_single_sigc_dat(sigcdat_fn):
@@ -35,6 +39,39 @@ def _read_aims_single_sigc_dat(sigcdat_fn):
     return omegas, sigc
 
 
+def _fullmatch_nsbk_file_name(fn: str, prefix: str, suffix: str):
+    """
+
+    Args:
+        fn (str): filename to match
+        prefix (str): prefix to the pattern
+        suffix (str): suffix to the pattern
+
+    Returns:
+        4 integer or None, istate, ispin, iband, ikpoint, starting from 0
+    """
+    patterns = (
+        (prefix + r"n_(\d+)\.k_(\d+)" + suffix, (1, "1", None, 2)),
+        (prefix + r"n_(\d+)\.s_(\d+)\.k_(\d+)" + suffix, (1, 2, None, 3)),
+        (prefix + r"n_(\d+)\.band_(\d+)\.k_(\d+)" + suffix, (1, "1", 2, 3)),
+        (prefix + r"n_(\d+)\.s_(\d+)\.band_(\d+)\.k_(\d+)" + suffix, (1, 2, 3, 4)),
+    )
+    rets = []
+    for pattern, groups in patterns:
+        matched = re.fullmatch(pattern, fn)
+        if matched is None:
+            continue
+        for group in groups:
+            if group is None:
+                rets.append(None)
+            if isinstance(group, str):
+                rets.append(int(group) - 1)
+            if isinstance(group, int):
+                rets.append(int(matched.group(group)) - 1)
+        break
+    return rets
+
+
 def read_aims_self_energy_dir(sedir: str = "self_energy"):
     """read all sigc data in self energy directory `sedir`
 
@@ -58,36 +95,14 @@ def read_aims_self_energy_dir(sedir: str = "self_energy"):
         omegas, sigc = _read_aims_single_sigc_dat(os.path.join(sedir, sigc_path))
         fn = os.path.basename(sigc_path)
 
-        matched = re.fullmatch(r"Sigma\.omega\.n_(\d+)\.k_(\d+)\.dat", fn)
-        if matched is not None:
-            n = int(matched.group(1))
-            s = 1
-            k = int(matched.group(2))
-            data_dict_kgrid[(s - 1, k - 1, n - 1)] = sigc
-            continue
-        matched = re.fullmatch(r"Sigma\.omega\.n_(\d+)\.s_(\d+)\.k_(\d+)\.dat", fn)
-        if matched is not None:
-            n = int(matched.group(1))
-            s = int(matched.group(2))
-            k = int(matched.group(3))
-            data_dict_kgrid[(s - 1, k - 1, n - 1)] = sigc
-            continue
-        matched = re.fullmatch(r"Sigma\.omega\.n_(\d+)\.band_(\d+)\.k_(\d+)\.dat", fn)
-        if matched is not None:
-            n = int(matched.group(1))
-            s = 1
-            kp = int(matched.group(2))
-            k = int(matched.group(3))
-            data_dict_band[(s - 1, kp - 1, k - 1, n - 1)] = sigc
-            continue
-        matched = re.fullmatch(r"Sigma\.omega\.n_(\d+)\.s_(\d+)\.band_(\d+)\.k_(\d+)\.dat", fn)
-        if matched is not None:
-            n = int(matched.group(1))
-            s = int(matched.group(2))
-            kp = int(matched.group(3))
-            k = int(matched.group(4))
-            data_dict_band[(s - 1, kp - 1, k - 1, n - 1)] = sigc
-            continue
+        try:
+            n, s, kp, k = _fullmatch_nsbk_file_name(fn, r"Sigma\.omega\.", r"\.dat")
+            if kp is None:
+                data_dict_kgrid[(s, k, n)] = sigc
+            else:
+                data_dict_band[(s, kp, k, n)] = sigc
+        except ValueError:
+            _logger.warn("invalid self energy data file: %s", sigc_path)
 
     # assume all files have the same frequencies (should be the case)
     nomegas = len(omegas)
