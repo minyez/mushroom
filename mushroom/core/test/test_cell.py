@@ -257,7 +257,7 @@ class cell_reader(ut.TestCase):
         for f, verify in verifies.items():
             print("Testing {}".format(f))
             fpath = dir_cif / f
-            c = Cell.read(str(fpath), form="cif")
+            c = Cell.read(str(fpath), format="cif")
             for k, v in verify.items():
                 cell_value = c.__getattribute__(k)
                 msg = ">> error, different {}: {} != {}".format(k, v, cell_value)
@@ -275,7 +275,7 @@ class cell_reader(ut.TestCase):
         for f, verify in verifies.items():
             print("Testing {}".format(f))
             fpath = dir_poscar / f
-            c = Cell.read(str(fpath), form="vasp")
+            c = Cell.read(str(fpath), format="vasp")
             for k, v in verify.items():
                 cell_value = c.__getattribute__(k)
                 msg = ">> error, different {}: {} != {}".format(k, v, cell_value)
@@ -293,7 +293,7 @@ class cell_reader(ut.TestCase):
         for f, verify in verifies.items():
             print("Testing {}".format(f))
             fpath = dir_poscar / f
-            c = Cell.read(str(fpath), form="aims")
+            c = Cell.read(str(fpath), format="aims")
             for k, v in verify.items():
                 cell_value = c.__getattribute__(k)
                 msg = ">> error, different {}: {} != {}".format(k, v, cell_value)

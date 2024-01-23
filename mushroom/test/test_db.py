@@ -63,14 +63,12 @@ class test_dbcell(ut.TestCase):
             self.assertRaises(ValueError, self.dbc.extract, 0, writer="unknown reader")
         self.assertRaises(DBEntryNotFoundError, self.dbc.extract, "unknown cell sample")
 
-    def test_write(self):
+    def test_convert(self):
         """test the write functionality"""
         tf = tempfile.NamedTemporaryFile(suffix="_no_ext.")
-        self.assertRaises(ValueError, self.dbc._write, 0, output_path=tf.name)
         structfile = pathlib.Path(__file__).parent / "data" / "1.struct"
-        so = Struct.read(structfile)
-        self.dbc._write(so, output_path=tf.name, writer='w2k')
-        self.dbc._write(so, output_path=tf.name, writer='vasp')
+        self.dbc.convert(structfile, output_path=tf.name, writer='w2k')
+        self.dbc.convert(structfile, output_path=tf.name, writer='vasp')
         tf.close()
 
     def test_extract_to_vasp(self):

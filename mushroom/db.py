@@ -7,11 +7,9 @@ import shutil
 from collections.abc import Iterable
 from typing import Union
 
-from mushroom.core.pkg import detect
 from mushroom.core.logger import loggers
-from mushroom.core.cell import Cell
 from mushroom.core.typehint import Path
-from mushroom.w2k import Struct
+from mushroom.io import CellIO
 
 __all__ = [
     "DBCell",
@@ -33,8 +31,8 @@ class DBEntryNotFoundError(FileNotFoundError):
     """exception for failing to find database entry"""
 
 
-class _DBBase:
-    """base object of database searching
+class PlaninTextDB:
+    """base object for plain text database searching
 
     Args:
         name (str) : relative path for databse in mushroom. otherwise
@@ -186,14 +184,8 @@ class _DBBase:
         return self._get_entry(entry, True)
 
 
-class DBCell(_DBBase):
-    """database of crystall structure cells
-
-    The path of"""
-    avail_writers = list(Cell.avail_exporters) + ["w2k", ]
-    avail_readers = list(Cell.avail_readers) + ["w2k", ]
-    default_writer = "vasp"
-    assert default_writer in avail_writers
+class DBCell(PlaninTextDB):
+    """database of crystall structure cells"""
 
     def __init__(self, db_cell_path: str = None):
         if db_cell_path is None:
@@ -201,42 +193,20 @@ class DBCell(_DBBase):
                 from mushroom.__config__ import db_cell_path
             except ImportError:
                 db_cell_path = "cell"
-        _DBBase.__init__(self, db_cell_path, ["**/*.json", "**/*.cif"])
+        PlaninTextDB.__init__(self, db_cell_path, ["**/*.json", "**/*.cif"])
         self.get_cell = self.get_entry
         self.get_cell_path = self.get_entry_path
         self.get_avail_cells = self.get_avail_entries
-        self.read_format = None
-
-    def _read_cell(self, pcell, reader=None, primitize=False, standardize=False, no_idealize=False,
-                   supercell=None, **kwargs) -> Cell:
-        """read a cell file"""
-        if reader is None:
-            reader = detect(pcell, fail_with_ext=True)
-        if reader not in self.avail_readers:
-            raise ValueError("unsupported format for reading cell: {}".format(reader))
-        if reader == "w2k":
-            if primitize:
-                raise NotImplementedError("primitive w2k format is not supported")
-            return Struct.read(pcell, **kwargs)
-        # will use the reader format as fallback when export format is unknown
-        self.read_format = reader
-        # default use Cell
-        c = Cell.read(pcell, form=reader, **kwargs)
-        if standardize:
-            c = c.standardize(to_primitive=primitize, no_idealize=no_idealize)
-        else:
-            if primitize:
-                c = c.primitize()
-        if supercell:
-            c = c.get_supercell(*supercell)
-        return c
 
     def convert(self, pcell: Path, output_path=None, reader=None, writer=None,
                 primitize=False, standardize=False, no_idealize=False, supercell=None):
         """convert a file in one format of lattice cell to another"""
-        self._write(self._read_cell(pcell, reader=reader, primitize=primitize,
-                                    standardize=standardize, no_idealize=no_idealize, supercell=supercell),
-                    output_path=output_path, writer=writer)
+        cellio = CellIO(pcell, format=reader)
+        cellio.manipulate(primitize=primitize,
+                          standardize=standardize,
+                          no_idealize=no_idealize,
+                          supercell=supercell)
+        cellio.write(output_path=output_path, format=writer)
 
     def extract(self, cell_entry: Union[str, int], output_path=None,
                 reader=None, writer=None, primitize=False, standardize=False, no_idealize=False,
@@ -245,43 +215,16 @@ class DBCell(_DBBase):
         pcell = self.get_cell_path(cell_entry)
         if pcell is None:
             raise DBEntryNotFoundError("cell entry {} is not found".format(cell_entry))
-        self._write(self._read_cell(pcell, reader=reader, primitize=primitize,
-                                    standardize=standardize, no_idealize=no_idealize, supercell=supercell),
-                    output_path=output_path, writer=writer)
-
-    def _write(self, cell_object, output_path: Union[str, int] = None,
-               writer=None):
-        """write to some format"""
-        if writer is None:
-            if output_path is None:
-                writer = self.default_writer
-                _logger.debug("use default cell writer: %s", writer)
-            else:
-                writer = detect(output_path)
-            if not writer:
-                _logger.debug("fail to detect a format for writing cell, fallback to reader: %s",
-                              self.read_format)
-                writer = self.read_format
-        if isinstance(cell_object, Cell):
-            if writer == "w2k":
-                Struct.from_cell(cell_object).write(filename=output_path)
-                return
-            cell_object.write(writer, filename=output_path)
-            return
-        if isinstance(cell_object, Struct):
-            if writer == "w2k":
-                cell_object.write(filename=output_path)
-                return
-            cell_object.get_cell().write(writer, filename=output_path)
-            return
-        raise ValueError("invalid class of input cell object: {}".format(type(cell_object)))
+        self.convert(pcell, reader=reader, primitize=primitize,
+                     standardize=standardize, no_idealize=no_idealize, supercell=supercell,
+                     output_path=output_path, writer=writer)
 
 
-class DBWorkflow(_DBBase):
+class DBWorkflow(PlaninTextDB):
     """database of workflows"""
 
     def __init__(self):
-        _DBBase.__init__(self, "workflow", ["*_*", ], dir_only=True)
+        PlaninTextDB.__init__(self, "workflow", ["*_*", ], dir_only=True)
         self._libs = self._db_path / "libs"
         self.get_workflow = self.get_entry
         self.get_workflow_path = self.get_entry_path
@@ -344,18 +287,18 @@ class DBWorkflow(_DBBase):
                     _logger.warning(">> %s found. Use --force to overwrite.", f.name)
 
 
-class DBKPath(_DBBase):
+class DBKPath(PlaninTextDB):
     """database of k-point path"""
 
     def __init__(self):
-        _DBBase.__init__(self, "kpath", ["**/*.json", ])
+        PlaninTextDB.__init__(self, "kpath", ["**/*.json", ])
 
 
-class DBDoctemp(_DBBase):
+class DBDoctemp(PlaninTextDB):
     """database of document template"""
 
     def __init__(self):
-        _DBBase.__init__(self, "doctemp", ["tex-*", ], excludes=[".gitignore", ".DS_Store"])
+        PlaninTextDB.__init__(self, "doctemp", ["tex-*", ], excludes=[".gitignore", ".DS_Store"])
         self.get_doctemp = self.get_entry
         self.get_doctemp_path = self.get_entry_path
 

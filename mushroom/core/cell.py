@@ -1093,7 +1093,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
     # * Reader implementations
 
     @classmethod
-    def read(cls, path, form=None):
+    def read(cls, path, format=None):
         """read file at path and return a Cell instance
 
         Args:
@@ -1109,16 +1109,16 @@ When other keyword are parsed, they will be filtered out and no exception will b
             'aims': cls.read_aims,
         }
         try:
-            if form is None:
-                form = detect(path)
-                if form is None:
-                    form = get_file_ext(path).lower()
-                _logger.info("Detected format %s", form)
-            if not form:
+            if format is None:
+                format = detect(path)
+                if format is None:
+                    format = get_file_ext(path).lower()
+                _logger.info("Detected format %s", format)
+            if not format:
                 raise ValueError("fail to get format from extension of file {}".format(path))
-            return readers.get(form)(path)
+            return readers.get(format)(path)
         except KeyError:
-            raise CellError("Unsupported reader format: {}".format(form))
+            raise CellError("Unsupported reader format: {}".format(format))
 
     @classmethod
     def read_aims(cls, pgeo="geometry.in"):

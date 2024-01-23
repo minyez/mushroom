@@ -11,6 +11,7 @@ Use `-p` for curating available cell samples.
 from os.path import isfile
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from mushroom.db import DBCell
+from mushroom.io import CellIO
 
 try:
     from argcomplete import autocomplete
@@ -36,7 +37,7 @@ def _parser():
                    help="primitize the cell (spglib required)")
     p.add_argument('--std', dest='standardize', action="store_true",
                    help="standardize the cell (spglib required)")
-    p.add_argument('-i', dest='input_format', choices=DBCell.avail_readers,
+    p.add_argument('-i', dest='input_format', choices=CellIO.avail_readers,
                    type=str, default=None,
                    help="format of input file, default use automatic detection")
     p.add_argument('--db', dest='db_cell_path', type=str, default=None,
@@ -44,7 +45,7 @@ def _parser():
     p.add_argument('-O', dest='output_path', type=str, default=None,
                    help="output file")
     p.add_argument('-o', dest='output_format', type=str,
-                   choices=DBCell.avail_writers,
+                   choices=CellIO.avail_writers,
                    default=None, help="output format")
     if autocomplete is not None:
         autocomplete(p)
