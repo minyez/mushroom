@@ -21,7 +21,7 @@ def _parser():
 
 if __name__ == '__main__':
     args = _parser().parse_args()
-    cell = Cell.read(args.input_cell, form=args.input_format)
+    cell = Cell.read(args.input_cell, format=args.input_format)
     density_n, density_m = get_density(cell.latt, cell.atms, latt_unit=cell.unit)
     print("Number density (per ang^3):", density_n)
     print("Mass density (kg per m^3):", density_m)

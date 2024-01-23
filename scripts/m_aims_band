@@ -80,7 +80,7 @@ def m_aims_band():
                                 filter_k_before=args.remove_k_before,
                                 filter_k_behind=args.remove_k_behind)
     nbands = bs.nbands
-    c = Cell.read(args.geometry, form="aims")
+    c = Cell.read(args.geometry, format="aims")
 
     display_band_analysis(bs, kpts, value_only=args.value_only)
     if args.trans is not None:
