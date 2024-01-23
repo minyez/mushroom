@@ -5,6 +5,8 @@ import unittest as ut
 import os
 import tempfile
 import pathlib
+
+from mushroom.db import PlainTextDB
 from mushroom.db import DBCell, DBWorkflow, DBEntryNotFoundError, DBDoctemp
 from mushroom.w2k import Struct
 
@@ -13,6 +15,17 @@ try:
     force_copy = True
 except KeyError:
     force_copy = False
+
+
+class test_plaintextdb(ut.TestCase):
+    """test the base class"""
+
+    def test_init(self):
+        ptdb = PlainTextDB("relapath", ["**/filename",])
+        ptdb = PlainTextDB("/abspath", ["**/filename",])
+        ptdb = PlainTextDB("/abspath", "**/filename")
+        # raise for non-iterable glob
+        self.assertRaises(TypeError, PlainTextDB, "relapath", 1)
 
 
 class test_initialize_internal(ut.TestCase):
@@ -44,7 +57,7 @@ class test_initialize_internal(ut.TestCase):
         self.assertFalse(dbdt.has_entry("entry not exist"))
         self.assertListEqual([], dbdt.filter(r"no entry match this"))
         self.assertIsNone(dbdt.get_entry_path("entry not exist"))
-        if force_copy:
+        if not force_copy:
             return
         # test copy a doctemp to temprary directory
         for i in range(dbdt.N):

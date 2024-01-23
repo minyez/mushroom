@@ -19,6 +19,9 @@ exclude_lines =
     # Don't complain missing tests for functions calling external program
 	def _run_gracebat
 
+    # Don't compain the rare event
+    raise FileNotFoundError("database directory is not found", mushroom_db_home.name)
+
     # Don't complain missing tests for some experimental features
     def _read_aims_single_specfunc_dat
 	def savefig

@@ -31,12 +31,12 @@ class DBEntryNotFoundError(FileNotFoundError):
     """exception for failing to find database entry"""
 
 
-class PlaninTextDB:
+class PlainTextDB:
     """base object for plain text database searching
 
     Args:
         name (str) : relative path for databse in mushroom. otherwise
-        glob_regex (Iterable)
+        glob_regex (str or Iterable)
     """
 
     def __init__(self, dbpath: str, glob_regex: Iterable, excludes: Iterable = None,
@@ -51,10 +51,13 @@ class PlaninTextDB:
         if excludes is not None:
             for ex in excludes:
                 self._excludes.extend(self._db_path.glob(ex))
-        self._glob = glob_regex
+        if isinstance(glob_regex, str):
+            self._glob = [glob_regex,]
+        elif isinstance(glob_regex, Iterable):
+            self._glob = glob_regex
+        else:
+            raise TypeError("expect str or other Iterable, get", type(glob_regex))
         self._available_entries = None
-        if not isinstance(glob_regex, Iterable):
-            raise TypeError("expect Iterable, get", type(glob_regex))
 
     @property
     def N(self):
@@ -184,7 +187,7 @@ class PlaninTextDB:
         return self._get_entry(entry, True)
 
 
-class DBCell(PlaninTextDB):
+class DBCell(PlainTextDB):
     """database of crystall structure cells"""
 
     def __init__(self, db_cell_path: str = None):
@@ -193,7 +196,7 @@ class DBCell(PlaninTextDB):
                 from mushroom.__config__ import db_cell_path
             except ImportError:
                 db_cell_path = "cell"
-        PlaninTextDB.__init__(self, db_cell_path, ["**/*.json", "**/*.cif"])
+        PlainTextDB.__init__(self, db_cell_path, ["**/*.json", "**/*.cif"])
         self.get_cell = self.get_entry
         self.get_cell_path = self.get_entry_path
         self.get_avail_cells = self.get_avail_entries
@@ -220,11 +223,11 @@ class DBCell(PlaninTextDB):
                      output_path=output_path, writer=writer)
 
 
-class DBWorkflow(PlaninTextDB):
+class DBWorkflow(PlainTextDB):
     """database of workflows"""
 
     def __init__(self):
-        PlaninTextDB.__init__(self, "workflow", ["*_*", ], dir_only=True)
+        PlainTextDB.__init__(self, "workflow", ["*_*", ], dir_only=True)
         self._libs = self._db_path / "libs"
         self.get_workflow = self.get_entry
         self.get_workflow_path = self.get_entry_path
@@ -287,18 +290,18 @@ class DBWorkflow(PlaninTextDB):
                     _logger.warning(">> %s found. Use --force to overwrite.", f.name)
 
 
-class DBKPath(PlaninTextDB):
+class DBKPath(PlainTextDB):
     """database of k-point path"""
 
     def __init__(self):
-        PlaninTextDB.__init__(self, "kpath", ["**/*.json", ])
+        PlainTextDB.__init__(self, "kpath", ["**/*.json", ])
 
 
-class DBDoctemp(PlaninTextDB):
+class DBDoctemp(PlainTextDB):
     """database of document template"""
 
     def __init__(self):
-        PlaninTextDB.__init__(self, "doctemp", ["tex-*", ], excludes=[".gitignore", ".DS_Store"])
+        PlainTextDB.__init__(self, "doctemp", ["tex-*", ], excludes=[".gitignore", ".DS_Store"])
         self.get_doctemp = self.get_entry
         self.get_doctemp_path = self.get_entry_path
 
