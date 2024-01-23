@@ -9,6 +9,12 @@ from mushroom.core.logger import loggers
 from mushroom.aims.stdout import StdOut
 
 
+__all__ = [
+    "get_dimensions",
+    "get_chemical_potential",
+    "is_finished_aimsdir",
+]
+
 _logger = loggers["aims"]
 
 

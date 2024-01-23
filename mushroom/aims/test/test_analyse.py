@@ -4,8 +4,9 @@ import unittest as ut
 import pathlib
 import json
 import tempfile
+import os
 
-from mushroom.aims.analyse import *
+from mushroom.aims.analyse import get_chemical_potential, get_dimensions, is_finished_aimsdir
 
 
 class test_analyse_stdout(ut.TestCase):
