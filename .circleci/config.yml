@@ -5,17 +5,24 @@ orbs:
   python: circleci/python@2.1.1
   #shellcheck: circleci/shellcheck@1.0.0
 
+# job matrix: https://circleci.com/docs/using-matrix-jobs/
 workflows:
-  test:
-    jobs:
-      - test-py31011
-      #- shellcheck/check
+  all-tests:
+      jobs:
+        - test:
+            matrix:
+              parameters:
+                # https://circleci.com/developer/images/image/cimg/python
+                python-version: ["3.7", "3.10", "3.12"]
 
 jobs:
-  test-py31011: &test-template
+  test:
+    parameters:
+      python-version:
+        type: string
     working_directory: ~/mushroom
     docker:
-      - image: cimg/python:3.10.11 # every job must define an image for the docker executor and subsequent jobs may define a different image.
+      - image: cimg/python:<< parameters.python-version >>  # every job must define an image for the docker executor and subsequent jobs may define a different image.
         environment:
           PIPENV_VENV_IN_PROJECT: false
           FORCE_COPY: 1  # Forcing copying files in test_db.py
@@ -61,6 +68,13 @@ jobs:
           command: |
             ls ~/mushroom
             export PYTHONPATH="~/mushroom:$PYTHONPATH"
-            export FORCE_COPY=1
             pytest --cov=./
-            codecov
+      # only upload the converage of lastest version
+      # https://circleci.com/docs/using-branch-filters/#branch-filtering-for-job-steps
+      - when:
+          condition:
+            equal: [ "3.12", << parameters.python-version >> ]
+          steps:
+          - run:
+              name: "Upload coverage to codecov"
+              command: codecov
