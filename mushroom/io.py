@@ -40,6 +40,7 @@ class CellIO:
         else:
             c = Cell.read(path_cell, format=format)
             s = None
+        _logger.info("Reading %r with format %s", path_cell, format)
 
         self._format_read = format
         self._cell: Cell = c
@@ -66,14 +67,14 @@ class CellIO:
         """
         if format is None:
             if output_path is None:
-                format = self.default_writer
-                _logger.debug("use default cell writer: %s", format)
+                format = self._format_read
+                _logger.debug("output not specfied, using same format as read: %s", format)
             else:
                 format = detect(output_path)
             if not format:
-                _logger.debug("fail to detect a format for writing cell, fallback to reader: %s",
-                              self._format_read)
-                format = self._format_read
+                format = self.default_writer
+                _logger.debug("fail to detect a format for writing cell, use default writer: %s",
+                              format)
 
         if self._format_read == "w2k":
             if format == "w2k":
