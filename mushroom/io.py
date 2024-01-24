@@ -59,7 +59,7 @@ class CellIO:
         if supercell:
             self._cell = self._cell.get_supercell(*supercell)
 
-    def write(self, output_path: Union[str, os.PathLike], format: str = None) -> None:
+    def write(self, output_path: Union[str, os.PathLike] = None, format: str = None) -> None:
         """write the cell to ``output_path`` in the format of program ``format``
         Args:
             output_path (path-like)
@@ -75,6 +75,8 @@ class CellIO:
                 format = self.default_writer
                 _logger.debug("fail to detect a format for writing cell, use default writer: %s",
                               format)
+
+        _logger.info("Writing to %r with format %s", output_path, format)
 
         if self._format_read == "w2k":
             if format == "w2k":
