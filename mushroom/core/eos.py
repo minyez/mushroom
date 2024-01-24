@@ -15,6 +15,7 @@ Rules of parameters:
 """
 import numpy as np
 
+
 def _Murnaghan(v: np.ndarray, e0: float, v0: float,
                b0: float, bp: float) -> np.ndarray:
     """Murnaghan EOS
@@ -25,7 +26,8 @@ def _Murnaghan(v: np.ndarray, e0: float, v0: float,
     where x=V/V0
     """
     x = v / v0
-    return e0 + b0 * v0 * (np.power(x, 1-bp)/bp/(bp-1) + x / bp - 1/(bp-1))
+    return e0 + b0 * v0 * (np.power(x, 1 - bp) / bp / (bp - 1) + x / bp - 1 / (bp - 1))
+
 
 def _BirchMurnaghan(v: np.ndarray, e0: float, v0: float,
                     b0: float, bp: float) -> np.ndarray:
@@ -37,18 +39,19 @@ def _BirchMurnaghan(v: np.ndarray, e0: float, v0: float,
     where x=V/V0
     """
     x = v / v0
-    return e0 + 9.0 / 16.0 * v0 * b0 * \
-           ((np.power(x, -2.0/3.0) - 1.0)**3*bp + \
-            (np.power(x, -2.0/3.0) - 1.0)**2*(6.0-4.0*np.power(x, -2.0/3.0)))
+    xm23 = np.power(x, -2.0 / 3.0)
+    return e0 + 9.0 / 16.0 * v0 * b0 * ((xm23 - 1.0) ** 3 * bp + (xm23 - 1.0) ** 2 * (6.0 - 4.0 * xm23))
+
 
 # key: name of EOS
 # value: 3-member tuple: (function object, short-name, number of parameters)
 _dict_eos = {
-        "bm": (_BirchMurnaghan, "Birch-Murnaghan", 4),
-        "m": (_Murnaghan, "Murnaghan", 4),
-    }
+    "bm": (_BirchMurnaghan, "Birch-Murnaghan", 4),
+    "m": (_Murnaghan, "Murnaghan", 4),
+}
 
 available_eos = tuple(_dict_eos.keys())
+
 
 def get_eos(name: str):
     """get the EOS function by the name"""
@@ -56,4 +59,3 @@ def get_eos(name: str):
     if func is None:
         raise KeyError("Unknown name for EOS: {}".format(name))
     return func, shortname, nparams
-

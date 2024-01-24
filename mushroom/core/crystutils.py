@@ -327,7 +327,9 @@ def get_density(latt: Latt3T3, atms: List[Union[int, str]], latt_unit: str = "an
 def display_symmetry_info(latt, posi, atms, n_sym_cols: int = 4):
     """display the symmetry of the input crystal cell"""
     raise_no_module(spglib, "spglib")
-    ds = spglib.get_symmetry_dataset((latt, posi, atms))
+    atms_uniq = list(set(atms))
+    atms_spglib = [atms_uniq.index(x) for x in atms]
+    ds = spglib.get_symmetry_dataset((latt, posi, atms_spglib))
     spg_number = ds["number"]
     if spg_number in SPGNUMBER2NAME:
         info_spacegroup = "{} (#{}, {})".format(ds["international"], spg_number, SPGNUMBER2NAME[spg_number])
