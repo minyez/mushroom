@@ -68,7 +68,7 @@ jobs:
           command: |
             ls ~/mushroom
             export PYTHONPATH="~/mushroom:$PYTHONPATH"
-            pytest --cov=./
+            pytest --cov=./ --cov-report xml:coverage.xml
       # only upload the converage of lastest version
       # https://circleci.com/docs/using-branch-filters/#branch-filtering-for-job-steps
       - when:

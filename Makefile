@@ -27,7 +27,7 @@ clean:
 
 pytest:
 	$(MAKE) clean
-	@echo "Run pytest"; pytest --cov=./
+	@echo "Run pytest"; pytest --cov=./ --cov-report xml:coverage.xml
 
 lint:
 	# flake8 commands from https://github.com/logsdail/carmm/blob/master/.github/workflows/linter.yml
