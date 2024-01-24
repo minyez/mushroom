@@ -1,7 +1,7 @@
 version: 2.1
 
 orbs:
-  codecov: codecov/codecov@3.2.4
+  codecov: codecov/codecov@4.0.0
   python: circleci/python@2.1.1
   #shellcheck: circleci/shellcheck@1.0.0
 
@@ -68,13 +68,11 @@ jobs:
           command: |
             ls ~/mushroom
             export PYTHONPATH="~/mushroom:$PYTHONPATH"
-            pytest --cov=./ --cov-report xml:coverage.xml
+            pytest --cov .
       # only upload the converage of lastest version
       # https://circleci.com/docs/using-branch-filters/#branch-filtering-for-job-steps
       - when:
           condition:
             equal: [ "3.12", << parameters.python-version >> ]
           steps:
-          - run:
-              name: "Upload coverage to codecov"
-              command: codecov
+          - codecov/upload
