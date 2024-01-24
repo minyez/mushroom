@@ -524,15 +524,19 @@ def print_file_or_iowrapper(*s, f=None, mode='w', encoding='utf-8', **kwargs):
         mode (s) : only used when s is str
         kwargs: keyword arguments parsed to ``print``
     """
-    if isinstance(f, str):
-        h = open(f, mode, encoding=encoding)
-    if isinstance(f, TextIOWrapper):
-        h = f
     if f is None:
         h = stdout
+    elif isinstance(f, (str, os.PathLike)):
+        h = open(f, mode=mode, encoding=encoding)
+    else:
+        h = f
+
     print(*s, file=h, **kwargs)
-    if isinstance(f, str):
+
+    if isinstance(f, (str, os.PathLike)):
         h.close()
+    elif isinstance(f, StringIO):
+        h.seek(0)
 
 
 def readtext_split_emptyline(fn):
@@ -802,7 +806,7 @@ def open_textio(f: Union[str, os.PathLike, StringIO, TextIOWrapper], mode: str =
             used only when f is str or PathLike, not applicable to StringIO or TextIOWrapper.
     """
     if isinstance(f, (str, os.PathLike)):
-        f = open(f, mode, encoding=encoding)
+        f = open(f, mode=mode, encoding=encoding)
     try:
         yield f
     finally:
