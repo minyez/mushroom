@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """functionality for IO"""
 import os
-from typing import Union
+from typing import Union, List
 
 from mushroom.core.pkg import detect
 from mushroom.core.logger import loggers
@@ -47,7 +47,7 @@ class CellIO:
         self._struct: Struct = s
 
     def manipulate(self, primitize=False, standardize=False, no_idealize=False, supercell=None,
-                   **kwargs) -> None:
+                   **kwargs) -> Union[None, List[int]]:
         """manipulate the read cell"""
         if self._format_read == "w2k":
             if primitize or standardize:
@@ -59,6 +59,7 @@ class CellIO:
             if primitize:
                 self._cell = self._cell.primitize()
         if supercell:
+            retval: List[int]
             self._cell, retval = self._cell.get_supercell(*supercell, **kwargs)
         return retval
 
