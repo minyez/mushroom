@@ -46,18 +46,21 @@ class CellIO:
         self._cell: Cell = c
         self._struct: Struct = s
 
-    def manipulate(self, primitize=False, standardize=False, no_idealize=False, supercell=None) -> None:
+    def manipulate(self, primitize=False, standardize=False, no_idealize=False, supercell=None,
+                   **kwargs) -> None:
         """manipulate the read cell"""
         if self._format_read == "w2k":
             if primitize or standardize:
                 raise NotImplementedError("primitive w2k format is not supported")
+        retval = None
         if standardize:
             self._cell = self._cell.standardize(to_primitive=primitize, no_idealize=no_idealize)
         else:
             if primitize:
                 self._cell = self._cell.primitize()
         if supercell:
-            self._cell = self._cell.get_supercell(*supercell)
+            self._cell, retval = self._cell.get_supercell(*supercell, **kwargs)
+        return retval
 
     def write(self, output_path: Union[str, os.PathLike] = None, format: str = None) -> None:
         """write the cell to ``output_path`` in the format of program ``format``
