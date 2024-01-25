@@ -10,6 +10,15 @@ from mushroom import vasp
 from mushroom.core.cell import Cell
 
 
+# check if BeautifulSoup installation. skip some tests if not installed
+try:
+    from bs4 import BeautifulSoup
+    BeautifulSoup_INSTALLED = True
+    del BeautifulSoup
+except ImportError:
+    BeautifulSoup_INSTALLED = False
+
+
 class test_read_doscar(ut.TestCase):
     """test reading in DOSCAR to get a DensityOfStates object"""
 
@@ -49,6 +58,8 @@ class test_read_xml(ut.TestCase):
 
     def test_read_kpts(self):
         """kpoints"""
+        if not BeautifulSoup_INSTALLED:
+            return
         dir_xml = pathlib.Path(__file__).parent / "data"
         index_json = dir_xml / "vasprunxml.json"
         with index_json.open('r') as fp:
@@ -62,7 +73,7 @@ class test_read_xml(ut.TestCase):
 
 
 class test_eigenval(ut.TestCase):
-    """test reading vasprunxml"""
+    """test reading eigenval file"""
 
     def test_read_eigenval(self):
         """kpoints"""

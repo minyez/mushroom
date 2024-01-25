@@ -10,9 +10,9 @@ import pathlib
 
 import numpy as np
 try:
-    from bs4 import BeautifulSoup
+    from bs4 import BeautifulSoup as BS
 except ImportError:
-    BeautifulSoup = None
+    BS = None
 
 from mushroom.core.logger import loggers
 from mushroom.core.ioutils import conv_string, raise_no_module
@@ -206,6 +206,7 @@ def read_xml(*datakey, path: str = "vasprun.xml") -> dict:
     Returns:
         dict
     """
+    raise_no_module(BS, "BeautifulSoup", "reading vasprun.xml")
     objects = {}
     avail_keys = {
         "kpoints": __read_xml_kpoints,
@@ -214,8 +215,7 @@ def read_xml(*datakey, path: str = "vasprun.xml") -> dict:
         _logger.warning("no identifier specified in XML")
         return objects
     with open(path, 'rb') as h:
-        raise_no_module(BeautifulSoup, "BeautifulSoup")
-        xml = BeautifulSoup(h.read(), 'xml')
+        xml = BS(h.read(), 'xml')
     for key in datakey:
         try:
             objects[key] = avail_keys.get(key)(xml)
@@ -224,11 +224,11 @@ def read_xml(*datakey, path: str = "vasprun.xml") -> dict:
     return objects
 
 
-def __read_xml_dos(xml: BeautifulSoup):
+def __read_xml_dos(xml: BS):
     """get the density of states from xml"""
 
 
-def __read_xml_kpoints(xml: BeautifulSoup):
+def __read_xml_kpoints(xml: BS):
     """get the kpoints from xml"""
     kpts = "".join(k.string for k in xml.find(name="varray", attrs={"name": "kpointlist"}))
     kpts = np.loadtxt(StringIO(kpts))

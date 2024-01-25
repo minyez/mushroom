@@ -2,15 +2,22 @@
 # -*- coding: utf-8 -*-
 """simple scrapper"""
 import requests
-from bs4 import BeautifulSoup as bs
+
+try:
+    from bs4 import BeautifulSoup as BS
+except ImportError:
+    BS = None
+
+from mushroom.core.ioutils import raise_no_module
 
 
 class SMPage:
     """object to analyze SpringerMaterialPage"""
+
     def __init__(self, url):
         self.url = url
         pass
-    
+
     def analyze(self):
         """analyse all searched items"""
         raise NotImplementedError
@@ -30,8 +37,8 @@ class SMSearch:
         urls = {
             'focus': 'https://materials.springer.com/search?searchTerm=',
             'text': 'https://materials.springer.com/textsearch?searchTerm=',
-            }
-        self._url = urls.get(mode) + chemical 
+        }
+        self._url = urls.get(mode) + chemical
         self.chemical = chemical
         self.only_crystal = only_crystal
         self.interval = interval
@@ -40,7 +47,7 @@ class SMSearch:
 
     def search(self, pages=1):
         """searching the SpringMaterial
-        
+
         Args:
             pages (int) : the maximum number of pages to search
         """
@@ -68,7 +75,8 @@ class SMSearch:
         Args:
             html (str) : the html string of search page
         """
-        soup = bs(html, 'html.parser')
+        raise_no_module(BS, "BeautifulSoup", "processing html in " + __name__)
+        soup = BS(html, 'html.parser')
         for a in soup.find_all('a'):
             c = a.attrs.get('class', [])
             if 'search_result' in c:
