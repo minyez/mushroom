@@ -41,8 +41,8 @@ def divide_control_lines(pcontrol: Union[str, os.PathLike]) -> List[List[str]]:
     specie_lines = []
     with open_textio(pcontrol, 'r') as h:
         lines = h.readlines()
-        for i, l in enumerate(lines):
-            if l.strip().startswith("species "):
+        for i, line in enumerate(lines):
+            if line.strip().startswith("species "):
                 specie_lines.append(i)
 
     # no species lines are found, all lines are for general setting
@@ -56,10 +56,10 @@ def divide_control_lines(pcontrol: Union[str, os.PathLike]) -> List[List[str]]:
         if isl != 0:
             previous_specie = specie_lines[isl - 1]
         for i in range(specie_line, previous_specie, -1):
-            l = lines[i].strip()
+            line = lines[i].strip()
             # empty line
             # TODO: filter out commented out basis set or general control line
-            if not l.startswith("species") and not l.startswith("#") or i == previous_specie:
+            if not line.startswith("species") and not line.startswith("#") or i == previous_specie:
                 divisions.append(i + 1)
                 break
     regions = []

@@ -5,6 +5,7 @@
 import json
 import os
 import unittest as ut
+from copy import deepcopy
 
 import numpy as np
 
@@ -45,6 +46,13 @@ class test_BS_no_projection(ut.TestCase):
         self.assertRaises(BSErr, BS, badEigen, goodOcc)
         self.assertRaises(BSErr, BS, goodEigen, badOcc)
         self.assertRaises(BSErr, BS, goodEigen, goodOcc, badWeight)
+
+    def test_raise_wrong_eigen_weight_type(self):
+        nsp, nkp, nb = 1, 4, 4
+        eigen = np.ones((nsp, nkp, nb * 2))
+        weight = np.ones((nsp, nkp, nb * 2))
+        self.assertRaises(BSErr, BS, eigen, weight=(weight == 1))
+        self.assertRaises(BSErr, BS, eigen=(eigen == 1), weight=weight)
 
     def test_properties(self):
         bs = BS(goodEigen, goodOcc, goodWeight, efermi=efermi)
@@ -108,6 +116,14 @@ class test_BS_no_projection(ut.TestCase):
         bs = bs - 4.0
         self.assertAlmostEqual(bs.vbm, -3.0)
         self.assertAlmostEqual(bs.cbm, -2.0)
+        bs = bs + 0.0
+        bs = bs - 0.0
+        bs_new = random_band_structure(nsp, nkp, nb - 1, is_metal=False)
+        self.assertRaises(ValueError, bs.__sub__, bs_new)
+        bs_new = random_band_structure(nsp, nkp + 1, nb, is_metal=False)
+        self.assertRaises(ValueError, bs.__sub__, bs_new)
+        bs_new = random_band_structure(nsp + 1, nkp, nb, is_metal=False)
+        self.assertRaises(ValueError, bs.__sub__, bs_new)
 
     def test_get_band_indices(self):
         bs = BS(goodEigen, goodOcc, goodWeight, efermi=efermi)
@@ -256,6 +272,7 @@ class test_BS_projection(ut.TestCase):
         self.assertRaises(ValueError, bs.get_pwav, prj='s')
         self.assertRaises(ValueError, bs.get_pwav, prj=[0, 's'])
         bs = BS(eigen, occ, weight, pwav=pwav, atms=atms, prjs=prjs)
+
         self.assertTrue(
             np.array_equal(bs.get_pwav(0, 0), np.ones((nsp, nkp, nb))))
         self.assertTrue(
@@ -280,6 +297,12 @@ class test_BS_projection(ut.TestCase):
         # self.assertEqual(gap, bs.effective_gap())
         self.assertIsInstance(bs.effective_gap(), float)
 
+        # modify atms/prjs
+        self.assertRaises(ValueError, type(bs).atms.__set__, bs, ['Si',] * (natm - 1))
+        bs.atms = ['Si',] * natm
+        self.assertRaises(ValueError, type(bs).prjs.__set__, bs, ['s',] * (nprj - 1))
+        bs.prjs = ['s',] * nprj
+
 
 class test_BS_randomize(ut.TestCase):
     """Test if the random band structure behaves as expected
@@ -297,12 +320,16 @@ class test_BS_randomize(ut.TestCase):
             self.assertEqual(bs.nspins, ns)
             self.assertEqual(bs.nkpts, nk)
             self.assertEqual(bs.nbands, nb)
+            bs._lazy_bandedge_return()
             self.assertFalse(bs.is_metal())
             self.assertTrue(np.all(bs.fund_gap() > 0))
             # TODO: implement the spin-polarized analysis
             if bs.nspins == 1:
-                display_band_analysis(bs)
-                display_transition_energies(["0:1", "0:0:1", "0:0:0:1"], bs)
+                for vo in [True, False]:
+                    for kpts in [None, np.zeros((nk, 3))]:
+                        display_band_analysis(bs, kpts=kpts, value_only=vo)
+                        display_transition_energies(["0:1", "0:0:1", "0:0:0:1"], bs,
+                                                    kpts=kpts, value_only=vo)
 
     def test_metal(self):
         """check random-generated metal-like band"""
@@ -328,15 +355,21 @@ class test_bs_utilites(ut.TestCase):
         """test decoding band transition"""
         # only kpoints
         self.assertTupleEqual(_decode_itrans_string("1:2"), (1, 2, None, None))
-        # direct transition
+        # direct transition, with band index
         self.assertTupleEqual(_decode_itrans_string("1:2:3"), (1, 1, 2, 3))
-        # general
+        # direct transition, with band identifier
+        self.assertTupleEqual(_decode_itrans_string("1:vbm:cbm"), (1, 1, "vbm", "cbm"))
+        # general, with band index
         self.assertTupleEqual(_decode_itrans_string("1:2:3:4"), (1, 2, 3, 4))
+        # general, with band identifier
+        self.assertTupleEqual(_decode_itrans_string("1:2:vbm:cbm+1"), (1, 2, "vbm", "cbm+1"))
 
     def test_split_apb(self):
         """test splitting of apb"""
         self.assertRaises(ValueError, split_apb, "Fe :3:10")
         self.assertRaises(ValueError, split_apb, "Fe :3")
+        self.assertRaises(ValueError, split_apb, "Fe:3:10:8")
+        self.assertRaises(ValueError, split_apb, "Fe:3")
         atms, prjs, bands = split_apb("Fe:4:12")
         self.assertListEqual(atms, ["Fe",])
         self.assertListEqual(prjs, [4,])
@@ -349,13 +382,32 @@ class test_bs_utilites(ut.TestCase):
             j = json.load(f)
         # entangled bands
         kx = j["kx"]
+        nkpts = len(kx)
         band1_en = j["entangled"]["band1"]
         band2_en = j["entangled"]["band2"]
         band1_resolve_ref = j["disentangled"]["band1"]
         band2_resolve_ref = j["disentangled"]["band2"]
 
+        # array should have two dimensions
+        self.assertRaises(ValueError, resolve_band_crossing, kx, band1_en)
+
         bands = np.array([band1_en, band2_en])
+
+        # inconsistent shape of kpoints and bands
+        self.assertRaises(ValueError, resolve_band_crossing, kx, bands.transpose()[:-1, :])
+
         bands_res = resolve_band_crossing(kx, bands.transpose(), deriv_thres=5).transpose()
+        self.assertTrue(np.allclose(bands_res[0], band1_resolve_ref))
+        self.assertTrue(np.allclose(bands_res[1], band2_resolve_ref))
+
+        # check invalid pwav shape
+        pwav = np.zeros((nkpts, 2, 3))
+        self.assertRaises(ValueError, resolve_band_crossing, kx, bands.transpose(), pwav)
+        pwav = np.zeros((nkpts - 1, 2, 3, 3))
+        self.assertRaises(ValueError, resolve_band_crossing, kx, bands.transpose(), pwav)
+
+        pwav = np.random.rand(nkpts, 2, 3, 3)
+        _, _ = resolve_band_crossing(kx, bands.transpose(), pwav, deriv_thres=5, inplace=True)
         self.assertTrue(np.allclose(bands[0], band1_resolve_ref))
         self.assertTrue(np.allclose(bands[1], band2_resolve_ref))
 

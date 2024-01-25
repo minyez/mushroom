@@ -490,7 +490,7 @@ class BandStructure(EnergyUnit):
         return type(self)(eigen, self.occ, self.weight, self.unit, self._efermi,
                           self._pwav, self._atms, self._prjs)
 
-    def __lazy_bandedge_return(self, attr: str = None):
+    def _lazy_bandedge_return(self, attr: str = None):
         """lazy return of attribute related to band edges
 
         Args:
@@ -507,7 +507,7 @@ class BandStructure(EnergyUnit):
     def is_metal(self):
         """bool. True if the bandstructure belongs to a metal, False otherwise
         """
-        return self.__lazy_bandedge_return("_is_metal")
+        return self._lazy_bandedge_return("_is_metal")
 
     @property
     def ivbm_sp_kp(self):
@@ -515,7 +515,7 @@ class BandStructure(EnergyUnit):
 
         int, shape (nspins, nkpts)
         """
-        return self.__lazy_bandedge_return("_ivbm_sp_kp")
+        return self._lazy_bandedge_return("_ivbm_sp_kp")
 
     @property
     def icbm_sp_kp(self):
@@ -523,7 +523,7 @@ class BandStructure(EnergyUnit):
 
         int, shape (nspins, nkpts)
         """
-        return self.__lazy_bandedge_return("_icbm_sp_kp")
+        return self._lazy_bandedge_return("_icbm_sp_kp")
 
     @property
     def ivbm_sp(self):
@@ -531,7 +531,7 @@ class BandStructure(EnergyUnit):
 
         int, shape (nspins, 2), ikpt, iband
         """
-        return self.__lazy_bandedge_return("_ivbm_sp")
+        return self._lazy_bandedge_return("_ivbm_sp")
 
     @property
     def icbm_sp(self):
@@ -539,7 +539,7 @@ class BandStructure(EnergyUnit):
 
         int, shape (nspins, 2), ikpt, iband
         """
-        return self.__lazy_bandedge_return("_icbm_sp")
+        return self._lazy_bandedge_return("_icbm_sp")
 
     @property
     def ivbm(self):
@@ -547,7 +547,7 @@ class BandStructure(EnergyUnit):
 
         int, shape (3,), ispin, ikpt, iband
         """
-        return self.__lazy_bandedge_return("_ivbm")
+        return self._lazy_bandedge_return("_ivbm")
 
     @property
     def icbm(self):
@@ -555,7 +555,7 @@ class BandStructure(EnergyUnit):
 
         int, shape (3,), ispin, ikpt, iband
         """
-        return self.__lazy_bandedge_return("_icbm")
+        return self._lazy_bandedge_return("_icbm")
 
     @property
     def vbm_sp_kp(self):
@@ -563,7 +563,7 @@ class BandStructure(EnergyUnit):
 
         float, shape (nspins, nkpts)
         """
-        return self.__lazy_bandedge_return("_vbm_sp_kp")
+        return self._lazy_bandedge_return("_vbm_sp_kp")
 
     @property
     def cbm_sp_kp(self):
@@ -571,7 +571,7 @@ class BandStructure(EnergyUnit):
 
         float, shape (nspins, nkpts)
         """
-        return self.__lazy_bandedge_return("_cbm_sp_kp")
+        return self._lazy_bandedge_return("_cbm_sp_kp")
 
     @property
     def vbm_sp(self):
@@ -579,7 +579,7 @@ class BandStructure(EnergyUnit):
 
         float, shape (nspins,)
         """
-        return self.__lazy_bandedge_return("_vbm_sp")
+        return self._lazy_bandedge_return("_vbm_sp")
 
     @property
     def cbm_sp(self):
@@ -587,7 +587,7 @@ class BandStructure(EnergyUnit):
 
         float, shape (nspins,)
         """
-        return self.__lazy_bandedge_return("_cbm_sp")
+        return self._lazy_bandedge_return("_cbm_sp")
 
     @property
     def vbm(self):
@@ -595,7 +595,7 @@ class BandStructure(EnergyUnit):
 
         float
         """
-        return self.__lazy_bandedge_return("_vbm")
+        return self._lazy_bandedge_return("_vbm")
 
     @property
     def cbm(self):
@@ -603,7 +603,7 @@ class BandStructure(EnergyUnit):
 
         float
         """
-        return self.__lazy_bandedge_return("_cbm")
+        return self._lazy_bandedge_return("_cbm")
 
     @property
     def band_width(self):
@@ -611,7 +611,7 @@ class BandStructure(EnergyUnit):
 
         float, shape (nspins, nbands, 2)
         """
-        return self.__lazy_bandedge_return("_band_width")
+        return self._lazy_bandedge_return("_band_width")
 
     def direct_gaps(self):
         """Direct gap between VBM and CBM of each spin-kpt channel
@@ -1181,7 +1181,7 @@ def display_transition_energies(trans: Sequence[str],
         raise BandStructureError("fail to display transition energies") from err
 
 
-def resolve_band_crossing(kx, bands, pwav=None, deriv_thres=None):
+def resolve_band_crossing(kx, bands, pwav=None, deriv_thres=None, inplace: bool = False):
     """Resolve the crossing between two bands to make each band smooth.
 
     Args:
@@ -1197,11 +1197,16 @@ def resolve_band_crossing(kx, bands, pwav=None, deriv_thres=None):
     Note:
         Side effect: bands and pwav are also changed in place.
     """
+    if inplace:
+        bands_res = bands
+    else:
+        bands_res = deepcopy(bands)
+
     # default value
     if deriv_thres is None:
         deriv_thres = 5.0
     nk = len(kx)
-    shape_bands = np.shape(bands)
+    shape_bands = np.shape(bands_res)
     if len(shape_bands) != 2:
         raise ValueError("bands should be 2-dim, got %d" % len(shape_bands))
     if shape_bands[0] != nk:
@@ -1232,7 +1237,7 @@ def resolve_band_crossing(kx, bands, pwav=None, deriv_thres=None):
     for i in range(1, nk - 1):
         # skip the permutation if i and i+1 are the same kpoint
         # by checking the absolute difference between the band energies
-        sumediff = np.sum(np.abs(bands[i, :] - bands[i + 1, :]))
+        sumediff = np.sum(np.abs(bands_res[i, :] - bands_res[i + 1, :]))
         if sumediff < sumediff_thres:
             _logger.debug("Current and next k-point the same, sum(ediff) < %f: %d", sumediff_thres, i)
             continue
@@ -1241,15 +1246,15 @@ def resolve_band_crossing(kx, bands, pwav=None, deriv_thres=None):
         # find the left non-end-point for point i
         j = max(j for j in range(i - 1, -1, -1) if kx[j] != kx[i])
         kl = kx[j]
-        bands_adjacent[:, 0] = bands[j, :]
-        bands_adjacent[:, 1] = bands[j + 1, :]
+        bands_adjacent[:, 0] = bands_res[j, :]
+        bands_adjacent[:, 1] = bands_res[j + 1, :]
 
         # right side
         # find the right non-end-point for point i
         j = min(j for j in range(i + 1, nk) if kx[j] != kx[i])
         kr = kx[j]
-        bands_adjacent[:, 2] = bands[j - 1, :]
-        bands_adjacent[:, 3] = bands[j, :]
+        bands_adjacent[:, 2] = bands_res[j - 1, :]
+        bands_adjacent[:, 3] = bands_res[j, :]
 
         # inband derivatives
         derivs_inband[:, 0] = (bands_adjacent[:, 1] - bands_adjacent[:, 0]) / (kx[i] - kl)
@@ -1272,9 +1277,9 @@ def resolve_band_crossing(kx, bands, pwav=None, deriv_thres=None):
         _logger.debug("kx: %f %f %f", kl, kx[i], kr)
         for ib in range(nbands):
             _logger.debug("related %d-th band energies: %r", ib, bands_adjacent[ib, :])
-        temp = bands[i + 1:, :]
+        temp = bands_res[i + 1:, :]
         temp = temp[:, permuts[arg]]
-        bands[i + 1:, :] = temp[:, :]
+        bands_res[i + 1:, :] = temp[:, :]
         if pwav is not None:
             _logger.debug("permuting pwav")
             temp = pwav[i + 1:, :, :, :]
@@ -1284,5 +1289,5 @@ def resolve_band_crossing(kx, bands, pwav=None, deriv_thres=None):
     _logger.debug("multi-band resolve done")
     # return the disentangled bands
     if pwav is None:
-        return bands
-    return bands, pwav
+        return bands_res
+    return bands_res, pwav
