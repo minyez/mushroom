@@ -160,6 +160,7 @@ class test_chglike(ut.TestCase):
                     self.assertTrue(np.allclose(v, ccv))
                 if isinstance(v, (int, float)):
                     self.assertEqual(v, ccv)
+            chgcar.export_cube()
 
     def test_arithmetics(self):
         """addition and subtraction"""

@@ -10,4 +10,3 @@ __author__ = "Minye Zhang"
 def get_version():
     """return the version of mushroom"""
     return __version__
-
