@@ -1,0 +1,53 @@
+{
+  "KPOINTS_1": {
+    "_mode": "G",
+    "_nkgrids": [4, 4, 4],
+    "_kshifts": [0, 0, 0],
+    "_kdense": null
+  },
+  "KPOINTS_2": {
+    "_mode": "band_cart",
+    "_nkgrids": null,
+    "_kshifts": null,
+    "_kdense": null,
+    "_ngrids_kpath": 10,
+    "_kpaths": [
+      ["0 0 0", "0 0 1", "gamma", "X"],
+      ["0 0 1", "0.5 0 1", "X", "W"],
+      ["0.5 0 1", "0 0 1", "W", "gamma"]
+    ]
+  },
+  "KPOINTS_3": {
+    "_mode": "band_recp",
+    "_nkgrids": null,
+    "_kshifts": null,
+    "_kdense": null,
+    "_ngrids_kpath": 10,
+    "_kpaths": [
+      ["0 0 0", "0.5 0.5 0", "gamma", "X"],
+      ["0.5 0.5 0", "0.5 0.75 0.25", "X", "W"],
+      ["0.5 0.75 0.25", "0 0 0", "W", "gamma"]
+    ]
+  },
+  "KPOINTS_4": {
+    "_mode": "A",
+    "_nkgrids": null,
+    "_kshifts": null,
+    "_kdense": 10
+  },
+  "KPOINTS_5": {
+    "_mode": "expl_cart",
+    "_nkgrids": null,
+    "_kshifts": null,
+    "_kdense": null,
+    "_ngrids_kpath": null,
+    "_kpaths": null,
+    "_kpts": [
+      [0.0, 0.0, 0.0],
+      [0.0, 0.0, 0.5],
+      [0.0, 0.5, 0.5],
+      [0.5, 0.5, 0.5]
+    ],
+    "_weights": [1.0, 1.0, 2.0, 4.0]
+  }
+}

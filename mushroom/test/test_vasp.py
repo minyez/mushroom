@@ -76,7 +76,7 @@ class test_eigenval(ut.TestCase):
     """test reading eigenval file"""
 
     def test_read_eigenval(self):
-        """kpoints"""
+        """eigenval"""
         dir_eigen = pathlib.Path(__file__).parent / "data"
         index_json = dir_eigen / "eigenval.json"
         with index_json.open('r') as fp:
@@ -119,6 +119,25 @@ class test_wavecar(ut.TestCase):
                 if isinstance(v, (int, float)):
                     self.assertEqual(v, wv)
             wc.close()
+
+
+class test_kpoints(ut.TestCase):
+
+    def test_read_kpoints(self):
+        datadir = pathlib.Path(__file__).parent / "data"
+        kpoints_json = datadir / "kpoints.json"
+        with kpoints_json.open('r') as fp:
+            file_verifies = json.load(fp)
+        for f, verifies in file_verifies.items():
+            print("Testing {}".format(f))
+            fpath = datadir / f
+            kpoints = vasp.KPoints.read(fpath)
+            for k, v in verifies.items():
+                print("- test attribute {}".format(k))
+                if isinstance(v, list):
+                    self.assertListEqual(v, kpoints.__getattribute__(k))
+                else:
+                    self.assertEqual(v, kpoints.__getattribute__(k))
 
 
 class test_chglike(ut.TestCase):

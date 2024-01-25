@@ -1,0 +1,12 @@
+k-points along high symmetry lines
+ 10  ! 10 intersections
+Line-mode
+cart
+  0   0   0   ! gamma
+  0   0   1   ! X
+
+  0   0   1   ! X
+  0.5 0   1   ! W
+
+  0.5 0   1   ! W
+  0   0   1   ! gamma

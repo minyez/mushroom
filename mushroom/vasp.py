@@ -609,6 +609,8 @@ class KPoints:
         "A": ["_kdense",],
         "G": ["_nkgrids", "_kshifts"],
         "M": ["_nkgrids", "_kshifts"],
+        "expl_recp": ["_kpts", "_weights"],
+        "expl_cart": ["_kpts", "_weights"],
     }
 
     def __init__(self, mode: str,
@@ -616,6 +618,7 @@ class KPoints:
                  kshifts: Tuple[int] = None,
                  kdense: int = None,
                  kpts: List[Tuple[float]] = None,
+                 weights: List[float] = None,
                  kpaths: List[Tuple[str, str, Union[str, None], Union[str, None]]] = None,
                  ngrids_kpath: int = None,
                  comment: str = None):
@@ -624,6 +627,7 @@ class KPoints:
         self._kshifts = kshifts
         self._kdense = kdense
         self._kpts = kpts
+        self._weights = weights
         self._kpaths = kpaths
         self._ngrids_kpath = ngrids_kpath
         self._comment = comment
@@ -639,7 +643,7 @@ class KPoints:
 
     def export(self):
         """export to string"""
-        raise NotImplemented
+        raise NotImplementedError
 
     @classmethod
     def read(cls, path_kpoints: Union[os.PathLike, str] = "KPOINTS"):
@@ -650,9 +654,11 @@ class KPoints:
         """
         with open(path_kpoints, 'r') as h:
             lines = h.readlines()
+        if len(lines) < 4:
+            raise ValueError("Invalid KPOINTS input, less than 4 lines")
+
         comment = lines[0].strip()
-        # remove the comment line
-        ngrids = int(lines[1])
+        ngrids = int(lines[1].split()[0])
         # automatic mode of Monkhorst-Pack grid
         if ngrids == 0:
             mode = lines[2][0].upper()
@@ -668,8 +674,10 @@ class KPoints:
                 raise ValueError("Unknown mode {} from input {}".format(mode, path_kpoints))
             return cls(mode, nkgrids=nkgrids, kshifts=kshifts, kdense=kdense, comment=comment)
 
-        # line mode or explicit mode
-        if lines[2].strip().lower().startswith("l"):  # "line"
+        l2 = lines[2].strip().lower()
+
+        # line mode
+        if l2.startswith("l"):  # "line"
             if lines[3].strip().lower().startswith("r"):  # "rec"
                 mode = "band_recp"
             elif lines[3].strip().lower().startswith("c"):  # "rec"
@@ -695,4 +703,27 @@ class KPoints:
                 kpaths[i][0], kpaths[i + 1][0], kpaths[i][1], kpaths[i + 1][1]
             ] for i in range(0, len(kpaths), 2)]
             return cls(mode, kpaths=kpaths, ngrids_kpath=ngrids, comment=comment)
-        raise IOError("Error when reading {}".format(path_kpoints))
+
+        # explicit mode
+        if l2.startswith("c") or l2.startswith("k"):  # Cartisian
+            mode = "expl_cart"
+        else:
+            mode = "expl_recp"
+        lines = lines[3:]
+        if len(lines) < ngrids:
+            raise ValueError("number of k-points in lines is inconsistent with the header")
+        kpts = []
+        weights = []
+        for i in range(ngrids):
+            words = lines[i].split()
+            try:
+                k1, k2, k3, weight = map(float, words)
+                kpts.append([k1, k2, k3])
+                weights.append(weight)
+            except ValueError as e:
+                raise ValueError("failt to convert line {} to kpoint and weight".format(i + 4)) from e
+
+        # TODO: handle tetrahedra
+        lines_tetra = lines[ngrids:]
+
+        return cls(mode, kpts=kpts, weights=weights, comment=comment)
