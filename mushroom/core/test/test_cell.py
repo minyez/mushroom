@@ -556,6 +556,19 @@ class test_supercell(ut.TestCase):
             [0.5, 0.5, 0.5]]
     cell = Cell(latt, atms, posi, coord_sys="D")
 
+    def test_mapping(self):
+        atms = ["C", "Si", "C", "B"]
+        posi = [[0.0, 0.0, 0.0],
+                [0.0, 0.2, 0.0],
+                [0.0, 0.3, 0.4],
+                [0.5, 0.5, 0.5]]
+        cell = Cell(self.latt, atms, posi, sort_atms=True)
+        self.assertListEqual(cell.atms, ["C", "C", "Si", "B"])
+        sc, mapping = cell.get_supercell(2, 1, 1, sort_atms=False)
+        self.assertListEqual(mapping, [0, 1, 2, 3, 0, 1, 2, 3])
+        sc, mapping = cell.get_supercell(2, 1, 1, sort_atms=True)
+        self.assertListEqual(mapping, [0, 1, 0, 1, 2, 2, 3, 3])
+
     def test_211(self):
         """test 2 1 1 supercell creation"""
         sclatt = [[2.0, 0.0, 0.0],
@@ -566,8 +579,9 @@ class test_supercell(ut.TestCase):
                   [0.5, 0.0, 0.0],
                   [0.25, 0.5, 0.5],
                   [0.75, 0.5, 0.5]]
-        sc = self.cell.get_supercell(2, 1, 1)
+        sc, mapping = self.cell.get_supercell(2, 1, 1)
         self.assertListEqual(scatms, sc.atms)
+        self.assertListEqual(mapping, [0, 0, 1, 1])
         self.assertTrue(np.array_equal(sc.latt, np.array(sclatt, dtype=Cell._dtype)))
         self.assertTrue(np.array_equal(sc.posi, np.array(scposi, dtype=Cell._dtype)))
 
@@ -581,13 +595,13 @@ class test_supercell(ut.TestCase):
                   [0.0, 0.5, 0.0],
                   [0.5, 0.25, 0.5],
                   [0.5, 0.75, 0.5]]
-        sc = self.cell.get_supercell(1, 2, 1)
+        sc, mapping = self.cell.get_supercell(1, 2, 1)
         self.assertListEqual(scatms, sc.atms)
         self.assertTrue(np.array_equal(sc.latt, np.array(sclatt, dtype=Cell._dtype)))
         self.assertTrue(np.array_equal(sc.posi, np.array(scposi, dtype=Cell._dtype)))
 
     def test_112(self):
-        """test 1 2 1 supercell creation"""
+        """test 1 1 2 supercell creation"""
         sclatt = [[1.0, 0.0, 0.0],
                   [0.0, 2.0, 0.0],
                   [0.0, 0.0, 6.0]]
@@ -596,7 +610,7 @@ class test_supercell(ut.TestCase):
                   [0.0, 0.0, 0.5],
                   [0.5, 0.5, 0.25],
                   [0.5, 0.5, 0.75]]
-        sc = self.cell.get_supercell(1, 1, 2)
+        sc, mapping = self.cell.get_supercell(1, 1, 2)
         self.assertListEqual(scatms, sc.atms)
         self.assertTrue(np.array_equal(sc.latt, np.array(sclatt, dtype=Cell._dtype)))
         self.assertTrue(np.array_equal(sc.posi, np.array(scposi, dtype=Cell._dtype)))
@@ -615,8 +629,9 @@ class test_supercell(ut.TestCase):
                   [0.5, 0.75, 0.25],
                   [0.5, 0.25, 0.75],
                   [0.5, 0.75, 0.75]]
-        sc = self.cell.get_supercell(1, 2, 2)
+        sc, mapping = self.cell.get_supercell(1, 2, 2)
         self.assertListEqual(scatms, sc.atms)
+        self.assertListEqual(mapping, [0, 0, 0, 0, 1, 1, 1, 1])
         self.assertTrue(np.array_equal(sc.latt, np.array(sclatt, dtype=Cell._dtype)))
         self.assertTrue(np.array_equal(sc.posi, np.array(scposi, dtype=Cell._dtype)))
 

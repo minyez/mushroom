@@ -85,7 +85,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
     avail_readers = ['vasp', 'json', 'cif', 'aims']
 
     def __init__(self, latt: Latt3T3, atms: Sequence[str], posi: Sequence[RealVec3D],
-                 unit: str = 'ang', sanitize: bool = True,
+                 unit: str = 'ang', sort_atms: bool = True,
                  coord_sys: Union[str, Iterable] = 'D',
                  select_dyn: dict = None, all_relax: bool = True,
                  reference: str = None, comment: str = None, **kwargs):
@@ -134,8 +134,8 @@ When other keyword are parsed, they will be filtered out and no exception will b
         if select_dyn is not None:
             self._select_dyn = select_dyn
 
-        if sanitize:
-            self._sanitize_atoms()
+        if sort_atms:
+            self.sort_atms()
         self.exporters = {
             'vasp': self.export_vasp,
             'abi': self.export_abi,
@@ -237,13 +237,15 @@ When other keyword are parsed, they will be filtered out and no exception will b
         Note that this method is mainly for sorting use, and does NOT change
         the geometry of the cell at all.
         """
+        # same atom, no need to switch
+        if iat1 == iat2:
+            return
         try:
             assert iat1 in range(self.natm)
             assert iat2 in range(self.natm)
-            assert iat1 != iat2
         except AssertionError:
             raise self._err(
-                "Fail to switch two atoms with indices {} and {}".format(iat1, iat2))
+                "atoms indices out-of-bound {} and {}".format(iat1, iat2))
 
         self._posi[[iat1, iat2]] = self._posi[[iat2, iat1]]
         self._atms[iat1], self._atms[iat2] = self._atms[iat2], self._atms[iat1]
@@ -361,17 +363,19 @@ When other keyword are parsed, they will be filtered out and no exception will b
 
         The smaller value will appear earlier, if ``reverse`` is left
         as False.
-        In both cases, when two same values are compared,
-        current bubble will just break.
 
         Args:
             key (natom-member list): the key value to be sorted
             indices (iterable): the indices of the atoms to be sorted
             reverse (bool): if set True, larger value appears earlier
+
+        Returns:
+            index mapping between sorted atoms and the atoms before sorting
         """
         _depth = 1
         _logger.debug("Bubble sort with key: %s, indices %r", key, indices)
         ind = list(indices)
+        mapping = list(indices)
         k = [key[i] for i in ind]
         n = len(ind)
         _sorted = True
@@ -395,16 +399,21 @@ When other keyword are parsed, they will be filtered out and no exception will b
                     if __dict[reverse]:
                         self._switch_two_atom_index(ind[li], ind[ri])
                         k[li], k[ri] = k[ri], k[li]
+                        mapping[li], mapping[ri] = mapping[ri], mapping[li]
                         j -= 1
                     else:
                         break
+        return mapping
 
-    def _sanitize_atoms(self):
-        """Sanitize the atoms arrangement after initialization.
+    def sort_atms(self):
+        """Sort the atoms arrangement
 
-        It mainly deals with arbitrary input of ``atoms`` when initialized.
+        Usually used when the input of ``atoms`` when initialized is rather arbitrary.
+
+        Returns:
+            index mapping between sorted atoms and the atoms before sorting
         """
-        self._bubble_sort_atoms(self.type_index(), range(self.natm))
+        return self._bubble_sort_atoms(self.type_index(), range(self.natm))
 
     def sort_posi(self, axis: int = 3, reverse: bool = False):
         """Sort the atoms by its coordinate along axis.
@@ -446,7 +455,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
             self._posi = self._posi * scale
 
     def add_atom(self, atom: str, coord: RealVec3D,
-                 select_dyn: bool = None, sanitize: bool = True):
+                 select_dyn: bool = None, sort_atms: bool = True):
         """Add an atom with coordinate and selective dynamic flags
 
         Args:
@@ -465,8 +474,8 @@ When other keyword are parsed, they will be filtered out and no exception will b
         self._posi = newpos
         self._atms.append(atom)
         self.move_atoms_to_first_lattice()
-        if sanitize:
-            self._sanitize_atoms()
+        if sort_atms:
+            self.sort_atms()
 
     def get_sym_nat(self):
         """get the symbols and number of atoms of each atom type
@@ -477,16 +486,18 @@ When other keyword are parsed, they will be filtered out and no exception will b
         return sym_nat_from_atms(self._atms)
 
     # pylint: disable=R0914
-    def get_supercell(self, n1: int = 1, n2: int = 1, n3: int = 1):
+    def get_supercell(self, n1: int = 1, n2: int = 1, n3: int = 1, sort_atms: bool = True):
         """create supercell from current
 
         Note that selective dynamic flags will be lost in the new object.
 
         Args:
             n1, n2, n3 (int)
+            sort_atms (bool): whether to sort the arrangement of atms in the supercell
 
         Returns:
             Cell
+            mapping
         """
         was_c = self.coord_sys == "C"
         multi = np.array([n1, n2, n3])
@@ -502,19 +513,26 @@ When other keyword are parsed, they will be filtered out and no exception will b
         sclatt = latt.transpose() * multi
         sclatt = sclatt.transpose()
         posi = posi / multi
+
         scposi = []
+        mapping = []
         # n3, n2, n1 to make the first coordinate goes fastest
         for i3, i2, i1 in product(range(n3), range(n2), range(n1)):
             shift = np.ones((self.natm, 3)) * np.divide([i1, i2, i3], multi)
             scposi.extend(posi + shift)
-        sc = type(self)(sclatt, scatms, scposi, unit=self.unit, coord_sys="D",
+            mapping.extend(list(range(self.natm)))
+        # do not sort atoms when creating, avoid messing up the primitive-supercell correspondence
+        sc = type(self)(sclatt, scatms, scposi, unit=self.unit, coord_sys="D", sort_atms=False,
                         comment="{}x{}x{} S.C. of {}".format(n1, n2, n3, self.comment),
                         reference=self.get_reference())
+        if sort_atms:
+            mapping_new_to_old = sc.sort_atms()
+            mapping = [mapping[i] for i in mapping_new_to_old]
         # convert back to Cartisian
         if was_c:
             self.coord_sys = "C"
             sc.coord_sys = "C"
-        return sc
+        return sc, mapping
 
     def __spglib_convert(self, funcname, **kwargs):
         raise_no_module(spglib, "Spglib")
