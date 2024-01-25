@@ -273,20 +273,25 @@ When other keyword are parsed, they will be filtered out and no exception will b
             self.coord_sys = "C"
 
     # pylint: disable=R0914
-    def Rab_in_rcut(self, rcut, ia, ib, axis=None,
-                    sort=True, return_iR=False, return_iR_Rablen=False):
+    def Rab_in_rcut(self, rcut, ia, ib, axis=None, sort: bool = True,
+                    return_iR: bool = False, return_iR_Rablen: bool = False):
         """Rab = R + r_a - r_b real space vector within rcut
+
+        The origin, i.e. R = 0, is not included when ia == ib
 
         Args:
             rcut (float): cutoff for Rab
             ia, ib (int): index of atom
-            axis (float tuple): searching axis. Default to search 3 axis, i.e. axis=(0, 1, 2)
+            axis (int or tuple of int): searching axis. Default to search 3 axis, i.e. axis=(0, 1, 2)
             return_iR (bool): if True, integer of Rs in lattice vectors will be also returned.
 
         Returns:
+            list of 3-member list, if return_iR and return_iR_Rablen are False
         """
         was_coord_sys = self.coord_sys
         self.coord_sys = "D"
+        if isinstance(axis, int):
+            axis = (axis,)
         if axis is None:
             axis = (0, 1, 2)
         alen = list(self.alen[i] for i in axis)
@@ -310,8 +315,11 @@ When other keyword are parsed, they will be filtered out and no exception will b
             return Rab[in_rcut], iR[in_rcut]
         return Rab[in_rcut]
 
-    def Gpq_in_gcut(self, gcut, q, axis=None, sort=True, return_iG=False, return_iG_Gpqlen=False):
+    def Gpq_in_gcut(self, gcut, q, axis=None, sort: bool = True,
+                    return_iG: bool = False, return_iG_Gpqlen: bool = False):
         """Gpq = G + q reciprocal space vector within gcut
+
+        When q is close to 0, G=0 is excluded from the list
 
         Args:
             gcut (float): cutoff for Rab
@@ -320,6 +328,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
             return_iG (bool): if True, integer of G in reciprocal vectors will be also returned.
 
         Returns:
+            list of 3-member list, if return_iG and return_iG_Gpqlen are False
         """
         was_coord_sys = self.coord_sys
         self.coord_sys = "D"
@@ -331,7 +340,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
             if i not in axis:
                 imax[i] = 0
         iG = list(product(*map(lambda x: range(-x, x + 1), imax)))
-        if np.allclose(q, 0.0):
+        if np.allclose(q, 0.0, atol=1e-7):
             del iG[iG.index((0, 0, 0))]
         iG = np.array(iG, dtype="float64")
         Gpq = np.matmul(np.add(iG, q), self.recp_latt)

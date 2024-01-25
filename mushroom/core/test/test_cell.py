@@ -396,16 +396,43 @@ class cell_select_dynamics(ut.TestCase):
         self.assertListEqual([False, True, True], pc.sd_flag(3))
 
 
-class test_get(ut.TestCase):
-
-    def test_get_supercell(self):
-        pass
+class test_cut_calculation(ut.TestCase):
 
     def test_Rab_in_rcut(self):
-        pass
+        a = 5.0
+        latt = [[a, 0.0, 0.0],
+                [0.0, a, 0.0],
+                [0.0, 0.0, a]]
+        atms = ["H", "H"]
+        posi = [[0., 0., 0.], [0.5, 0.5, 0.5]]
+        c = Cell(latt, atms, posi)
+
+        # for the same atom
+        rabs = c.Rab_in_rcut(a - 0.01, 0, 0)
+        self.assertEqual(len(rabs), 0)
+        rabs = c.Rab_in_rcut(a + 0.01, 0, 0, axis=0)
+        self.assertEqual(len(rabs), 2)
+        rabs, _ = c.Rab_in_rcut(a + 0.01, 0, 0, return_iR=True)
+        self.assertEqual(len(rabs), 6)
+        rabs, _, _ = c.Rab_in_rcut(a * 1.43, 0, 0, return_iR=True, return_iR_Rablen=True)
+        self.assertEqual(len(rabs), 6 + 12)
+        rabs = c.Rab_in_rcut(a * 1.9, 0, 0)
+        self.assertEqual(len(rabs), 6 + 12 + 8)
 
     def test_Gpq_in_gcut(self):
-        pass
+        a = 2.0 * PI
+        latt = [[a, 0.0, 0.0],
+                [0.0, a, 0.0],
+                [0.0, 0.0, a]]
+        atms = ["H",]
+        posi = [[0., 0., 0.]]
+        c = Cell(latt, atms, posi)
+        g_pq = c.Gpq_in_gcut(0.95, 0.0)
+        self.assertEqual(len(g_pq), 0)
+        g_pq = c.Gpq_in_gcut(1.05, 0.0)
+        self.assertEqual(len(g_pq), 6)
+        g_pq, _ = c.Gpq_in_gcut(1.05, 0.0, axis=(0, 2), return_iG=True)
+        self.assertEqual(len(g_pq), 4)
 
 
 class cell_sort(ut.TestCase):
