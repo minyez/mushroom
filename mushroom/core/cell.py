@@ -5,6 +5,7 @@ import json
 import string
 import os
 from collections import OrderedDict
+from copy import deepcopy
 from numbers import Real
 from typing import List, Sequence, Union, Iterable
 from itertools import product
@@ -174,6 +175,9 @@ When other keyword are parsed, they will be filtered out and no exception will b
 
     def __repr__(self):
         return self.__str__()
+
+    def copy(self):
+        return deepcopy(self)
 
     def get_cell(self):
         '''Purge out the cell, atoms and pos.
@@ -540,6 +544,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
         try:
             raise_no_module(spglib, "Spglib")
         except ModuleNotFoundError:
+            _logger.warn("Spglib is not found, return elementary operation")
             return elemental
 
         was_c = self.coord_sys == "C"
@@ -1116,7 +1121,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
                 _logger.info("Detected format %s", format)
             if not format:
                 raise ValueError("fail to get format from extension of file {}".format(path))
-            return readers.get(format)(path)
+            return readers[format](path)
         except KeyError:
             raise CellError("Unsupported reader format: {}".format(format))
 
