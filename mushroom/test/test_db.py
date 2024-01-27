@@ -21,6 +21,7 @@ class test_plaintextdb(ut.TestCase):
     """test the base class"""
 
     def test_init(self):
+        self.assertRaises(TypeError, PlainTextDB, None, "**/filename")
         ptdb = PlainTextDB("relapath", ["**/filename",])
         ptdb = PlainTextDB("/abspath", ["**/filename",])
         ptdb = PlainTextDB("/abspath", "**/filename")
@@ -70,46 +71,11 @@ class test_dbcell(ut.TestCase):
 
     dbc = DBCell()
 
-    def test_extract_raise(self):
-        """test extracting cell entry"""
-        if self.dbc.N > 0:
-            self.assertRaises(ValueError, self.dbc.extract, 0, writer="unknown reader")
-        self.assertRaises(DBEntryNotFoundError, self.dbc.extract, "unknown cell sample")
-
-    def test_convert(self):
-        """test the write functionality"""
-        tf = tempfile.NamedTemporaryFile(suffix="_no_ext.")
-        structfile = pathlib.Path(__file__).parent / "data" / "1.struct"
-        self.dbc.convert(structfile, output_path=tf.name, writer='w2k')
-        self.dbc.convert(structfile, output_path=tf.name, writer='vasp')
-        tf.close()
-
-    def test_extract_to_vasp(self):
-        """successful extract"""
-        tf = tempfile.NamedTemporaryFile(suffix=".POSCAR")
-        if not force_copy:
-            tf.close()
-            return
-        for i in range(self.dbc.N):
-            with open(tf.name, 'w') as h:
-                self.dbc.extract(i, output_path=h)
-        tf.close()
-
-    def test_extract_to_w2k(self):
-        """successful extract"""
-        tf = tempfile.NamedTemporaryFile(suffix=".struct")
-        if not force_copy:
-            tf.close()
-            return
-        for i in range(self.dbc.N):
-            with open(tf.name, 'w') as h:
-                self.dbc.extract(i, output_path=h)
-        tf.close()
-
     def test_register_new_cell(self):
         """register new cell entry"""
         if self.dbc.N > 0:
             entry = self.dbc.get_cell(0)
+            self.assertIsNone(self.dbc.register(entry), None)
             self.assertIsNone(self.dbc.register(entry))
             self.assertEqual(self.dbc.register(entry, overwrite=True),
                              os.path.join(self.dbc._db_path, entry))

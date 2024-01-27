@@ -41,7 +41,11 @@ class PlainTextDB:
 
     def __init__(self, dbpath: str, glob_regex: Iterable, excludes: Iterable = None,
                  dir_only: bool = False):
-        dbpath = pathlib.Path(dbpath)
+        try:
+            dbpath = pathlib.Path(dbpath)
+        except TypeError as e:
+            raise TypeError("Invalid path for database: {}".format(dbpath)) from e
+
         if dbpath.is_absolute():
             self._db_path = dbpath
         else:
@@ -160,9 +164,7 @@ class PlainTextDB:
     def has_entry(self, entry: Union[str, int]) -> bool:
         """True if database has the entry ``entry``"""
         p = self._get_entry(entry)
-        if p is None:
-            return False
-        return True
+        return p is not None
 
     def get_entry(self, entry: Union[str, int]) -> Union[str, None]:
         """get the name of the database entry
@@ -195,32 +197,14 @@ class DBCell(PlainTextDB):
             try:
                 from mushroom.__config__ import db_cell_path
             except ImportError:
-                db_cell_path = "cell"
+                pass
+        if db_cell_path is None:
+            db_cell_path = "cell"
         PlainTextDB.__init__(self, db_cell_path, ["**/*.json", "**/*.cif"])
-        self.get_cell = self.get_entry
-        self.get_cell_path = self.get_entry_path
-        self.get_avail_cells = self.get_avail_entries
 
-    def convert(self, pcell: Path, output_path=None, reader=None, writer=None,
-                primitize=False, standardize=False, no_idealize=False, supercell=None):
-        """convert a file in one format of lattice cell to another"""
-        cellio = CellIO(pcell, format=reader)
-        cellio.manipulate(primitize=primitize,
-                          standardize=standardize,
-                          no_idealize=no_idealize,
-                          supercell=supercell)
-        cellio.write(output_path=output_path, format=writer)
-
-    def extract(self, cell_entry: Union[str, int], output_path=None,
-                reader=None, writer=None, primitize=False, standardize=False, no_idealize=False,
-                supercell=None):
-        """extract the entry from cell database"""
-        pcell = self.get_cell_path(cell_entry)
-        if pcell is None:
-            raise DBEntryNotFoundError("cell entry {} is not found".format(cell_entry))
-        self.convert(pcell, reader=reader, primitize=primitize,
-                     standardize=standardize, no_idealize=no_idealize, supercell=supercell,
-                     output_path=output_path, writer=writer)
+    get_cell = PlainTextDB.get_entry
+    get_cell_path = PlainTextDB.get_entry_path
+    get_avail_cells = PlainTextDB.get_avail_entries
 
 
 class DBWorkflow(PlainTextDB):

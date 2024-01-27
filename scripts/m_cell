@@ -6,7 +6,7 @@ It can also used to convert
 
 Use `-I` for converting file of one cell format to another
 Use `-c` for creating from predefined sample, stored in `db/cell`.
-Use `-p` for curating available cell samples.
+Use `-l` for curating available cell samples.
 """
 from os.path import isfile
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
@@ -28,7 +28,7 @@ def _parser():
     igrp.add_argument('-f', dest="search", type=str, default=None,
                       help="search and print out cells with file names matching the regex")
     igrp.add_argument('-c', dest='cell', default=None,
-                      help="extract predefined sample cell. int or str. see -p")
+                      help="extract predefined sample cell. int or str. see -l")
     igrp.add_argument('-l', dest='show', action="store_true",
                       help="list predefined sample cells")
     p.add_argument('--sc', dest='supercell', default=None, nargs=3, type=int,
@@ -55,27 +55,29 @@ def _parser():
 def build_cell():
     """main stream"""
     args = _parser().parse_args()
-    cdb = DBCell(args.db_cell_path)
+
+    input_file = None
     if args.input_file is not None:
         if not isfile(args.input_file):
             raise FileNotFoundError(args.input_file)
-        cdb.convert(args.input_file, output_path=args.output_path,
-                    reader=args.input_format, writer=args.output_format,
-                    primitize=args.primitize, standardize=args.standardize,
-                    supercell=args.supercell)
-        return
-    if args.cell is not None:
-        cdb.extract(args.cell, output_path=args.output_path, writer=args.output_format,
-                    primitize=args.primitize, standardize=args.standardize,
-                    supercell=args.supercell)
-        return
-    if args.show or args.search:
-        if cdb.N == 0:
-            print("No cell entries are found at", cdb._db_path)
-        for i, s in cdb.filter(args.search):
-            print("{:>3d} : {:s}".format(i, s))
-        return
-    raise ValueError("specify search/cell argument. See help")
+    else:
+        # cell database operations
+        cdb = DBCell(args.db_cell_path)
+        if args.cell is not None:
+            input_file = cdb.get_cell(args.cell)
+        elif args.show or args.search:
+            if cdb.N == 0:
+                print("No cell entries are found at", cdb._db_path)
+            for i, s in cdb.filter(args.search):
+                print("{:>3d} : {:s}".format(i, s))
+            return
+        else:
+            raise ValueError("specify search/cell argument. See help")
+
+    cio = CellIO(input_file, format=args.input_format)
+    cio.manipulate(primitize=args.primitize, standardize=args.standardize,
+                   supercell=args.supercell)
+    cio.write(output_path=args.output_path, writer=args.output_format)
 
 
 if __name__ == "__main__":

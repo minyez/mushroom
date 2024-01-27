@@ -88,7 +88,8 @@ def search_basis_directories(aims_species_defaults=None, error_dir_not_found: bo
 def get_basis_directory_from_alias(directory_alias):
     """get the directory name from alias"""
     directory = directory_alias.lower()
-    if directory in ['light', 'intermediate', 'tight', 'really_tight']:
+    if directory in ['light', 'intermediate', 'tight', 'really_tight',
+                     'intermediate_gw', 'tight_gw', 'really_tight_gw']:
         directory = os.path.join("defaults_2020", directory)
     elif directory in ['cc-pvdz', 'cc-pvtz', 'cc-pvqz',
                        'aug-cc-pvdz', 'aug-cc-pvtz', 'aug-cc-pvqz']:
