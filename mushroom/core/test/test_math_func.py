@@ -7,8 +7,9 @@ try:
     from scipy import special
 except ImportError:
     special = None
-from mushroom.core.math_func import hyp2f2_1f1_series, rising_factor, general_comb, \
-    solid_angle, sph_harm, sph_harm_xyz, gamma_negahalf, Smearing
+from mushroom.core.math_func import hyp2f2_1f1_series, rising_factor, \
+    general_comb, solid_angle, sph_harm, sph_harm_xyz, gamma_negahalf, Smearing
+from mushroom.core.math_func import _linspace_1d, linspace
 
 
 class test_math_func(ut.TestCase):
@@ -137,6 +138,21 @@ class test_smearing(ut.TestCase):
         # check normalization
         # Lorentzian decays slower than Gaussian, thus is not very accurate
         self.assertAlmostEqual(integral, 1.0, places=2)
+
+
+class test_get_points_along_path(ut.TestCase):
+
+    def test_1d(self):
+        self.assertListEqual(_linspace_1d(0, 2, 3, True, True),
+                             [0, 1, 2,])
+        self.assertListEqual(_linspace_1d(0, 3, 3, startpoint=False),
+                             [1, 2, 3,])
+
+    def test_nd(self):
+        self.assertRaises(ValueError, linspace, [1.0, 2.0], [3.0, 4.0], 1)
+        self.assertRaises(ValueError, linspace, [1.0,], [3.0, 4.0], 3)
+        self.assertListEqual(linspace([0, 1], [2, 3], 3, True, True),
+                             [[0, 1], [1, 2], [2, 3],])
 
 
 if __name__ == "__main__":

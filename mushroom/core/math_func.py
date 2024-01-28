@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 """math functions"""
-from numbers import Real
-from typing import Sequence
+from numbers import Real, Number
+from typing import Sequence, Tuple, Union
+
 import numpy as np
+
 from mushroom.core.constants import PI
 from mushroom.core.typehint import RealVec3D
 from mushroom.core.ioutils import raise_no_module
@@ -150,3 +152,49 @@ class Smearing:
         """
         return gamma / (np.subtract(x, x0)**2 + gamma**2) / PI
 
+
+def _linspace_1d(start: Number, end: Number, n: int,
+                 startpoint: bool = True,
+                 endpoint: bool = True) -> Tuple[Number]:
+    npts_inbetween = n - int(startpoint) - int(endpoint)
+    step = (end - start) / (npts_inbetween + 1)
+    if not startpoint:
+        start = start + step
+    return list(np.linspace(start, end, n, endpoint=endpoint))
+
+
+def linspace(
+        start: Union[Number, Tuple[Number]],
+        end: Union[Number, Tuple[Number]],
+        n: int,
+        startpoint: bool = True,
+        endpoint: bool = True) -> Union[Tuple[Tuple[Number]], Tuple[Number]]:
+    """get grid points which is linearly distributed between starting and ending point
+
+    Args:
+        start: number or list of number
+        end: number or list of number
+        n (int): the number of grids to return
+        startpoint (bool): whether to include the start point
+        endpoint (bool): whether to include the end point
+
+    Returns:
+        A list of numbers if start and end are number.
+        A list of lists of numbers if start and end are lists of numbers.
+    """
+    if n < 2:
+        raise ValueError("there must be more than 1 points")
+
+    try:
+        n_dim = len(start)
+        if n_dim != len(end):
+            raise ValueError("dimenstion of start")
+        lists = list(_linspace_1d(start[i], end[i], n,
+                                  startpoint=startpoint,
+                                  endpoint=endpoint) for i in range(n_dim))
+        return list(list(x) for x in zip(*lists))
+
+    except TypeError:
+        return _linspace_1d(start, end, n,
+                                         startpoint=startpoint,
+                                         endpoint=endpoint)
