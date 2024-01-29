@@ -3,6 +3,8 @@
 import os
 import re
 import numpy as np
+from typing import Callable, Union
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 from mushroom.core.logger import loggers
 
@@ -39,7 +41,7 @@ def _read_aims_single_sigc_dat(sigcdat_fn):
     return omegas, sigc
 
 
-def _fullmatch_nsbk_file_name(fn: str, prefix: str, suffix: str):
+def fullmatch_nsbk_file_name(fn: str, prefix: str, suffix: str):
     """
 
     Args:
@@ -72,17 +74,101 @@ def _fullmatch_nsbk_file_name(fn: str, prefix: str, suffix: str):
     return rets
 
 
-def read_aims_self_energy_dir(sedir: str = "self_energy"):
+def get_nsbk_filename_pattern(prefix, suffix,
+                              istate: Union[int, str] = None,
+                              ispin: int = None,
+                              iband: Union[int, str] = None,
+                              ikpt: Union[int, str] = None,
+                              spin_polarized: bool = False, out_band: bool = False):
+    middle_pattern = []
+
+    if istate is None:
+        middle_pattern.append(r"n_(\d+)")
+    else:
+        try:
+            middle_pattern.append(r"n_{:d}".format(int(istate) + 1))
+        except ValueError:
+            middle_pattern.append(r"n_{}".format(istate))
+
+    if ispin is None:
+        if spin_polarized:
+            middle_pattern.append(r"s_(\d+)")
+    else:
+        if ispin > 0 and spin_polarized:
+            middle_pattern.append(r"s_{:d}".format(ispin + 1))
+
+    if iband is None:
+        if out_band:
+            middle_pattern.append(r"band_(\d+)")
+    else:
+        try:
+            middle_pattern.append(r"band_{:d}".format(int(iband) + 1))
+        except ValueError:
+            middle_pattern.append(r"band_{}".format(iband))
+
+    if ikpt is None:
+        middle_pattern.append(r"k_(\d+)")
+    else:
+        try:
+            middle_pattern.append(r"k_{:d}".format(int(ikpt) + 1))
+        except ValueError:
+            middle_pattern.append(r"k_{}".format(ikpt))
+    return prefix + r"\.".join(middle_pattern) + suffix
+
+
+def get_nsbk_filename(prefix, suffix, istate: int, ikpt: int, ispin: int = None, iband: int = None,
+                      spin_polarized: bool = False):
+    """Read a single n.s.b.k file
+
+    Args:
+        ispin (int): 0 or 1.
+           If ispin is 0 and spin_polarized is False, the file is treated from non-spin-polarization calculation.
+           Otherwise it is spin polarized.
+    """
+    middle = ["n_{:d}".format(istate + 1)]
+    if ispin is not None and (ispin > 0 or spin_polarized):
+        middle.append("s_{:d}".format(ispin + 1))
+    if iband is not None:
+        middle.append("band_{:d}".format(iband + 1))
+    middle.append("k_{:d}".format(ikpt + 1))
+    return prefix + ".".join(middle) + suffix
+
+
+def glob_nsbk_files(dir, prefix, suffix, ikpt: int, ispin: int = None, iband: int = None,
+                    spin_polarized: bool = False):
+    raise NotImplementedError
+
+
+def __process_single_self_energy_data(fpath):
+    fn = os.path.basename(fpath)
+    omegas, sigc = _read_aims_single_sigc_dat(fpath)
+    n, s, kp, k = fullmatch_nsbk_file_name(fn, r"Sigma\.omega\.", r"\.dat")
+    return (n, s, kp, k), omegas, sigc
+
+
+def read_aims_self_energy_dir(sedir: str = "self_energy",
+                              filter_isbk_file: Callable[[int, int, int, int], bool] = None,
+                              merge_band_kpoints: bool = False,
+                              filethres_mp: int = 100):
     """read all sigc data in self energy directory `sedir`
 
     Args:
         sedir (path-like)
+        filter_isbk: callable taking 4 int arguments (istate, ispin, iband, ikpt) and returning bool.
+            When the int arguments obtained from the file leads to True by calling it, this file will be kept
+            in parsing the self-energy. Otherwise the file is filtered out.
+        merge_band_kpoints (bool)
+        filethres_mp (int): the number of files beyond which multiprocessing will be used.
 
     Returns:
         1d array: frequencies
+
         integer: index of the first state
+
         4d array: sigc data on kgrid, (freq, spin, kpoint, state)
-        a list of 4d-arrays: sigc data along band paths, (freq, spin, kpoint, state)
+
+        a list of 4d-arrays: sigc data along band paths, (freq, spin, kpoint, state) each, if merge_band_kpoints False.
+        Otherwise a 4d-array, where the third dimension gives the number of all kpoints on band paths
     """
     data_dict_kgrid = {}
     data_dict_band = {}
@@ -91,18 +177,36 @@ def read_aims_self_energy_dir(sedir: str = "self_energy"):
     nkpts = 0
     nstates = 0
 
-    for sigc_path in os.listdir(sedir):
-        omegas, sigc = _read_aims_single_sigc_dat(os.path.join(sedir, sigc_path))
-        fn = os.path.basename(sigc_path)
+    fpaths = []
+    for fp in os.listdir(sedir):
+        matched = fullmatch_nsbk_file_name(os.path.basename(fp), r"Sigma\.omega\.", r"\.dat")
+        if matched == []:
+            _logger.warn("invalid self energy data file: %s", fp)
+            continue
+        n, s, kp, k = matched
+        if filter_isbk_file is not None and not filter_isbk_file(n, s, kp, k):
+            continue
+        fpaths.append(fp)
 
-        try:
-            n, s, kp, k = _fullmatch_nsbk_file_name(fn, r"Sigma\.omega\.", r"\.dat")
-            if kp is None:
-                data_dict_kgrid[(s, k, n)] = sigc
-            else:
-                data_dict_band[(s, kp, k, n)] = sigc
-        except ValueError:
-            _logger.warn("invalid self energy data file: %s", sigc_path)
+    def set_sigc(n, s, kp, k, sigc):
+        if kp is None:
+            data_dict_kgrid[(s, k, n)] = sigc
+            return
+        data_dict_band[(s, kp, k, n)] = sigc
+
+    if len(fpaths) > filethres_mp:
+        # TODO: better way to decide max_workers
+        with ProcessPoolExecutor(max_workers=1) as executor:
+            results = [executor.submit(__process_single_self_energy_data,
+                                       os.path.join(sedir, fpath)) for fpath in fpaths]
+
+            for item in as_completed(results):
+                (n, s, kp, k), omegas, sigc = item.result()
+                set_sigc(n, s, kp, k, sigc)
+    else:
+        for fp in fpaths:
+            (n, s, kp, k), omegas, sigc = __process_single_self_energy_data(os.path.join(sedir, fp))
+            set_sigc(n, s, kp, k, sigc)
 
     # assume all files have the same frequencies (should be the case)
     nomegas = len(omegas)
@@ -114,10 +218,7 @@ def read_aims_self_energy_dir(sedir: str = "self_energy"):
         state_low = min([x for _, _, x in data_dict_kgrid.keys()])
         state_high = max([x for _, _, x in data_dict_kgrid.keys()])
     else:
-        try:
-            nspins = max([x for x, _, _, _ in data_dict_band.keys()]) + 1
-        except ValueError:
-            raise ValueError("Cannot determine nspins")
+        nspins = max([x for x, _, _, _ in data_dict_band.keys()]) + 1
         state_low = min([x for _, _, _, x in data_dict_band.keys()])
         state_high = max([x for _, _, _, x in data_dict_band.keys()])
 
@@ -143,6 +244,9 @@ def read_aims_self_energy_dir(sedir: str = "self_energy"):
                 continue
             data_band[:, isp, ik, istate - state_low] = sigc_freq[:]
         data_bands.append(data_band)
+
+    if merge_band_kpoints:
+        data_bands = np.concatenate(data_bands, axis=2)
 
     return omegas, state_low, data_kgrid, data_bands
 

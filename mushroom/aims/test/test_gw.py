@@ -8,7 +8,8 @@ import tempfile
 
 import numpy as np
 
-from mushroom.aims.gw import read_aims_self_energy_dir, _read_aims_single_sigc_dat
+from mushroom.aims.gw import read_aims_self_energy_dir, _read_aims_single_sigc_dat, \
+    get_nsbk_filename, get_nsbk_filename_pattern
 
 
 class test_read_self_energy_directory(ut.TestCase):
@@ -30,6 +31,26 @@ class test_read_self_energy_directory(ut.TestCase):
         self.assertAlmostEqual(0.0, sigc[0].imag)
 
         tf.close()
+
+    def test_get_nsbk_filename(self):
+        self.assertEqual("test.n_1.k_1.dat", get_nsbk_filename("test.", ".dat", 0, 0))
+        self.assertEqual("test.n_1.band_1.k_1.dat", get_nsbk_filename("test.", ".dat", 0, 0, 0, 0))
+        self.assertEqual("test.n_1.s_1.band_1.k_1.dat", get_nsbk_filename("test.", ".dat", 0, 0, 0, 0, True))
+        self.assertEqual("test.n_1.s_2.band_1.k_1.dat", get_nsbk_filename("test.", ".dat", 0, 0, 1, 0, False))
+
+    def test_get_nsbk_filename_pattern(self):
+        # state pattern
+        self.assertEqual(r"test\.n_(\d+)\.k_(\d+)\.dat", get_nsbk_filename_pattern(r"test\.", r"\.dat"))
+        self.assertEqual(r"test\.n_1\.k_(\d+)\.dat", get_nsbk_filename_pattern(r"test\.", r"\.dat", 0))
+        self.assertEqual(r"test\.n_[12]\.k_(\d+)\.dat", get_nsbk_filename_pattern(r"test\.", r"\.dat", "[12]"))
+
+        self.assertEqual(r"test\.n_(\d+)\.band_1\.k_(\d+)\.dat",
+                         get_nsbk_filename_pattern(r"test\.", r"\.dat", iband=0))
+        self.assertEqual(r"test\.n_(\d+)\.band_1\.k_(\d+)\.dat",
+                         get_nsbk_filename_pattern(r"test\.", r"\.dat", iband=np.array([0,], dtype='int64')[0]))
+        self.assertEqual(r"test\.n_(\d+)\.band_1\.k_(\d+)\.dat",
+                         get_nsbk_filename_pattern(r"test\.", r"\.dat", iband=0,
+                                                   out_band=True))
 
     def test_kgrid_only_case(self):
         td = tempfile.TemporaryDirectory()
@@ -53,13 +74,17 @@ class test_read_self_energy_directory(ut.TestCase):
         with open(os.path.join(td.name, fn), 'w') as h:
             print("1.0 1.0 1.0", file=h)
             print("2.0 1.0 1.0", file=h)
-        omega, state_low, sigc_kgrid, sigc_bands = read_aims_self_energy_dir(td.name)
-        self.assertEqual(len(omega), 2)
+        omegas, state_low, sigc_kgrid, sigc_bands = read_aims_self_energy_dir(td.name)
+        self.assertEqual(len(omegas), 2)
         self.assertEqual(state_low, 0)
         # states and spins
         self.assertTupleEqual(np.shape(sigc_kgrid), (2, 1, 0, 1))
         self.assertEqual(np.size(sigc_kgrid), 0)
         self.assertEqual(len(sigc_bands), 1)
+
+        # test multi-process
+        omegas, state_low, sigc_kgrid, sigc_bands = read_aims_self_energy_dir(td.name, filethres_mp=0)
+        self.assertListEqual([1.0, 2.0], omegas)
         td.cleanup()
 
     def test_real_cases(self):
@@ -80,8 +105,14 @@ class test_read_self_energy_directory(ut.TestCase):
             self.assertEqual(nstates, verify["nstates"])
 
             # bands
+            self.assertEqual(len(np.shape(sigc_bands)), 5)
             self.assertEqual(len(sigc_bands), verify["nkpaths"])
-            self.assertEqual([np.shape(x)[2] for x in sigc_bands], verify["nkpts_band"])
+            self.assertListEqual([np.shape(x)[2] for x in sigc_bands], verify["nkpts_band"])
+
+            # check merge
+            omega, state_low, sigc_kgrid, sigc_bands_merged = read_aims_self_energy_dir(sedir, None, True)
+            self.assertEqual(len(np.shape(sigc_bands_merged)), 4)
+            self.assertEqual(np.shape(sigc_bands_merged)[2], sum(verify["nkpts_band"]))
 
 
 if __name__ == '__main__':

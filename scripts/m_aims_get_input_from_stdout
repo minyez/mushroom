@@ -1,0 +1,45 @@
+#!/usr/bin/env python3
+"""Extract input files, namely control.in and geometry.in from an aims stdout file"""
+import os
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
+
+from mushroom.aims.stdout import StdOut
+
+
+def _parser():
+    """the parser"""
+    p = ArgumentParser(description=__doc__, formatter_class=RawDescriptionHelpFormatter)
+    p.add_argument("aimsout")
+    p.add_argument("-c", dest="output_ctrl", default="control.in",
+                   help="output path for extracted control file")
+    p.add_argument("-g", dest="output_geom", default="geometry.in",
+                   help="output path for extracted geometry file")
+    p.add_argument("-f", dest="force", action="store_true", help="force overwrite")
+    return p
+
+
+if __name__ == '__main__':
+    args = _parser().parse_args()
+    stdout = StdOut(args.aimsout)
+
+    ctrl = stdout.get_control()
+    if os.path.exists(args.output_ctrl):
+        if args.force:
+            print("Overwriting", args.output_ctrl)
+            ctrl.write(args.output_ctrl)
+        else:
+            print(args.output_ctrl, "exists, skip exporting control.in file")
+    else:
+        print("Writing", args.output_ctrl)
+        ctrl.write(args.output_ctrl)
+
+    geom = stdout.get_geometry()
+    if os.path.exists(args.output_geom):
+        if args.force:
+            print("Overwriting", args.output_geom)
+            geom.write("aims", args.output_geom)
+        else:
+            print(args.output_geom, "exists, skip exporting geometry.in file")
+    else:
+        print("Writing", args.output_geom)
+        geom.write("aims", args.output_geom)

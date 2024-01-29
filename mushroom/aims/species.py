@@ -424,8 +424,8 @@ class Species:
                     slist.append(" " * padding + f"  division  {div}")
                 slist.append(" " * padding + f"  outer_grid  {self.tags[t]['outer_grid']}")
         slist.append(self.export_basis(padding))
-        if self.header is not None:
-            slist.append("###   End species ###")
+        # if self.header is not None:
+        #     slist.append("###   End species ###")
         return "\n".join(slist)
 
     def write(self, pspecies):
