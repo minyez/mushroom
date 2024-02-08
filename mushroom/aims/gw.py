@@ -211,10 +211,12 @@ def read_aims_self_energy_dir(sedir: str = "self_energy",
     # assume all files have the same frequencies (should be the case)
     nomegas = len(omegas)
 
+    kpts_grid = []
     nkpts_grid = 0
     if data_dict_kgrid:
         nspins = max([x for x, _, _ in data_dict_kgrid.keys()]) + 1
-        nkpts_grid = max([x for _, x, _ in data_dict_kgrid.keys()]) + 1
+        kpts_grid = sorted(set([x for _, x, _ in data_dict_kgrid.keys()]))
+        nkpts_grid = len(kpts_grid)
         state_low = min([x for _, _, x in data_dict_kgrid.keys()])
         state_high = max([x for _, _, x in data_dict_kgrid.keys()])
     else:
@@ -226,8 +228,9 @@ def read_aims_self_energy_dir(sedir: str = "self_energy",
     nstates = state_high - state_low + 1
 
     data_kgrid = np.zeros((nomegas, nspins, nkpts_grid, nstates), dtype='complex64')
-    for (isp, ik, istate), sigc_freq in data_dict_kgrid.items():
-        data_kgrid[:, isp, ik, istate - state_low] = sigc_freq[:]
+    if kpts_grid != []:
+        for (isp, ik, istate), sigc_freq in data_dict_kgrid.items():
+            data_kgrid[:, isp, kpts_grid.index(ik), istate - state_low] = sigc_freq[:]
 
     nkpaths = 0
     if data_dict_band:

@@ -58,8 +58,9 @@ def build_cell():
 
     input_file = None
     if args.input_file is not None:
-        if not isfile(args.input_file):
-            raise FileNotFoundError(args.input_file)
+        input_file = args.input_file
+        if not isfile(input_file):
+            raise FileNotFoundError(input_file)
     else:
         # cell database operations
         cdb = DBCell(args.db_cell_path)
@@ -77,7 +78,7 @@ def build_cell():
     cio = CellIO(input_file, format=args.input_format)
     cio.manipulate(primitize=args.primitize, standardize=args.standardize,
                    supercell=args.supercell)
-    cio.write(output_path=args.output_path, writer=args.output_format)
+    cio.write(output_path=args.output_path, format=args.output_format)
 
 
 if __name__ == "__main__":
