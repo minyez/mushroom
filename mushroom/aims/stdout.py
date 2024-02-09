@@ -9,6 +9,9 @@ from mushroom.core.ioutils import conv_string
 from mushroom.core.logger import loggers
 
 
+__all__ = [
+    "StdOut",
+]
 _logger = loggers["aims"]
 
 

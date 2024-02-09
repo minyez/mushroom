@@ -11,6 +11,9 @@ from mushroom.core.ioutils import open_textio
 from mushroom.core.logger import loggers
 
 
+__all__ = [
+    "Species",
+]
 _logger = loggers["aims"]
 
 _SPECIES_DEFAULTS_ENV = "AIMS_SPECIES_DEFAULTS"
