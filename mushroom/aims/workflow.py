@@ -3,8 +3,5 @@
 import os
 
 
-class AimsInput:
-
-    def __init__(self, control, geometry):
-        self.geometry = geometry
-        self.control = control
+class Aims:
+    """class to define a FHI-aims calculation"""

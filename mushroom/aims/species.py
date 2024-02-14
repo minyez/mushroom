@@ -13,6 +13,7 @@ from mushroom.core.logger import loggers
 
 __all__ = [
     "Species",
+    "readlines_species_defaults",
 ]
 _logger = loggers["aims"]
 
@@ -122,21 +123,20 @@ def get_species_defaults_directory():
     return species_defaults
 
 
-def get_specie_filename(elem: str,
-                        directory: str,
-                        species_defaults: str = None,
-                        error_dir_not_found: bool = True):
-    """get the name of specie file of a particular basis
+def get_species_filepaths(directory: str,
+                          elem: str, *elems: str,
+                          species_defaults: str = None,
+                          error_dir_not_found: bool = True):
+    """get the paths of species files of a particular basis
 
     Args:
-        elem (str)
         directory (str): directory of species category or its alias
+        elem and elems (str)
         species_defaults (str)
 
     Returns:
-        str
+        List of str
     """
-    elem_id = get_atomic_number(elem, False)
     if species_defaults is None:
         species_defaults = get_species_defaults_directory()
     directories_avail = search_basis_directories(species_defaults, error_dir_not_found=error_dir_not_found)
@@ -147,9 +147,28 @@ def get_specie_filename(elem: str,
     if error_dir_not_found and directory not in directories_avail:
         raise ValueError("{} is not found in available basis directories {}"
                          .format(directory, directories_avail))
-    pspecies = [species_defaults, directory, f"{elem_id:02d}_{elem}_default"]
-    pspecies = os.path.join(*pspecies)
+    elems = [elem, *elems]
+    pspecies = []
+    for e in elems:
+        elem_id = get_atomic_number(e, False)
+        pspecies.append(os.path.join(*[species_defaults, directory, f"{elem_id:02d}_{e}_default"]))
     return pspecies
+
+
+def readlines_species_defaults(directory: str, elem: str, *elems: str, species_defaults: str = None):
+    """read the species files specified by `directory` and elements `elem` and `elems`
+
+    Args:
+        directory (str): directory of species category or its alias
+        elem and elems (str)
+        species_defaults (str)
+    """
+    lines = []
+    for pspecie in get_species_filepaths(directory, elem, *elems,
+                                         species_defaults=species_defaults, error_dir_not_found=True):
+        with open(pspecie, 'r') as h:
+            lines.extend(h.readlines())
+    return "".join(lines)
 
 
 class NaoBasisPool:
@@ -599,5 +618,5 @@ class Species:
                 e.g. "cc-pVDZ" and set category to "non-standard"
         """
         species_defaults = get_species_defaults_directory()
-        pspecies = get_specie_filename(elem, directory, species_defaults)
+        pspecies = get_species_filepaths(directory, elem, species_defaults)[0]
         return cls.read(pspecies)

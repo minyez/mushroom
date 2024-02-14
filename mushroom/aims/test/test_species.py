@@ -12,7 +12,7 @@ from mushroom.aims.species import Species
 from mushroom.aims.species import get_num_obfs, get_l_nrad
 from mushroom.aims.species import _SPECIES_DEFAULTS_ENV, \
     search_basis_directories, get_species_defaults_directory, get_basis_directory_from_alias, \
-    get_specie_filename
+    get_species_filepaths
 
 
 def _check_if_species_defaults_set():
@@ -68,12 +68,13 @@ class test_species_utils(ut.TestCase):
         self.assertEqual(get_basis_directory_from_alias("nao-vcc-2z"), "NAO-VCC-nZ/NAO-VCC-2Z")
 
     def test_get_specie_filename(self):
-        self.assertRaises(ValueError, get_specie_filename, "Ne", "unknown", "path/to/species_defaults")
+        self.assertRaises(ValueError, get_species_filepaths,
+                          "unknown", "Ne", species_defaults="path/to/species_defaults")
         if _check_if_species_defaults_set():
             return
         d = get_species_defaults_directory()
-        self.assertEqual(os.path.join(d, "defaults_2010", "tight", "01_H_default"),
-                         get_specie_filename("H", "defaults_2010/tight"))
+        self.assertListEqual([os.path.join(d, "defaults_2010", "tight", "01_H_default"),],
+                             get_species_filepaths("defaults_2010/tight", "H"))
 
     def test_get_num_obfs(self):
         """Test get number of basis functions"""
@@ -157,7 +158,7 @@ class test_read_species(ut.TestCase):
 
     def test_read_multiple(self):
         try:
-            pspecies = get_specie_filename('H', 'defaults_2010/tight')
+            pspecies = get_species_filepaths('defaults_2010/tight', 'H')[0]
         except (ValueError, KeyError):
             return
         with open(pspecies, 'r') as h:

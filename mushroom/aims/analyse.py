@@ -13,6 +13,7 @@ __all__ = [
     "get_dimensions",
     "get_chemical_potential",
     "is_finished_aimsdir",
+    "get_atoms_from_geometry",
 ]
 
 _logger = loggers["aims"]
@@ -105,3 +106,21 @@ def is_finished_aimsdir(dirpath: Union[str, os.PathLike], aimsout_pat: str = "ai
             if stdout.is_finished():
                 return aimsout.name
     return None
+
+
+def get_atoms_from_geometry(path_geometry: str = "geometry.in"):
+    """Get the atoms in the geometry file
+
+    Args:
+        path_geometry (str)
+
+    Returns:
+        List of str
+    """
+    with open(path_geometry, 'r') as h:
+        lines = h.readlines()
+    atms = []
+    for l in lines:
+        if l.strip().startswith("atom"):
+            atms.append(l.split()[-1])
+    return atms
