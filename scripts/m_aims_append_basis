@@ -3,9 +3,10 @@
 import os
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from mushroom.core.elements import element_symbols
-from mushroom.aims.species import get_specie_filename, search_basis_directories, \
+from mushroom.aims.species import readlines_species_defaults, search_basis_directories, \
     get_basis_directory_from_alias
 from mushroom.aims.input import divide_control_lines
+from mushroom.aims import get_atoms_from_geometry
 
 
 def _parser():
@@ -28,13 +29,7 @@ def m_aims_apppend_basis(control_file, directory, *elem, species_defaults=None):
     gl = regions[0]
     if len(regions) > 1:
         print("Replacing existing basis information in control file {}".format(control_file))
-    sl = []
-    for el in elem:
-        f = get_specie_filename(el, directory, species_defaults)
-        print("Reading {}".format(f))
-        with open(f, 'r') as h:
-            sl.extend(h.readlines())
-            sl.append("\n")
+    sl = readlines_species_defaults(directory, *elem, species_defaults=species_defaults)
     with open(control_file, 'w') as h:
         print("".join(gl + sl), file=h)
 
@@ -45,8 +40,7 @@ if __name__ == '__main__':
     if args.elements is None:
         if args.pgeometry is None:
             raise ValueError("specify elements either by -e or -i")
-        from mushroom.aims.input import read_geometry
-        elements = read_geometry(args.pgeometry).atom_types
+        elements = list(set(get_atoms_from_geometry(args.pgeometry)))
     else:
         elements = args.elements
 
