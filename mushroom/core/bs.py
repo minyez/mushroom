@@ -3,7 +3,7 @@
 """
 import re
 from collections.abc import Iterable
-from itertools import permutations
+from itertools import permutations, product
 from typing import Sequence, Union
 from copy import deepcopy
 from numbers import Real
@@ -36,6 +36,8 @@ BAND_STR_PATTERN = re.compile(r"[vc]bm([-+][\d]+)?")
 
 THRES_EMP = 1.0E-3
 THRES_OCC = 1.0 - THRES_EMP
+# threshold of degeneracy in eV
+THRES_DEGENERATE = 5.0E-4
 
 AtmPrjToken = Union[Key, Sequence[Key]]
 
@@ -72,8 +74,11 @@ class BandStructure(EnergyUnit):
         unit ('ev','ry','au'): the unit of the eigenvalues
         efermi (float): the Fermi level.
             If not parsed, the valence band maximum will be used.
-        keyword argument: wave projection information projection
-            It should have three keys, "atms", "prjs" and "pwav"
+        pwav (array-like): wave projection information
+        atms, prjs (list): specifies the names of atoms and projectors in wave projection
+        use_occ_only (bool): By default, both eigenvalues and occupation numbers will be
+            used to find the band edges.
+            if True, only the occupation number will be used.
 
     Attributes:
     """
@@ -81,7 +86,8 @@ class BandStructure(EnergyUnit):
     # pylint: disable=R0912,R0915
 
     def __init__(self, eigen, occ=None, weight=None, unit: str = 'ev', efermi: float = None,
-                 pwav=None, atms: Sequence[str] = None, prjs: Sequence[str] = None):
+                 pwav=None, atms: Sequence[str] = None, prjs: Sequence[str] = None,
+                 use_occ_only: bool = False):
         shape_e = np.shape(eigen)
         if occ is not None:
             consist = [len(shape_e) == DIM_EIGEN_OCC, shape_e[0] <= 2]
@@ -137,6 +143,7 @@ class BandStructure(EnergyUnit):
         self._vbm = None
         self._cbm = None
         self._band_width = None
+        self._band_edges_use_occ_only = use_occ_only
 
         self._bandedge_calculated = False
 
@@ -388,7 +395,7 @@ class BandStructure(EnergyUnit):
 
     # pylint: disable=R0912,R0915
     def compute_band_edges(self, reload: bool = False):
-        '''compute the band edges on each spin-kpt channel
+        '''compute the band edges on each spin-kpt channel, using occupation number
 
         Note:
             When nbands is too small and all bands are found to be valence bands,
@@ -397,25 +404,47 @@ class BandStructure(EnergyUnit):
             Setup of indices of CB remains, thus IndexError might be raised when trying
             get CB value from `icbm` attributes
 
+            There could be cases that the occupied band with largest band index
+            is not actually the band maximum, or something similar for empty bands,
+            e.g. in perturbation theory calculation.
+            This is handled by this method.
+            If one insists to set the band maximum to the occupied band with largest index,
+            set ``use_occ_only`` to True when creating the BandStructure object.
+
         Args:
             reload (bool) : redo the calculation of band edges
         '''
         if self._occ is None:
             raise BandStructureError("need occupation number before computing band edges!")
-        is_occ = self._occ > THRES_OCC
         if self._bandedge_calculated and not reload:
             return
 
-        self._ivbm_sp_kp = np.sum(is_occ, axis=2) - 1
-        _logger.debug("HOMO index per spin per kpoint")
-        for i in range(self._nspins):
-            _logger.debug("Spin %d: %r", i + 1, self._ivbm_sp_kp[i, :])
-        # when any two indices of ivbm differ, the system is metal
+        self._band_width = np.zeros(
+            (self.nspins, self.nbands, 2), dtype=self._dtype)
+        self._band_width[:, :, 0] = np.min(self._eigen, axis=1)
+        self._band_width[:, :, 1] = np.max(self._eigen, axis=1)
+
+        if self._band_edges_use_occ_only:
+            self._load_band_edges_by_occ()
+        else:
+            self._load_band_edges_by_eigen()
+
         if np.max(self._ivbm_sp_kp) == np.min(self._ivbm_sp_kp):
             self._is_metal = False
         else:
             self._is_metal = True
         _logger.debug("is_metal? %s", self._is_metal)
+
+        # set the state to ready
+        self._bandedge_calculated = True
+
+    def _load_band_edges_by_occ(self):
+        is_occ = self._occ > THRES_OCC
+        self._ivbm_sp_kp = np.sum(is_occ, axis=2) - 1
+        _logger.debug("HOMO index per spin per kpoint")
+        for i in range(self._nspins):
+            _logger.debug("Spin %d: %r", i + 1, self._ivbm_sp_kp[i, :])
+        # when any two indices of ivbm differ, the system is metal
         self._icbm_sp_kp = self._ivbm_sp_kp + 1
         # avoid IndexError when ivbm is the last band by imposing icbm = ivbm in this case
         ivbIsLast = self._ivbm_sp_kp == self.nbands - 1
@@ -440,10 +469,6 @@ class BandStructure(EnergyUnit):
                     self._cbm_sp_kp[i, j] = np.infty
                 else:
                     self._cbm_sp_kp[i, j] = self.eigen[i, j, vb + 1]
-        self._band_width = np.zeros(
-            (self.nspins, self.nbands, 2), dtype=self._dtype)
-        self._band_width[:, :, 0] = np.min(self._eigen, axis=1)
-        self._band_width[:, :, 1] = np.max(self._eigen, axis=1)
         # VB indices
         self._ivbm_sp = np.array(((0, 0),) * self.nspins)
         self._vbm_sp = np.max(self._vbm_sp_kp, axis=1)
@@ -467,8 +492,63 @@ class BandStructure(EnergyUnit):
         self._icbm[1:3] = self._icbm_sp[self._icbm[0], :]
         self._cbm = self._cbm_sp[self._icbm[0]]
 
-        # set the state to ready
-        self._bandedge_calculated = True
+    # pylint: disable=R0912,R0915
+    def _load_band_edges_by_eigen(self):
+        is_occ = self._occ > THRES_OCC
+        thres_degen = THRES_DEGENERATE / self._get_eunit_conversion("ev")
+
+        self._vbm_sp_kp = np.zeros((self.nspins, self.nkpts), dtype=self._dtype)
+        self._cbm_sp_kp = np.zeros((self.nspins, self.nkpts), dtype=self._dtype)
+        self._ivbm_sp_kp = np.zeros((self.nspins, self.nkpts), dtype=int)
+        self._icbm_sp_kp = np.zeros((self.nspins, self.nkpts), dtype=int)
+        self._vbm_sp = np.zeros((self.nspins), dtype=self._dtype)
+        self._cbm_sp = np.zeros((self.nspins), dtype=self._dtype)
+        self._ivbm_sp = np.zeros((self.nspins, 2), dtype=int)
+        self._icbm_sp = np.zeros((self.nspins, 2), dtype=int)
+        self._ivbm = np.zeros(3, dtype=int)
+        self._icbm = np.zeros(3, dtype=int)
+
+        self._vbm_sp_kp[:, :] = -np.infty
+        self._cbm_sp_kp[:, :] = np.infty
+        self._vbm_sp[:] = -np.infty
+        self._cbm_sp[:] = np.infty
+        self._vbm = -np.infty
+        self._cbm = np.infty
+
+        # a naive way to find VBM and CBM on each spin and kpoint channel
+        for isp in range(self._nspins):
+            for ik in range(self._nkpts):
+                for ib, ibr in zip(range(self._nbands), reversed(range(self._nbands))):
+                    # use thres_degen such that when degenerate bands are met,
+                    # we always use the larger (smaller) index for VBM (CBM)
+                    if is_occ[isp, ik, ib] and (
+                            self._eigen[isp, ik, ib] > self._vbm_sp_kp[isp, ik] or
+                            abs(self._eigen[isp, ik, ib] - self._vbm_sp_kp[isp, ik]) < thres_degen):
+                        self._vbm_sp_kp[isp, ik] = self._eigen[isp, ik, ib]
+                        self._ivbm_sp_kp[isp, ik] = ib
+                        _logger.debug("Updating VB %d %d %d %d", isp, ik, ib, self._vbm_sp_kp[isp, ik])
+                    if not is_occ[isp, ik, ibr] and (
+                            self._eigen[isp, ik, ibr] < self._cbm_sp_kp[isp, ik] or
+                            abs(self._eigen[isp, ik, ibr] - self._cbm_sp_kp[isp, ik]) < thres_degen):
+                        self._cbm_sp_kp[isp, ik] = self._eigen[isp, ik, ibr]
+                        self._icbm_sp_kp[isp, ik] = ibr
+                        _logger.debug("Updating CB %d %d %d %d", isp, ik, ib, self._cbm_sp_kp[isp, ik])
+                if self._vbm_sp_kp[isp, ik] > self._vbm_sp[isp]:
+                    self._vbm_sp[isp] = self._vbm_sp_kp[isp, ik]
+                    self._ivbm_sp[isp, :] = [ik, self._ivbm_sp_kp[isp, ik]]
+                if self._cbm_sp_kp[isp, ik] < self._cbm_sp[isp]:
+                    self._cbm_sp[isp] = self._cbm_sp_kp[isp, ik]
+                    self._icbm_sp[isp, :] = [ik, self._icbm_sp_kp[isp, ik]]
+            if self._vbm_sp[isp] > self._vbm:
+                self._vbm = self._vbm_sp[isp]
+                self._ivbm[:] = [isp, *self._ivbm_sp[isp]]
+            if self._cbm_sp[isp] < self._cbm:
+                self._cbm = self._cbm_sp[isp]
+                self._icbm[:] = [isp, *self._icbm_sp[isp]]
+            _logger.debug("VBM of Spin %d: %r", isp + 1, self._ivbm_sp_kp[isp, :])
+            _logger.debug("CBM of Spin %d: %r", isp + 1, self._icbm_sp_kp[isp, :])
+        _logger.debug("global VBM: %r %f", self._ivbm[:], self._vbm)
+        _logger.debug("global CBM: %r %f", self._icbm[:], self._cbm)
 
     def apply_scissor(self, scissor: float):
         """apply scissor operator and return a new BandStructure object

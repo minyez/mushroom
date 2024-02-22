@@ -55,49 +55,50 @@ class test_BS_no_projection(ut.TestCase):
         self.assertRaises(BSErr, BS, eigen=(eigen == 1), weight=weight)
 
     def test_properties(self):
-        bs = BS(goodEigen, goodOcc, goodWeight, efermi=efermi)
-        bs.compute_band_edges()
-        self.assertTrue(np.allclose(goodEigen, bs.eigen))
-        self.assertTrue(np.allclose(goodOcc, bs.occ))
-        self.assertEqual(bs.nspins, nspins)
-        self.assertEqual(bs.nkpts, nkpts)
-        self.assertEqual(bs.nbands, nbands)
-        self.assertTupleEqual((nspins, nkpts), np.shape(bs.ivbm_sp_kp))
-        self.assertTupleEqual((nspins, 2), np.shape(bs.ivbm_sp))
-        self.assertTupleEqual((3, ), np.shape(bs.ivbm))
-        self.assertTupleEqual((nspins, nkpts), np.shape(bs.icbm_sp_kp))
-        self.assertTupleEqual((nspins, 2), np.shape(bs.icbm_sp))
-        self.assertTupleEqual((3, ), np.shape(bs.icbm))
-        self.assertTupleEqual((nspins, nkpts), np.shape(bs.vbm_sp_kp))
-        self.assertTupleEqual((nspins, ), np.shape(bs.vbm_sp))
-        self.assertTupleEqual((), np.shape(bs.vbm))
-        self.assertTupleEqual((nspins, nkpts), np.shape(bs.cbm_sp_kp))
-        self.assertTupleEqual((nspins, ), np.shape(bs.cbm_sp))
-        self.assertTupleEqual((), np.shape(bs.cbm))
-        self.assertTupleEqual((nspins, nkpts), np.shape(bs.direct_gaps()))
-        self.assertTupleEqual((nspins, ), np.shape(bs.direct_gap_sp()))
-        # direct_gap is a float
-        self.assertTupleEqual((), np.shape(bs.direct_gap()))
-        self.assertTupleEqual((nspins, ), np.shape(bs.fund_gap_sp()))
-        # fund_gap is a float
-        self.assertTupleEqual((), np.shape(bs.fund_gap()))
-        self.assertTupleEqual((nspins, 2), np.shape(bs.fund_trans_sp()))
-        self.assertTupleEqual((2, 2), np.shape(bs.fund_trans()))
-        self.assertTupleEqual((nspins, ), np.shape(bs.kavg_gap()))
-        # empty properties when initialized without projections
-        self.assertTrue(bs.atms is None)
-        self.assertTrue(bs.prjs is None)
-        self.assertTrue(bs.pwav is None)
-        self.assertFalse(bs.has_proj())
-        # unit conversion
-        self.assertTrue(np.array_equal(bs.eigen, goodEigen))
-        self.assertEqual(efermi, bs.efermi)
-        vbm = bs.vbm
-        bs.unit = "ry"
-        self.assertTrue(np.array_equal(bs.eigen, np.multiply(goodEigen,
-                                                             EV2RY)))
-        self.assertEqual(efermi * EV2RY, bs.efermi)
-        self.assertEqual(vbm * EV2RY, bs.vbm)
+        for use_occ_only in [True, False]:
+            bs = BS(goodEigen, goodOcc, goodWeight, efermi=efermi, use_occ_only=use_occ_only)
+            bs.compute_band_edges()
+            self.assertTrue(np.allclose(goodEigen, bs.eigen))
+            self.assertTrue(np.allclose(goodOcc, bs.occ))
+            self.assertEqual(bs.nspins, nspins)
+            self.assertEqual(bs.nkpts, nkpts)
+            self.assertEqual(bs.nbands, nbands)
+            self.assertTupleEqual((nspins, nkpts), np.shape(bs.ivbm_sp_kp))
+            self.assertTupleEqual((nspins, 2), np.shape(bs.ivbm_sp))
+            self.assertTupleEqual((3, ), np.shape(bs.ivbm))
+            self.assertTupleEqual((nspins, nkpts), np.shape(bs.icbm_sp_kp))
+            self.assertTupleEqual((nspins, 2), np.shape(bs.icbm_sp))
+            self.assertTupleEqual((3, ), np.shape(bs.icbm))
+            self.assertTupleEqual((nspins, nkpts), np.shape(bs.vbm_sp_kp))
+            self.assertTupleEqual((nspins, ), np.shape(bs.vbm_sp))
+            self.assertTupleEqual((), np.shape(bs.vbm))
+            self.assertTupleEqual((nspins, nkpts), np.shape(bs.cbm_sp_kp))
+            self.assertTupleEqual((nspins, ), np.shape(bs.cbm_sp))
+            self.assertTupleEqual((), np.shape(bs.cbm))
+            self.assertTupleEqual((nspins, nkpts), np.shape(bs.direct_gaps()))
+            self.assertTupleEqual((nspins, ), np.shape(bs.direct_gap_sp()))
+            # direct_gap is a float
+            self.assertTupleEqual((), np.shape(bs.direct_gap()))
+            self.assertTupleEqual((nspins, ), np.shape(bs.fund_gap_sp()))
+            # fund_gap is a float
+            self.assertTupleEqual((), np.shape(bs.fund_gap()))
+            self.assertTupleEqual((nspins, 2), np.shape(bs.fund_trans_sp()))
+            self.assertTupleEqual((2, 2), np.shape(bs.fund_trans()))
+            self.assertTupleEqual((nspins, ), np.shape(bs.kavg_gap()))
+            # empty properties when initialized without projections
+            self.assertTrue(bs.atms is None)
+            self.assertTrue(bs.prjs is None)
+            self.assertTrue(bs.pwav is None)
+            self.assertFalse(bs.has_proj())
+            # unit conversion
+            self.assertTrue(np.array_equal(bs.eigen, goodEigen))
+            self.assertEqual(efermi, bs.efermi)
+            vbm = bs.vbm
+            bs.unit = "ry"
+            self.assertTrue(np.array_equal(bs.eigen, np.multiply(goodEigen,
+                                                                 EV2RY)))
+            self.assertEqual(efermi * EV2RY, bs.efermi)
+            self.assertEqual(vbm * EV2RY, bs.vbm)
 
     def test_arithmetics(self):
         nsp, nkp, nb = 1, 4, 4
