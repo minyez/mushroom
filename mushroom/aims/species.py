@@ -618,5 +618,5 @@ class Species:
                 e.g. "cc-pVDZ" and set category to "non-standard"
         """
         species_defaults = get_species_defaults_directory()
-        pspecies = get_species_filepaths(directory, elem, species_defaults)[0]
+        pspecies = get_species_filepaths(directory, elem, species_defaults=species_defaults)[0]
         return cls.read(pspecies)

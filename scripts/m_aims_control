@@ -26,11 +26,11 @@ def _parser():
                    help="the filename to dump the control")
     p.add_argument("-i", dest="control_temp", type=str, default=None,
                    help="template to initialize the control")
-    p.add_argument("-t", dest="tags", nargs="+", type=str,
+    p.add_argument("-t", dest="tags", nargs="*", type=str,
                    help="tag pair in 'tag:value' format")
-    p.add_argument("--ot", dest="output_tags", nargs="+", type=str,
+    p.add_argument("--ot", dest="output_tags", nargs="*", type=str,
                    help="output tags")
-    p.add_argument("--st", dest="species_tags", nargs="+", type=str,
+    p.add_argument("--st", dest="species_tags", nargs="*", type=str,
                    help="species tags in 'elem:tag:value' format")
     p.add_argument("-s", dest="species", type=str, default="defaults_2020",
                    help="species category")

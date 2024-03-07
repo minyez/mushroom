@@ -764,17 +764,19 @@ class BandStructure(EnergyUnit):
         return tuple((vb, cb))
 
     def get_transition(self,
-                       ivk: int,
-                       ick: int,
+                       ivk: int = None,
+                       ick: int = None,
                        ivb: Union[int, str] = None,
                        icb: Union[int, str] = None,
-                       ispin: int = 0):
+                       ispin: int = 0,
+                       return_index: bool = False):
         """get the transition energy between particular transition in a spin channel
 
         Args:
             ivk,ick (int): the kpoint index of valence and conduction band
             ivb,icb (int,str): the band index of valence and conduction band
             ispin (int): the spin channel
+            return_index (bool): also return the index
         """
         if ivb is None or ivb == "":
             ivb = "vbm"
@@ -782,8 +784,14 @@ class BandStructure(EnergyUnit):
             icb = "cbm"
         ivb = self._convert_band_iden(ivb)
         icb = self._convert_band_iden(icb)
+        if ivk is None:
+            ivk = np.argmax(self.eigen[ispin, :, ivb])
         vb = self.eigen[ispin, ivk, ivb]
+        if ick is None:
+            ick = np.argmin(self.eigen[ispin, :, icb])
         cb = self.eigen[ispin, ick, icb]
+        if return_index:
+            return cb - vb, ivk, ick, ivb, icb
         return cb - vb
 
     def kavg_gap(self):
@@ -1223,7 +1231,15 @@ def _decode_itrans_string(s):
         except ValueError:
             icb = itrans[2]
     else:
-        ivk, ick = list(map(int, itrans[:2]))
+        ivk, ick = itrans[:2]
+        try:
+            ivk = int(ivk)
+        except ValueError:
+            ivk = None
+        try:
+            ick = int(ick)
+        except ValueError:
+            ick = None
         try:
             ivb = int(itrans[2])
         except ValueError:
@@ -1262,19 +1278,23 @@ def display_transition_energies(trans: Sequence[str],
             sprint(">> {:8s} {:29s}    {:29s}".format("E", "kpt_v", "kpt_c"))
         for t in trans:
             ivk, ick, ivb, icb = _decode_itrans_string(t)
-            et = bs.get_transition(ivk, ick, ivb=ivb, icb=icb)
+            et, ivk, ick, ivb, icb = bs.get_transition(ivk, ick, ivb=ivb, icb=icb, return_index=True)
             if not value_only:
                 if kpts is None:
                     sprint(">> {:8.4f} {:<29d} -> {:<29d}".format(et, ivk, ick))
                 else:
-                    sprint(">> {:8.4f} {:<3d} ({:7.4f},{:7.4f},{:7.4f}) -> {:<3d} ({:7.4f},{:7.4f},{:7.4f})"
-                           .format(et, ivk, *kpts[ivk, :], ick, *kpts[ick, :]))
+                    vk_str = "{:7.4f},{:7.4f},{:7.4f}".format(*kpts[ivk, :])
+                    ck_str = "{:7.4f},{:7.4f},{:7.4f}".format(*kpts[ick, :])
+                    sprint(">> {:8.4f} {:<3d} ({:s}) -> {:<3d} ({:s})"
+                           .format(et, ivk, vk_str, ick, ck_str))
             else:
                 if kpts is None:
                     sprint("{:8.4f}".format(et))
                 else:
-                    sprint("{:8.4f} ({:f},{:f},{:f}) ({:f},{:f},{:f})"
-                           .format(et, *kpts[ivk, :], *kpts[ick, :]))
+                    vk_str = "{:7.4f},{:7.4f},{:7.4f}".format(*kpts[ivk, :])
+                    ck_str = "{:7.4f},{:7.4f},{:7.4f}".format(*kpts[ick, :])
+                    sprint("{:8.4f} # ({:s}) ({:s})"
+                           .format(et, vk_str, ck_str))
         if value_only and not silent:
             sprint("")
         bs.unit = was_unit

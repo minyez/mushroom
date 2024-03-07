@@ -39,6 +39,8 @@ def _parser():
     p.add_argument("--resolve", nargs="+", default=None, type=str,
                    help="resolve band crossing, e.g. 5,6,7")
     p.add_argument("--no-band-line", action="store_true", help="do not draw band lines, use marker")
+    p.add_argument("--use-occ-only", action="store_true",
+                   help="only use occupation number to detect band edges, instead of using both energy and occ")
     p.add_argument("--marker", default="none", help="marker")
     p.add_argument("--ms", dest="marker_size", default=1.0, help="marker size")
     p.add_argument(
@@ -78,7 +80,7 @@ def m_aims_band():
     p, ax = Plot.subplots(1, 1, background=not args.transparent)
     bs, kpts = read_band_output(*args.out_files, unit=args.unit,
                                 filter_k_before=args.remove_k_before,
-                                filter_k_behind=args.remove_k_behind)
+                                filter_k_behind=args.remove_k_behind, use_occ_only=args.use_occ_only)
     nbands = bs.nbands
     c = Cell.read(args.geometry, format="aims")
 
@@ -140,6 +142,8 @@ def m_aims_band():
         ksymbols = get_path_ksymbols(band_c_ksym)
 
     if ksymbols is not None and len(kp.special_x) != len(ksymbols):
+        print(ksymbols)
+        print(kp.special_x)
         raise ValueError("Number of k segments different from number of symbols! Contact developer")
 
     ax.x.set_spec(kp.special_x, labels=ksymbols)

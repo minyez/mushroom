@@ -23,7 +23,7 @@ def read_band_output(
         *bfiles,
         filter_k_before: int = 0,
         filter_k_behind: int = None,
-        unit: str = 'ev') -> Tuple[BandStructure, List[RealVec3D]]:
+        unit: str = 'ev', **kwargs) -> Tuple[BandStructure, List[RealVec3D]]:
     """read band output files and return a Band structure
 
     Note that all band energies are treated in the same spin channel,
@@ -32,6 +32,10 @@ def read_band_output(
     Args:
         bfile (str)
         unit (str): unit of energies, default to ev
+        filter_k_before
+        filter_k_behind
+
+        Other keyword argments parsed to the BandStructure object
 
     Returns:
         BandStructure, k-points
@@ -52,7 +56,7 @@ def read_band_output(
     occ = np.array([occ,])[:, filter_k_before:filter_k_behind, :]
     ene = np.array([ene,])[:, filter_k_before:filter_k_behind, :]
     kpts = kpts[filter_k_before:filter_k_behind, :]
-    return BandStructure(ene, occ, unit=unit), kpts
+    return BandStructure(ene, occ, unit=unit, **kwargs), kpts
 
 
 def decode_band_output_line(bstr: str) -> Tuple[List, List, List]:

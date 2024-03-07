@@ -5,18 +5,23 @@ import tempfile
 
 from mushroom.visual.cube import Cube
 
+
 class test_cube(ut.TestCase):
     """test Cube object"""
 
-    voxel_vecs = [[1.,0.,0.],[0.,2.,0.],[0.,0.,3.]]
-    posi = [[0.,0.,0.],[1.,1.,1.]]
+    voxel_vecs = [[1., 0., 0.], [0., 2., 0.], [0., 0., 3.]]
+    posi = [[0., 0., 0.], [1., 1., 1.]]
     atms = ["O", "O"]
     data = [
-            [[0.,1.,2.],
-             [3.,4.,5.],],
-            [[10.,11.,12.],
-             [13.,14.,15.],],
-        ]
+        [
+            [0., 1., 2.],
+            [3., 4., 5.],
+        ],
+        [
+            [10., 11., 12.],
+            [13., 14., 15.],
+        ],
+    ]
 
     def test_initialize(self):
         """initialization"""
@@ -48,6 +53,6 @@ OUTER LOOP: X, MIDDLE LOOP: Y, INNER LOOP: Z
         tf = tempfile.NamedTemporaryFile(suffix=".cube")
         tf.close()
 
+
 if __name__ == "__main__":
     ut.main()
-

@@ -7,8 +7,10 @@ import json
 import numpy as np
 from mushroom.gap import Eps, Eqpev, Vmat
 
+
 class test_eps(ut.TestCase):
     """.eps file"""
+
     def test_read_testdata(self):
         """read test eps files in data directory"""
         dir_eps = pathlib.Path(__file__).parent / "data"
@@ -24,14 +26,16 @@ class test_eps(ut.TestCase):
             for k, v in verify.items():
                 if isinstance(v, (int, str, bool)):
                     self.assertEqual(eps.__getattribute__(k), v)
-            #self.assertEqual(eps.nomega, nomega)
+            # self.assertEqual(eps.nomega, nomega)
             if eps.is_q0:
                 emac_nlf_re = [eps.get_eps(i)[0, 0].real for i in range(nomega)]
                 self.assertTrue(np.allclose(emac_nlf_re, verify["emac_nlf_re"]))
             eps.close()
 
+
 class test_eqpev(ut.TestCase):
     """.eps file"""
+
     def test_read_testdata(self):
         """read test eqpev files in data directory"""
         dir_eqpev = pathlib.Path(__file__).parent / "data"
@@ -49,8 +53,10 @@ class test_eqpev(ut.TestCase):
                 if isinstance(v, (int, str, bool)):
                     self.assertEqual(eqpev.__getattribute__(k), v)
 
+
 class test_vmat(ut.TestCase):
     """.eps file"""
+
     def test_read_testdata(self):
         """read test vmat files in data directory"""
         dir_vmat = pathlib.Path(__file__).parent / "data"
@@ -66,6 +72,7 @@ class test_vmat(ut.TestCase):
             for k, v in verify.items():
                 if isinstance(v, (int, str, bool)):
                     self.assertEqual(vmat.__getattribute__(k), v)
+
 
 if __name__ == "__main__":
     ut.main()

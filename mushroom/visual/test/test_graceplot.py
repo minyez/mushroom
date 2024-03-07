@@ -11,8 +11,10 @@ from mushroom.visual.graceplot import (_ColorMap, Color, Font, Symbol,
                                        Plot, Dataset, StyleCycler,
                                        encode_string, extract_data_from_agr)
 
+
 class test_string_encoder(ut.TestCase):
     """test encoder to get grace-favored text string"""
+
     def test_greek(self):
         """encoding greek"""
         self.assertEqual(encode_string(r"\Gamma \beta"), r"\xG\f{} \xb\f{}")
@@ -35,21 +37,23 @@ class test_string_encoder(ut.TestCase):
             ("A_{b}C_{d}", "A\\sb\\NC\\sd\\N"),
             ("C^{d}", "C\\Sd\\N"),
             ("A^{b}C_{d}", "A\\Sb\\NC\\sd\\N"),
-            ]
+        ]
         for latex, encoded in subs:
             self.assertEqual(encode_string(latex), encoded)
 
     def test_super_and_subscript(self):
         """encoding super and subscript at the same prefix"""
 
+
 class test_StyleCycler(ut.TestCase):
     """test the cycler"""
+
     def test_int(self):
         """integer cycle"""
         n = 3
         sc = StyleCycler(n)
         for i in range(20):
-            self.assertEqual(sc.get(), i%n)
+            self.assertEqual(sc.get(), i % n)
 
     def test_list(self):
         """list cycle"""
@@ -57,7 +61,7 @@ class test_StyleCycler(ut.TestCase):
         n = len(l)
         sc = StyleCycler(l)
         for i in range(20):
-            self.assertEqual(sc.get(), l[i%n])
+            self.assertEqual(sc.get(), l[i % n])
 
     def test_dict(self):
         """dict cycle"""
@@ -66,7 +70,8 @@ class test_StyleCycler(ut.TestCase):
         keys = list(l.keys())
         sc = StyleCycler(l)
         for i in range(20):
-            self.assertEqual(sc.get(), l[keys[i%n]])
+            self.assertEqual(sc.get(), l[keys[i % n]])
+
 
 class test_ColorMap(ut.TestCase):
     """test colormap utilites"""
@@ -107,9 +112,10 @@ map color 15 to (0, 139, 0), "green4"
         """get an existing color"""
         c = _ColorMap(load_custom=False)
         n = c.n
-        self.assertRaises(IndexError, c.get, n+1)
+        self.assertRaises(IndexError, c.get, n + 1)
         self.assertRaises(ValueError, c.get, "colorcode not registered")
         self.assertRaises(TypeError, c.get, [])
+
 
 class test_Font(ut.TestCase):
     """test font utilites"""
@@ -135,6 +141,7 @@ map font 13 to "ZapfDingbats", \"ZapfDingbats\"
 """
         self.assertEqual(str(self.f) + "\n", s)
 
+
 class test_View(ut.TestCase):
     """test the view object"""
 
@@ -151,6 +158,7 @@ class test_View(ut.TestCase):
         self.assertListEqual(new1, v1.get_view())
         self.assertListEqual(new, v.get_view())
 
+
 class test_World(ut.TestCase):
     """test the world object"""
 
@@ -166,6 +174,7 @@ class test_World(ut.TestCase):
         w1.set_world(new1)
         self.assertListEqual(new1, w1.get_world())
         self.assertListEqual(new, w.get_world())
+
 
 class test_Axis(ut.TestCase):
     """test Axix functionality"""
@@ -186,8 +195,10 @@ class test_Axis(ut.TestCase):
         self.assertRaises(ValueError, tl.set, not_an_attribute="ticklabel")
         tl.set(switch="off")
 
+
 class test_Graph(ut.TestCase):
     """test graph operations"""
+
     def test_set(self):
         """set graph attributes"""
         g = Graph(index=0)
@@ -295,15 +306,19 @@ class test_Plot(ut.TestCase):
         """graph addition"""
         p = Plot(2, 2)
         p.add_graph()
-        self.assertEqual(len(p), 2*2+1)
+        self.assertEqual(len(p), 2 * 2 + 1)
 
     def test_regular_graphs(self):
         """generate regular graph alignment"""
         p = Plot(1, 1)
-        self.assertEqual(len(p._graphs), 1*1)
-        p = Plot(3, 4, hgap=[0.01, 0.0, 0.02], vgap=[0.02, 0.0],
-                 width_ratios="3:2:1:4", heigh_ratios="1:3:2")
-        self.assertEqual(len(p._graphs), 3*4)
+        self.assertEqual(len(p._graphs), 1 * 1)
+        p = Plot(3,
+                 4,
+                 hgap=[0.01, 0.0, 0.02],
+                 vgap=[0.02, 0.0],
+                 width_ratios="3:2:1:4",
+                 heigh_ratios="1:3:2")
+        self.assertEqual(len(p._graphs), 3 * 4)
 
     def test_subplots(self):
         """test subplots generation"""
@@ -330,6 +345,7 @@ class test_Plot(ut.TestCase):
 
 class test_Dataset(ut.TestCase):
     """test for Dataset"""
+
     def test_line(self):
         """the line setup"""
         d = Dataset(0, [0,], [0,])
@@ -342,8 +358,10 @@ class test_Dataset(ut.TestCase):
         d.set_errorbar(color="red")
         self.assertEqual(d._errorbar.color, Color.RED)
 
+
 class test_classmethod(ut.TestCase):
     """test classmethod for quick plot"""
+
     def test_banddos(self):
         """band dos graph"""
         p = Plot.band_dos()
@@ -364,8 +382,10 @@ class test_classmethod(ut.TestCase):
         p = Plot.double_yaxis()
         self.assertEqual(len(p), 2)
 
+
 class test_read_agr(ut.TestCase):
     """test agr reading methods"""
+
     def text_extract_data_from_agr(self):
         """extract data"""
         tf = tempfile.NamedTemporaryFile(suffix=".agr")

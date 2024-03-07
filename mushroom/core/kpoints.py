@@ -171,6 +171,8 @@ def find_k_segments(kpts):
             deltak[i, :] = 0.
         else:
             deltak[i, :] = deltak[i, :] / l[i]
+    # print(deltak)
+    # dotprod[i] = (kpt[i+2] - kpt[i+1]) . (kpt[i+1] - kpt[i])
     dotprod = np.sum(deltak[1:, :] * deltak[:-1, :], axis=1)
     st = 0
     ed = 2
