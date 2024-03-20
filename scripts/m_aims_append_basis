@@ -30,8 +30,9 @@ def m_aims_apppend_basis(control_file, directory, *elem, species_defaults=None):
     if len(regions) > 1:
         print("Replacing existing basis information in control file {}".format(control_file))
     sl = readlines_species_defaults(directory, *elem, species_defaults=species_defaults)
+    ctrl_new = "".join(gl) + sl
     with open(control_file, 'w') as h:
-        print("".join(gl + sl), file=h)
+        print(ctrl_new, file=h)
 
 
 if __name__ == '__main__':

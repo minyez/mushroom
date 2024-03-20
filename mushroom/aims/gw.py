@@ -249,7 +249,10 @@ def read_aims_self_energy_dir(sedir: str = "self_energy",
         data_bands.append(data_band)
 
     if merge_band_kpoints:
-        data_bands = np.concatenate(data_bands, axis=2)
+        if len(data_bands) > 0:
+            data_bands = np.concatenate(data_bands, axis=2)
+        else:
+            data_bands = np.zeros((nomegas, nspins, 0, nstates))
 
     return omegas, state_low, data_kgrid, data_bands
 
