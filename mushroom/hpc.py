@@ -8,6 +8,7 @@ Register your platforms in the .mushroomrc file, in the form
 where `uid` is the output of `whoami`, and `host` the output of `uname -n`
 """
 import pathlib
+import subprocess as sp
 from re import split as rsplit
 from typing import Union, Iterable
 from os import PathLike
@@ -228,3 +229,24 @@ def is_slurm_enabled() -> bool:
         # sacct not found
         pass
     return False
+
+
+def sbatch_submit(script_name: str) -> int:
+    """submit a script by sbatch and get the return code
+
+    sbatch is assumed available.
+
+    Args:
+        script_name (str): the path of script file to submit
+
+    Return
+        return code, jobid
+    """
+    retcode = None
+    p = sp.Popen(["sbatch", script_name], stdout=sp.PIPE, stderr=sp.PIPE)
+    out, _ = p.communicate()
+    out = str(out, encoding='utf-8')
+    ret = p.returncode
+    if ret == 0:
+        out = int(out.split()[-1])
+    return ret, out

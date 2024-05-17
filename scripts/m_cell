@@ -65,7 +65,7 @@ def build_cell():
         # cell database operations
         cdb = DBCell(args.db_cell_path)
         if args.cell is not None:
-            input_file = cdb.get_cell(args.cell)
+            input_file = cdb.get_cell_path(args.cell)
         elif args.show or args.search:
             if cdb.N == 0:
                 print("No cell entries are found at", cdb._db_path)

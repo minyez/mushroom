@@ -36,7 +36,7 @@ def divide_control_lines(pcontrol: Union[str, os.PathLike]) -> List[List[str]]:
     Returns:
         list. Each member is a list of str.
         The first is the lines of general and output setting.
-        The reset are lines of the basis set setting for each species
+        The rest are lines of the basis set setting for each species
     """
     specie_lines = []
     with open_textio(pcontrol, 'r') as h:
@@ -49,26 +49,34 @@ def divide_control_lines(pcontrol: Union[str, os.PathLike]) -> List[List[str]]:
     if len(specie_lines) == 0:
         return [lines,]
 
-    divisions = [0, ]  # 0 for the general setting line
-    # search backward to include the comment lines on top of species
+    divisions = []
     for isl, specie_line in enumerate(specie_lines):
         previous_specie = 0
         if isl != 0:
             previous_specie = specie_lines[isl - 1]
-        for i in range(specie_line, previous_specie, -1):
-            line = lines[i].strip()
-            # empty line
-            # TODO: filter out commented out basis set or general control line
-            if not line.startswith("species") and not line.startswith("#") or i == previous_specie:
-                divisions.append(i + 1)
-                break
+
+        # Search backward to include the comment lines on top of species.
+        # It is the first line, no need to search back.
+        if specie_line == 0:
+            divisions.append(specie_line)
+        else:
+            for i in range(specie_line - 1, previous_specie - 1, -1):
+                line = lines[i].strip()
+                # break with empty or uncommented line
+                # TODO: filter out commented out basis set or general control line
+                if (not line.startswith("#")) or line == "":
+                    divisions.append(i + 1)
+                    break
+                # did not find such line till the end of search
+                if i == previous_specie:
+                    divisions.append(i)
     regions = []
     for i, isl in enumerate(divisions):
         if i == 0:
-            continue
-        regions.append(lines[divisions[i - 1]:isl])
-        if i == len(divisions) - 1:
-            regions.append(lines[isl:])
+            regions.append(lines[0:isl])
+        else:
+            regions.append(lines[divisions[i - 1]:isl])
+    regions.append(lines[divisions[-1]:])
     return regions
 
 
@@ -165,6 +173,8 @@ class Control:
         self._elements = []
         if self.species is not None:
             self._elements = [s.elem for s in self.species]
+        else:
+            self.species = []
 
     def __getitem__(self, key):
         return self.tags[key]
