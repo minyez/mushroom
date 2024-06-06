@@ -15,7 +15,8 @@ from typing import List, Union, Sequence, Tuple, Any, Set
 
 # make it work as a standalone module
 try:
-    from mushroom.core.logger import create_logger
+    from mushroom.core.logger import loggers
+    create_logger = loggers.__getitem__
 except ImportError:
     create_logger = logging.getLogger
 

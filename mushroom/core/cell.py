@@ -20,7 +20,6 @@ try:
 except ImportError:
     symprec = 1.0E-5
 from mushroom.core.constants import PI, SQRT3
-from mushroom.core.cif import Cif
 from mushroom.core.elements import get_atomic_number, get_atomic_mass
 from mushroom.core.unit import LengthUnit
 from mushroom.core.pkg import detect
@@ -1247,6 +1246,8 @@ When other keyword are parsed, they will be filtered out and no exception will b
     def read_cif(cls, pcif: Path):
         """Read from Cif file and return a instance by use of PyCIFRW
         """
+        from mushroom.core.cif import Cif
+
         cif = Cif(pcif)
         kw = {"coord_sys": "D", "reference": cif.get_reference_str(), }
         # use chemical name as comment

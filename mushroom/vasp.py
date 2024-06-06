@@ -15,13 +15,12 @@ except ImportError:
     BS = None
 
 from mushroom.core.logger import loggers
-from mushroom.core.ioutils import conv_string, raise_no_module
+from mushroom.core.ioutils import conv_string, raise_no_module, open_textio
 from mushroom.core.dos import DensityOfStates
 from mushroom.core.bs import BandStructure
 from mushroom.core.pw import PWBasis
 from mushroom.core.cell import Cell, latt_equal
 from mushroom.core.typehint import Path
-from mushroom.visual.cube import Cube
 
 _logger = loggers["vasp"]
 
@@ -546,6 +545,8 @@ class ChgLike:
         Returns:
             str
         """
+        from mushroom.visual.cube import Cube
+
         was_d = self._cell.coord_sys == "D"
         if was_d:
             self._cell.coord_sys = "C"
@@ -721,9 +722,85 @@ class KPoints:
                 kpts.append([k1, k2, k3])
                 weights.append(weight)
             except ValueError as e:
-                raise ValueError("failt to convert line {} to kpoint and weight".format(i + 4)) from e
+                raise ValueError("fail to convert line {} to kpoint and weight".format(i + 4)) from e
 
         # TODO: handle tetrahedra
         lines_tetra = lines[ngrids:]
 
         return cls(mode, kpts=kpts, weights=weights, comment=comment)
+
+
+def get_qp_energies_from_outcar(path_outcar, qp_iteration: int = -1, extract_KS: bool = False):
+    """Get the quasi-particle energies from the OUTCAR file
+
+    Args:
+        path_outcar (str) : path to the OUTCAR file
+        qp_iteration (int) : index of iteration to use, starting from 0.
+            -1 means last iteration
+        extract_KS (bool) : if True, will reture the Kohn-Sham energies instead of QP.
+            Particularly, extract_KS True and qp_iteration 0 gives the Kohn-Sham results.
+
+    Returns:
+        BandStructure object
+    """
+    with open_textio(path_outcar, 'r') as h:
+        lines = h.readlines()
+
+    nbands_gw = None
+    nkpts = None
+    nspins = None
+    i_first_qp_line = None
+    i_col_data = 2
+    if extract_KS:
+        i_col_data = 1
+
+    # obtain dimension information and starting line of each QP iteration
+    for i, line in enumerate(lines):
+        if line.startswith("   ISPIN  ="):
+            nspins = int(line.split()[2])
+        if line.startswith("   k-points           NKPTS ="):
+            nkpts = int(line.split()[3])
+        if line.startswith(" QP shifts <psi_nk| G(iteration)W_0 |psi_nk>: iteration 1"):
+            i_first_qp_line = i
+
+    if nspins > 1:
+        raise NotImplementedError("nspins > 1 is not implemented")
+
+    _logger.debug("i_first_qp_line = %d", i_first_qp_line)
+    if i_first_qp_line is None:
+        raise ValueError("Cannot find qp shifts data from %r" % path_outcar)
+
+    # prune unnecessary lines, get number of GW iterations
+    lines = lines[i_first_qp_line:]
+    i_kpts = []
+    for i, line in enumerate(lines):
+        if line.startswith(" k-point "):
+            i_kpts.append(i)
+    n_ite = len(i_kpts) // nkpts
+
+    # check the first k-point of first iteration to get number of QP states
+    i = i_kpts[0] + 3
+    l = lines[i]
+    while l:
+        i += 1
+        l = lines[i].strip()
+    nbands_gw = i - 3 - i_kpts[0]
+    _logger.debug("ispin = %d, nkpts = %d, nbands_gw = %d, n_ite = %d",
+                  nspins, nkpts, nbands_gw, n_ite)
+
+    i_ite = qp_iteration
+    if i_ite < 0:
+        i_ite = n_ite + qp_iteration
+
+    # extract data of the specified iteration and process with numpy
+    slist = []
+    kpts = []
+    for i in i_kpts[i_ite * nkpts: (i_ite + 1) * nkpts]:
+        kpts.append([float(x) for x in lines[i].split()[3:]])
+        slist.extend(lines[i + 3: i + 3 + nbands_gw])
+    ene, occ = np.loadtxt(StringIO("".join(slist)), unpack=True, usecols=[i_col_data, 7])
+    ene = np.reshape(ene, (nspins, nkpts, nbands_gw))
+    occ = np.reshape(occ, (nspins, nkpts, nbands_gw))
+    kpts = np.array(kpts)
+
+    return BandStructure(ene, occ=occ), kpts

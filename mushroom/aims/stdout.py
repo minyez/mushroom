@@ -436,6 +436,7 @@ class StdOut:
                 ed = i
         if st is None or ed is None:
             raise ValueError(errmsg.format('finished'))
+        # NOTE: might interfere with some debug output
         eqpline = re.compile(r'^\s*(\d+)' + r'\s+(-?[\d\.]+)' * 6 + r'(\\n)?$')
         # search the data
         array = []
@@ -466,6 +467,8 @@ class StdOut:
             self._nspins = nspins
         # the number of kpoints to print, not necessary that used in SCF
         nkpts = istates.count(istates[0]) // self._nspins
+        # print(istates)
+        # print(nkpts, len(kpts))
         assert (nkpts == len(kpts))
 
         # TODO: verify that kmesh goes faster than spin
