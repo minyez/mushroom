@@ -242,8 +242,9 @@ class Control:
 
     def update_tags(self, tags: dict):
         """collective update tag values"""
-        for k, v in tags.items():
-            self.update_tag(k, v)
+        if tags is not None:
+            for k, v in tags.items():
+                self.update_tag(k, v)
 
     def update_output_tag(self, output_tag, value):
         """update the output tag value
@@ -264,8 +265,9 @@ class Control:
 
     def update_output_tags(self, output_tags: Dict):
         """collective update output tag values"""
-        for k, v in output_tags.items():
-            self.update_output_tag(k, v)
+        if output_tags is not None:
+            for k, v in output_tags.items():
+                self.update_output_tag(k, v)
 
     def update_species_basic_tag(self, elem, tag, value):
         """update the species basic tag of element ``elem``
@@ -451,13 +453,15 @@ class Control:
         slist.extend(self._export_basic_tags())
 
         # Output tags
-        slist.append(get_banner("Output Tags"))
-        slist.extend(self._export_output_tags())
+        if self.output:
+            slist.append(get_banner("Output Tags"))
+            slist.extend(self._export_output_tags())
 
         # Basis sets
-        slist.append(get_banner("Basis Sets"))
-        slist.append("")
-        slist.extend(s.export() + "\n" for s in self.species)
+        if self.species:
+            slist.append(get_banner("Basis Sets"))
+            slist.append("")
+            slist.extend(s.export() + "\n" for s in self.species)
 
         return slist
 
