@@ -804,3 +804,62 @@ def get_qp_energies_from_outcar(path_outcar, qp_iteration: int = -1, extract_KS:
     kpts = np.array(kpts)
 
     return BandStructure(ene, occ=occ), kpts
+
+
+def get_bandstructure_outcar_wannier(path_outcar):
+    """Get the band structure from the OUTCAR of a Wannier intepolation
+
+    Args:
+        path_outcar (str)
+
+    Returns:
+        BandStructure objects, ndarray of kpoints
+    """
+    with open_textio(path_outcar, 'r') as h:
+        lines = h.readlines()
+
+    # The eigenvalues are right after the Fermi energy.
+    # Get the Fermi energy and prune the unnecessary lines
+    i_fermi = None
+    efermi = None
+    nkpts = None
+    nspins = None
+
+    for i, line in enumerate(lines):
+        if line.startswith("   ISPIN  ="):
+            nspins = int(line.split()[2])
+        if line.startswith("   k-points           NKPTS ="):
+            nkpts = int(line.split()[3])
+        if line.startswith(" E-fermi :"):
+            i_fermi = i
+            efermi = float(line.split()[2])
+            break
+    if nspins is None or i_fermi is None or nkpts is None:
+        raise ValueError("Fail to find ISPIN, E-fermi or NKPTS")
+
+    lines = lines[i_fermi:]
+    i_kpts = []
+    for i, line in enumerate(lines):
+        if line.startswith(" k-point "):
+            i_kpts.append(i)
+
+    # check the first k-point of first iteration to get number of QP states
+    i = i_kpts[0] + 2
+    l = lines[i]
+    while l:
+        i += 1
+        l = lines[i].strip()
+    nbands = i - 2 - i_kpts[0]
+
+    # extract data of the specified iteration and process with numpy
+    slist = []
+    kpts = []
+    for i in i_kpts:
+        kpts.append([float(x) for x in lines[i].split()[3:]])
+        slist.extend(lines[i + 2: i + 2 + nbands])
+    ene, occ = np.loadtxt(StringIO("".join(slist)), unpack=True, usecols=[1, 2])
+    ene = np.reshape(ene, (nspins, nkpts, nbands))
+    occ = np.reshape(occ, (nspins, nkpts, nbands))
+    kpts = np.array(kpts)
+
+    return BandStructure(ene, occ=occ, efermi=efermi), kpts

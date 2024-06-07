@@ -209,6 +209,33 @@ class BandStructure(EnergyUnit):
             b.append(self._convert_band_iden(ib))
         return b
 
+    def prune_bands(self, remove_from_start: int = 0, remove_from_end: int = 0):
+        """Remove unwanted bands from beginning or from the end
+
+        Args:
+            remove_from_start (int)
+            remove_from_end (int)
+
+        Returns:
+            None
+        """
+        if remove_from_start == 0 and remove_from_end == 0:
+            return
+        if remove_from_start < 0:
+            raise ValueError("remove_from_start cannot be negative: %d" % remove_from_start)
+        if remove_from_end < 0:
+            raise ValueError("remove_from_end cannot be negative: %d" % remove_from_end)
+
+        ed = self.nbands - remove_from_end
+        self._eigen = self._eigen[:, :, remove_from_start:ed]
+        self._occ = self._occ[:, :, remove_from_start:ed]
+        if self._pwav is not None:
+            self._pwav = self._pwav[:, :, remove_from_start:ed, :, :]
+
+        # reset dimension and bands
+        self._nspins, self._nkpts, self._nbands = np.shape(self._eigen)
+        self._bandedge_calculated = False
+
     def _convert_band_iden(self, band_iden: Union[int, str]) -> int:
         """convert a string of band identifier, like "vbm", "cbm-2", "vbm+3"
         to the correpsonding band index.
@@ -1306,18 +1333,22 @@ def display_transition_energies(trans: Sequence[str],
     return s
 
 
-def resolve_band_crossing(kx, bands, pwav=None, deriv_thres=None, inplace: bool = False):
+def resolve_band_crossing(kx, bands, occ=None, pwav=None,
+                          deriv_thres: float = None, inplace: bool = False):
     """Resolve the crossing between two bands to make each band smooth.
 
     Args:
         kx (array-like)
         bands (2-dim ndarray)
         deriv_thres (float)
+        occ (2-dim ndarray)
         pwav (4-dim ndarray)
+        inplace (bool)
 
     Returns:
-        2-dim ndarray (bands) if pwav is None, otherwise
-        2-dim ndarray (bands) and 4-dim ndarray (pwav).
+        2-dim ndarray (bands) if occ and pwav are None, otherwise
+        2-dim ndarray (bands), 2-dim ndarray (occ) and 4-dim ndarray (pwav).
+        None if the corresponding input is None
 
     Note:
         Side effect: bands and pwav are also changed in place.
@@ -1405,6 +1436,11 @@ def resolve_band_crossing(kx, bands, pwav=None, deriv_thres=None, inplace: bool 
         temp = bands_res[i + 1:, :]
         temp = temp[:, permuts[arg]]
         bands_res[i + 1:, :] = temp[:, :]
+        if occ is not None:
+            _logger.debug("permuting occ")
+            temp = occ[i + 1:, :,]
+            temp = temp[:, permuts[arg]]
+            occ[i + 1:, :,] = temp[:, :]
         if pwav is not None:
             _logger.debug("permuting pwav")
             temp = pwav[i + 1:, :, :, :]
@@ -1413,6 +1449,6 @@ def resolve_band_crossing(kx, bands, pwav=None, deriv_thres=None, inplace: bool 
 
     _logger.debug("multi-band resolve done")
     # return the disentangled bands
-    if pwav is None:
+    if occ is None and pwav is None:
         return bands_res
-    return bands_res, pwav
+    return bands_res, occ, pwav
