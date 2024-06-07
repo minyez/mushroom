@@ -401,14 +401,16 @@ class test_bs_utilites(ut.TestCase):
         self.assertTrue(np.allclose(bands_res[0], band1_resolve_ref))
         self.assertTrue(np.allclose(bands_res[1], band2_resolve_ref))
 
+        occ = np.random.rand(nkpts, 2)
         # check invalid pwav shape
         pwav = np.zeros((nkpts, 2, 3))
-        self.assertRaises(ValueError, resolve_band_crossing, kx, bands.transpose(), pwav)
+        self.assertRaises(ValueError, resolve_band_crossing, kx, bands.transpose(), occ, pwav)
         pwav = np.zeros((nkpts - 1, 2, 3, 3))
-        self.assertRaises(ValueError, resolve_band_crossing, kx, bands.transpose(), pwav)
+        self.assertRaises(ValueError, resolve_band_crossing, kx, bands.transpose(), occ, pwav)
 
+        occ = np.random.rand(nkpts, 2)
         pwav = np.random.rand(nkpts, 2, 3, 3)
-        _, _ = resolve_band_crossing(kx, bands.transpose(), pwav, deriv_thres=5, inplace=True)
+        _, _, _ = resolve_band_crossing(kx, bands.transpose(), pwav, deriv_thres=5, inplace=True)
         self.assertTrue(np.allclose(bands[0], band1_resolve_ref))
         self.assertTrue(np.allclose(bands[1], band2_resolve_ref))
 
