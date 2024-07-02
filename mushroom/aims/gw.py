@@ -149,7 +149,7 @@ def __process_single_self_energy_data(fpath):
 def read_aims_self_energy_dir(sedir: str = "self_energy",
                               filter_isbk_file: Callable[[int, int, int, int], bool] = None,
                               merge_band_kpoints: bool = False,
-                              filethres_mp: int = 100):
+                              filethres_mp: int = 10000):
     """read all sigc data in self energy directory `sedir`
 
     Args:

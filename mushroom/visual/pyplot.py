@@ -19,7 +19,7 @@ __all__ = [
 
 
 def rc_gracify(transparent: bool = False, dpi: int = 300, cmap: str = "RdBu", fontsize: int = 16,
-               tick_scale: float = 1.5):
+               tick_scale: float = 1.5, legend_frameon: bool = False, legend_fancybox: bool = False):
     """setup rcParams to mimic the style of XmGrace"""
     raise_no_module(plt, "matplotlib")
     plt.rcParams["font.family"] = ["serif",] + plt.rcParams["font.family"]
@@ -29,8 +29,8 @@ def rc_gracify(transparent: bool = False, dpi: int = 300, cmap: str = "RdBu", fo
     plt.rcParams['mathtext.fontset'] = 'dejavuserif'
     plt.rcParams["xtick.direction"] = "in"
     plt.rcParams["ytick.direction"] = "in"
-    plt.rcParams["legend.frameon"] = False
-    plt.rcParams["legend.fancybox"] = False
+    plt.rcParams["legend.frameon"] = legend_frameon
+    plt.rcParams["legend.fancybox"] = legend_fancybox
     # disable legend transparency
     plt.rcParams["legend.framealpha"] = 1.0
     plt.rcParams["savefig.dpi"] = dpi
