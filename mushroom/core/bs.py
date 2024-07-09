@@ -427,7 +427,7 @@ class BandStructure(EnergyUnit):
         Note:
             When nbands is too small and all bands are found to be valence bands,
             or it is the case for one spin-kpoint channel, the corresponding CB will
-            be set to ``np.infty``.
+            be set to ``np.inf``.
             Setup of indices of CB remains, thus IndexError might be raised when trying
             get CB value from `icbm` attributes
 
@@ -493,7 +493,7 @@ class BandStructure(EnergyUnit):
                     info = "VBM index for spin-kpt channel (%d,%d) equals nbands. %s"
                     _logger.warning(
                         info, i + 1, j + 1, "CBM for this channel set to infinity")
-                    self._cbm_sp_kp[i, j] = np.infty
+                    self._cbm_sp_kp[i, j] = np.inf
                 else:
                     self._cbm_sp_kp[i, j] = self.eigen[i, j, vb + 1]
         # VB indices
@@ -535,12 +535,12 @@ class BandStructure(EnergyUnit):
         self._ivbm = np.zeros(3, dtype=int)
         self._icbm = np.zeros(3, dtype=int)
 
-        self._vbm_sp_kp[:, :] = -np.infty
-        self._cbm_sp_kp[:, :] = np.infty
-        self._vbm_sp[:] = -np.infty
-        self._cbm_sp[:] = np.infty
-        self._vbm = -np.infty
-        self._cbm = np.infty
+        self._vbm_sp_kp[:, :] = -np.inf
+        self._cbm_sp_kp[:, :] = np.inf
+        self._vbm_sp[:] = -np.inf
+        self._cbm_sp[:] = np.inf
+        self._vbm = -np.inf
+        self._cbm = np.inf
 
         # a naive way to find VBM and CBM on each spin and kpoint channel
         for isp in range(self._nspins):
