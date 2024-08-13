@@ -76,8 +76,14 @@ def build_cell():
             raise ValueError("specify search/cell argument. See help")
 
     cio = CellIO(input_file, format=args.input_format)
-    cio.manipulate(primitize=args.primitize, standardize=args.standardize,
-                   supercell=args.supercell)
+    # super cell mapping
+    mapping = cio.manipulate(primitize=args.primitize, standardize=args.standardize,
+                             supercell=args.supercell)
+    # TODO: hard coded mapping export
+    if mapping is not None:
+        with open("unfolding_map.txt", 'w') as h:
+            for i in mapping:
+                print(i + 1, file=h)
     cio.write(output_path=args.output_path, format=args.output_format)
 
 

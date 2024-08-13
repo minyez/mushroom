@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """utilities for parsing standard output of FHI-aims"""
-from typing import Tuple, List
+from typing import Tuple, List, Union, Iterable
+import os
 
 import numpy as np
 
@@ -19,8 +20,8 @@ _logger = loggers["aims"]
 
 
 def read_band_output(
-        bfile,
         *bfiles,
+        bfiles_spin: Iterable[Union[str, os.PathLike]] = None,
         filter_k_before: int = 0,
         filter_k_behind: int = None,
         unit: str = 'ev', **kwargs) -> Tuple[BandStructure, List[RealVec3D]]:
@@ -30,7 +31,8 @@ def read_band_output(
     the resulting ``BandStructure`` object always has nspins=1
 
     Args:
-        bfile (str)
+        bfiles (str)
+        bfiles_spin
         unit (str): unit of energies, default to ev
         filter_k_before
         filter_k_behind
@@ -40,7 +42,8 @@ def read_band_output(
     Returns:
         BandStructure, k-points
     """
-    bfiles = (bfile, *bfiles)
+    if len(bfiles) == 0:
+        raise ValueError("need to parse at least one band output file")
     kpts = []
     occ = []
     ene = []
@@ -51,11 +54,34 @@ def read_band_output(
         occ.extend(np.transpose(data[4::2]))
         ene.extend(np.transpose(data[5::2]))
     kpts = np.array(kpts)
+
+    if bfiles_spin is not None:
+        kpts_spin = []
+        occ_spin = []
+        ene_spin = []
+        for bf in bfiles_spin:
+            _logger.info("Reading band output file: %s", bf)
+            data = np.loadtxt(bf, unpack=True)
+            kpts_spin.extend(np.column_stack([data[1], data[2], data[3]]))
+            occ_spin.extend(np.transpose(data[4::2]))
+            ene_spin.extend(np.transpose(data[5::2]))
+        kpts_spin = np.array(kpts_spin)
+
+        # make sure that the spin up and down bands are describing the same k-points
+        if len(kpts) != len(kpts_spin) and not np.allclose(kpts, kpts_spin):
+            return ValueError("Inconsistent k-points for spin-up and spin-down band outputs")
+
     if filter_k_behind is None:
         filter_k_behind = len(kpts)
-    occ = np.array([occ,])[:, filter_k_before:filter_k_behind, :]
-    ene = np.array([ene,])[:, filter_k_before:filter_k_behind, :]
     kpts = kpts[filter_k_before:filter_k_behind, :]
+
+    if bfiles_spin is None:
+        occ = np.array([occ,])[:, filter_k_before:filter_k_behind, :]
+        ene = np.array([ene,])[:, filter_k_before:filter_k_behind, :]
+    else:
+        occ = np.array([occ, occ_spin])[:, filter_k_before:filter_k_behind, :]
+        ene = np.array([ene, ene_spin])[:, filter_k_before:filter_k_behind, :]
+
     return BandStructure(ene, occ, unit=unit, **kwargs), kpts
 
 
