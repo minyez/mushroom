@@ -79,12 +79,20 @@ def build_cell():
     # super cell mapping
     mapping = cio.manipulate(primitize=args.primitize, standardize=args.standardize,
                              supercell=args.supercell)
+    cio.write(output_path=args.output_path, format=args.output_format)
+
+    # Dump super-cell information
     # TODO: hard coded mapping export
     if mapping is not None:
-        with open("unfolding_map.txt", 'w') as h:
+        with open("unfolding_map.dat", 'w') as h:
             for i in mapping:
                 print(i + 1, file=h)
-    cio.write(output_path=args.output_path, format=args.output_format)
+    # Write transformation matrix, support diagonal only
+    if args.supercell is not None:
+        with open("transformation_matrix.dat", 'w') as h:
+            print(args.supercell[0], 0, 0, file=h)
+            print(0, args.supercell[1], 0, file=h)
+            print(0, 0, args.supercell[2], file=h)
 
 
 if __name__ == "__main__":
