@@ -153,9 +153,9 @@ class BandStructure(EnergyUnit):
             if efermi is not None:
                 occ = np.zeros(self.eigen.shape)
                 occ[self.eigen <= efermi] = 1.0
-                self.set_occupations(occ)
+                self._set_occupations(occ)
         else:
-            self.set_occupations(occ)
+            self._set_occupations(occ)
 
         _logger.info("Read bandstructure. Dimensions")
         _logger.info(">> nspins = %d, nkpts = %d, nbands = %d", self._nspins, self._nkpts, self._nbands)
@@ -168,13 +168,13 @@ class BandStructure(EnergyUnit):
         if pwav is not None:
             self.parse_proj(pwav=pwav, atms=atms, prjs=prjs)
 
-    def set_occupations(self, occ):
+    def _set_occupations(self, occ, allow_reset: bool = False):
         """set occupation numbers
 
         Args:
             occ (ndarray): occupation numbers, (nspins, nkpts, nbands)
         """
-        if self._occ is not None:
+        if self._occ is not None and not allow_reset:
             raise AttributeError("occupations are already set")
         try:
             shape_o = np.shape(occ)
@@ -190,6 +190,24 @@ class BandStructure(EnergyUnit):
         self._nelect_sp_kp = np.sum(self._occ, axis=2)
         self._nelect_sp = np.dot(self._nelect_sp_kp, self._weight) / np.sum(self._weight)
         self._nelect = np.sum(self._nelect_sp)
+        # since occupation is changed, band edges need to be recomputed
+        _logger.info("occupation (re)set, reset band edges")
+        self._bandedge_calculated = False
+
+    def _set_occupations_by_efermi(self, efermi: float, unit: str = "ev", allow_reset: bool = False):
+        occ = np.zeros(self.eigen.shape)
+        efermi = efermi / self._get_eunit_conversion(unit)
+        # TODO: more occupation methods
+        occ[self.eigen <= efermi] = 1.0
+        self._set_occupations(occ, allow_reset=allow_reset)
+
+    def reset_occupations(self, occ=None, efermi=None, unit: str = "ev"):
+        if occ is not None:
+            self._set_occupations(occ, True)
+        elif efermi is not None:
+            self._set_occupations_by_efermi(efermi, unit=unit, allow_reset=True)
+        else:
+            raise ValueError("both occ and efermi are None. Please specify one of them.")
 
     def get_band_indices(self, *bands):
         '''Filter the band indices in ``bands``.

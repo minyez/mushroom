@@ -15,11 +15,13 @@ class EnergyUnit:
     """
 
     _defaul_eu = 'ev'
-    _valid_eu = ['ev', 'ry', 'au']
+    _valid_eu = ['ev', 'ry', 'au', 'ha']
     _conv_eu = {
         ('ev', 'ry'): EV2RY,
         ('ev', 'au'): EV2HA,
+        ('ev', 'ha'): EV2HA,
         ('ry', 'au'): RY2HA,
+        ('ry', 'ha'): RY2HA,
     }
 
     def __init__(self, eunit: str = None):

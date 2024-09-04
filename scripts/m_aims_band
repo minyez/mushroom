@@ -54,6 +54,8 @@ def _parser():
                    help="transitions of interest, in the form of 'ivk:ick'")
     p.add_argument("-v", "--value", dest="value_only", action="store_true",
                    help="show values only when displaying band")
+    p.add_argument("--ef", dest="efermi", type=float, default=None,
+                   help="Fermi energy")
 
     g = p.add_mutually_exclusive_group()
     g.add_argument("--skbz", dest="isikib_zero", default=None, type=str,
@@ -64,14 +66,26 @@ def _parser():
                    help="use VBM as energy zero")
     g.add_argument("--cbmz", dest="cbm_zero", action="store_true",
                    help="use CBM as energy zero")
-    p.add_argument("--ef", dest="efermi", type=float, default=None,
-                   help="Fermi energy")
     g = p.add_mutually_exclusive_group()
     g.add_argument("--sym", dest="ksymbols", type=str, default=None, nargs="+",
                    help="Symbols of high symmetry points, overwrite control")
     g.add_argument("--sym-cf", dest="ksymbols_cf", type=str, const="control.in", nargs="?",
                    help="read ksymbols in band output fromm the path to the control file")
     return p
+
+
+def get_reference(bs, vbm_zero, cbm_zero, fermi_zero, isikib_zero):
+    ref = 0.0
+    if vbm_zero:
+        ref = bs.vbm
+    if cbm_zero:
+        ref = bs.cbm
+    if fermi_zero:
+        ref = bs.efermi
+    if isikib_zero:
+        ispin, ikpt, ib = isikib_zero.split(":")
+        ref = bs.get_eigen(ib)[int(ispin), int(ikpt), 0]
+    return ref
 
 
 def m_aims_band():
@@ -81,6 +95,11 @@ def m_aims_band():
     bs, kpts = read_band_output(*args.out_files, unit=args.unit,
                                 filter_k_before=args.remove_k_before,
                                 filter_k_behind=args.remove_k_behind, use_occ_only=args.use_occ_only)
+
+    # reset the occupation numbers by Fermi energy
+    if args.efermi is not None:
+        bs.reset_occupations(efermi=args.efermi)
+
     nbands = bs.nbands
     c = Cell.read(args.geometry, format="aims")
 
@@ -90,16 +109,7 @@ def m_aims_band():
 
     if args.data_only:
         return
-    ref = 0.0
-    if args.vbm_zero:
-        ref = bs.vbm
-    if args.cbm_zero:
-        ref = bs.cbm
-    if args.fermi_zero:
-        ref = bs.efermi
-    if args.isikib_zero:
-        ispin, ikpt, ib = args.isikib_zero.split(":")
-        ref = bs.get_eigen(ib)[int(ispin), int(ikpt), 0]
+    ref = get_reference(bs, args.vbm_zero, args.cbm_zero, args.fermi_zero, args.isikib_zero)
 
     kp = KPathLinearizer(kpts, c.b)
     if args.band_erange is not None:
