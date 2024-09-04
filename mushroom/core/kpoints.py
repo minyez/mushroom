@@ -40,11 +40,12 @@ class KPathLinearizer:
         if recp_latt is not None:
             self.kpts = np.matmul(kpts, recp_latt)
         self._ksegs = None
-        self._find_ksegs()
         self._unify_x = unify_x
         self._x = None
         self._special_x = None
         self._index_special_x = None
+        self._find_ksegs()
+        _logger.debug("Found segments: %r", self._ksegs)
 
     def _find_ksegs(self):
         self._ksegs = find_k_segments(self.kpts)
