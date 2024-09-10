@@ -110,7 +110,6 @@ class test_cell_utils(ut.TestCase):
         self.assertAlmostEqual(density_m, 0.001008e27 / NAV)
 
 
-
 class test_symmetry_related(ut.TestCase):
 
     def test_display_symmetry_info(self):
@@ -126,6 +125,7 @@ class test_symmetry_related(ut.TestCase):
         posi = [[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]
         atms = [11, 17]
         display_symmetry_info(latt, posi, atms)
+
 
 if __name__ == "__main__":
     ut.main()
