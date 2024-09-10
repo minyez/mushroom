@@ -12,24 +12,22 @@ def get_logging_level(ll):
 
 
 # try to get logger level from environment variabl
-log_level = "notset"
 try:
     log_level = os.environ["MUSHROOM_LOG"]
 except KeyError:
     try:
         from mushroom.__config__ import log_level
     except ImportError:
-        pass
+        log_level = "notset"
 log_level = get_logging_level(log_level)
 
-stream_level = "notset"
 try:
     stream_level = os.environ["MUSHROOM_STREAM"]
 except KeyError:
     try:
         from mushroom.__config__ import stream_level
     except ImportError:
-        pass
+        stream_level = "notset"
 stream_level = get_logging_level(stream_level)
 
 
