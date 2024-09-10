@@ -1,9 +1,15 @@
 # -*- coding: utf-8 -*-
 """Utilities for LibRPA"""
-import numpy as np
+import os
+import re
 from io import StringIO
+from typing import Union
 
+import numpy as np
+
+from mushroom.core.ioutils import open_textio
 from mushroom.core.logger import loggers
+from mushroom.core.bs import BandStructure
 
 _logger = loggers["librpa"]
 
@@ -37,3 +43,73 @@ def read_self_energy_imagfreq(fn: str):
     data = np.rollaxis(data, 3, 0)
 
     return omegas, data
+
+
+def read_quasi_particle_energies_stdout(fn: Union[str, os.PathLike] = "librpa.out", kind: str = "e_qp"):
+    """Read QP energies from standard output
+
+    Args:
+        fn (str): """
+    nspins = None
+    nkpts = None
+    nstates = None
+    i_qpe_headlines = []
+    ispins = []
+    ikpts = []
+    kpoints = []
+
+    with open_textio(fn, 'r') as h:
+        lines = h.readlines()
+
+    # spin  1, k-point    1: (0.00000, 0.00000, 0.00000)
+    pattern = re.compile(r"^spin\s+(\d+), k-point\s+(\d+): \(([-\d.]+), ([-\d.]+), ([-\d.]+)\)")
+
+    for i, l in enumerate(lines):
+        m = re.match(pattern, l)
+        if m is not None:
+            i_qpe_headlines.append(i)
+            ispins.append(int(m.group(1)))
+            ikpts.append(int(m.group(2)))
+            kpt = tuple([float(m.group(3)), float(m.group(4)), float(m.group(5))])
+            kpoints.append(kpt)
+
+    if len(i_qpe_headlines) == 0:
+        raise ValueError("QP energies results are not available from output: %r" % fn)
+
+    # prune previous lines
+    i_qpe_headlines = np.array(i_qpe_headlines)
+    lines = lines[i_qpe_headlines[0]:]
+    i_qpe_headlines -= i_qpe_headlines[0]
+
+    # get the number of k-points and spins by checking the available output lines
+    nspins = np.max(ispins)
+    nkpts = np.max(ikpts)
+    kpoints = np.array(kpoints)
+    if nkpts > 1:
+        nstates = i_qpe_headlines[1] - i_qpe_headlines[0] - 5
+    else:
+        for i, l in enumerate(lines):
+            if l.strip() == "":
+                nstates = i - 4
+                break
+    _logger.info("QPE dimensions, nspin, nkpsts, nstates: %d %d %d",
+                 nspins, nkpts, nstates)
+
+    qpe_lines = []
+    for i in i_qpe_headlines:
+        qpe_lines.extend(lines[i + 4:i + 4 + nstates])
+    occ, eks, vxc, vex, eqp = np.loadtxt(StringIO("".join(qpe_lines)), usecols=[1, 2, 3, 4, -1], unpack=True)
+    occ = np.reshape(occ, (nspins, nkpts, nstates))
+    eks = np.reshape(eks, (nspins, nkpts, nstates))
+    vxc = np.reshape(vxc, (nspins, nkpts, nstates))
+    vex = np.reshape(vex, (nspins, nkpts, nstates))
+    eqp = np.reshape(eqp, (nspins, nkpts, nstates))
+    if kind in ["e_qp", "qp"]:
+        bs = BandStructure(eqp, occ)
+    elif kind in ["e_ks", "e_mf", "ks", "mf"]:
+        bs = BandStructure(eks, occ)
+    elif kind in ["e_hf", "hf", "exx"]:
+        bs = BandStructure(eks - vxc + vex, occ)
+    else:
+        raise ValueError("kind %s not supported, use any of following: ks, qp, exx" % kind)
+    return bs, kpoints
