@@ -3,10 +3,10 @@
 ## Dependencies
 
 The following packages are required for normal use
-- Python >= 3.7
+- Python >= 3.9
 - NumPy
 - SciPy (for special functions)
-- Spglib (for symmtery detection)
+- Spglib >= 2.5.0 (for symmtery detection)
 
 These dependencies can be installed by
 

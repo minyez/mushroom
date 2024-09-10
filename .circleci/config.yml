@@ -13,7 +13,7 @@ workflows:
             matrix:
               parameters:
                 # https://circleci.com/developer/images/image/cimg/python
-                python-version: ["3.7", "3.10", "3.12"]
+                python-version: ["3.9", "3.10", "3.12"]
 
 jobs:
   test:
