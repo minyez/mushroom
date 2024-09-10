@@ -45,11 +45,20 @@ def read_self_energy_imagfreq(fn: str):
     return omegas, data
 
 
-def read_quasi_particle_energies_stdout(fn: Union[str, os.PathLike] = "librpa.out", kind: str = "e_qp"):
+def read_quasi_particle_energies_stdout(fn: Union[str, os.PathLike] = "librpa.out",
+                                        kind: str = "qp",
+                                        **kwargs):
     """Read QP energies from standard output
 
     Args:
-        fn (str): """
+        fn (str): path to LibRPA standard output
+        kind (str): any of "qp", "ks", and "exx"
+
+        Other keywords arguments are parsed to the ``BandStructure`` class.
+
+    Returns:
+        BandStructure object, k-points (in fractional coordinates)
+    """
     nspins = None
     nkpts = None
     nstates = None
@@ -105,11 +114,11 @@ def read_quasi_particle_energies_stdout(fn: Union[str, os.PathLike] = "librpa.ou
     vex = np.reshape(vex, (nspins, nkpts, nstates))
     eqp = np.reshape(eqp, (nspins, nkpts, nstates))
     if kind in ["e_qp", "qp"]:
-        bs = BandStructure(eqp, occ)
+        bs = BandStructure(eqp, occ, **kwargs)
     elif kind in ["e_ks", "e_mf", "ks", "mf"]:
-        bs = BandStructure(eks, occ)
+        bs = BandStructure(eks, occ, **kwargs)
     elif kind in ["e_hf", "hf", "exx"]:
-        bs = BandStructure(eks - vxc + vex, occ)
+        bs = BandStructure(eks - vxc + vex, occ, **kwargs)
     else:
         raise ValueError("kind %s not supported, use any of following: ks, qp, exx" % kind)
     return bs, kpoints

@@ -1260,6 +1260,15 @@ def _decode_itrans_string(s):
         s (list of str): either "ivk:ick", "ivck:ivb:icb" or "ivk:ick:ivb:icb"
     """
     itrans = [x.strip() for x in s.split(":")]
+
+    def to_int(s, return_s=True):
+        try:
+            return int(s)
+        except ValueError:
+            if return_s:
+                return s
+            return None
+
     if len(itrans) == 2:
         ivk, ick = list(map(int, itrans))
         ivb = None
@@ -1267,32 +1276,14 @@ def _decode_itrans_string(s):
     elif len(itrans) == 3:
         ivk = int(itrans[0])
         ick = ivk
-        try:
-            ivb = int(itrans[1])
-        except ValueError:
-            ivb = itrans[1]
-        try:
-            icb = int(itrans[2])
-        except ValueError:
-            icb = itrans[2]
+        ivb = to_int(itrans[1])
+        icb = to_int(itrans[2])
     else:
         ivk, ick = itrans[:2]
-        try:
-            ivk = int(ivk)
-        except ValueError:
-            ivk = None
-        try:
-            ick = int(ick)
-        except ValueError:
-            ick = None
-        try:
-            ivb = int(itrans[2])
-        except ValueError:
-            ivb = itrans[2]
-        try:
-            icb = int(itrans[3])
-        except ValueError:
-            icb = itrans[3]
+        ivk = to_int(ivk, False)
+        ick = to_int(ick, False)
+        ivb = to_int(itrans[2])
+        icb = to_int(itrans[3])
     return ivk, ick, ivb, icb
 
 

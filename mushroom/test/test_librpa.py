@@ -62,11 +62,15 @@ State              occ             e_mf             v_xc            v_exx       
    18          0.00000         -2.54792        -12.66794         -7.80805         -2.53696         -0.04424         -0.22524
 
 """
-        bs, kpts = librpa.read_quasi_particle_energies_stdout(StringIO(stdout))
+        bs, kpts = librpa.read_quasi_particle_energies_stdout(StringIO(stdout), kind="ks")
         self.assertEqual(bs.nspins, 1)
         self.assertEqual(bs.nkpts, 1)
         self.assertEqual(bs.nbands, 18)
-        self.assertEqual(bs.fund_gap(), 3.7043)
+        self.assertAlmostEqual(bs.fund_gap(), 2.97139)
+        bs, kpts = librpa.read_quasi_particle_energies_stdout(StringIO(stdout), kind="exx", use_occ_only=True)
+        self.assertAlmostEqual(bs.fund_gap(), 9.01068)
+        bs, kpts = librpa.read_quasi_particle_energies_stdout(StringIO(stdout), kind="exx")
+        self.assertAlmostEqual(bs.fund_gap(), 8.75884)
 
 if __name__ == "__main__":
     ut.main()
