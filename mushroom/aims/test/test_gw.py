@@ -9,7 +9,7 @@ import tempfile
 import numpy as np
 
 from mushroom.aims.gw import read_aims_self_energy_dir, _read_aims_single_sigc_dat, \
-    get_nsbk_filename, get_nsbk_filename_pattern
+    get_nsbk_filename, get_nsbk_filename_pattern, read_aims_self_energy_restart_file
 
 
 class test_read_self_energy_directory(ut.TestCase):
@@ -113,6 +113,22 @@ class test_read_self_energy_directory(ut.TestCase):
             omega, state_low, sigc_kgrid, sigc_bands_merged = read_aims_self_energy_dir(sedir, None, True)
             self.assertEqual(len(np.shape(sigc_bands_merged)), 4)
             self.assertEqual(np.shape(sigc_bands_merged)[2], sum(verify["nkpts_band"]))
+
+
+class test_read_self_energy_restart_file(ut.TestCase):
+
+    def test_real_cases(self):
+        datadir = pathlib.Path(__file__).parent / "data"
+        testcases_json = datadir / "test_self_energy_restart_file.json"
+        with testcases_json.open('r') as h:
+            verifies = json.load(h)
+
+        for case, verify in verifies.items():
+            sefile = datadir / case
+            omega, sigc = read_aims_self_energy_restart_file(sefile)
+            print("Testing self_energy_restart_file: {} - {}".format(case, verify["_comment"]))
+            self.assertEqual(len(omega), verify["nfreqs"])
+            self.assertTupleEqual(sigc.shape, tuple(verify[x] for x in ["nspins", "nkpts", "nstates", "nfreqs"]))
 
 
 if __name__ == '__main__':

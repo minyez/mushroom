@@ -1,0 +1,9 @@
+{
+  "self_energy_grid_1.dat": {
+    "_comment": "H2O",
+    "nspins": 1,
+    "nkpts": 1,
+    "nstates": 9,
+    "nfreqs": 32
+  }
+}

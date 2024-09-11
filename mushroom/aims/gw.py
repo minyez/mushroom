@@ -2,14 +2,17 @@
 """Utilites related to GW in FHI-aims"""
 import os
 import re
-import numpy as np
+import struct
 from typing import Callable, Union
 from concurrent.futures import ProcessPoolExecutor, as_completed
+
+import numpy as np
 
 from mushroom.core.logger import loggers
 
 __all__ = [
-    "read_aims_self_energy_dir"
+    "read_aims_self_energy_dir",
+    "read_aims_self_energy_restart_file"
 ]
 
 _logger = loggers["aims"]
@@ -300,3 +303,23 @@ def _read_aims_single_specfunc_dat(specfuncdat_fn, unit: str = "ev"):
         specfunc /= conv
 
     return eKS, eQP_wo_c, omegas, real_part, imag_part, specfunc
+
+
+def read_aims_self_energy_restart_file(fn: Union[str, os.PathLike] = "self_energy_grid.dat"):
+    """Read restart file containing self-energy on imaginary frequency axis"""
+    with open(fn, "rb") as h:
+        data = h.read()
+
+    header = struct.unpack("i" * 4, data[:16])
+    nspin, nkpts, nstates, nfreq = header
+
+    begin, end = 16, 16 + 8 * nfreq
+    omega_imag = struct.unpack('d' * nfreq, data[begin:end])
+    begin, end = end, 16 + 8 * nfreq + 16 * nfreq * (2 + nspin * nkpts * nstates)
+    data = struct.unpack('d' * nspin * nkpts * nstates * nfreq * 2,
+                         data[begin:end])
+    # convert to numpy array
+    omega_imag = np.array(omega_imag)
+    data = np.array(data[0::2]) + np.array(data[1::2]) * 1.0j
+    data = np.reshape(data, (nspin, nkpts, nstates, nfreq))
+    return omega_imag, data
