@@ -1,0 +1,115 @@
+#!/usr/bin/env python3
+"""Copy calculation script and submit"""
+import os
+import pathlib
+import shutil
+import subprocess as sp
+from argparse import ArgumentParser
+
+from mushroom.hpc import is_slurm_enabled, SbatchScript
+from mushroom.aims.analyse import is_finished_aimsdir
+from mushroom.core.ioutils import conv_integers_to_series
+
+SUBMITTED_STAMP = ".submitted"
+
+
+def _parser():
+    p = ArgumentParser(description=__doc__)
+    p.add_argument("sbatch_script", help="sbatch script file to copy and submit")
+    p.add_argument("--dry", action="store_true")
+    p.add_argument("--max", type=int, default=100, help="max jobs to submit")
+    p.add_argument("--only", type=str, nargs="+")
+    p.add_argument("--pat", type=str, default=None, help="Pattern for glob.glob")
+    p.add_argument("-s", "--sbatch-opts-extra", type=str, nargs="+",
+                   help="extra sbatch options, k:v")
+    return p
+
+
+def create_sbatch_script_object(script_path, opts_extra):
+    ss = SbatchScript(template=script_path)
+    sbatch_opts_extra = {}
+    if opts_extra:
+        for option in opts_extra:
+            k, v = option.split(":", maxsplit=1)
+            sbatch_opts_extra[k] = v
+        print("Extra sbatch options: {}".format(sbatch_opts_extra))
+    ss.set_sbatch(**sbatch_opts_extra)
+    return ss
+
+
+if __name__ == '__main__':
+    args = _parser().parse_args()
+
+    # exit when it is not on an HPC and is not a dry run
+    if not is_slurm_enabled() and not args.dry:
+        raise OSError("sacct is not enabled, probably we are not on an HPC")
+
+    finished = 0
+    submitted = 0
+    failed = 0
+    skipped = 0
+    script_path = pathlib.Path(args.sbatch_script)
+    ss = create_sbatch_script_object(script_path, args.sbatch_opts_extra)
+
+    script_name = script_path.name
+    cwd = pathlib.Path(".").absolute()
+
+    pat = "*/"
+    if args.pat is not None:
+        pat = args.pat
+
+    all_dirs = list(pathlib.Path(".").glob(pat))
+    if args.only is not None:
+        all_dirs = [pathlib.Path(d) for d in args.only if d.is_dir()]
+
+    jobids_submitted = []
+
+    for d in all_dirs:
+        is_finished = is_finished_aimsdir(d)
+        submitted_stampfile = d / SUBMITTED_STAMP
+        if is_finished is not None:
+            print("Directory {} finished".format(d.name))
+            finished += 1
+            continue
+        if submitted_stampfile.exists():
+            print("Directory {} already submitted, skip".format(d))
+            skipped += 1
+            continue
+        if submitted >= args.max:
+            continue
+
+        ss.set_sbatch(J=d)
+        ss.write(d / script_name)
+        os.chmod(d / script_name, 0o775)
+
+        os.chdir(d.absolute())
+        if not args.dry:
+            p = sp.Popen(["sbatch", script_name], stdout=sp.PIPE, stderr=sp.PIPE)
+            out, _ = p.communicate()
+            out = str(out, encoding='utf-8')
+            ret = p.returncode
+            if ret == 0:
+                jobid = int(out.split()[-1])
+                jobids_submitted.append(jobid)
+                print("Submitted copied {} at directory {}, jobid {}".format(script_name, d, jobid))
+                submitted += 1
+                # create an empty stamp to mark already submitted
+                pathlib.Path(SUBMITTED_STAMP).touch()
+            else:
+                print("Failed to submit {} at directory {}".format(script_name, d))
+                failed += 1
+        else:
+            print("Entered {}, exiting as dry-run".format(d))
+            skipped += 1
+        os.chdir(cwd)
+
+    if submitted >= args.max:
+        print("Submitted {} jobs, maxmimal at single run, now take a break".format(submitted))
+
+    print("Already completed tasks: {}".format(finished))
+    print("  Skipped submitted dir: {}".format(skipped))
+    print("  Newly submitted tasks: {}".format(submitted))
+    print("       Failed submision: {}".format(failed))
+
+    if len(jobids_submitted) > 0:
+        print("Submitted jobs: {}".format(",".join(conv_integers_to_series(jobids_submitted))))
