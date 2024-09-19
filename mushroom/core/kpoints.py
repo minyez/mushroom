@@ -75,6 +75,7 @@ class KPathLinearizer:
             self._x /= self._x[-1]
         self._special_x = self._x[ispks]
         self._index_special_x = np.array(ispks)
+        _logger.debug("Special coordinates in 1D: %r", self._special_x)
 
     @property
     def x(self):

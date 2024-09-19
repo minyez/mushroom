@@ -7,8 +7,6 @@ from typing import Tuple, List, Dict, Union
 from io import StringIO
 from copy import deepcopy
 
-import numpy as np
-
 from mushroom.core.cell import Cell
 from mushroom.core.ioutils import open_textio, get_banner, get_similar_str, str2bool, bool2str
 from mushroom.core.logger import loggers
