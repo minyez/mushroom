@@ -18,15 +18,18 @@ __all__ = [
 ]
 
 
-def rc_gracify(transparent: bool = False, dpi: int = 300, cmap: str = "RdBu", fontsize: int = 16,
-               tick_scale: float = 1.5, legend_frameon: bool = False, legend_fancybox: bool = False):
+def rc_gracify(transparent: bool = False, dpi: int = 300, cmap: str = "RdBu", fontsize: float = 16,
+               tick_scale: float = 1.5,
+               markersize: float = 12,
+               legend_frameon: bool = False, legend_fancybox: bool = False):
     """setup rcParams to mimic the style of XmGrace"""
     raise_no_module(plt, "matplotlib")
     plt.rcParams["font.family"] = ["serif",] + plt.rcParams["font.family"]
     plt.rcParams["font.serif"] = ["Times New Roman",] + plt.rcParams["font.serif"]
     plt.rcParams["font.sans-serif"] = ["Helvetica",] + plt.rcParams["font.sans-serif"]
     plt.rcParams["font.monospace"] = ["Courier",] + plt.rcParams["font.monospace"]
-    plt.rcParams['mathtext.fontset'] = 'dejavuserif'
+    # plt.rcParams['mathtext.fontset'] = 'dejavuserif'
+    plt.rcParams['mathtext.fontset'] = 'cm'
     plt.rcParams["xtick.direction"] = "in"
     plt.rcParams["ytick.direction"] = "in"
     plt.rcParams["legend.frameon"] = legend_frameon
@@ -37,7 +40,7 @@ def rc_gracify(transparent: bool = False, dpi: int = 300, cmap: str = "RdBu", fo
     plt.rcParams["savefig.transparent"] = transparent
     plt.rcParams["image.cmap"] = cmap
     plt.rcParams["font.size"] = fontsize
-    plt.rcParams["lines.markersize"] = 12
+    plt.rcParams["lines.markersize"] = markersize
     plt.rcParams["xtick.major.size"] *= tick_scale     # major tick size in points
     plt.rcParams["xtick.minor.size"] *= tick_scale       # minor tick size in points
     plt.rcParams["xtick.major.width"] *= tick_scale     # major tick width in points

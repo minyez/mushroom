@@ -201,13 +201,20 @@ class BandStructure(EnergyUnit):
         occ[self.eigen <= efermi] = 1.0
         self._set_occupations(occ, allow_reset=allow_reset)
 
-    def reset_occupations(self, occ=None, efermi=None, unit: str = "ev"):
+    def _set_occupations_by_states(self, n_states: int, allow_reset: bool = False):
+        occ = np.zeros(self.eigen.shape)
+        occ[:, :, :n_states] = 1.0
+        self._set_occupations(occ, allow_reset=allow_reset)
+
+    def reset_occupations(self, occ=None, efermi=None, n_states: int = None, unit: str = "ev"):
         if occ is not None:
             self._set_occupations(occ, True)
         elif efermi is not None:
             self._set_occupations_by_efermi(efermi, unit=unit, allow_reset=True)
+        elif n_states is not None:
+            self._set_occupations_by_states(n_states, allow_reset=True)
         else:
-            raise ValueError("both occ and efermi are None. Please specify one of them.")
+            raise ValueError("occ, efermi, nelec are None. Please specify one of them.")
 
     def get_band_indices(self, *bands):
         '''Filter the band indices in ``bands``.

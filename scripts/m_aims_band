@@ -54,8 +54,12 @@ def _parser():
                    help="transitions of interest, in the form of 'ivk:ick'")
     p.add_argument("-v", "--value", dest="value_only", action="store_true",
                    help="show values only when displaying band")
-    p.add_argument("--ef", dest="efermi", type=float, default=None,
+
+    o = p.add_mutually_exclusive_group()
+    o.add_argument("--ef", dest="efermi", type=float, default=None,
                    help="Fermi energy")
+    o.add_argument("-n", dest="n_states", type=int, default=None,
+                   help="Force occupation of first n states")
 
     g = p.add_mutually_exclusive_group()
     g.add_argument("--skbz", dest="isikib_zero", default=None, type=str,
@@ -97,11 +101,15 @@ def m_aims_band():
                                 filter_k_behind=args.remove_k_behind, use_occ_only=args.use_occ_only)
 
     # reset the occupation numbers by Fermi energy
-    if args.efermi is not None:
-        bs.reset_occupations(efermi=args.efermi)
+    if args.efermi is not None or args.n_states is not None:
+        bs.reset_occupations(efermi=args.efermi, n_states=args.n_states)
 
     nbands = bs.nbands
-    c = Cell.read(args.geometry, format="aims")
+    try:
+        c = Cell.read(args.geometry, format="aims")
+        recp_latt = c.b
+    except FileNotFoundError:
+        recp_latt = None
 
     display_band_analysis(bs, kpts, value_only=args.value_only)
     if args.trans is not None:
@@ -111,7 +119,7 @@ def m_aims_band():
         return
     ref = get_reference(bs, args.vbm_zero, args.cbm_zero, args.fermi_zero, args.isikib_zero)
 
-    kp = KPathLinearizer(kpts, c.b)
+    kp = KPathLinearizer(kpts, recp_latt)
     if args.band_erange is not None:
         band_lb, band_ub = decode_int_ends(args.band_erange)
 
