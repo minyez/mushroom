@@ -58,7 +58,7 @@ if __name__ == '__main__':
     if args.pat is not None:
         pat = args.pat
 
-    all_dirs = list(pathlib.Path(".").glob(pat))
+    all_dirs = list(d for d in pathlib.Path(".").glob(pat) if d.is_dir())
     if args.only is not None:
         all_dirs = [pathlib.Path(d) for d in args.only if d.is_dir()]
 
