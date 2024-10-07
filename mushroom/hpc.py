@@ -42,15 +42,25 @@ class SbatchOptions:
     overwrite those in the template
     """
 
-    options = ["--account",
-               "-c", "--cpus-per-task", "-x", "--exclude",
-               "-J", "--job-name", "-N", "--nodes", "-n", "--ntasks",
-               "--ntasks-per-node", "--ntasks-per-core",
-               "--time", "-o", "--output", "-e", "--error",
-               "--mem", "--mem-per-cpu",
-               "-D", "--exclusive",
-               "-p", "--partition", "--qos", "--mail-type", "--mail-user",
-               "-F", "--nodefile", "-w", "--nodelist"]
+    options = [
+        "--account", "-c", "--cpus-per-task", "-x", "--exclude", "-J",
+        "--job-name", "-N", "--nodes", "-n", "--ntasks", "-d", "--dependency",
+        "--get-user-env", "--ntasks-per-node", "--ntasks-per-core",
+        "--ntasks-per-gpu", "--ntasks-per-socket", "--threads-per-core",
+        "-O", "--overcommit", "-s", "--oversubscribe",
+        "--parsable", "--priority", "--prefer", "--profile", "--propagate",
+        "-t", "--time", "-o", "--output", "-e", "--error", "-i", "--input",
+        "--mem", "--mem-per-cpu", "--mem-bind", "--mem-per-gpu",
+        "--mincpus", "--network", "--nice", "-k", "--no-kill",
+        "--no-requeue", "--requeue", "--reboot", "--reservation", "--resv-ports",
+        "--signal", "--test-only",
+        "--tres-bind", "--tres-per-task", "--uid", "--usage",
+        "--deadline", "--delay-boot",
+        "-D", "--exclusive", "-p", "--partition", "--qos",
+        "--gres", "--gpus-per-node", "--gpus-per-task", "--gpus-per-socket",
+        "--hint", "-H", "--hold"
+        "--mail-type", "--mail-user", "-F", "--nodefile", "-w", "--nodelist",
+    ]
     # protect for error input of options
     options = [x.strip("=") for x in options]
 
