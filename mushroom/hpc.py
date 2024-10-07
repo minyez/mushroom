@@ -48,7 +48,7 @@ class SbatchOptions:
                "--ntasks-per-node", "--ntasks-per-core",
                "--time", "-o", "--output", "-e", "--error",
                "--mem", "--mem-per-cpu",
-               "-D",
+               "-D", "--exclusive",
                "-p", "--partition", "--qos", "--mail-type", "--mail-user",
                "-F", "--nodefile", "-w", "--nodelist"]
     # protect for error input of options
@@ -67,7 +67,11 @@ class SbatchOptions:
                 ]
             template_kwargs = {}
             for l in slines:
-                k, v = rsplit(r"[ =]", l, maxsplit=1)
+                try:
+                    k, v = rsplit(r"[ =]", l, maxsplit=1)
+                except ValueError:
+                    k = rsplit(r"[ =]", l, maxsplit=1)[0]
+                    v = True
                 template_kwargs[k.strip("-").replace("-", "_")] = v
             self.set(**template_kwargs)
         self.set(**kwargs)
@@ -92,7 +96,9 @@ class SbatchOptions:
         """export into options for command line"""
         slist = []
         for k, v in self._keywords_values.items():
-            if v is not None:
+            if v is True:
+                slist.append("{}".format(self.keywords[k]))
+            elif v is not None:
                 slist.append("{} {}".format(self.keywords[k], v))
         return slist
 

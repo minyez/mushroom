@@ -64,6 +64,7 @@ class test_sbatch_options(ut.TestCase):
 
     template_string = """#SBATCH -J jobname
 #SBATCH --nodes 2
+#SBATCH --exclusive
 #SBATCH --ntasks-per-node 36
 #SBATCH --cpus-per-task 2
 #SBATCH -x cpu01,cpu10"""
@@ -85,6 +86,7 @@ class test_sbatch_script(ut.TestCase):
 
     template_string = """#SBATCH -J jobname
 #SBATCH --nodes 2
+#SBATCH --exclusive
 #SBATCH --ntasks-per-node 36
 #SBATCH --cpus-per-task 2
 #SBATCH -x cpu01,cpu10
@@ -107,7 +109,6 @@ srun aims.x
         tf = tempfile.NamedTemporaryFile()
         sbatch_script.write(tf.name)
         tf.close()
-
 
 
 if __name__ == "__main__":
