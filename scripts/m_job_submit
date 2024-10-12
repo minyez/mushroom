@@ -19,6 +19,7 @@ def _parser():
     p.add_argument("--dry", action="store_true")
     p.add_argument("--max", type=int, default=100, help="max jobs to submit")
     p.add_argument("--only", type=str, nargs="+")
+    p.add_argument("--prefix", type=str, default=None, help="prefix to job name")
     p.add_argument("--pat", type=str, default=None, help="Pattern for glob.glob")
     p.add_argument("-s", "--sbatch-opts-extra", type=str, nargs="+",
                    help="extra sbatch options, k:v")
@@ -78,7 +79,11 @@ if __name__ == '__main__':
         if submitted >= args.max:
             continue
 
-        ss.set_sbatch(J=d)
+        # set job name
+        if args.prefix is None:
+            ss.set_sbatch(J=d)
+        else:
+            ss.set_sbatch(J="{}_{}".format(args.prefix, d))
         ss.write(d / script_name)
         os.chmod(d / script_name, 0o775)
 
