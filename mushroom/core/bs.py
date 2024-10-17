@@ -602,11 +602,12 @@ class BandStructure(EnergyUnit):
         _logger.debug("global VBM: %r %f", self._ivbm[:], self._vbm)
         _logger.debug("global CBM: %r %f", self._icbm[:], self._cbm)
 
-    def apply_scissor(self, scissor: float):
+    def apply_scissor(self, scissor: float, force_metal: bool = False):
         """apply scissor operator and return a new BandStructure object
 
         Args:
             scissor (float): scissor operator, value in the same unit as current object
+            force_metal (bool): scissor operator is applied anyway, even the system becomes metallic afterwards
 
         Returns:
             BandStructure object
@@ -614,7 +615,7 @@ class BandStructure(EnergyUnit):
         gap = self.fund_gap()
         if gap < 0:
             raise NotImplementedError("Scissor operator not yet implemented for metal")
-        if gap + scissor < 0:
+        if gap + scissor < 0 and not force_metal:
             raise ValueError("Scissor operator will leads to a metal state")
         icb = self.icbm[2]
         eigen = deepcopy(self.eigen)
