@@ -15,6 +15,8 @@ def _parser():
                    help="transitions of interest, in the form of 'ivk:ick'")
     p.add_argument('--ks', action="store_true", help="KS gap instead of QP")
     p.add_argument('-v', '--value', dest="value_only", action="store_true", help="Value only")
+    p.add_argument("--use-occ-only", action="store_true",
+                   help="only use occupation number to detect band edges, instead of using both energy and occ")
     return p
 
 
@@ -26,7 +28,7 @@ def m_aims_qp_gap_stdout():
     kind = "eqp"
     if args.ks:
         kind = "eps"
-    bs, kpts = s.get_QP_bandstructure(kind)
+    bs, kpts = s.get_QP_bandstructure(kind, use_occ_only=args.use_occ_only)
     display_band_analysis(bs, kpts, value_only=args.value_only)
     if args.trans is not None:
         display_transition_energies(args.trans, bs, kpts, value_only=args.value_only)

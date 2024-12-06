@@ -6,7 +6,7 @@ from collections.abc import Iterable
 from itertools import permutations, product
 from typing import Sequence, Union
 from copy import deepcopy
-from numbers import Real
+from numbers import Real, Number
 
 import numpy as np
 
@@ -993,17 +993,19 @@ class BandStructure(EnergyUnit):
         """
         raise NotImplementedError
 
-    def __add__(self, y: Real):
-        if isinstance(y, Real):
-            if y == 0.0:
-                return self
-            newbs = deepcopy(self)
-            newbs._eigen = newbs._eigen + y
-            if newbs._efermi is not None:
-                newbs._efermi += y
-            newbs._bandedge_calculated = False
-            return newbs
-        raise TypeError("expected a Real, got {}".format(type(y)))
+    def __add__(self, y: Union[float, int]):
+        newbs = deepcopy(self)
+        newbs += y
+        return newbs
+
+    def __iadd__(self, y):
+        if y == 0.0:
+            return self
+        self._eigen += y
+        if self._efermi is not None:
+            self._efermi += y
+        self._bandedge_calculated = False
+        return self
 
     def __sub__(self, y):
         if isinstance(y, type(self)):

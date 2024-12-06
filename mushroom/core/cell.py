@@ -20,7 +20,7 @@ try:
 except ImportError:
     symprec = 1.0E-5
 from mushroom.core.constants import PI, SQRT3
-from mushroom.core.elements import get_atomic_number, get_atomic_mass
+from mushroom.core.elements import get_atomic_number, get_atomic_mass, element_symbols
 from mushroom.core.unit import LengthUnit
 from mushroom.core.pkg import detect
 from mushroom.core.crystutils import (get_latt_consts_from_latt_vecs,
@@ -80,7 +80,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
 
     _err = CellError
     _dtype = 'float64'
-    avail_exporters = ['vasp', 'abi', 'json', 'qe', 'qe_alat', 'aims']
+    avail_exporters = ['vasp', 'abi', 'json', 'qe', 'qe_alat', 'aims', "abacus"]
     avail_readers = ['vasp', 'json', 'cif', 'aims']
 
     def __init__(self, latt: Latt3T3, atms: Sequence[str], posi: Sequence[RealVec3D],
@@ -142,6 +142,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
             'qe': self.export_qe,
             'qe_alat': self.export_qe_alat,
             'aims': self.export_aims,
+            'abacus': self.export_abacus,
         }
         assert all([x in self.exporters for x in self.avail_exporters])
 
@@ -954,6 +955,64 @@ When other keyword are parsed, they will be filtered out and no exception will b
         if e is None:
             raise ValueError("Unsupported export:", output_format)
         return e(scale=scale)
+
+    def export_abacus(self, scale: float = 1.0):
+        """Export in ABACUS STRU format
+
+        The header for pseudopotential and numerical orbitals are exported
+        as a placeholder.
+
+        ATOMIC_SPECIES
+        C  12.011  C.upf
+
+        NUMERICAL_ORBITAL
+        C.orb
+
+        Caveats:
+        - Setting magnetic moment is not supported
+        - Relax flags are forced to 0, i.e. not relaxed
+        """
+        slist = []
+        slist.append("ATOMIC_SPECIES")
+        for symbol in self.atom_types:
+            slist.append("{s:<2s}  {m:f}  {s:s}.upf".format(s=symbol, m=get_atomic_mass(symbol)))
+        slist.append("")
+
+        slist.append("NUMERICAL_ORBITAL")
+        for symbol in self.atom_types:
+            slist.append("{s:s}.orb".format(s=element_symbols[get_atomic_number(symbol)]))
+        slist.append("")
+
+        slist.append("LATTICE_CONSTANT")
+        if self.unit == "ang":
+            slist.append("1.889726164")
+        else:
+            slist.append("1.000000000")
+        slist.append("")
+
+        slist.append("LATTICE_VECTORS")
+        for i in range(3):
+            slist.append("{:19.10f} {:19.10f} {:19.10f}".format(*(self.latt[i, :] * scale)))
+        slist.append("")
+
+        slist.append("ATOMIC_POSITIONS")
+        if self.coord_sys == "C":
+            slist.append("Cartesian")
+        else:
+            slist.append("Direct")
+        for symbol in self.atom_types:
+            indices = self.get_atm_indices(symbol)
+            slist.append(symbol)
+            slist.append("0.0")  # hard-coded magnetic moment
+            slist.append("{:d}".format(len(indices)))
+            for index in indices:
+                # dyn = self.sd_flag(ia=index)
+                # aflag = " ".join({True: "1", False: "0"}[d] for d in dyn)
+                aflag = "0 0 0"
+                slist.append("{:19.10f} {:19.10f} {:19.10f}  {:s}"
+                             .format(*self.posi[index, :], aflag))
+
+        return "\n".join(slist)
 
     def export_qe(self, scale: float = 1.0) -> str:
         """Export in Quantum Espresso format

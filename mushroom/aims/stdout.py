@@ -41,13 +41,13 @@ class StdOut:
         with open(pstdout, 'r', encoding='utf-8') as h:
             lines = h.readlines()
         _logger.info("Reading standard output from: %s", pstdout)
-        self._not_converged = True
+        self._converged = False
         self._finished = False
         if len(lines) > 1:
             testline = lines[-2].strip()
             self._finished = testline == 'Have a nice day.' or testline == '*** scf_solver: SCF cycle not converged.'
             if testline == 'Have a nice day.':
-                self._not_converged = False
+                self._converged = True
 
         self._aims_version = None
 
@@ -163,7 +163,7 @@ class StdOut:
                 if self._scf_lines is not None:
                     self._scf_lines = self._scf_lines[:self._scf_lines.index(l) + 1]
                 self._postscf_lines = lines[i:]
-            if l.startswith("          Leaving FHI-aims.") and not self._not_converged:
+            if l.startswith("          Leaving FHI-aims.") and self._converged:
                 # in case that SCF is not converged, it will leave aims without starting postscf
                 if self._postscf_lines is not None:
                     debug("End of post-SCF")
@@ -344,7 +344,7 @@ class StdOut:
     def is_finished(self, require_converge: bool = True):
         """check if the calculation is finished successfully"""
         if require_converge:
-            return self._finished and not self._not_converged
+            return self._finished and self._converged
         return self._finished
 
     @property
@@ -495,7 +495,7 @@ class StdOut:
 
     get_exx = get_QP_sigx
 
-    def get_QP_bandstructure(self, kind="eqp"):
+    def get_QP_bandstructure(self, kind="qp", **kwargs):
         """get the QP band structure
 
         Args:
@@ -508,10 +508,12 @@ class StdOut:
         """
         d, kpts = self.get_QP_result()
         if kind in ["eqp", "eps"]:
-            return BandStructure(d[kind], d["occ"], unit='ev'), kpts
+            return BandStructure(d[kind], d["occ"], unit='ev', **kwargs), kpts
+        elif kind in ["qp"]:
+            return BandStructure(d["eqp"], d["occ"], unit='ev', **kwargs), kpts
         elif kind in ["exx", "hf"]:
             eigen = d["eps"] - d["vxc"] + d["exx"]
-            return BandStructure(eigen, d["occ"], unit='ev'), kpts
+            return BandStructure(eigen, d["occ"], unit='ev', **kwargs), kpts
         # TODO: which case does the occupation number refer to when
         #       there is a band reordering?
         raise ValueError("Use eqp/eps for QP/KS and exx/hf for EXX/HF band structure")

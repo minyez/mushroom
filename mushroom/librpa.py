@@ -59,6 +59,9 @@ def read_quasi_particle_energies_stdout(fn: Union[str, os.PathLike] = "librpa.ou
     Returns:
         BandStructure object, k-points (in fractional coordinates)
     """
+    output_have_occ = True
+    success_run = False
+
     nspins = None
     nkpts = None
     nstates = None
@@ -81,6 +84,10 @@ def read_quasi_particle_energies_stdout(fn: Union[str, os.PathLike] = "librpa.ou
             ikpts.append(int(m.group(2)))
             kpt = tuple([float(m.group(3)), float(m.group(4)), float(m.group(5))])
             kpoints.append(kpt)
+        if l.strip().lower().startswith("librpa finished"):
+            success_run = True
+    if not success_run:
+        _logger.warn("%s did not finish successfully")
 
     if len(i_qpe_headlines) == 0:
         raise ValueError("QP energies results are not available from output: %r" % fn)
@@ -89,6 +96,12 @@ def read_quasi_particle_energies_stdout(fn: Union[str, os.PathLike] = "librpa.ou
     i_qpe_headlines = np.array(i_qpe_headlines)
     lines = lines[i_qpe_headlines[0]:]
     i_qpe_headlines -= i_qpe_headlines[0]
+
+    # check if occ is included in the output, by checking the header line
+    try:
+        lines[i_qpe_headlines[0] + 2].index("occ")
+    except ValueError:
+        output_have_occ = False
 
     # get the number of k-points and spins by checking the available output lines
     nspins = np.max(ispins)
@@ -107,8 +120,12 @@ def read_quasi_particle_energies_stdout(fn: Union[str, os.PathLike] = "librpa.ou
     qpe_lines = []
     for i in i_qpe_headlines:
         qpe_lines.extend(lines[i + 4:i + 4 + nstates])
-    occ, eks, vxc, vex, eqp = np.loadtxt(StringIO("".join(qpe_lines)), usecols=[1, 2, 3, 4, -1], unpack=True)
-    occ = np.reshape(occ, (nspins, nkpts, nstates))
+    if output_have_occ:
+        occ, eks, vxc, vex, eqp = np.loadtxt(StringIO("".join(qpe_lines)), usecols=[1, 2, 3, 4, -1], unpack=True)
+        occ = np.reshape(occ, (nspins, nkpts, nstates))
+    else:
+        eks, vxc, vex, eqp = np.loadtxt(StringIO("".join(qpe_lines)), usecols=[1, 2, 3, -1], unpack=True)
+        occ = None
     eks = np.reshape(eks, (nspins, nkpts, nstates))
     vxc = np.reshape(vxc, (nspins, nkpts, nstates))
     vex = np.reshape(vex, (nspins, nkpts, nstates))
@@ -122,3 +139,124 @@ def read_quasi_particle_energies_stdout(fn: Union[str, os.PathLike] = "librpa.ou
     else:
         raise ValueError("kind %s not supported, use any of following: ks, qp, exx" % kind)
     return bs, kpoints
+
+
+def get_occ_numbers_from_bandout(fn_bandout: str = "band_out"):
+    """"""
+    with open(fn_bandout, 'r') as h:
+        lines = h.readlines()
+    n_spins = int(lines[1].split()[-1])
+    n_kpts = int(lines[0].split()[-1])
+    n_states = int(lines[2].split()[-1])
+    occ = []
+    for i in range(n_kpts * n_spins):
+        occ.extend(
+            float(x.split()[1]) for x in lines[6 + (n_states + 1) * i:6 +
+                                               (n_states + 1) * i + n_states])
+    occ = np.array(occ).reshape(n_spins, n_kpts, n_states)
+    return occ
+
+
+def read_librpa_timing(fn: Union[str, os.PathLike] = "librpa.out", details: bool = False):
+    """Read timing data of LibRPA from output file
+
+    Returns:
+        dict, if the calculation finished successfully.
+        Otherwise None.
+    """
+    # Load timing lines
+    with open(fn, 'r') as h:
+        lines = h.readlines()
+    for i, l in enumerate(lines):
+        if l.startswith("Total   "):
+            break
+    lines = [x.rstrip() for x in lines[i:]]
+
+    # check if finished
+    finished = False
+    for l in lines:
+        if l.strip().lower().startswith("librpa finished"):
+            finished = True
+            break
+    if not finished:
+        return None
+
+    # all useful entries
+    scan = {
+        "total": ("Total   ", ),
+        "cal_chi0s": ("Call cal_chi0s", ),
+        "cal_exx": ("Call libRI Hexx calculation", ),
+        "cal_sigc": ("Call libRI cal_Sigc", ),
+        "chi0s_total": ("Build response function chi0", ),
+        "sigc_total": ("Build correlation self-energy",
+                       "Build real-space correlation self-energy"),
+        "wc_from_chi0_total": ("Build screened interaction", ),
+        "exx_total": ("Build exchange self-energy", ),
+        "load_coul_cut": ("Load truncated Coulomb", ),
+        "wc_2d_ij": ("Convert Wc, 2D -> IJ", ),
+        "wc_qw_rt": ("Tranform Wc (q,w) -> (R,t)", ),
+        "g0w0_total": ("G0W0 quasi-particle calculation", ),
+        "se_export": ("Export self-energy in KS basis", ),
+        # some detailed timing
+        "chi0_loop_ri": ("Loop over LibRI", ),
+        "build_gf_Rt_libri": ("build_gf_Rt_libri", ),
+        "collect_chi_R_blocks": ("Collect all R blocks", ),
+        "chi0_ft_ct": ("Fourier and Cosine transform", ),
+        "prepare_sqrt_v_cut": ("Prepare sqrt of truncated Coulomb", ),
+        "prepare_sqrt_v": ("Prepare sqrt of bare Coulomb", ),
+        "chi0_2d_block": ("Prepare Chi0 2D block", ),
+        "polarizability": ("Compute dielectric matrix", ),
+        "invert_dielmat": ("Invert dielectric matrix", ),
+        "build_wc_from_invdm": ("Multiply truncated Coulomb", ),
+        "sigc_setup_libri_c": ("Setup LibRI C data", ),
+        "compute_gf_sigc": ("Compute G(R,t) and G(R,-t)", ),
+        "sigc_ctst": ("Transform Sigc (R,t) -> (R,w)", ),
+    }
+    entry_timing = {}
+
+    # Analyse lines. Need to handle different versions
+    for key, entries in scan.items():
+        for entry in entries:
+            # print(entry)
+            for l in lines:
+                if l.strip().startswith(entry):
+                    level = l.find(entry) // 2
+                    words = l.split()
+                    ncalls = int(words[-3])
+                    cput = float(words[-2])
+                    wallt = float(words[-1])
+                    entry_timing[key] = [level, ncalls, cput, wallt]
+        if key not in entry_timing:
+            entry_timing[key] = [-1, 0, 0, 0]
+
+    # Timing needs extra handling
+    # 1. Exclude time of reading cut Coulomb from G0W0 total, due to different versions
+    load_coul_cut = entry_timing["load_coul_cut"]
+    g0w0_total = entry_timing["g0w0_total"]
+    if load_coul_cut is not None and g0w0_total is not None:
+        # print(load_coul_cut, g0w0_total)
+        if load_coul_cut[0] != g0w0_total[0]:
+            g0w0_total[2] -= load_coul_cut[2]
+            g0w0_total[3] -= load_coul_cut[3]
+    # 2. Exclude writing self-energy file time
+    if entry_timing["se_export"] is not None and g0w0_total is not None:
+        g0w0_total[2] -= entry_timing["se_export"][2]
+        g0w0_total[3] -= entry_timing["se_export"][3]
+
+    entries_normal = [
+        "total", "cal_chi0s", "cal_exx", "cal_sigc",
+        "g0w0_total", "chi0s_total", "exx_total", "sigc_total", "wc_from_chi0_total",
+        "wc_2d_ij", "wc_qw_rt",
+    ]
+    entries_details = list(scan.keys())
+
+    # Summary directory
+    d = {}
+    if details:
+        for key in entries_normal:
+            d[key] = entry_timing[key]
+    else:
+        for key in entries_details:
+            d[key] = entry_timing[key]
+
+    return d

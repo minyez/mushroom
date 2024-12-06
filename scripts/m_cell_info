@@ -25,5 +25,7 @@ if __name__ == '__main__':
     density_n, density_m = get_density(cell.latt, cell.atms, latt_unit=cell.unit)
     print("Number density (per ang^3):", density_n)
     print("Mass density (kg per m^3):", density_m)
-    if spglib is not None:
+    if spglib is None:
+        print("Spglib not avaiable, skip symmetry analysis")
+    else:
         display_symmetry_info(*(cell.get_spglib_input()))

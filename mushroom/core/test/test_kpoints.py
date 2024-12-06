@@ -122,8 +122,22 @@ class test_kpath(ut.TestCase):
         for kpts, spec_x in zip(self.valid_kpts, self.valid_spec_xs):
             kp = KPathLinearizer(kpts)
             self.assertEqual(len(spec_x), len(kp.special_x))
+            # alias of special_x
+            self.assertEqual(len(spec_x), len(kp.X))
             for x1, x2 in zip(spec_x, kp.special_x):
                 self.assertAlmostEqual(x1, x2)
+
+    def test_locate(self):
+        kpts_band = [
+            [0.0, 0.0, 0.0], [0.5, 0.5, 0.5]
+        ]
+        kp = KPathLinearizer(kpts_band, recp_latt=[[1, 0, 0], [0, 1, 0], [0, 0, 1]], unify_x=True)
+        xs = kp.locate([])
+        self.assertListEqual(xs, [])
+        xs = kp.locate([[0.25, 0.25, 0.25]])
+        xs_ref = [[0.5,]]
+        for x, x_ref in zip(xs, xs_ref):
+            self.assertListEqual(x, x_ref)
 
 
 class test_mpgrid(ut.TestCase):

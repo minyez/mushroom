@@ -21,34 +21,55 @@ __all__ = [
 _logger = loggers["kpoints"]
 
 
+def check_on_line_segment(x_0, x_st, x_ed, atol=1e-5):
+    """Check if point x_0 lies on the line segment specified by points x_st and x_ed
+
+    Args:
+        x_0, x_st, x_ed (1d-array-like)
+
+    Return:
+        True if x_0 lies between x_st and x_ed, otherwise False
+    """
+    x0st = np.subtract(x_0, x_st)
+    x0ed = np.subtract(x_0, x_ed)
+    dot = np.dot(x0st, x0ed)  # to check if dot is between the two points
+    distance = np.linalg.norm(np.cross(x0st, x0ed)) / np.linalg.norm(np.subtract(x_ed, x_st))
+    return np.isclose(distance, 0.0, atol=atol) and dot <= 0.0
+
+
 class KPathLinearizer:
     """object to manipulate path in reciprocal k space
 
     Special kpoints are recognized automatically.
 
     Args:
-        kpts (list): the coordinates of k points
+        kpts (list): the fractional coordinates of k points
         recp_latt (3x3 array): the reciprocal lattice vectors, [b1, b2, b3].
             If parsed, it will be used to convert the kpts to Cartisian coordiantes.
     """
 
     def __init__(self, kpts, recp_latt=None, unify_x: bool = False):
+        self._use_cartesian = False
+        self._recp_latt = None
         self._nkpts = len(kpts)
         if np.shape(kpts) != (self._nkpts, 3):
             raise ValueError("bad shape of parsed kpoints")
-        self.kpts = np.array(kpts)
+        self._kpts = np.array(kpts)
         if recp_latt is not None:
-            self.kpts = np.matmul(kpts, recp_latt)
+            self._kpts = np.matmul(kpts, recp_latt)
+            self._recp_latt = recp_latt
+            self._use_cartesian = True
         self._ksegs = None
         self._unify_x = unify_x
         self._x = None
         self._special_x = None
         self._index_special_x = None
+        self._xmax_non_unifty = None
         self._find_ksegs()
         _logger.debug("Found segments: %r", self._ksegs)
 
     def _find_ksegs(self):
-        self._ksegs = find_k_segments(self.kpts)
+        self._ksegs = find_k_segments(self._kpts)
 
     def _compute_x(self):
         """calculate 1d abscissa of kpoints"""
@@ -56,7 +77,7 @@ class KPathLinearizer:
         ispks = []
         accumu_l = 0.0
         for i, (st, ed) in enumerate(self._ksegs):
-            l = np.linalg.norm(self.kpts[st, :] - self.kpts[ed, :])
+            l = np.linalg.norm(self._kpts[st, :] - self._kpts[ed, :])
             # remove duplicate
             if st not in ispks and st - 1 not in ispks:
                 ispks.append(st)
@@ -67,10 +88,11 @@ class KPathLinearizer:
                 if st == self._ksegs[i - 1][1]:
                     skip = 1
             x = accumu_l + np.linalg.norm(
-                self.kpts[st:ed + 1, :] - self.kpts[st, :], axis=1)[skip:]
+                self._kpts[st:ed + 1, :] - self._kpts[st, :], axis=1)[skip:]
             xs.extend(x)
             accumu_l += l
         self._x = np.array(xs)
+        self._xmax_non_unifty = self._x[-1]
         if self._unify_x:
             self._x /= self._x[-1]
         self._special_x = self._x[ispks]
@@ -90,6 +112,42 @@ class KPathLinearizer:
         if self._special_x is None:
             self._compute_x()
         return self._special_x
+
+    @property
+    def X(self):
+        """alias to special_x"""
+        return self.special_x
+
+    def locate(self, kpts):
+        """Locate the 1d coordinates of k-points on the path
+
+        Args:
+            kpts (2d-array, shape N*3): k-points in fractional coordinates
+
+        Return:
+            a list of float lists or None
+        """
+        if self._x is None:
+            self._compute_x()
+        xs_all = []
+        if len(kpts) == 0:
+            return xs_all
+        if self._use_cartesian:
+            kpts = np.matmul(kpts, self._recp_latt)
+        kpts = np.array(kpts)
+        for k in kpts:
+            xs = None
+            for (st, ed) in self._ksegs:
+                if check_on_line_segment(k, self._kpts[st], self._kpts[ed]):
+                    x = np.linalg.norm(k - self._kpts[st])
+                    if self._unify_x:
+                        # print(x, self._xmax_non_unifty)
+                        x /= self._xmax_non_unifty
+                    if xs is None:
+                        xs = []
+                    xs.append(x + self.x[st])
+            xs_all.append(xs)
+        return xs_all
 
 
 class MPGrid:
