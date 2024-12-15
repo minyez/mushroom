@@ -191,6 +191,7 @@ class cell_factory_method(ut.TestCase):
         Cell.wurtzite("Zn", "O")
         Cell.pyrite()
         Cell.marcasite()
+        Cell.MX2()
 
 
 class cell_reader(ut.TestCase):

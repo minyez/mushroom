@@ -1862,6 +1862,32 @@ When other keyword are parsed, they will be filtered out and no exception will b
             kwargs.update({"comment": "Marcasite {}{}2".format(atom1, atom2)})
         return cls(latt, atms, posi, **kwargs)
 
+    @classmethod
+    def MX2(cls, atom1: str = "Mo", atom2: str = "S",
+            a: float = 3.22, c: float = 12.36, d: float = 2.31, kind: str = "2H",
+            **kwargs):
+        '''Generate a standardized  lattice (space group 58).
+
+        Args:
+            atom1 (str): symbol of the M atom
+            atom2 (str): symbol of the X atom
+            a, c (float): the lattice constants of the cell.
+            d (float): bond length of M-X
+            kwargs: keyword argument for ``Cell`` except ``coord_sys``
+        '''
+        if kind == "2H":
+            d_frac = np.sqrt(d ** 2 - a ** 2 / 3.0e0) / c
+            ha = 0.5e0 * a
+            latt = [[a, 0.0, 0.0], [-ha, ha * SQRT3, 0], [0.0, 0.0, c]]
+            atms = [str(atom1),] * 1 + [str(atom2),] * 2
+            posi = [[0.0, 0.0, 0.5],
+                    [1 / 3, 2 / 3, 0.5 - d_frac],
+                    [1 / 3, 2 / 3, 0.5 + d_frac],]
+        else:
+            raise NotImplementedError("kind {}".format(kind))
+        _logger.debug("creating MX2: latt %r, posi %r, atms %r", latt, posi, atms)
+        return cls(latt, atms, posi, **kwargs)
+
 
 def latt_equal(cell1: Cell, cell2: Cell) -> bool:
     """compare the lattice vectors of two cell"""
