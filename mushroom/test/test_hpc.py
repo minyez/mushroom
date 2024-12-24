@@ -67,6 +67,7 @@ class test_sbatch_options(ut.TestCase):
 #SBATCH --exclusive
 #SBATCH --ntasks-per-node 36
 #SBATCH --cpus-per-task 2
+#SBATCH --mail-type fail
 #SBATCH -x cpu01,cpu10"""
     template = StringIO(template_string)
 

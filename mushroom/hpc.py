@@ -58,7 +58,7 @@ class SbatchOptions:
         "--deadline", "--delay-boot",
         "-D", "--exclusive", "-p", "--partition", "--qos",
         "--gres", "--gpus-per-node", "--gpus-per-task", "--gpus-per-socket",
-        "--hint", "-H", "--hold"
+        "--hint", "-H", "--hold",
         "--mail-type", "--mail-user", "-F", "--nodefile", "-w", "--nodelist",
     ]
     # protect for error input of options
