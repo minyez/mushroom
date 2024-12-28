@@ -4,6 +4,7 @@ import os
 import re
 import pathlib
 from typing import Union
+import numpy as np
 
 from mushroom.core.logger import loggers
 from mushroom.aims.stdout import StdOut
@@ -14,6 +15,7 @@ __all__ = [
     "get_chemical_potential",
     "is_finished_aimsdir",
     "get_atoms_from_geometry",
+    "get_recp_latt_from_geometry",
 ]
 
 _logger = loggers["aims"]
@@ -124,3 +126,17 @@ def get_atoms_from_geometry(path_geometry: str = "geometry.in"):
         if l.strip().startswith("atom"):
             atms.append(l.split()[-1])
     return atms
+
+
+def get_recp_latt_from_geometry(path_geometry: str = "geometry.in"):
+    """get reciprocal lattice vectors of from aims geometry file"""
+    latt = []
+    with open(path_geometry, 'r') as h:
+        lines = h.readlines()
+        for l in lines:
+            if l.strip().startswith("lattice_vector"):
+                latt.append(list(map(float, l.split()[1:4])))
+    if len(latt) != 3:
+        raise ValueError("Lattice vectors less than 1, check your geometry file!")
+    latt = np.array(latt)
+    return np.cross(latt[(1, 2, 0), :], latt[(2, 0, 1), :]) / np.linalg.det(latt) * 2.0E0 * np.pi

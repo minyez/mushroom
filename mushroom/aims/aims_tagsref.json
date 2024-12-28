@@ -131,6 +131,7 @@
             "periodic_gw_optimize_single_precision": [],
             "periodic_gw_optimize_init": [],
             "periodic_gw_modify_head_with_dielec_func": [],
+            "periodic_gw_use_average_inverse_dm_gamma": [],
             "print_input_librpa": [],
             "read_sigc_imagfreq_grid": []
         }
