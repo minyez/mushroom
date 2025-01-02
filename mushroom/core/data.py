@@ -266,7 +266,7 @@ class Data:
             d = d.transpose()
         return d * scale
 
-    def _export(self, data_cols, form=None, transpose=False, sep=None) -> List[str]:
+    def _export(self, data_cols, form=None, transpose=False, sep=None, filter_nan: bool = True) -> List[str]:
         """export data/error to a list, each member as a line of string for data
 
         Default output will be one line for each data type, i.e.
@@ -298,7 +298,7 @@ class Data:
                 raise ValueError(msg, form, len(data_cols))
 
         data_all = self._get(data_cols)
-        return export_2d_data(data_all, transpose=transpose, form=form, sep=sep)
+        return export_2d_data(data_all, transpose=transpose, form=form, sep=sep, filter_nan_row=filter_nan)
 
     def get_data(self, transpose=False):
         """get all data values
@@ -446,7 +446,11 @@ class Data:
         return t, extra_cols
 
 
-def export_2d_data(data, form: str = None, transpose: bool = False, sep: str = None) -> List[str]:
+def export_2d_data(data,
+                   form: str = None,
+                   transpose: bool = False,
+                   sep: str = None,
+                   filter_nan_row: bool = True) -> List[str]:
     """print the 2-dimension data into list of strings
 
     Args:
@@ -454,6 +458,7 @@ def export_2d_data(data, form: str = None, transpose: bool = False, sep: str = N
         form (str or tuple/list): format string of each row of data.
         transpose (bool) : if set True, the same column will be printed as one line
         sep (str)
+        filter_nan_row (bool)
 
     """
     slist = []
@@ -464,6 +469,8 @@ def export_2d_data(data, form: str = None, transpose: bool = False, sep: str = N
         sep = " "
     if transpose:
         data = np.transpose(data)
+    if filter_nan_row:
+        data = data[~np.isnan(data).any(axis=1)]
     for i, array in enumerate(data):
         if isinstance(form, str):
             s = sep.join([form.format(x) for x in array])
@@ -494,4 +501,3 @@ def reshape_2n_float_n_cmplx(data):
         raise ValueError("odd length is invalid: {}".format(n))
     data = np.array(data)
     return data[0::2] + data[1::2] * 1.0j
-
