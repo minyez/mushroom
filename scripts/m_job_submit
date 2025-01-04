@@ -16,8 +16,12 @@ SUBMITTED_STAMP = ".submitted"
 def _parser():
     p = ArgumentParser(description=__doc__)
     p.add_argument("sbatch_script", help="sbatch script file to copy and submit")
-    p.add_argument("--dry", action="store_true")
+    p.add_argument("--dry", action="store_true", help="Generate run script but do not submit")
     p.add_argument("--max", type=int, default=100, help="max jobs to submit")
+    p.add_argument("--dep", type=str, default=None, choices=["any", "ok"],
+                   help="job dependency (after)")
+    p.add_argument("--dep-jobid", type=int, default=None,
+                   help="ID of depending job. Default None, use previously submitted job, only works when --dep is set")
     p.add_argument("--only", type=str, nargs="+")
     p.add_argument("--prefix", type=str, default=None, help="prefix to job name")
     p.add_argument("--pat", type=str, default=None, help="Pattern for glob.glob")
@@ -38,12 +42,37 @@ def create_sbatch_script_object(script_path, opts_extra):
     return ss
 
 
+def generate_sbatch_args(script_name: str, dep: str = None, dep_job_id: int = None):
+    args = ["sbatch",]
+    if dep is not None and dep_job_id is not None:
+        args.append("--dependency=after" + dep + f":{dep_job_id:d}")
+    args.append(script_name)
+    return args
+
+
+def check_slurm(dry: bool):
+    """exit when it is not on an HPC and is not a dry run"""
+    if not is_slurm_enabled() and not dry:
+        raise OSError("sacct is not enabled, probably we are not on an HPC")
+
+
+def generate_dir_list(pat, only_list):
+    if pat is None:
+        pat = "*/"
+
+    if only_list is None:
+        all_dirs = list(d for d in pathlib.Path(".").glob(pat) if d.is_dir())
+    else:
+        all_dirs = [pathlib.Path(d) for d in only_list if d.is_dir()]
+
+    return all_dirs
+
+
 if __name__ == '__main__':
     args = _parser().parse_args()
+    dep_jobid = args.dep_jobid
 
-    # exit when it is not on an HPC and is not a dry run
-    if not is_slurm_enabled() and not args.dry:
-        raise OSError("sacct is not enabled, probably we are not on an HPC")
+    check_slurm(args.dry)
 
     finished = 0
     submitted = 0
@@ -54,18 +83,12 @@ if __name__ == '__main__':
 
     script_name = script_path.name
     cwd = pathlib.Path(".").absolute()
-
-    pat = "*/"
-    if args.pat is not None:
-        pat = args.pat
-
-    all_dirs = list(d for d in pathlib.Path(".").glob(pat) if d.is_dir())
-    if args.only is not None:
-        all_dirs = [pathlib.Path(d) for d in args.only if d.is_dir()]
+    all_dirs = generate_dir_list(args.pat, args.only)
 
     jobids_submitted = []
 
     for d in all_dirs:
+        # TODO: adapt calculations other than FHI-aims
         is_finished = is_finished_aimsdir(d)
         submitted_stampfile = d / SUBMITTED_STAMP
         if is_finished is not None:
@@ -89,12 +112,15 @@ if __name__ == '__main__':
 
         os.chdir(d.absolute())
         if not args.dry:
-            p = sp.Popen(["sbatch", script_name], stdout=sp.PIPE, stderr=sp.PIPE)
+            args = generate_sbatch_args(script_name, args.dep, dep_jobid)
+            p = sp.Popen(args, stdout=sp.PIPE, stderr=sp.PIPE)
             out, _ = p.communicate()
             out = str(out, encoding='utf-8')
             ret = p.returncode
             if ret == 0:
                 jobid = int(out.split()[-1])
+                if dep_jobid is None:
+                    dep_jobid = jobid
                 jobids_submitted.append(jobid)
                 print("Submitted copied {} at directory {}, jobid {}".format(script_name, d, jobid))
                 submitted += 1
