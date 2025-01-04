@@ -63,7 +63,8 @@ def generate_dir_list(pat, only_list):
     if only_list is None:
         all_dirs = list(d for d in pathlib.Path(".").glob(pat) if d.is_dir())
     else:
-        all_dirs = [pathlib.Path(d) for d in only_list if d.is_dir()]
+        only_list = [pathlib.Path(d) for d in only_list]
+        all_dirs = [d for d in only_list if d.is_dir()]
 
     return all_dirs
 
@@ -112,8 +113,8 @@ if __name__ == '__main__':
 
         os.chdir(d.absolute())
         if not args.dry:
-            args = generate_sbatch_args(script_name, args.dep, dep_jobid)
-            p = sp.Popen(args, stdout=sp.PIPE, stderr=sp.PIPE)
+            sbatch_args = generate_sbatch_args(script_name, args.dep, dep_jobid)
+            p = sp.Popen(sbatch_args, stdout=sp.PIPE, stderr=sp.PIPE)
             out, _ = p.communicate()
             out = str(out, encoding='utf-8')
             ret = p.returncode
