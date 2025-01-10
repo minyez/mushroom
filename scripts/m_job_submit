@@ -6,7 +6,7 @@ import shutil
 import subprocess as sp
 from argparse import ArgumentParser
 
-from mushroom.hpc import is_slurm_enabled, SbatchScript
+from mushroom.hpc import is_slurm_enabled, SbatchScript, _logger
 from mushroom.aims.analyse import is_finished_aimsdir
 from mushroom.core.ioutils import conv_integers_to_series
 
@@ -19,9 +19,9 @@ def _parser():
     p.add_argument("--dry", action="store_true", help="Generate run script but do not submit")
     p.add_argument("--max", type=int, default=100, help="max jobs to submit")
     p.add_argument("--dep", type=str, default=None, choices=["any", "ok"],
-                   help="job dependency (after)")
+                   help="job dependency (after), the submitted jobs will depend on previous one")
     p.add_argument("--dep-jobid", type=int, default=None,
-                   help="ID of depending job. Default None, use previously submitted job, only works when --dep is set")
+                   help="ID of initial dependent job, only works when --dep is set")
     p.add_argument("--only", type=str, nargs="+")
     p.add_argument("--prefix", type=str, default=None, help="prefix to job name")
     p.add_argument("--pat", type=str, default=None, help="Pattern for glob.glob")
@@ -114,14 +114,14 @@ if __name__ == '__main__':
         os.chdir(d.absolute())
         if not args.dry:
             sbatch_args = generate_sbatch_args(script_name, args.dep, dep_jobid)
+            _logger.debug("Running subprocess: %s", " ".join(sbatch_args))
             p = sp.Popen(sbatch_args, stdout=sp.PIPE, stderr=sp.PIPE)
             out, _ = p.communicate()
             out = str(out, encoding='utf-8')
             ret = p.returncode
             if ret == 0:
                 jobid = int(out.split()[-1])
-                if dep_jobid is None:
-                    dep_jobid = jobid
+                dep_jobid = jobid
                 jobids_submitted.append(jobid)
                 print("Submitted copied {} at directory {}, jobid {}".format(script_name, d, jobid))
                 submitted += 1
