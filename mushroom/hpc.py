@@ -43,7 +43,7 @@ class SbatchOptions:
     """
 
     options = [
-        "--account", "-c", "--cpus-per-task", "-x", "--exclude", "-J",
+        "--account", "-A", "-c", "--cpus-per-task", "-x", "--exclude", "-J",
         "--job-name", "-N", "--nodes", "-n", "--ntasks", "-d", "--dependency",
         "--get-user-env", "--ntasks-per-node", "--ntasks-per-core",
         "--ntasks-per-gpu", "--ntasks-per-socket", "--threads-per-core",
