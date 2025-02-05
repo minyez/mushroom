@@ -89,12 +89,21 @@ class BandStructure(EnergyUnit):
                  pwav=None, atms: Sequence[str] = None, prjs: Sequence[str] = None,
                  use_occ_only: bool = False):
         shape_e = np.shape(eigen)
+        consist = [len(shape_e) == DIM_EIGEN_OCC, shape_e[0] <= 2]
+        if not all(consist):
+            info = "Bad eigen shape"
+            _logger.error(info)
+            raise BandStructureError
         if occ is not None:
-            consist = [len(shape_e) == DIM_EIGEN_OCC, shape_e[0] <= 2]
+            shape_o = np.shape(occ)
+            consist = [len(shape_o) == DIM_EIGEN_OCC, np.allclose(shape_e, shape_o)]
             if not all(consist):
-                info = "Bad eigen shape"
+                info = "Bad occupation shape"
                 _logger.error(info)
                 raise BandStructureError
+            _logger.debug("occupation parsed, dimension check passed")
+        else:
+            _logger.debug("occupation left None")
         self._nspins, self._nkpts, self._nbands = shape_e
         # if weight is manually parsed
         if weight is not None:
@@ -481,11 +490,12 @@ class BandStructure(EnergyUnit):
         else:
             self._load_band_edges_by_eigen()
 
-        if np.max(self._ivbm_sp_kp) == np.min(self._ivbm_sp_kp):
-            self._is_metal = False
-        else:
+        if np.max(self._ivbm_sp_kp) >= np.min(self._icbm_sp_kp):
             self._is_metal = True
-        _logger.debug("is_metal? %s", self._is_metal)
+        else:
+            self._is_metal = False
+        _logger.debug("vbm_max %d cbm_min %d is_metal? %s", np.max(self._ivbm_sp_kp),
+                      np.min(self._icbm_sp_kp), self._is_metal)
 
         # set the state to ready
         self._bandedge_calculated = True

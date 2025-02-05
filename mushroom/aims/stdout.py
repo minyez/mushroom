@@ -507,11 +507,14 @@ class StdOut:
             BandStructure object, k-points list
         """
         d, kpts = self.get_QP_result()
-        if kind in ["eqp", "eps"]:
+        if kind in ["eqp", "qp"]:
+            _logger.debug("Load QP band structure")
             return BandStructure(d[kind], d["occ"], unit='ev', **kwargs), kpts
-        elif kind in ["qp"]:
-            return BandStructure(d["eqp"], d["occ"], unit='ev', **kwargs), kpts
+        elif kind in ["eps"]:
+            _logger.debug("Load KS band structure")
+            return BandStructure(d[kind], d["occ"], unit='ev', **kwargs), kpts
         elif kind in ["exx", "hf"]:
+            _logger.debug("Load EXX band structure")
             eigen = d["eps"] - d["vxc"] + d["exx"]
             return BandStructure(eigen, d["occ"], unit='ev', **kwargs), kpts
         # TODO: which case does the occupation number refer to when
