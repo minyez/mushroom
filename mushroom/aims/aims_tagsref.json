@@ -4,28 +4,41 @@
         "section": "Run settings",
         "tags":
         {
+            "calculate_all_eigenstates": [],
+            "distributed_spline_storage": [],
+            "elsi_output_matrix": [],
+            "elsi_restart": [],
+            "empty_states": [],
+            "frozen_core": [],
+            "global_memory_tracking": [],
+            "KS_method": [],
+            "load_balancing": [],
+            "output_level": [],
+            "override_illconditioning": [],
+            "postprocess_anyway": [],
             "restart": [],
             "restart_save_iterations": [],
-            "override_illconditioning": [],
-            "basis_threshold": [],
-            "KS_method": [],
-            "output_level": [],
-            "postprocess_anyway": [],
+            "set_blacsdim": [],
             "use_density_matrix": [],
-            "empty_states": [],
-            "partition_acc": [],
-            "packed_matrix_format": [],
             "use_full_symmetry": [],
-            "elsi_output_matrix": [],
-            "distributed_spline_storage": [],
-            "use_local_index": [],
-            "load_balancing": [],
+            "packed_matrix_format": [],
             "packed_matrix_threshold": [],
-            "use_logsbt": [],
-            "global_memory_tracking": [],
+            "partition_acc": [],
             "use_full_spectrum": [],
-            "calculate_all_eigenstates": [],
-            "set_blacsdim": []
+            "use_local_index": [],
+            "use_logsbt": []
+        }
+    },
+    "basis":
+    {
+        "section": "Basis generation",
+        "tags":
+        {
+            "auxil_basis": [],
+            "basis_threshold": [],
+            "default_prodbas_acc": [],
+            "prodbas_threshold": [],
+            "RI_method": []
         }
     },
     "physical_model":
@@ -33,11 +46,14 @@
         "section": "Physical model",
         "tags":
         {
-            "xc": [],
-            "spin": [],
             "charge": [],
+            "default_initial_moment": [],
+            "hybrid_xc_coeff": [],
+            "occupation_acc": [],
+            "occupation_type": [],
+            "spin": [],
             "total_energy_method": [],
-            "default_initial_moment": []
+            "xc": []
         }
     },
     "relativistic":
@@ -54,18 +70,16 @@
         "section": "SCF convergence setting",
         "tags":
         {
-            "preconditioner": [],
+            "charge_mix_param": [],
             "mixer": [],
             "n_max_pulay": [],
-            "charge_mix_param": [],
-            "occupation_acc": [],
-            "occupation_type": [],
-            "sc_accuracy_rho": [],
+            "preconditioner": [],
             "sc_accuracy_eev": [],
             "sc_accuracy_etot": [],
             "sc_accuracy_forces": [],
-            "sc_iter_limit": [],
-            "sc_init_iter": []
+            "sc_accuracy_rho": [],
+            "sc_init_iter": [],
+            "sc_iter_limit": []
         }
     },
     "relax":
@@ -82,8 +96,8 @@
         "tags":
         {
             "k_grid": [],
-            "symmetry_reduced_k_grid": [],
-            "k_offset": []
+            "k_offset": [],
+            "symmetry_reduced_k_grid": []
         }
     },
     "hybrid":
@@ -91,12 +105,12 @@
         "section": "Hartree-Fock setup",
         "tags":
         {
-            "hf_version": [],
-            "use_density_matrix_hf": [],
-            "hartree_potential_version": [],
-            "exx_band_structure_version": [],
             "calculate_fock_matrix_version": [],
-            "hse_unit": []
+            "exx_band_structure_version": [],
+            "hartree_potential_version": [],
+            "hf_version": [],
+            "hse_unit": [],
+            "use_density_matrix_hf": []
         }
     },
     "postscf":
@@ -104,11 +118,7 @@
         "section": "Post-SCF Setting",
         "tags":
         {
-            "RI_method": [],
-            "auxil_basis": [],
-            "prodbas_threshold": [],
-            "frozen_core_postscf": [],
-            "default_prodbas_acc": []
+            "frozen_core_postscf": []
         }
     },
     "gwrpa":
@@ -116,16 +126,10 @@
         "section": "GW/RPA Setting",
         "tags":
         {
-            "qpe_calc": [],
-            "qpe_solver": [],
-            "restart_periodic_gw": [],
-            "state_upper_limit": [],
-            "state_lower_limit": [],
-            "state_limits_ewin": [],
             "anacon_type": [],
-            "n_anacon_par": [],
             "freq_grid_type": [],
             "frequency_points": [],
+            "n_anacon_par": [],
             "periodic_gw_optimize": [],
             "periodic_gw_optimize_kgrid_symmetry": [],
             "periodic_gw_optimize_use_gpu": [],
@@ -135,7 +139,13 @@
             "periodic_gw_self_energy_restart": [],
             "periodic_gw_use_average_inverse_dm_gamma": [],
             "print_input_librpa": [],
-            "read_sigc_imagfreq_grid": []
+            "qpe_calc": [],
+            "qpe_solver": [],
+            "read_sigc_imagfreq_grid": [],
+            "restart_periodic_gw": [],
+            "state_limits_ewin": [],
+            "state_lower_limit": [],
+            "state_upper_limit": []
         }
     },
     "uncategorized":

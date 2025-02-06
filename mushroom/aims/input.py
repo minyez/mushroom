@@ -292,6 +292,23 @@ class Control:
         else:
             self.update_tag("xc", xc)
 
+    def set_spin(self, spin: Union[bool, str]):
+        """Set spin polarization"""
+        if spin is None:
+            self.update_tag("spin", "none")
+            return
+
+        if isinstance(spin, bool):
+            if spin:
+                self.update_tag("spin", "collinear")
+            else:
+                self.update_tag("spin", "none")
+            return
+        if spin in ["collinear",]:
+            self.update_tag("spin", spin)
+
+        raise ValueError("Unsupported spin tag")
+
     def get_basis(self, elem, *args, **kwargs):
         """get the basis of element ``elem``
 
@@ -551,6 +568,21 @@ class Control:
         _logger.debug("output: %r", output)
         _logger.debug("species: %r", species)
         return cls(tags, output, species)
+
+    @classmethod
+    def default(cls, periodic: bool = False, spin: Union[bool, str] = None):
+        """A default control setup"""
+        tags = {
+            "xc": "pbe",
+            "relativistic": "atomic_zora scalar",
+            "occupation_type": "gaussian 0.0001",
+        }
+        # A sensible default k-mesh for periodic calculation
+        if periodic:
+            tags["k_grid"] = "4 4 4"
+        c = cls(tags)
+        c.set_spin(spin)
+        return c
 
 
 read_control = Control.read

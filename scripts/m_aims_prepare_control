@@ -1,0 +1,93 @@
+#!/usr/bin/env python3
+import pathlib
+import argparse
+
+from mushroom.aims.input import Control, read_geometry
+
+
+def aims_prepare_control(
+    xc: str,
+    species: str,
+    spin: bool = None,
+    kgrids=None,
+    tags_template=None,
+    path_geometry=None,
+):
+    """Prepare control file and print
+
+    Args:
+        xc (str)
+        species (str)
+        spin (bool)
+
+    Returns:
+        None
+    """
+    if path_geometry is not None:
+        geo = read_geometry(path_geometry)
+        elems = geo.atom_types
+        # TODO: the underlying Cell class of read_geometry only supports periodic case
+        periodic = True
+    else:
+        elems = None
+        if kgrids is not None:
+            periodic = False
+    c = Control.default(periodic=periodic, spin=spin)
+    c.set_xc(xc)
+    if kgrids is not None:
+        k_grid_str = "{} {} {}".format(*kgrids)
+        c.update_tag("k_grid", k_grid_str)
+
+    # Update general and output tags from the template
+    if tags_template is not None:
+        c_temp = Control.read(tags_template)
+        c.update_tags(c_temp.tags)
+        c.update_output_tags(c_temp.output)
+
+    # Add species defaults
+    if elems is not None:
+        c.add_default_species(species, *elems)
+    print(c)
+
+
+def _parser():
+    p = argparse.ArgumentParser(
+        description=aims_prepare_control.__doc__.split("\n")[0],
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    p.add_argument("--xc", default="pbe", help="Functional")
+    p.add_argument("-s", "--spin",
+                   dest="spin",
+                   action="store_true",
+                   help="Spin setup")
+    p.add_argument("--template",
+                   default=None,
+                   help="Template for general and output tags")
+    p.add_argument("-g",
+                   dest="path_geometry",
+                   default="geometry.in",
+                   help="Path to geometry file")
+    p.add_argument("--sp", "--species",
+                   dest="species",
+                   default="intermediate",
+                   help="Species default")
+
+    k = p.add_mutually_exclusive_group()
+    k.add_argument("-k", "--kgrids",
+                   nargs=3, type=int, default=None,
+                   help="k-point mesh")
+    # k.add_argument("--kdenc", type=int, default=None,
+    #                help="k-point density to compute k-point mesh")
+    return p
+
+
+if __name__ == '__main__':
+    args = _parser().parse_args()
+    aims_prepare_control(
+        xc=args.xc,
+        species=args.species,
+        spin=args.spin,
+        kgrids=args.kgrids,
+        tags_template=args.template,
+        path_geometry=args.path_geometry
+    )
