@@ -277,6 +277,21 @@ class Control:
         """
         self.get_species(elem).update_basic_tag(tag, value)
 
+    def set_xc(self, xc: str):
+        """Helper function to set the exchange-correlation functional
+
+        Args:
+            xc (str): the exchange-correlation functional to use
+        """
+        if xc == "hse06":
+            self.update_tags({"xc": "hse06 0.11", "hse_unit": "bohr-1"})
+        elif xc == "pbe0-50":
+            self.update_tags({"xc": "pbe0", "hybrid_xc_coeff": 0.50})
+        elif xc == "pbe0-75":
+            self.update_tags({"xc": "pbe0", "hybrid_xc_coeff": 0.75})
+        else:
+            self.update_tag("xc", xc)
+
     def get_basis(self, elem, *args, **kwargs):
         """get the basis of element ``elem``
 

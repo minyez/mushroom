@@ -47,6 +47,13 @@ class test_control(ut.TestCase):
         self.assertEqual(ctrl["booltag"], False)
         self.assertNotIn("sometag2", ctrl.tags)
 
+    def test_set_xc(self):
+        ctrl = Control({}, {}, [])
+        ctrl.set_xc("pbe0")
+        ctrl.set_xc("pbe0-50")
+        ctrl.set_xc("pbe0-75")
+        ctrl.set_xc("hse06")
+
     def test_update_output_tag(self):
         ctrl = Control({}, {}, [])
         ctrl.update_output_tags({"sometag": 1, "sometag2": None, "booltag": ".false."})
