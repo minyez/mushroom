@@ -44,14 +44,14 @@ def solid_angle(xyz: Sequence[RealVec3D], polar_positive=True):
 
 
 def sph_harm(l: Sequence[int], m: Sequence[int], theta: Sequence[float], phi: Sequence[float]):
-    """wrapper of scipy.special.sph_harm
+    """wrapper of scipy.special.sph_harm_y
 
     Args:
         l,m (int): angular and azimuthal angular momentum quanta
         theta, phi (array): polar and azimuthal angles
     """
     from scipy import special
-    return special.sph_harm(m, l, phi, theta)
+    return special.sph_harm_y(l, m, theta, phi)
 
 
 def sph_harm_xyz(l: Sequence[int], m: Sequence[int], xyz: Sequence[RealVec3D]):
