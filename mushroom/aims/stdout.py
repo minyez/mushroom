@@ -509,8 +509,8 @@ class StdOut:
         d, kpts = self.get_QP_result()
         if kind in ["eqp", "qp"]:
             _logger.debug("Load QP band structure")
-            return BandStructure(d[kind], d["occ"], unit='ev', **kwargs), kpts
-        elif kind in ["eps"]:
+            return BandStructure(d["eqp"], d["occ"], unit='ev', **kwargs), kpts
+        elif kind in ["eps",]:
             _logger.debug("Load KS band structure")
             return BandStructure(d[kind], d["occ"], unit='ev', **kwargs), kpts
         elif kind in ["exx", "hf"]:
