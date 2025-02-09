@@ -89,15 +89,15 @@ class BandStructure(EnergyUnit):
                  pwav=None, atms: Sequence[str] = None, prjs: Sequence[str] = None,
                  use_occ_only: bool = False):
         shape_e = np.shape(eigen)
-        consist = [len(shape_e) == DIM_EIGEN_OCC, shape_e[0] <= 2]
-        if not all(consist):
+        _logger.debug("shape of eigen: %r", shape_e)
+        if len(shape_e) != DIM_EIGEN_OCC or shape_e[0] > 2:
             info = "Bad eigen shape"
             _logger.error(info)
             raise BandStructureError
         if occ is not None:
             shape_o = np.shape(occ)
-            consist = [len(shape_o) == DIM_EIGEN_OCC, np.allclose(shape_e, shape_o)]
-            if not all(consist):
+            _logger.debug("shape of occ: %r", shape_o)
+            if len(shape_o) != DIM_EIGEN_OCC or not np.allclose(shape_e, shape_o):
                 info = "Bad occupation shape"
                 _logger.error(info)
                 raise BandStructureError
