@@ -495,13 +495,13 @@ When other keyword are parsed, they will be filtered out and no exception will b
         return sym_nat_from_atms(self._atms)
 
     # pylint: disable=R0914
-    def get_supercell(self, n1: int = 1, n2: int = 1, n3: int = 1, sort_atms: bool = True):
+    def get_supercell(self, *transform: int, sort_atms: bool = True):
         """create supercell from current
 
         Note that selective dynamic flags will be lost in the new object.
 
         Args:
-            n1, n2, n3 (int)
+            transform (int): transformation matrx. Should be 1, 3, or 9 integers.
             sort_atms (bool): whether to sort the arrangement of atms in the supercell
 
         Returns:
@@ -509,30 +509,56 @@ When other keyword are parsed, they will be filtered out and no exception will b
             mapping
         """
         was_c = self.coord_sys == "C"
-        multi = np.array([n1, n2, n3])
-        # print(multi)
-        if np.prod(multi) == 0:
+        n_transmat_elem = len(transform)
+        if n_transmat_elem == 1:
+            multi = np.abs(transform[0] * transform[0] * transform[0])
+            transmat = [[transform[0], 0, 0], [0, transform[0], 0], [0, 0, transform[0]]]
+        elif n_transmat_elem == 3:
+            multi = np.abs(transform[0] * transform[1] * transform[2])
+            transmat = [[transform[0], 0, 0], [0, transform[1], 0], [0, 0, transform[2]]]
+        elif n_transmat_elem == 9:
+            transmat = [[transform[0], transform[1], transform[2]],
+                        [transform[3], transform[4], transform[5]],
+                        [transform[6], transform[7], transform[8]],]
+            multi = abs(int(round(np.linalg.det(transmat))))
+        _logger.info("Super cell transformation matrix: %r", transmat)
+        if multi == 0:
             raise ValueError("encounter zero expansion")
 
         self.coord_sys = "D"
         latt, atms, posi = self.get_cell()
+        inv_transmat = np.linalg.inv(transmat)
         scatms = []
-        for _ in range(n1 * n2 * n3):
+        for _ in range(multi):
             scatms.extend(atms)
-        sclatt = latt.transpose() * multi
-        sclatt = sclatt.transpose()
-        posi = posi / multi
+        sclatt = np.dot(transmat, latt)
+        # new positions of atoms of the unit cell in the super cell
+        posi = np.dot(posi, inv_transmat)
 
         scposi = []
         mapping = []
+        if n_transmat_elem == 1:
+            n1 = transform[0]
+            n2 = transform[0]
+            n3 = transform[0]
+        elif n_transmat_elem == 3:
+            n1 = transform[0]
+            n2 = transform[1]
+            n3 = transform[2]
+        else:
+            info = "Supercell generation with non-diagonal transformation matrix is not implemented yet"
+            _logger.error(info)
+            raise NotImplementedError(info)
+
         # n3, n2, n1 to make the first coordinate goes fastest
         for i3, i2, i1 in product(range(n3), range(n2), range(n1)):
-            shift = np.ones((self.natm, 3)) * np.divide([i1, i2, i3], multi)
+            shift = np.ones((self.natm, 3)) * np.divide([i1, i2, i3], [n1, n2, n3])
             scposi.extend(posi + shift)
             mapping.extend(list(range(self.natm)))
         # do not sort atoms when creating, avoid messing up the primitive-supercell correspondence
+        comment = "Super cell of {}".format(self.comment)
         sc = type(self)(sclatt, scatms, scposi, unit=self.unit, coord_sys="D", sort_atms=False,
-                        comment="{}x{}x{} S.C. of {}".format(n1, n2, n3, self.comment),
+                        comment=comment,
                         reference=self.get_reference())
         if sort_atms:
             mapping_new_to_old = sc.sort_atms()

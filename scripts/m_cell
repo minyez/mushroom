@@ -31,7 +31,7 @@ def _parser():
                       help="extract predefined sample cell. int or str. see -l")
     igrp.add_argument('-l', dest='show', action="store_true",
                       help="list predefined sample cells")
-    p.add_argument('--sc', dest='supercell', default=None, nargs=3, type=int,
+    p.add_argument('--sc', dest='supercell', default=None, nargs="+", type=int,
                    help="create super cell")
     p.add_argument('--prim', dest='primitize', action="store_true",
                    help="primitize the cell (spglib required)")
@@ -50,6 +50,22 @@ def _parser():
     if autocomplete is not None:
         autocomplete(p)
     return p
+
+
+def write_transformtion_matrix(supercell: list[int]):
+    with open("transformation_matrix.dat", 'w') as h:
+        if len(supercell) == 1:
+            print(supercell[0], 0, 0, file=h)
+            print(0, supercell[0], 0, file=h)
+            print(0, 0, supercell[0], file=h)
+        elif len(supercell) == 3:
+            print(supercell[0], 0, 0, file=h)
+            print(0, supercell[1], 0, file=h)
+            print(0, 0, supercell[2], file=h)
+        elif len(supercell) == 9:
+            print(supercell[0], supercell[1], supercell[2], file=h)
+            print(supercell[3], supercell[4], supercell[5], file=h)
+            print(supercell[6], supercell[7], supercell[8], file=h)
 
 
 def build_cell():
@@ -89,10 +105,7 @@ def build_cell():
                 print(i + 1, file=h)
     # Write transformation matrix, support diagonal only
     if args.supercell is not None:
-        with open("transformation_matrix.dat", 'w') as h:
-            print(args.supercell[0], 0, 0, file=h)
-            print(0, args.supercell[1], 0, file=h)
-            print(0, 0, args.supercell[2], file=h)
+        write_transformtion_matrix(args.supercell)
 
 
 if __name__ == "__main__":

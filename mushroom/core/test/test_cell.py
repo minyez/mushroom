@@ -574,8 +574,8 @@ class test_cell_manipulation(ut.TestCase):
                                                  [0.5, 0.0, 0.0],], dtype=brokenNaCl._dtype)))
 
 
-class test_supercell(ut.TestCase):
-    """test the supercell creation"""
+class test_diagonal_supercell(ut.TestCase):
+    """test the supercell creation with diagonal transformation matrix"""
     latt = [[1.0, 0.0, 0.0],
             [0.0, 2.0, 0.0],
             [0.0, 0.0, 3.0]]
@@ -644,7 +644,7 @@ class test_supercell(ut.TestCase):
         self.assertTrue(np.array_equal(sc.posi, np.array(scposi, dtype=Cell._dtype)))
 
     def test_122(self):
-        """test 2 2 2 supercell creation"""
+        """test 1 2 2 supercell creation"""
         sclatt = [[1.0, 0.0, 0.0],
                   [0.0, 4.0, 0.0],
                   [0.0, 0.0, 6.0]]
@@ -661,7 +661,25 @@ class test_supercell(ut.TestCase):
         self.assertListEqual(scatms, sc.atms)
         self.assertListEqual(mapping, [0, 0, 0, 0, 1, 1, 1, 1])
         self.assertTrue(np.array_equal(sc.latt, np.array(sclatt, dtype=Cell._dtype)))
+        # print(sc.posi, scposi)
         self.assertTrue(np.array_equal(sc.posi, np.array(scposi, dtype=Cell._dtype)))
+
+
+class test_diagonal_supercell(ut.TestCase):
+
+    def test_silicon_prim2conv(self):
+        """test converting Si primitive cell to conventional cell"""
+        latt = [[0.0, 2.7, 2.7],
+                [2.7, 0.0, 0.7],
+                [2.7, 2.7, 0.0]]
+        atms = ["C", "Si"]
+        posi = [[0.00, 0.00, 0.00],
+                [0.25, 0.25, 0.25]]
+        cell = Cell(latt, atms, posi, coord_sys="D")
+        transmat = [-1, 1, 1,
+                    1, -1, 1,
+                    1, 1, -1]
+        self.assertRaises(ValueError, cell.get_supercell, *transmat)
 
 
 class test_spglib_convert(ut.TestCase):
