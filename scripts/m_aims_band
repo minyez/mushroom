@@ -5,6 +5,7 @@ from typing import List
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 from mushroom.aims.band import read_band_output
 from mushroom.aims.input import Control, get_path_ksymbols
@@ -41,6 +42,7 @@ def _parser():
     p.add_argument("--no-band-line", action="store_true", help="do not draw band lines, use marker")
     p.add_argument("--use-occ-only", action="store_true",
                    help="only use occupation number to detect band edges, instead of using both energy and occ")
+    p.add_argument("--engine", default="grace", choices=["grace", "plt"], help="plot engine, grace/matplotlib(plt)")
     p.add_argument("--marker", default="none", help="marker")
     p.add_argument("--ms", dest="marker_size", default=1.0, help="marker size")
     p.add_argument(
@@ -95,7 +97,6 @@ def get_reference(bs, vbm_zero, cbm_zero, fermi_zero, isikib_zero):
 def m_aims_band():
     """the main stream"""
     args = _parser().parse_args()
-    p, ax = Plot.subplots(1, 1, background=not args.transparent)
     bs, kpts = read_band_output(*args.out_files, unit=args.unit,
                                 filter_k_before=args.remove_k_before,
                                 filter_k_behind=args.remove_k_behind, use_occ_only=args.use_occ_only)
@@ -144,8 +145,7 @@ def m_aims_band():
         ls = "none"
         if marker == "none":
             marker = "o"
-    ax.plot(kp.x, eigen.transpose() - ref, color="k", symbol=marker, ls=ls, ssize=args.marker_size)
-    ax.x.set_major(grid=True, size=0.0, color="grey", lw=3, ls="longdashed")
+
     ksymbols = None
     if args.ksymbols is not None:
         ksymbols = args.ksymbols
@@ -164,7 +164,6 @@ def m_aims_band():
         print(kp.special_x)
         raise ValueError("Number of k segments different from number of symbols! Contact developer")
 
-    ax.x.set_spec(kp.special_x, labels=ksymbols)
     # check non-continuous special kx
     x_break = []
     ksym_break = []
@@ -173,33 +172,43 @@ def m_aims_band():
             if "|" in ksym:
                 x_break.append(x)
                 ksym_break.append(ksym)
-    if len(ksym_break) > 0:
-        ax.altx.set(switch="on")
-        ax.altx.set_bar(switch="off")
-        ax.altx.set_tick(switch="off")
-        ax.altx.set_ticklabel(switch="off")
-        ax.altx.set_spec(x_break, labels=ksym_break)
-        ax.altx.set_major(grid=True, size=0.0, color="black", lw=3, ls="solid")
 
     if args.energy_range is not None:
         try:
             emin, emax = decode_float_ends(args.energy_range)
-            ax.set_ylim(ymin=emin, ymax=emax)
         except ValueError as err:
             raise ValueError("invalid energy range", args.energy_range) from err
     else:
-        ax.set_ylim(-20, 20)
+        emin = -20
+        emax = 20
 
-    # slightly wider than the last symbol to make it visible on graph
-    ax.set_xlim(0.0, kp.x[-1] * 1.001)
-    ax.y.set_major(major=4)
-    ax.y.set_label("Energy (eV)")
-    # draw zero line
-    ax.axhline(0.0, ls="dashed")
-    if args.output != "none":
-        p.write(file=args.output)
-        if args.fig_ext is not None:
-            p.savefig(get_filename_wo_ext(args.output) + "." + args.fig_ext)
+    if args.engine == "grace":
+        p, ax = Plot.subplots(1, 1, background=not args.transparent)
+        ax.plot(kp.x, eigen.transpose() - ref, color="k", symbol=marker, ls=ls, ssize=args.marker_size)
+        ax.x.set_major(grid=True, size=0.0, color="grey", lw=3, ls="longdashed")
+        ax.x.set_spec(kp.special_x, labels=ksymbols)
+
+        if len(ksym_break) > 0:
+            ax.altx.set(switch="on")
+            ax.altx.set_bar(switch="off")
+            ax.altx.set_tick(switch="off")
+            ax.altx.set_ticklabel(switch="off")
+            ax.altx.set_spec(x_break, labels=ksym_break)
+            ax.altx.set_major(grid=True, size=0.0, color="black", lw=3, ls="solid")
+
+        # slightly wider than the last symbol to make it visible on graph
+        ax.set_xlim(0.0, kp.x[-1] * 1.001)
+        ax.set_ylim(ymin=emin, ymax=emax)
+        ax.y.set_major(major=4)
+        ax.y.set_label("Energy (eV)")
+        # draw zero line
+        ax.axhline(0.0, ls="dashed")
+        if args.output != "none":
+            p.write(file=args.output)
+            if args.fig_ext is not None:
+                p.savefig(get_filename_wo_ext(args.output) + "." + args.fig_ext)
+    else:
+        raise NotImplemented
 
 
 if __name__ == "__main__":
