@@ -1221,6 +1221,8 @@ def display_band_analysis(bs: BandStructure, kpts=None, unit="eV", value_only=Fa
         ik_eg_dir = np.argmin(direct_gaps)
         ivb, ik_vb = bs.ivbm[2], bs.ivbm[1]
         icb, ik_cb = bs.icbm[2], bs.icbm[1]
+        eg_vb = direct_gaps[ik_vb]
+        eg_cb = direct_gaps[ik_cb]
 
         slist = []
 
@@ -1234,35 +1236,37 @@ def display_band_analysis(bs: BandStructure, kpts=None, unit="eV", value_only=Fa
                 if kpts is None:
                     sprint(">>   ik={:<3d}".format(ik_eg_dir))
                 else:
-                    sprint(">>   ik={:<3d} ({:7.5f},{:7.5f},{:7.5f})"
+                    sprint(">>   ik={:<3d} ({:7.4f},{:7.4f},{:7.4f})"
                            .format(ik_eg_dir, *kpts[ik_eg_dir, :]))
             else:
                 sprint("> fundamental gap = {:8.4f} {}".format(eg_ind, unit))
                 if kpts is None:
                     sprint(">> ikvb={:<3d} -> ikcb={:<3d}".format(ik_vb, ik_cb))
                 else:
-                    sprint(">> ikvb={:<3d} ({:7.5f},{:7.5f},{:7.5f}) -> ikcb={:<3d} ({:7.5f},{:7.5f},{:7.5f})"
+                    sprint(">> ikvb={:<3d} ({:7.4f},{:7.4f},{:7.4f}) -> ikcb={:<3d} ({:7.4f},{:7.4f},{:7.4f})"
                            .format(ik_vb, *kpts[ik_vb, :], ik_cb, *kpts[ik_cb, :]))
-                sprint(">> VBM direct gap = {:8.4f} {}".format(direct_gaps[ik_vb], unit))
-                sprint(">> CBM direct gap = {:8.4f} {}".format(direct_gaps[ik_cb], unit))
+                sprint(">> VBM direct gap = {:8.4f} {}".format(eg_vb, unit))
+                sprint(">> CBM direct gap = {:8.4f} {}".format(eg_cb, unit))
                 if kpts is None:
                     sprint("> min. direct gap = {:8.4f} {} at ik={:<3d}"
                            .format(eg_dir, unit, ik_eg_dir))
                 else:
-                    sprint("> min. direct gap = {:8.4f} {} at ik={:<3d} ({:7.5f},{:7.5f},{:7.5f})"
+                    sprint("> min. direct gap = {:8.4f} {} at ik={:<3d} ({:7.4f},{:7.4f},{:7.4f})"
                            .format(eg_dir, unit, ik_eg_dir, *kpts[ik_eg_dir, :]))
         else:
+            # remove tip text and only print values
             if bs.is_gap_direct():
                 if kpts is None:
                     sprint("{:8.4f}".format(eg_dir))
                 else:
-                    sprint("{:8.4f} # ({:f},{:f},{:f})".format(eg_dir, *kpts[ik_eg_dir, :]))
+                    sprint("{:8.4f} # {:d} -> {:d} ({:f},{:f},{:f})".format(eg_dir, ivb, icb, *kpts[ik_eg_dir, :]))
             else:
                 if kpts is None:
-                    sprint("{:8.4f} {:8.4f} {:8.4f}".format(eg_ind, direct_gaps[ik_vb], direct_gaps[ik_cb]))
+                    sprint("{:8.4f} {:8.4f} {:8.4f} # {:d} -> {:d}"
+                           .format(eg_ind, eg_vb, eg_cb, ivb, icb))
                 else:
-                    sprint("{:8.4f} {:8.4f} {:8.4f} # ({:f},{:f},{:f}) ({:f},{:f},{:f})"
-                           .format(eg_ind, direct_gaps[ik_vb], direct_gaps[ik_cb], *kpts[ik_vb], *kpts[ik_cb]))
+                    sprint("{:8.4f} {:8.4f} {:8.4f} # {:d} ({:f},{:f},{:f}) -> {:d} ({:f},{:f},{:f})"
+                           .format(eg_ind, eg_vb, eg_cb, ivb, *kpts[ik_vb], icb, *kpts[ik_cb]))
         bs.unit = was_unit
     except BandStructureError as err:
         raise BandStructureError("fail to display band analysis") from err
@@ -1347,10 +1351,10 @@ def display_transition_energies(trans: Sequence[str],
                 if kpts is None:
                     sprint("{:8.4f}".format(et))
                 else:
-                    vk_str = "{:7.4f},{:7.4f},{:7.4f}".format(*kpts[ivk, :])
-                    ck_str = "{:7.4f},{:7.4f},{:7.4f}".format(*kpts[ick, :])
-                    sprint("{:8.4f} # ({:s}) ({:s})"
-                           .format(et, vk_str, ck_str))
+                    vk_str = "{:f},{:f},{:f}".format(*kpts[ivk, :])
+                    ck_str = "{:f},{:f},{:f}".format(*kpts[ick, :])
+                    sprint("{:8.4f} # {:d} ({:s}) -> {:d} ({:s})"
+                           .format(et, ivb, vk_str, icb, ck_str))
         if value_only and not silent:
             sprint("")
         bs.unit = was_unit

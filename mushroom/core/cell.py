@@ -93,9 +93,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
         if comment is not None:
             self.comment = "{}".format(comment)
 
-        self._reference = ''
-        if reference is not None:
-            self._reference = "{}".format(reference)
+        self._reference = reference
 
         try:
             self._latt = np.array(latt, dtype=self._dtype)
@@ -1140,7 +1138,10 @@ When other keyword are parsed, they will be filtered out and no exception will b
         self.unit = "ang"
 
         syms, nats = sym_nat_from_atms(self._atms)
-        ret.append("{} ({})".format(self.comment, self._reference))
+        if self._reference is None:
+            ret.append("{}".format(self.comment))
+        else:
+            ret.append("{} (Ref: {})".format(self.comment, self._reference))
         ret.append("{:8.6f}".format(scale))
         for i in range(3):
             ret.append("  %12.8f  %12.8f  %12.8f"
@@ -1179,16 +1180,21 @@ When other keyword are parsed, they will be filtered out and no exception will b
         atom_tag = "atom_frac"
         if self.coord_sys == "C":
             atom_tag = "atom"
+
         ret = []
-        ret.append("#\n# {}".format(self.comment))
-        ret.append("# reference: {}\n#".format(self.get_reference()))
+        # Header
+        ret.append("# {}".format(self.comment))
+        if self.get_reference() is not None:
+            ret.append("# reference: {}#".format(self.get_reference()))
+        # Lattice vectors
+        for l in self.latt:
+            ret.append("lattice_vector {:15.9f} {:15.9f} {:15.9f}".format(*l))
+        # Atom positions
         for posi, atm in zip(self.posi, self.atms):
             # aims usually doesn't have arabic number in atom symbols,
             # so we prune it before export (by a very naive way)
             atm_prune_ara = atm.strip(" 0123456789")
             ret.append("{} {:15.9f} {:15.9f} {:15.9f} {}".format(atom_tag, *posi, atm_prune_ara))
-        for l in self.latt:
-            ret.append("lattice_vector {:15.9f} {:15.9f} {:15.9f}".format(*l))
         self.unit = was_unit
         _logger.debug("converted string list to return\n%r", ret)
         return '\n'.join(ret)

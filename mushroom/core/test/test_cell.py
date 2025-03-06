@@ -679,7 +679,7 @@ class test_diagonal_supercell(ut.TestCase):
         transmat = [-1, 1, 1,
                     1, -1, 1,
                     1, 1, -1]
-        self.assertRaises(ValueError, cell.get_supercell, *transmat)
+        self.assertRaises(NotImplementedError, cell.get_supercell, *transmat)
 
 
 class test_spglib_convert(ut.TestCase):

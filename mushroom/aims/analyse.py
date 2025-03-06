@@ -69,7 +69,7 @@ def get_chemical_potential(aimsout):
     chempot = None
     with open(aimsout, 'r') as h:
         for l in h.readlines():
-            if l.startswith("  | Chemical Potential"):
+            if l.startswith("  | Chemical Potential") or l.startswith("  | Chemical potential"):
                 chempot = float(l.split()[-2])
     return chempot
 
