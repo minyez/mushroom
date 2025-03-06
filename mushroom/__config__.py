@@ -1,13 +1,13 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""extract configurations from rc files"""
+"""Extract configurations from rc files"""
 import os
 import sys
-from importlib import machinery
+import importlib.util
+from importlib.machinery import SourceFileLoader
 
 from mushroom import __NAME__
 
-# a global configuration file
+# A global configuration file
 fn = __NAME__ + "rc"
 dotfn = "." + fn
 config_files = [
@@ -16,18 +16,18 @@ config_files = [
     dotfn,
 ]
 
-module_name = __NAME__ + '.__config__'
-
+module_name = __NAME__ + ".__config__"
 found_config = False
 
-
-# pylint: disable=no-value-for-parameter,W1505
 for config_file in config_files:
     if os.path.isfile(config_file):
         found_config = True
-        # TODO: replace load_module with exec_module
-        # Reference: https://github.com/wntrblm/nox/blob/afb5111f67eb35c4cc4974ee3e875cdb20199018/nox/tasks.py#L36
-        machinery.SourceFileLoader(module_name, config_file).load_module()
+        loader = SourceFileLoader(module_name, config_file)
+        spec = importlib.util.spec_from_loader(module_name, loader)
+        if spec is not None:
+            module = importlib.util.module_from_spec(spec)
+            loader.exec_module(module)
+            sys.modules[module_name] = module  # Ensure it's accessible globally
 
-del (config_files, config_file, machinery, module_name, os, sys)
-
+# Cleanup namespace
+del (config_files, config_file, importlib, module_name, os, sys, SourceFileLoader)
