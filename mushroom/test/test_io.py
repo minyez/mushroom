@@ -50,10 +50,9 @@ direct
         cellio = CellIO(tf.name, format=self.CELL_TEMPLATE_FORMAT)
         cellio.manipulate(standardize=True)
         cellio.manipulate(primitize=True)
-        mapping = cellio.manipulate(supercell=[1, 1, 2], sort_atms=True)
-        self.assertListEqual(mapping, [0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7,  # S
+        mapping = cellio.manipulate(supercell=[1, 1, 2], sort_atms=True, images_consec=False)
+        self.assertListEqual(mapping, [0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7,
                                        8, 9, 10, 11, 8, 9, 10, 11])
-
         tf.close()
 
     def test_write(self):

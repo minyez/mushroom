@@ -33,6 +33,9 @@ def _parser():
                       help="list predefined sample cells")
     p.add_argument('--sc', dest='supercell', default=None, nargs="+", type=int,
                    help="create super cell")
+    p.add_argument('--coord', dest='coord_system', default="D", choices=["d", "c", "D", "C"],
+                   type=str,
+                   help="create super cell")
     p.add_argument('--prim', dest='primitize', action="store_true",
                    help="primitize the cell (spglib required)")
     p.add_argument('--std', dest='standardize', action="store_true",
@@ -95,7 +98,7 @@ def build_cell():
     # super cell mapping
     mapping = cio.manipulate(primitize=args.primitize, standardize=args.standardize,
                              supercell=args.supercell)
-    cio.write(output_path=args.output_path, format=args.output_format)
+    cio.write(output_path=args.output_path, format=args.output_format, coord_system=args.coord_system.upper())
 
     # Dump super-cell information
     # TODO: hard coded mapping export

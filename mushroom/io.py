@@ -63,11 +63,12 @@ class CellIO:
             self._cell, retval = self._cell.get_supercell(*supercell, **kwargs)
         return retval
 
-    def write(self, output_path: Union[str, os.PathLike] = None, format: str = None) -> None:
+    def write(self, output_path: Union[str, os.PathLike] = None, format: str = None, coord_system: str = "D") -> None:
         """write the cell to ``output_path`` in the format of program ``format``
         Args:
             output_path (path-like)
             format (str): identifier for program
+            coord_system (str): direct or cartesian, except for wien2k
         """
         if format is None:
             if output_path is None:
@@ -86,14 +87,21 @@ class CellIO:
             if format == "w2k":
                 self._struct.write(filename=output_path)
             else:
-                self._struct.get_cell().write(format, filename=output_path)
+                c = self._struct.get_cell()
+                cs_old = c.coord_sys
+                c.coord_sys = coord_system
+                c.write(format, filename=output_path)
+                c.coord_sys = cs_old
             return
 
         # writer for a non-wien2k read-in cell
         if format == "w2k":
             Struct.from_cell(self._cell).write(filename=output_path)
         else:
+            cs_old = self._cell.coord_sys
+            self._cell.coord_sys = coord_system
             self._cell.write(format, filename=output_path)
+            self._cell.coord_sys = cs_old
 
 
 def read_elsi_to_csc(fn, verbose=False):

@@ -493,18 +493,18 @@ When other keyword are parsed, they will be filtered out and no exception will b
         return sym_nat_from_atms(self._atms)
 
     # pylint: disable=R0914
-    def get_supercell(self, *transform: int, sort_atms: bool = True):
+    def get_supercell(self, *transform: int, sort_atms: bool = False, images_consec: bool = True):
         """create supercell from current
 
         Note that selective dynamic flags will be lost in the new object.
 
         Args:
             transform (int): transformation matrx. Should be 1, 3, or 9 integers.
-            sort_atms (bool): whether to sort the arrangement of atms in the supercell
+            sort_atms (bool): whether to sort the arrangement of atms in the supercell.
+            images_consec (bool): When True, images mapped to the same atom in the primitive cell will be consecutive.
 
         Returns:
-            Cell
-            mapping
+            Cell, list (sc2pc mapping)
         """
         was_c = self.coord_sys == "C"
         n_transmat_elem = len(transform)
@@ -526,15 +526,20 @@ When other keyword are parsed, they will be filtered out and no exception will b
         self.coord_sys = "D"
         latt, atms, posi = self.get_cell()
         inv_transmat = np.linalg.inv(transmat)
-        scatms = []
-        for _ in range(multi):
-            scatms.extend(atms)
+        scatms = [None, ] * (multi * self.natm)
+        if images_consec:
+            for i in range(multi):
+                scatms[i::multi] = atms
+        else:
+            for i in range(multi):
+                scatms[i * self.natm: (i + 1) * self.natm] = atms
+        _logger.debug("Super cell atoms: %r", scatms)
         sclatt = np.dot(transmat, latt)
         # new positions of atoms of the unit cell in the super cell
         posi = np.dot(posi, inv_transmat)
 
-        scposi = []
-        mapping = []
+        scposi = np.zeros((len(scatms), 3))
+        mapping = [None,] * (len(scatms))
         if n_transmat_elem == 1:
             n1 = transform[0]
             n2 = transform[0]
@@ -548,11 +553,18 @@ When other keyword are parsed, they will be filtered out and no exception will b
             _logger.error(info)
             raise NotImplementedError(info)
 
-        # n3, n2, n1 to make the first coordinate goes fastest
-        for i3, i2, i1 in product(range(n3), range(n2), range(n1)):
-            shift = np.ones((self.natm, 3)) * np.divide([i1, i2, i3], [n1, n2, n3])
-            scposi.extend(posi + shift)
-            mapping.extend(list(range(self.natm)))
+        if images_consec:
+            for i, (i3, i2, i1) in enumerate(product(range(n3), range(n2), range(n1))):
+                shift = np.ones((self.natm, 3)) * np.divide([i1, i2, i3], [n1, n2, n3])
+                scposi[i::multi, :] = posi + shift
+                mapping[i::multi] = list(range(self.natm))
+        else:
+            # n3, n2, n1 to make the first coordinate goes fastest
+            for i, (i3, i2, i1) in enumerate(product(range(n3), range(n2), range(n1))):
+                shift = np.ones((self.natm, 3)) * np.divide([i1, i2, i3], [n1, n2, n3])
+                scposi[i * self.natm:(i + 1) * self.natm, :] = posi + shift
+                mapping[i * self.natm:(i + 1) * self.natm] = list(range(self.natm))
+
         # do not sort atoms when creating, avoid messing up the primitive-supercell correspondence
         comment = "Super cell of {}".format(self.comment)
         sc = type(self)(sclatt, scatms, scposi, unit=self.unit, coord_sys="D", sort_atms=False,
