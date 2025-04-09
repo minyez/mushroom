@@ -85,6 +85,7 @@ def search_basis_directories(aims_species_defaults=None, error_dir_not_found: bo
     for path in root_dir.glob('**/01_H_default'):
         spath = str(path)
         paths.append(os.path.dirname(spath[len(os.path.commonprefix([path, root_dir])) + 1:]))
+    _logger.debug("Avail defaults: %r", paths)
 
     return paths
 
@@ -141,8 +142,11 @@ def get_species_filepaths(directory: str,
         species_defaults = get_species_defaults_directory()
     directories_avail = search_basis_directories(species_defaults, error_dir_not_found=error_dir_not_found)
     directory = directory.strip("/")
+    print("H")
+    _logger.debug("Checking for %s", directory)
     # possibly an alias
     if "/" not in directory:
+        _logger.debug("Checking alias for %s", directory)
         directory = get_basis_directory_from_alias(directory)
     if error_dir_not_found and directory not in directories_avail:
         raise ValueError("{} is not found in available basis directories {}"

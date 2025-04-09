@@ -46,10 +46,12 @@ if __name__ == '__main__':
         elements = args.elements
 
     directory = args.directory
-    directory = get_basis_directory_from_alias(directory)
-    basis_avail = search_basis_directories(args.species_defaults)
-    if directory not in basis_avail:
-        raise ValueError("Basis {} is not available".format(directory))
+    try:
+        directory = get_basis_directory_from_alias(directory)
+    except ValueError:
+        basis_avail = search_basis_directories(args.species_defaults)
+        if directory not in basis_avail:
+            raise ValueError("Basis {} is not available".format(directory))
 
     print("Appending elements {} from {} to {}".format(elements, directory, args.control_file))
     m_aims_apppend_basis(args.control_file, directory, *elements, species_defaults=args.species_defaults)
