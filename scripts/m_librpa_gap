@@ -1,0 +1,36 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""extract the band gap from LibRPA standard output"""
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
+
+from mushroom.core.bs import display_band_analysis, display_transition_energies
+from mushroom.librpa import read_quasi_particle_energies_stdout
+
+
+def _parser():
+    """the parser"""
+    p = ArgumentParser(description=__doc__, formatter_class=RawDescriptionHelpFormatter)
+    p.add_argument("stdout", type=str, help="LibRPA standard output file")
+    p.add_argument("--use-occ-only", action="store_true",
+                   help="only use occupation number to detect band edges, instead of using both energy and occ")
+    p.add_argument("--kind", default="qp", choices=["qp", "ks", "exx"],
+                   help="Type of band to check")
+    p.add_argument("-v", "--value", dest="value_only", action="store_true",
+                   help="show values only when displaying band")
+    p.add_argument("-t", dest="trans", type=str, default=None, nargs="+",
+                   help="transitions of interest, in the form of 'ivk:ick'")
+    return p
+
+
+def m_librpa_gap():
+    """the main stearm"""
+    args = _parser().parse_args()
+    bs, kpts = read_quasi_particle_energies_stdout(args.stdout, unit="ev",
+                                                   use_occ_only=args.use_occ_only)
+    display_band_analysis(bs, kpts, value_only=args.value_only)
+    if args.trans is not None:
+        display_transition_energies(args.trans, bs, kpts, value_only=args.value_only)
+
+
+if __name__ == '__main__':
+    m_librpa_gap()
