@@ -142,7 +142,6 @@ def get_species_filepaths(directory: str,
         species_defaults = get_species_defaults_directory()
     directories_avail = search_basis_directories(species_defaults, error_dir_not_found=error_dir_not_found)
     directory = directory.strip("/")
-    print("H")
     _logger.debug("Checking for %s", directory)
     # possibly an alias
     if "/" not in directory:
