@@ -394,7 +394,6 @@ class Species:
         Args:
             onset, width, scale (float)
         """
-        print(onset, width, scale)
         if onset is None and width is None and scale is None:
             return
         if onset is None or width is None or scale is None:
