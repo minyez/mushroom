@@ -14,6 +14,12 @@ Rules of parameters:
     in order, then follows: B' (bp).
 """
 import numpy as np
+from typing import List
+try:
+    from scipy.optimize import curve_fit
+except ImportError:
+    curve_fit = None
+from mushroom.core.ioutils import raise_no_module
 
 
 def _Murnaghan(v: np.ndarray, e0: float, v0: float,
@@ -59,3 +65,53 @@ def get_eos(name: str):
     if func is None:
         raise KeyError("Unknown name for EOS: {}".format(name))
     return func, shortname, nparams
+
+
+def fit_eos(name, vols, enes,
+            initial_guess: List[float] = None,
+            vfit: List[float] = None):
+    """Fit equation-of-state with input volume and energies
+
+    Args:
+        name (str)
+        vols, enes (1-d array)
+        initial_guess (tuple/list)
+        vfit (1-d array)
+
+    Returns:
+        tuple (popt), float (r2), 1-d array (e) if vfit is None, otherwise
+        tuple (popt), float (r2), 1-d array (e), 1-d array (vfit)
+
+    """
+    raise_no_module(curve_fit, "scipy.optimize.curve_fit")
+
+    opts_curve_fit = {"maxfev": 5000}
+    eosfunc, _, nparams = get_eos(name)
+
+    vols = np.array(vols)
+    enes = np.array(enes)
+
+    if initial_guess is not None:
+        if len(initial_guess) != nparams:
+            raise ValueError("invalid initial guess input")
+    else:
+        e0 = min(enes)
+        v0 = vols[np.where(enes == e0)][0]
+        b0 = 1.0
+        bp = 4.0
+        if nparams == 4:
+            initial_guess = [e0, v0, b0, bp]
+        else:
+            raise NotImplementedError
+
+    popt, pcov = curve_fit(eosfunc, vols, enes, p0=initial_guess,
+                           **opts_curve_fit)
+    # perr = np.sqrt(np.diag(pcov))
+    r2 = 1 - np.sum((enes - eosfunc(vols, *popt))**2) / np.sum(
+        (enes - np.mean(enes))**2)
+
+    e = eosfunc(vols, *popt)
+    if vfit is not None:
+        efit = eosfunc(vfit, *popt)
+        return popt, r2, e, efit
+    return popt, r2, e
