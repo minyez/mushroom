@@ -194,6 +194,22 @@ class test_species_manipulate(ut.TestCase):
         s = Species("H", {}, basis)
         s.export()
 
+    def test_get_adjust_cut_pot(self):
+        basis = [
+            ("valence", "1 s 1.0", False, 0, True),
+        ]
+        s = Species("H", {}, basis)
+        # Do nothing
+        s.adjust_cut_pot()
+        # Raise when cut_pot has been set
+        self.assertRaises(KeyError, s.get_cut_pot)
+        # Raise when incomplete cut_pot is parsed and cut_pot has not been set yet
+        self.assertRaises(ValueError, s.adjust_cut_pot, onset=4.0, width=None, scale=None)
+        # Raise when getting an invalid cut_pot
+        s.update_basic_tag("cut_pot", "4.0 2.0")
+        self.assertRaises(ValueError, s.get_cut_pot)
+        s.adjust_cut_pot(onset=4.0, width=2.0, scale=1.0)
+
     def test_get_basis(self):
         basis_raw = [
             ["valence", "1 s 1.0", False, 0, True],

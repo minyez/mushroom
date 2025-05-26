@@ -376,6 +376,45 @@ class Species:
         """delete ABF"""
         self._modify_basis_common(self.abf, btype, index, None, l_channel)
 
+    def get_cut_pot(self):
+        try:
+            onset, width, scale = self.tags["cut_pot"].split()
+            return onset, width, scale
+        except KeyError:
+            raise KeyError("cut_pot has not been set")
+        except ValueError:
+            raise ValueError("invalid original cut_pot value")
+
+    def adjust_cut_pot(self,
+                       onset: float = None,
+                       width: float = None,
+                       scale: float = None):
+        """Adjust cutoff potential
+
+        Args:
+            onset, width, scale (float)
+        """
+        print(onset, width, scale)
+        if onset is None and width is None and scale is None:
+            return
+        if onset is None or width is None or scale is None:
+            # When cut_pot has not been set before, all three parameters have to be parsed
+            if "cut_pot" not in self.tags:
+                raise ValueError("No cut_pot found, need all three parameters")
+        else:
+            # When all three parameters are parsed
+            self.update_basic_tag("cut_pot", "{} {} {}".format(onset, width, scale))
+            return
+        try:
+            onset_old, width_old, scale_old = self.tags["cut_pot"].split()
+            onset = onset or onset_old
+            width = width or width_old
+            scale = scale or scale_old
+        except ValueError:
+            raise ValueError("invalid original cut_pot value")
+
+        self.update_basic_tag("cut_pot", "{} {} {}".format(onset, width, scale))
+
     def switch_tier(self, tier: int, enable: bool, switch_aux: bool = True):
         """Switch the status of functions within a tier"""
         for b in self.basis:

@@ -436,6 +436,17 @@ class Control:
         ss = [Species.read_default(elem, directory=directory) for elem in elems]
         self.add_species(*ss, error_replace=error_replace)
 
+    def get_cut_pot(self, elem):
+        s = self.get_species(elem)
+        return s.get_cut_pot()
+
+    def adjust_cut_pot(self, elem,
+                       onset: float = None,
+                       width: float = None,
+                       scale: float = None):
+        s = self.get_species(elem)
+        s.adjust_cut_pot(onset, width, scale)
+
     def _export_basic_tags(self):
         """export basic tags into a list of string for later process"""
         slist = []
