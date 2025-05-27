@@ -194,6 +194,15 @@ class test_species_manipulate(ut.TestCase):
         s = Species("H", {}, basis)
         s.export()
 
+    def test_get_update_radial_multiplier(self):
+        basis = [
+            ("valence", "1 s 1.0", False, 0, True),
+        ]
+        s = Species("H", {}, basis)
+        self.assertRaises(KeyError, s.get_radial_multiplier)
+        s.update_radial_multiplier(2)
+        self.assertEqual("2", s.get_radial_multiplier())
+
     def test_get_adjust_cut_pot(self):
         basis = [
             ("valence", "1 s 1.0", False, 0, True),

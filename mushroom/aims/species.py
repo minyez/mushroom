@@ -376,6 +376,15 @@ class Species:
         """delete ABF"""
         self._modify_basis_common(self.abf, btype, index, None, l_channel)
 
+    def get_radial_multiplier(self):
+        try:
+            return self.tags["radial_multiplier"]
+        except KeyError:
+            raise KeyError("radial_multiplier has not been set")
+
+    def update_radial_multiplier(self, v: int):
+        self.update_basic_tag("radial_multiplier", v)
+
     def get_cut_pot(self):
         try:
             onset, width, scale = self.tags["cut_pot"].split()
