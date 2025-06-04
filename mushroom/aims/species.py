@@ -2,7 +2,7 @@
 """Class to handle basis set for atom species"""
 import os
 import pathlib
-from typing import Union
+from typing import Union, List, Tuple
 from io import StringIO
 from copy import deepcopy
 
@@ -182,6 +182,7 @@ class Species:
     """object handling species
 
     Args:
+        elem (str)
         basis (list): the basis set configuration.
             The value is a list, each element representes a basis function.
             Each member should be a list ``[basis_type, basis_string, is_aux, tier, enabled]``,
@@ -193,6 +194,12 @@ class Species:
             - ``tier`` should be a non-negative integer or None.
               0 stands for minimal basis, 1 for tier1 and so on so forth.
             - ``enabled`` is a bool. When True, the basis will be exported but commented out.
+
+        tags (dict)
+
+        header (str)
+
+        raw_lines (list of str): raw text lines with new line symbol stripped
     """
     species_basic_tag = ["nucleus", "mass", "l_hartree", "cut_pot", "basis_dep_cutoff",
                          "radial_base", "radial_multiplier", "angular_min", "angular_acc",
@@ -205,12 +212,15 @@ class Species:
     # TODO: use regular expression pattern to match the basis function lines
     # TODO: move basis set reading to NaoBasis class
 
-    def __init__(self, elem: str, tags: dict = None, basis: list = None,
-                 header: str = None):
+    def __init__(self, elem: str, tags: dict = None,
+                 basis: List[Tuple[str, str, bool, int, bool]] = None,
+                 header: str = None, raw_lines: List[str] = None):
         self.elem = elem
         self.tags = tags
         self.basis = basis
         self.header = header
+        # Raw text when reading in
+        self._raw_lines = raw_lines
 
     @classmethod
     def _check_basis_type(cls, basis_type: str):
@@ -479,8 +489,19 @@ class Species:
                 slist.extend(slist_tier)
         return "\n".join(slist)
 
-    def export(self, padding: int = 0):
-        """export the species to a string"""
+    def _export_raw(self, padding: int = 0):
+        if self._raw_lines is None:
+            raise ValueError("raw lines are not available")
+        # TODO: apply actual basis change
+        return "\n".join(self._raw_lines)
+
+    def _export(self, padding: int = 0):
+        """export the species to a string
+
+        Args:
+            padding (int)
+            use_raw (bool): use the raw text format
+        """
         header = "### Start species ###"
         if self.header is not None:
             header = self.header
@@ -500,17 +521,23 @@ class Species:
         #     slist.append("###   End species ###")
         return "\n".join(slist)
 
-    def write(self, pspecies):
+    def export(self, padding: int = 0, use_raw: bool = False):
+        if use_raw:
+            return self._export_raw(padding)
+        return self._export(padding)
+
+    def write(self, pspecies, padding: int = 0, use_raw: bool = False):
         """write the species content to file ``pspecies``"""
         with open(pspecies, 'w', encoding='utf-8') as h:
-            print(self.export(), file=h)
+            print(self.export(padding=padding, use_raw=use_raw), file=h)
 
     # pylint: disable=R0912,R0914,R0915
     @classmethod
     def read(cls, pspecies):
         """read in the species from a filelike object"""
         with open_textio(pspecies, 'r') as h:
-            _ls_splited = [x.split() for x in h.readlines()]
+            lines = [x.strip('\n') for x in h.readlines()]
+            _ls_splited = [x.split() for x in lines]
 
         elem = None
         tags = {}
@@ -626,7 +653,7 @@ class Species:
         header = None
         if len(headerl) > 0:
             header = "\n".join(headerl)
-        return cls(elem, tags, basis, header=header)
+        return cls(elem, tags, basis, header=header, raw_lines=lines)
 
     @classmethod
     def read_multiple(cls, pspecies):

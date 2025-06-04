@@ -440,12 +440,13 @@ class Control:
         s = self.get_species(elem)
         return s.get_cut_pot()
 
-    def adjust_cut_pot(self, elem,
+    def adjust_cut_pot(self, *elems,
                        onset: float = None,
                        width: float = None,
                        scale: float = None):
-        s = self.get_species(elem)
-        s.adjust_cut_pot(onset, width, scale)
+        for e in elems:
+            s = self.get_species(e)
+            s.adjust_cut_pot(onset, width, scale)
 
     def _export_basic_tags(self):
         """export basic tags into a list of string for later process"""
@@ -487,7 +488,7 @@ class Control:
         slist.append("")
         return slist
 
-    def export(self):
+    def export(self, species_padding: int = 0, species_use_raw: bool = False):
         """export the control object to a string"""
         # General tags
         slist = [get_banner("General Basic Tags"), ]
@@ -502,19 +503,17 @@ class Control:
         if self.species:
             slist.append(get_banner("Basis Sets"))
             slist.append("")
-            slist.extend(s.export() + "\n" for s in self.species)
+            slist.extend(
+                s.export(padding=species_padding, use_raw=species_use_raw) + "\n" for s in self.species)
 
-        return slist
+        return "\n".join(slist)
 
-    def __str__(self):
-        return "\n".join(self.export())
-
-    def write(self, pcontrol):
+    def write(self, pcontrol, species_padding: int = 0, species_use_raw: bool = False):
         """write the control content to file ``pcontrol``"""
         if len(self.species) == 0:
             _logger.warning("Writing control to file %s with no species info!" % pcontrol)
         with open_textio(pcontrol, 'w') as h:
-            print(self.__str__(), file=h)
+            print(self.export(species_padding=species_padding, species_use_raw=species_use_raw), file=h)
 
     @classmethod
     def read(cls, pcontrol: Union[str, os.PathLike] = "control.in"):
