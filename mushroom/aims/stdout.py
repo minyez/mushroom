@@ -11,6 +11,7 @@ from mushroom.core.logger import loggers
 
 __all__ = [
     "StdOut",
+    "AimsNotFinishedError",
 ]
 _logger = loggers["aims"]
 
@@ -524,18 +525,18 @@ class StdOut:
     def get_cpu_time(self):
         """get CPU time accounting (in seconds)"""
         if self._timestat is None:
-            raise AimsNotFinishedError
+            raise AimsNotFinishedError(self._path)
         return {k: v[0] for k, v in self._timestat.items()}
 
     def get_wall_time(self):
         """get wall time accounting (in seconds)"""
         if self._timestat is None:
-            raise AimsNotFinishedError
+            raise AimsNotFinishedError(self._path)
         return {k: v[1] for k, v in self._timestat.items()}
 
     def get_wall_time_total(self):
         """get total wall time (in seconds)"""
         if self._timestat is None:
-            raise AimsNotFinishedError
+            raise AimsNotFinishedError(self._path)
         return self._timestat['total'][1]
 
