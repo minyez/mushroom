@@ -3,7 +3,7 @@
 """
 import re
 from collections.abc import Iterable
-from itertools import permutations, product
+from itertools import permutations
 from typing import Sequence, Union
 from copy import deepcopy
 from numbers import Real, Number
@@ -455,6 +455,7 @@ class BandStructure(EnergyUnit):
         return self._pwav
 
     # pylint: disable=R0912,R0915
+    # TODO: issue exists in finding VBM/CBM when there is nan
     def compute_band_edges(self, reload: bool = False):
         '''compute the band edges on each spin-kpt channel, using occupation number
 
@@ -1196,7 +1197,9 @@ def split_apb(apb: str):
 
 
 # pylint: disable=C0301
-def display_band_analysis(bs: BandStructure, kpts=None, unit="eV", value_only=False, silent=False):
+def display_band_analysis(bs: BandStructure,
+                          kpts=None, unit="eV",
+                          value_only=False, silent=False):
     """display analysis of band structure
 
     Args:

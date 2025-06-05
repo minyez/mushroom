@@ -25,12 +25,17 @@ def _parser():
 
 def m_aims_apppend_basis(control_file, directory, *elem, species_defaults=None):
     """the main stream"""
-    regions = divide_control_lines(control_file)
-    gl = regions[0]
-    if len(regions) > 1:
-        print("Replacing existing basis information in control file {}".format(control_file))
     sl = readlines_species_defaults(directory, *elem, species_defaults=species_defaults)
-    ctrl_new = "".join(gl) + sl
+
+    if os.path.exists(control_file):
+        regions = divide_control_lines(control_file)
+        gl = regions[0]
+        if len(regions) > 1:
+            print("Replacing existing basis information in control file {}".format(control_file))
+        ctrl_new = "".join(gl) + sl
+    else:
+        ctrl_new = sl
+
     with open(control_file, 'w') as h:
         print(ctrl_new, file=h)
 
