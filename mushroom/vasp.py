@@ -15,7 +15,8 @@ except ImportError:
     BS = None
 
 from mushroom.core.logger import loggers
-from mushroom.core.ioutils import conv_string, raise_no_module, open_textio
+from mushroom.core.ioutils import conv_string, open_textio
+from mushroom.core.utils import raise_no_module
 from mushroom.core.dos import DensityOfStates
 from mushroom.core.bs import BandStructure
 from mushroom.core.pw import PWBasis

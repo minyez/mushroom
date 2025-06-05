@@ -8,7 +8,7 @@ from mushroom.core.typehint import Latt3T3
 from mushroom.core.constants import PI, AU2ANG, NAV
 from mushroom.core.elements import get_atomic_weight
 from mushroom.core.logger import loggers
-from mushroom.core.ioutils import raise_no_module
+from mushroom.core.utils import raise_no_module
 
 try:
     import spglib

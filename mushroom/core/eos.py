@@ -19,7 +19,7 @@ try:
     from scipy.optimize import curve_fit
 except ImportError:
     curve_fit = None
-from mushroom.core.ioutils import raise_no_module
+from mushroom.core.utils import raise_no_module
 
 
 def _Murnaghan(v: np.ndarray, e0: float, v0: float,

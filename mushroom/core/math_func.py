@@ -4,10 +4,14 @@ from numbers import Real, Number
 from typing import Sequence, Tuple, Union
 
 import numpy as np
+try:
+    from scipy import special
+except ImportError:
+    special = None
 
 from mushroom.core.constants import PI
 from mushroom.core.typehint import RealVec3D
-from mushroom.core.ioutils import raise_no_module
+from mushroom.core.utils import raise_no_module
 
 
 def solid_angle(xyz: Sequence[RealVec3D], polar_positive=True):
@@ -50,7 +54,7 @@ def sph_harm(l: Sequence[int], m: Sequence[int], theta: Sequence[float], phi: Se
         l,m (int): angular and azimuthal angular momentum quanta
         theta, phi (array): polar and azimuthal angles
     """
-    from scipy import special
+    raise_no_module(special, "scipy.special")
     return special.sph_harm(m, l, phi, theta)
 
 

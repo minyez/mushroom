@@ -13,7 +13,7 @@ from mushroom.core.ioutils import (split_comma, decode_int_ends, decode_int_rang
                                    get_first_last_line, readlines_remove_comment,
                                    trim_before, trim_both_sides, conv_string,
                                    readtext_split_emptyline, get_similar_str,
-                                   cycler, raise_no_module, bool2str, str2bool,
+                                   cycler, bool2str, str2bool,
                                    one_line_center_banner, block_banner,
                                    conv_integers_to_series)
 
@@ -191,15 +191,6 @@ class test_textio_operations(ut.TestCase):
             strings = readtext_split_emptyline(StringIO(s))
             self.assertEqual(len(strings), n)
             self.assertListEqual(strings, correct)
-
-
-class test_check(ut.TestCase):
-    """test check facilitiers"""
-
-    def test_raise_no_module(self):
-        """"""
-        self.assertRaises(ModuleNotFoundError, raise_no_module, None, "fake-module-name")
-        self.assertRaises(ModuleNotFoundError, raise_no_module, None, "fake-module-name", "for test")
 
 
 class test_file_path(ut.TestCase):

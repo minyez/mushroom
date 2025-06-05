@@ -30,8 +30,9 @@ from mushroom.core.crystutils import (get_latt_consts_from_latt_vecs,
                                       sym_nat_from_atms,
                                       axis_list)
 from mushroom.core.ioutils import (grep, get_str_indices, open_textio,
-                                   trim_comment, get_file_ext, raise_no_module,
+                                   trim_comment, get_file_ext,
                                    print_file_or_iowrapper)
+from mushroom.core.utils import raise_no_module
 from mushroom.core.logger import loggers
 from mushroom.core.typehint import Latt3T3, RealVec3D, Path
 

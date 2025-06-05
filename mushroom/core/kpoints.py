@@ -11,7 +11,7 @@ except ImportError:
     spglib = None
 
 from mushroom.core.logger import loggers
-from mushroom.core.ioutils import raise_no_module
+from mushroom.core.utils import raise_no_module
 
 __all__ = [
     "KPathLinearizer",
