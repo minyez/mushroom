@@ -288,9 +288,13 @@ class Cif:
                 _logger.debug("cloest fraction: %s", p)
                 posOne.append(p)
             posi_ineq.append(posOne)
-            natoms_per_ineq.append(int(l["_atom_site_symmetry_multiplicity"]))
             # remove chemical valence
             atms_ineq.append(re.sub(r"[\d]+[+-]?", "", l["_atom_site_type_symbol"]))
+            # Optional check
+            try:
+                natoms_per_ineq.append(int(l["_atom_site_symmetry_multiplicity"]))
+            except KeyError:
+                _logger.warn("no _atom_site_symmetry_multiplicity key in cif")
         self.posi_ineq = posi_ineq
         self.atms_ineq = atms_ineq
         self.natm_ineq = natoms_per_ineq
@@ -374,14 +378,17 @@ class Cif:
             atms, posi = get_all_atoms_from_symops(
                 self.atms_ineq, self.posi_ineq, self.operations, latt=self.latt)
             # consistency check
-            _logger.debug("natoms of each inequiv type: %r", self.natm_ineq)
             _logger.debug("positions of each inequiv type: %r", self.posi_ineq)
             _logger.debug("number of all atoms: %r", len(atms))
-            if sum(self.natm_ineq) != len(atms):
-                raise ValueError(
-                    "inconsistent number of atoms and entries after symmetry operations:",
-                    sum(self.natm_ineq), len(atms)
-                )
+            if self.natm_ineq:
+                _logger.debug("natoms of each inequiv type: %r", self.natm_ineq)
+                if sum(self.natm_ineq) != len(atms):
+                    raise ValueError(
+                        "inconsistent number of atoms and entries after symmetry operations:",
+                        sum(self.natm_ineq), len(atms)
+                    )
+            else:
+                _logger.debug("no multiplicity info in cif, skip consistency check")
             self.atms = atms
             self.posi = posi
         return self.atms, self.posi
@@ -398,6 +405,7 @@ class Cif:
                                                                "_citation_journal_volume",
                                                                "_citation_page_first"])
                 ref = "{} vol {}, pp {}".format(*ref)
+                # TODO: also search for doi
             except KeyError:
                 ref = ""
             self.ref = ref.replace('\n', ' ')
