@@ -27,6 +27,19 @@
       "atms": ["Si", "Si"]
     }
   },
+  "Si.pgw_kgrid_collinear.aims.out": {
+    "is_finished": true,
+    "chemical_potential": -4.62473536,
+    "nnodes": 1,
+    "ntasks": 4,
+    "nthreads": 1,
+    "nspins": 2,
+    "nkpts": 27,
+    "nbands": 18,
+    "nbasis": 18,
+    "nbasbas": 86,
+    "gwfundgap": 2.76704077
+  },
   "ZrO2_sc222.pgw_kgrid.aims.out": {
     "is_finished": true,
     "chemical_potential": -9.06471053,

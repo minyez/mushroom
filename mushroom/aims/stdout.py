@@ -3,11 +3,15 @@
 import re
 from io import StringIO
 
+import numpy as np
+
 from mushroom.core.bs import BandStructure
 from mushroom.core.typehint import Path
 from mushroom.core.ioutils import conv_string
 from mushroom.core.logger import loggers
 
+from mushroom.aims.input import read_geometry
+from mushroom.aims.input import Control
 
 __all__ = [
     "StdOut",
@@ -21,8 +25,65 @@ class AimsNotFinishedError(Exception):
     pass
 
 
-def split_aimsout_region(lines):
-    """split the aimsout region for processing"""
+def _split_aimsout_region(lines):
+    """Split the aimsout region for processing"""
+
+
+def _processing_pgw_kgrid_lines(lines, nspins: int, nkpts: int):
+    """Processing the lines containing quasi-particle energies on k-grid from periodc GW calculations
+
+    Args:
+        lines (list of str)
+        nspins (int) : number of spin channels.
+            Could be None or zero, in which case it will be determined.
+        nkpts (int) : number of k-points.
+            Must be a positive integer.
+    """
+
+    eqpline = re.compile(r'^\s*(\d+)' + r'\s+(-?[\d\.]+)' * 6 + r'(\\n)?$')
+    kptline = re.compile(r'^  K_point\s+(\d+)\s+:' + r'\s+(-?[\d\.]+)' * 3 + r'(\\n)?$')
+
+    # search the data
+    array = []
+    istates = []
+    for _l in lines:
+        m = eqpline.match(_l)
+        if m:
+            istates.append(int(m.group(1)))
+            array.append([*map(float, (m.group(i) for i in range(2, 8)))])
+    array = np.array(array)
+
+    # search k-point coordinates
+    kpts = []
+    for _l in lines:
+        m = kptline.match(_l)
+        if m:
+            kpts.append([*map(float, (m.group(i) for i in range(2, 5)))])
+
+    # figure out the dimensions
+    nkpts_times_nspins = istates.count(istates[0])
+    if nspins is None:
+        if nkpts_times_nspins % nkpts != 0:
+            msg = "Inconsistent number of QP energy headers found!"
+            _logger.error(msg)
+            raise ValueError(msg)
+        nspins = nkpts_times_nspins // nkpts
+    else:
+        assert (nspins * nkpts == nkpts_times_nspins)
+
+    # molecule cases
+    if len(kpts) == 0:
+        kpts = [[0, 0, 0]]
+    elif nspins == 2:
+        kpts = kpts[::2]
+    kpts = np.array(kpts)
+
+    # reshape all arrays
+    keys = ["occ", "eps", "exx", "vxc", "sigc", "eqp"]
+    d = {}
+    for i, k in enumerate(keys):
+        d[k] = np.swapaxes(array[:, i].reshape(nkpts, nspins, -1, order="C"), 0, 1)
+    return d, kpts
 
 
 class StdOut:
@@ -177,6 +238,7 @@ class StdOut:
 
     def _handle(self):
         """handle the data processing"""
+        _logger.debug("Begin processing %s", self._path)
         self._handle_system()
         self._handle_prep()
         self._handle_pbc_lists_init()
@@ -184,6 +246,11 @@ class StdOut:
         self._handle_scf()
         self._handle_postscf()
         self._handle_timing_statistics()
+        _logger.debug("End processing %s", self._path)
+
+        _logger.debug("Dimension info, spin/kpts/bands/nao: %r",
+                      self.get_n_spin_kpt_band_basis())
+        _logger.debug("Final chemical potential: %f", self._chemical_potential)
 
     def _handle_system(self):
         """process the system environment information"""
@@ -199,6 +266,7 @@ class StdOut:
                     self._node_names.append(m.group(2).strip())
                 continue
             if l.startswith("  *** Environment variable OMP_NUM_THREADS"):
+                _logger.debug("Found OMP_NUM_THREADS uninitialized")
                 try:
                     self._omp_threads = int(self._system_lines[i + 1].strip())
                 # when unset
@@ -206,12 +274,18 @@ class StdOut:
                     pass
                 continue
             if l.startswith("  | Environment variable OMP_NUM_THREADS correctly set to"):
+                _logger.debug("Found OMP_NUM_THREADS correctly set")
                 self._omp_threads = int(l[:-2].split()[-1])
 
+        # NOTE: this None check could be removed since proper FHI-aims output always have the proc names at the beginning
         if self._node_names is not None:
+            _logger.debug("Tasks names found, in total %d", len(self._node_names))
             self._node_names_unique = set(self._node_names)
             self._ntasks = len(self._node_names)
             self._nnodes = len(self._node_names_unique)
+            _logger.debug("Number of nodes/tasks: %d %d", self._nnodes, self._ntasks)
+        else:
+            _logger.warning("Fail to find MPI tasks information, the run must be corrupted")
 
     def get_nnodes(self):
         """get number of nodes used"""
@@ -351,8 +425,7 @@ class StdOut:
     @property
     def nelect(self):
         """the integer number of electrons"""
-        from numpy import rint
-        return int(rint(self._nelect))
+        return int(np.rint(self._nelect))
 
     def _handle_scf(self):
         """process the data in the self-consistency iterations"""
@@ -369,7 +442,6 @@ class StdOut:
 
     def get_control(self):
         """return a Control object"""
-        from mushroom.aims.input import Control
         if self._control is None:
             if not self._finished_control:
                 raise ValueError("control.in in the output is not complete")
@@ -387,7 +459,6 @@ class StdOut:
 
     def get_geometry(self):
         """return a Cell object representing the geometry"""
-        from mushroom.aims.input import read_geometry
         slines = self._geometry_lines
         return read_geometry(StringIO("".join(slines)))
 
@@ -417,9 +488,8 @@ class StdOut:
         Returns:
             a dict
         """
-        import numpy as np
-
         errmsg = "QP calculations is not {} from the standard output"
+        # Retun cached results
         if self._gw_kgrid_result is not None and self._gw_kgrid_kpts is not None:
             return self._gw_kgrid_result, self._gw_kgrid_kpts
 
@@ -437,50 +507,9 @@ class StdOut:
                 ed = i
         if st is None or ed is None:
             raise ValueError(errmsg.format('finished'))
-        # NOTE: might interfere with some debug output
-        eqpline = re.compile(r'^\s*(\d+)' + r'\s+(-?[\d\.]+)' * 6 + r'(\\n)?$')
-        # search the data
-        array = []
-        istates = []
-        for l in self._postscf_lines[st:ed]:
-            m = eqpline.match(l)
-            if m:
-                istates.append(int(m.group(1)))
-                array.append([*map(float, (m.group(i) for i in range(2, 8)))])
-        array = np.array(array)
-        kpts = []
-        kptline = re.compile(r'^  K_point\s+(\d+)\s+:' + r'\s+(-?[\d\.]+)' * 3 + r'(\\n)?$')
-        for l in self._postscf_lines[st:ed]:
-            m = kptline.match(l)
-            if m:
-                kpts.append([*map(float, (m.group(i) for i in range(2, 5)))])
-        # molecule cases
-        if len(kpts) == 0:
-            kpts = [[0, 0, 0]]
-        kpts = np.array(kpts)
-        # reshape all arrays. Generally, the first state is a fully occupied core state
-        # thus the number of spins can be decided from its occupation number
-        # this is usually not used, as the channel should be printed at the preparation stage
-        if self._nspins is None:
-            nspins = 1
-            if array[0, 0] == 1:
-                nspins = 2
-            self._nspins = nspins
-        # the number of kpoints to print, not necessary that used in SCF
-        nkpts = istates.count(istates[0]) // self._nspins
-        # print(istates)
-        # print(nkpts, len(kpts))
-        assert (nkpts == len(kpts))
 
-        # TODO: verify that kmesh goes faster than spin
-        #       otherwise one may swap the first two axis
-        keys = ["occ", "eps", "exx", "vxc", "sigc", "eqp"]
-        d = {}
-        for i, k in enumerate(keys):
-            d[k] = array[:, i].reshape(self._nspins, nkpts, -1, order="C")
-        # store the data
-        self._gw_kgrid_result = d
-        self._gw_kgrid_kpts = kpts
+        self._gw_kgrid_result, self._gw_kgrid_kpts = _processing_pgw_kgrid_lines(
+            self._postscf_lines[st:ed], self._nspins, self._nkpts)
 
         return self._gw_kgrid_result, self._gw_kgrid_kpts
 
@@ -493,8 +522,6 @@ class StdOut:
         """get the exchange self-energy correction (i.e. exact-exchange) to Koh-Sham state"""
         d, _ = self.get_QP_result()
         return d["exx"]
-
-    get_exx = get_QP_sigx
 
     def get_QP_bandstructure(self, kind="qp", **kwargs):
         """get the QP band structure
