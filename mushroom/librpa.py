@@ -260,7 +260,7 @@ def read_librpa_timing(fn: Union[str, os.PathLike] = "librpa.out", details: bool
         "load_coul_cut": ("Load truncated Coulomb", ),
         "wc_2d_ij": ("Convert Wc, 2D -> IJ", ),
         "wc_qw_rt": ("Tranform Wc (q,w) -> (R,t)", ),
-        "g0w0_total": ("G0W0 quasi-particle calculation", ),
+        "g0w0_total": ("G0W0 quasi-particle", ),
         "se_export": ("Export self-energy in KS basis", ),
         # some detailed timing
         "chi0_loop_ri": ("Loop over LibRI", ),
@@ -285,6 +285,7 @@ def read_librpa_timing(fn: Union[str, os.PathLike] = "librpa.out", details: bool
             # print(entry)
             for l in lines:
                 if l.strip().startswith(entry):
+                    _logger.debug("found entry %s for key %s", entry, key)
                     level = l.find(entry) // 2
                     words = l.split()
                     ncalls = int(words[-3])

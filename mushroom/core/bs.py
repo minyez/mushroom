@@ -243,7 +243,7 @@ class BandStructure(EnergyUnit):
             b.append(self._convert_band_iden(ib))
         return b
 
-    def prune_bands(self, remove_from_start: int = 0, remove_from_end: int = 0):
+    def prune_bands(self, remove_from_start: int = None, remove_from_end: int = None):
         """Remove unwanted bands from beginning or from the end
 
         Args:
@@ -253,12 +253,18 @@ class BandStructure(EnergyUnit):
         Returns:
             None
         """
+        if remove_from_start is None:
+            remove_from_start = 0
+        if remove_from_end is None:
+            remove_from_end = 0
+
         if remove_from_start == 0 and remove_from_end == 0:
             return
+
         if remove_from_start < 0:
-            raise ValueError("remove_from_start cannot be negative: %d" % remove_from_start)
+            raise ValueError(f"remove_from_start cannot be negative: {remove_from_start}")
         if remove_from_end < 0:
-            raise ValueError("remove_from_end cannot be negative: %d" % remove_from_end)
+            raise ValueError(f"remove_from_end cannot be negative: {remove_from_end}")
 
         ed = self.nbands - remove_from_end
         self._eigen = self._eigen[:, :, remove_from_start:ed]
@@ -523,7 +529,13 @@ class BandStructure(EnergyUnit):
         for i in range(self.nspins):
             for j in range(self.nkpts):
                 vb = self._ivbm_sp_kp[i, j]
-                self._vbm_sp_kp[i, j] = self.eigen[i, j, vb]
+                # work around for NaN, e.g. in GW QPE output
+                if np.isnan(self.eigen[i, j, vb]):
+                    _logger.warning("Encounter NaN in VB %d %d %d", i, j, vb)
+                    self._vbm_sp_kp[i, j] = -np.inf
+                else:
+                    self._vbm_sp_kp[i, j] = self.eigen[i, j, vb]
+                    _logger.debug("Updating VB %d %d %d %s", i, j, vb, self._vbm_sp_kp[i, j])
                 if vb == self.nbands - 1:
                     self._has_infty_cbm = True
                     info = "VBM index for spin-kpt channel (%d,%d) equals nbands. %s"
@@ -531,7 +543,12 @@ class BandStructure(EnergyUnit):
                         info, i + 1, j + 1, "CBM for this channel set to infinity")
                     self._cbm_sp_kp[i, j] = np.inf
                 else:
-                    self._cbm_sp_kp[i, j] = self.eigen[i, j, vb + 1]
+                    if np.isnan(self.eigen[i, j, vb + 1]):
+                        self._cbm_sp_kp[i, j] = np.inf
+                        _logger.warning("Encounter NaN in CB %d %d %d", i, j, vb + 1)
+                    else:
+                        self._cbm_sp_kp[i, j] = self.eigen[i, j, vb + 1]
+                        _logger.debug("Updating CB %d %d %d %s", i, j, vb + 1, self._cbm_sp_kp[i, j])
         # VB indices
         self._ivbm_sp = np.array(((0, 0),) * self.nspins)
         self._vbm_sp = np.max(self._vbm_sp_kp, axis=1)

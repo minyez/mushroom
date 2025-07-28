@@ -57,6 +57,9 @@ def _parser():
     p.add_argument("-v", "--value", dest="value_only", action="store_true",
                    help="show values only when displaying band")
 
+    p.add_argument("--rmbs", type=int, default=None)
+    p.add_argument("--rmbe", type=int, default=None)
+
     o = p.add_mutually_exclusive_group()
     o.add_argument("--ef", dest="efermi", type=float, default=None,
                    help="Fermi energy")
@@ -104,6 +107,8 @@ def m_aims_band():
     # reset the occupation numbers by Fermi energy
     if args.efermi is not None or args.n_states is not None:
         bs.reset_occupations(efermi=args.efermi, n_states=args.n_states)
+
+    bs.prune_bands(args.rmbs, args.rmbe)
 
     nbands = bs.nbands
     try:
