@@ -9,6 +9,8 @@ SQRT3 = 1.732050807568873
 FSCA = 0.0072973525664
 # Avogadro constant, in mol^-1
 NAV = 6.022140857e+23
+# elementary charge, in C
+E = 1.6021766208e-19
 # Planck constant, in J s
 H = 6.62607004e-34
 HBAR = 1.0545718001391127e-34
@@ -17,8 +19,6 @@ HINEV = 4.135667662e-15
 HBARINEV = 6.582119514e-16
 # mass of electron, in kg
 ME = 9.10938356e-31
-# elementary charge, in C
-E = 1.6021766208e-19
 # absolute g factor of electron
 GF = 2.00231930436182
 # speed of light in vacuum, in meter
@@ -42,6 +42,8 @@ EV2RY = 1.0 / RY2EV
 EV2J = E
 EV2KJ = EV2J / 1000.0
 EV2K = E / KB
+EV2THZ = 0.5e-12 / HBARINEV / PI
+EV2NM = CLIGHT * 1.0e-3 / EV2THZ
 # kJ/mol to eV/f.u.
 KJ_PER_MOL2EV_PER_FU = 1000 / (EV2J * NAV)
 # eV/A^3 to GPa

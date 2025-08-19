@@ -176,20 +176,28 @@ def read_librpa_dimension(fn: Union[str, os.PathLike] = "librpa.out"):
     for l in lines:
         if l.startswith("Maximumal number of threads"):
             d["n_threads"] = int(l.split()[-1])
-        if l.startswith("Proc"):
-            d["n_procs"] = int(l.split()[4].strip(":"))
+            _logger.info("Found dimension n_threads: %d", d["n_threads"])
+        if l.startswith("Total number of tasks:"):
+            d["n_procs"] = int(l.split()[-1])
+            _logger.info("Found dimension n_procs: %d", d["n_procs"])
         if l.startswith("| Number of atoms"):
             d["n_atoms"] = int(l.split()[-1])
+            _logger.info("Found dimension n_atoms: %d", d["n_atoms"])
         if l.startswith("nfreq = "):
             d["n_freq"] = int(l.split()[-1])
+            _logger.info("Found dimension n_freq: %d", d["n_freq"])
         if l.startswith("| number of spins"):
             d["n_spin"] = int(l.split()[-1])
+            _logger.info("Found dimension n_spin: %d", d["n_spin"])
         if l.startswith("| number of k-points"):
             d["n_kpts"] = int(l.split()[-1])
+            _logger.info("Found dimension n_kpts: %d", d["n_kpts"])
         if l.startswith("| number of bands"):
             d["n_bands"] = int(l.split()[-1])
+            _logger.info("Found dimension n_bands: %d", d["n_bands"])
         if l.startswith("| number of NAOs"):
             d["n_basis"] = int(l.split()[-1])
+            _logger.info("Found dimension n_basis: %d", d["n_basis"])
 
     float_pars = [
         "libri_chi0_threshold_C",
