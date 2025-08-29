@@ -589,8 +589,10 @@ class Species:
                         tier_dict = {"first": 1, "second": 2, "third": 3, "fourth": 4, "fifth": 5}
                         if words[2] == "tier" and words[1] in tier_dict:
                             tier = tier_dict[words[1]]
+                        elif words[1] == "further" and words[2] == "basis":
+                            # "# Further basis functions" case
+                            tier = -1
                     # reset the tier after an irrelevant comment line
-                    # this include the case "# Further basis functions"
                     else:
                         tier = -1
                     continue
