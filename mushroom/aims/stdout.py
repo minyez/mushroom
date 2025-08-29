@@ -314,10 +314,19 @@ class StdOut:
                 self._nspins = int(l.split()[-1])
             if l.startswith("  | Total number of radial functions:"):
                 self._nrad = int(l.split()[-1])
-            if l.startswith("  | Total number of basis functions :"):
+            # Load only once. For post-SCF calculation, there is a second
+            # one "Extended basis size parameters after reduction"
+            # which is for ABF construction and larger than that actually used.
+            if l.startswith("  | Total number of basis functions :") and self._nbasis is None:
                 self._nbasis = int(l.split()[-1])
+            # HACK: band decision here can be tricky.
+            #       "Number of ... " gives the maximal number, which is not necessary the one used
+            #       "Reducing total" may not always be there.
+            #       This works now because "Reducing total" is always after the first
             if l.startswith("  | Number of Kohn-Sham states (occupied + empty)"):
                 self._nbands = int(l.split()[-1])
+            if l.startswith("  Reducing total number of  Kohn-Sham states to"):
+                self._nbands = int(l.split()[-1][:-1])  # [:-1] to remove . at last
             if l.startswith("*** Environment variable OMP_NUM_THREADS is set to"):
                 try:
                     self._omp_threads = int(self._prep_lines[i + 1].strip())
@@ -426,6 +435,14 @@ class StdOut:
     def nelect(self):
         """the integer number of electrons"""
         return int(np.rint(self._nelect))
+
+    def get_n_abfs(self):
+        """Return the number of auxiliary basis functions
+
+        Returns:
+            int or None if it is not a post-SCF calculation.
+        """
+        return self._nbasbas
 
     def _handle_scf(self):
         """process the data in the self-consistency iterations"""

@@ -35,7 +35,7 @@ class test_stdout(ut.TestCase):
                 ("nkpts", s._nkpts),
                 ("nbands", s._nbands),
                 ("nbasis", s._nbasis),
-                ("nbasbas", s._nbasbas),
+                ("nbasbas", s.get_n_abfs()),
                 ("is_finished", s.is_finished()),
                 ("chemical_potential", s.get_chemical_potential()),
             ]

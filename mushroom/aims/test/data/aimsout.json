@@ -7,8 +7,8 @@
     "nthreads": 1,
     "nspins": 2,
     "nkpts": 1,
-    "nbands": 126,
-    "nbasis": 126,
+    "nbands": 94,
+    "nbasis": 94,
     "nbasbas": 1349
   },
   "Si.pgw_band.aims.out": {
@@ -45,8 +45,8 @@
     "chemical_potential": -9.06471053,
     "nspins": 1,
     "nkpts": 27,
-    "nbands": 1000,
-    "nbasis": 1000,
+    "nbands": 616,
+    "nbasis": 616,
     "nbasbas": 11808,
     "gwfundgap": 5.3084
   }
