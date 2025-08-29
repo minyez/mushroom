@@ -13,9 +13,10 @@ from mushroom.aims.stdout import StdOut
 __all__ = [
     "get_dimensions",
     "get_chemical_potential",
-    "is_finished_aimsdir",
     "get_atoms_from_geometry",
     "get_recp_latt_from_geometry",
+    "is_finished_aimsdir",
+    "search_band_output_files",
 ]
 
 _logger = loggers["aims"]
@@ -110,6 +111,39 @@ def is_finished_aimsdir(dirpath: Union[str, os.PathLike], aimsout_pat: str = "ai
     return None
 
 
+def search_band_output_files(path_dir, flag: str = None, suffix: str = "out"):
+    """Search band output files under `path_dir`
+
+    Args:
+        path_dir (path-like)
+        flag (str): "dft", "gw" or "mlk". Default to None for auto detect.
+
+    Returns:
+        A list of Path objects
+    """
+    path_dir = pathlib.Path(path_dir)
+    # DFT band outputs
+    if flag is None:
+        if path_dir.exists("band1001." + suffix):
+            flag = "dft"
+        if path_dir.exists("bandmlk1001." + suffix):
+            flag = "mlk"
+        if path_dir.exists("GW_band1001." + suffix):
+            flag = "gw"
+        _logger.info(f"detected band output flag: {flag}")
+
+    if flag == "gw":
+        pattern = "GW_band[12]*." + suffix
+    elif flag == "mlk":
+        pattern = "bandmlk*." + suffix
+    elif flag == "dft":
+        pattern = "band[12]*." + suffix
+    else:
+        raise ValueError(f"band output flag not supported: {flag}")
+
+    return sorted(path_dir.glob(pattern))
+
+
 def get_atoms_from_geometry(path_geometry: str = "geometry.in"):
     """Get the atoms in the geometry file
 
@@ -122,9 +156,9 @@ def get_atoms_from_geometry(path_geometry: str = "geometry.in"):
     with open(path_geometry, 'r') as h:
         lines = h.readlines()
     atms = []
-    for l in lines:
-        if l.strip().startswith("atom"):
-            atms.append(l.split()[-1])
+    for _l in lines:
+        if _l.strip().startswith("atom"):
+            atms.append(_l.split()[-1])
     return atms
 
 
@@ -133,9 +167,9 @@ def get_recp_latt_from_geometry(path_geometry: str = "geometry.in"):
     latt = []
     with open(path_geometry, 'r') as h:
         lines = h.readlines()
-        for l in lines:
-            if l.strip().startswith("lattice_vector"):
-                latt.append(list(map(float, l.split()[1:4])))
+        for _l in lines:
+            if _l.strip().startswith("lattice_vector"):
+                latt.append(list(map(float, _l.split()[1:4])))
     if len(latt) != 3:
         raise ValueError("Lattice vectors less than 1, check your geometry file!")
     latt = np.array(latt)
