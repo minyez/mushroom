@@ -111,12 +111,16 @@ def is_finished_aimsdir(dirpath: Union[str, os.PathLike], aimsout_pat: str = "ai
     return None
 
 
-def search_band_output_files(path_dir, flag: str = None, suffix: str = "out"):
+def search_band_output_files(path_dir, flag: str = None,
+                             ext: str = "out",
+                             suffix: str = None, with_spin: bool = False):
     """Search band output files under `path_dir`
 
     Args:
         path_dir (path-like)
         flag (str): "dft", "gw" or "mlk". Default to None for auto detect.
+        ext (str): extension of band output files, default "out"
+        suffix (str): suffix for the files, e.g. ".no_soc" for non-SOC files
 
     Returns:
         A list of Path objects
@@ -124,24 +128,34 @@ def search_band_output_files(path_dir, flag: str = None, suffix: str = "out"):
     path_dir = pathlib.Path(path_dir)
     # DFT band outputs
     if flag is None:
-        if path_dir.exists("band1001." + suffix):
+        if (path_dir / ("band1001." + ext)).exists():
             flag = "dft"
-        if path_dir.exists("bandmlk1001." + suffix):
+        if (path_dir / ("bandmlk1001." + ext)).exists():
             flag = "mlk"
-        if path_dir.exists("GW_band1001." + suffix):
+        if (path_dir / ("GW_band1001." + ext)).exists():
             flag = "gw"
         _logger.info(f"detected band output flag: {flag}")
 
     if flag == "gw":
-        pattern = "GW_band[12]*." + suffix
+        pattern1 = "GW_band1*." + ext
+        pattern2 = "GW_band2*." + ext
     elif flag == "mlk":
-        pattern = "bandmlk*." + suffix
+        pattern1 = "bandmlk1*." + ext
+        pattern2 = "bandmlk2*." + ext
     elif flag == "dft":
-        pattern = "band[12]*." + suffix
+        pattern1 = "band1*." + ext
+        pattern2 = "band2*." + ext
     else:
         raise ValueError(f"band output flag not supported: {flag}")
 
-    return sorted(path_dir.glob(pattern))
+    if suffix is not None:
+        pattern1 = pattern1 + suffix
+        pattern2 = pattern2 + suffix
+
+    if with_spin:
+        return sorted(path_dir.glob(pattern1)), sorted(path_dir.glob(pattern2))
+
+    return sorted(path_dir.glob(pattern1))
 
 
 def get_atoms_from_geometry(path_geometry: str = "geometry.in"):

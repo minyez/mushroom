@@ -108,7 +108,7 @@ def decode_band_output_line(bstr: str) -> Tuple[List, List, List]:
         raise ValueError(f"bad input string for aims band energy: {bstr}") from _e
 
 
-def handle_single_band_mulliken_output(bfile):
+def _handle_single_band_mulliken_output(bfile):
     """process a single bandmlk file
 
     Args:
@@ -120,6 +120,13 @@ def handle_single_band_mulliken_output(bfile):
     _logger.debug("handling band mulliken file: %r", bfile)
     with open(bfile, 'r') as h:
         lines = h.readlines()
+    # Check if this mulliken output is from SOC calculation
+    flag_soc = False
+    multi = 1
+    if lines[1].strip() == "State       eigenvalue  occ.number atom       spin       total":
+        flag_soc = True
+        multi = 2
+
     # match lines like the following:
     # k point number:     1: (   0.50000000   0.50000000   0.50000000 )
     kpts_pattern = r'^k point number:\s+\d+: \(' + r'(\s+[+-]?\d\.\d+)' * 3 + r'\s+\)'
@@ -136,37 +143,47 @@ def handle_single_band_mulliken_output(bfile):
     nkpts = len(kpts)
     nbands = int(lines[-1].split()[0])
     natms = len(lines) // nkpts
+    if flag_soc:
+        natms = len(lines) // nkpts // 2
     if natms % nbands != 0:
         raise ValueError("invalid bandmlk file")
     natms = natms // nbands
-    _logger.debug("dimension detected (nkpts %d, nbands %d, natms %d)",
-                  nkpts, nbands, natms)
+    _logger.debug("dimension detected (nkpts %d, nbands %d, natms %d, flag_soc %r)",
+                  nkpts, nbands, natms, flag_soc)
 
     # check the largest number of angular momentum quantum number among atoms
-    # 5 accounts for state, ene, occ, atom index, total
-    # 1 considers maxl of "s" is 0
-    maxl = max(len(x.split()) for x in lines[3:3 + natms]) - 5 - 1
-    ene_occ = [x.split()[1:3] for x in lines[::natms]]
+    if flag_soc:
+        # 6 accounts for state, ene, occ, atom index, spin, total
+        # 1 considers maxl of "s" is 0
+        maxl = max(len(x.split()) for x in lines[3:3 + natms * multi]) - 6 - 1
+    else:
+        # 5 accounts for state, ene, occ, atom index, total
+        # 1 considers maxl of "s" is 0
+        maxl = max(len(x.split()) for x in lines[3:3 + natms * multi]) - 5 - 1
+
+    ene_occ = [x.split()[1:3] for x in lines[::natms * multi]]
     ene = np.array([float(x[0]) for x in ene_occ]).reshape(nkpts, nbands)
     occ = np.array([float(x[1]) for x in ene_occ]).reshape(nkpts, nbands)
     # starting from the s component
-    mlk_str = [list(map(float, x.split()[5:])) for x in lines]
+    mlk_str = [list(map(float, x.split()[5 + int(flag_soc):])) for x in lines]
     maxl_per_line = [len(x) - 1 for x in mlk_str]
     for i, l in enumerate(maxl_per_line):
         if l < maxl:
             line = [0.0, ] * (maxl + 1)
             line[:l + 1] = mlk_str[i]
             mlk_str[i] = line
-    mlk = np.array(mlk_str).reshape(nkpts, nbands, natms, maxl + 1)
+    # merge two spin channels on the same atom,
+    # the projectors are thus [s-1, p-1, d-1, ... , s-2, p-2, d-2]
+    mlk = np.array(mlk_str).flatten().reshape(nkpts, nbands, natms, (maxl + 1) * multi)
     if np.min(mlk) < -0.1:
         _logger.warning("significant (<-0.1) negative mulliken charge found in %s", bfile)
 
-    return kpts, ene, occ, mlk
+    return kpts, ene, occ, mlk, flag_soc
 
 
 def read_band_mulliken_output(
-        bfile,
         *bfiles,
+        bfiles_spin: Iterable[Union[str, os.PathLike]] = None,
         filter_k_before: int = 0,
         filter_k_behind: int = None,
         unit: str = 'ev') -> Tuple[BandStructure, List[RealVec3D]]:
@@ -176,31 +193,58 @@ def read_band_mulliken_output(
     the resulting ``BandStructure`` object always has nspins=1
 
     Args:
-        bfile (str)
+        bfiles (str)
+        bfiles_spin (list of str)
+        filter_k_before (int)
+        filter_k_behind (int)
         unit (str): unit of energies, default to ev
 
     Returns:
         BandStructure, k-points
     """
-    kpts, ene, occ, mlk = handle_single_band_mulliken_output(bfile)
+    kpts, ene, occ, mlk, flag_soc = _handle_single_band_mulliken_output(bfiles[0])
     _, nbands, natms, nprjs = mlk.shape
-    for bf in bfiles:
-        kpts1, ene1, occ1, mlk1 = handle_single_band_mulliken_output(bf)
-        _, nbands1, natms1, nprjs1 = mlk1.shape
-        if nbands1 != nbands or natms1 != natms or nprjs1 != nprjs:
-            raise ValueError("Inconsitent shape found when reading bandmlk: %s" % bf)
-        kpts = np.concatenate((kpts, kpts1))
-        ene = np.concatenate((ene, ene1))
-        occ = np.concatenate((occ, occ1))
-        mlk = np.concatenate((mlk, mlk1))
+
+    nspin = 1
+    if isinstance(bfiles_spin, str):
+        raise ValueError("bfiles_spin should not be str")
+    if bfiles_spin is not None and len(bfiles_spin) > 0:
+        nspin = 2
+    else:
+        bfiles_spin = []
+
+    for isp, bfs in enumerate([bfiles[1:], bfiles_spin]):
+        for bf in bfs:
+            kpts1, ene1, occ1, mlk1, flag_soc1 = _handle_single_band_mulliken_output(bf)
+            _, nbands1, natms1, nprjs1 = mlk1.shape
+            _logger.debug(f"bf {os.path.basename(bf)} mlk.shape {mlk1.shape}")
+            if flag_soc != flag_soc1:
+                raise ValueError("Inconsitent SOC state found when reading bandmlk: %s" % bf)
+            if nbands1 != nbands or natms1 != natms or nprjs1 != nprjs:
+                raise ValueError("Inconsitent shape found when reading bandmlk: %s" % bf)
+            if isp == 0:
+                kpts = np.concatenate((kpts, kpts1))
+            ene = np.concatenate((ene, ene1))
+            occ = np.concatenate((occ, occ1))
+            mlk = np.concatenate((mlk, mlk1))
+
+    _logger.debug(f"Shape of kpts/ene/occ/mlk: {kpts.shape} {ene.shape} {occ.shape} {mlk.shape}")
 
     nkpts_total = len(kpts)
     if filter_k_behind is None:
         filter_k_behind = nkpts_total
     kpts = kpts[filter_k_before:filter_k_behind, :]
-    occ = occ.reshape(1, nkpts_total, nbands)[:, filter_k_before:filter_k_behind, :]
-    ene = ene.reshape(1, nkpts_total, nbands)[:, filter_k_before:filter_k_behind, :]
-    mlk = mlk.reshape(1, nkpts_total, nbands, natms, nprjs)[:, filter_k_before:filter_k_behind, :, :, :]
+    occ = occ.reshape(nspin, nkpts_total, nbands)[:, filter_k_before:filter_k_behind, :]
+    ene = ene.reshape(nspin, nkpts_total, nbands)[:, filter_k_before:filter_k_behind, :]
+    mlk = mlk.reshape(nspin, nkpts_total, nbands, natms, nprjs)[:, filter_k_before:filter_k_behind, :, :, :]
+
     # NOTE: the atomic projectors are assumed sequential, i.e. s, p, d, f, ...
-    return BandStructure(ene, occ, pwav=mlk, unit=unit, prjs=l_channels[:nprjs]), kpts
+    if flag_soc:
+        prjs = [x + "-1" for x in l_channels[:nprjs // 2]] + [x + "-2" for x in l_channels[:nprjs // 2]]
+    else:
+        prjs = l_channels[:nprjs]
+
+    return BandStructure(ene, occ, pwav=mlk, unit=unit,
+                         atms=list(range(natms)),
+                         prjs=prjs), kpts
 
