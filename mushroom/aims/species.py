@@ -392,7 +392,9 @@ class Species:
         except KeyError:
             raise KeyError("radial_multiplier has not been set")
 
-    def update_radial_multiplier(self, v: int):
+    def update_radial_multiplier(self, v: int = None):
+        if v is None:
+            return
         self.update_basic_tag("radial_multiplier", v)
 
     def get_cut_pot(self):
