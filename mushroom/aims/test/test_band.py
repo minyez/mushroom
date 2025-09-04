@@ -47,7 +47,10 @@ class test_read_band_mulliken_output(ut.TestCase):
             verifies = json.load(h)
         for case, verify in verifies.items():
             bandfiles = [datadir / x for x in verify.pop("files")]
-            bs, kpts = read_band_mulliken_output(*bandfiles)
+            bandfiles_spin = None
+            if "files_spin" in verify:
+                bandfiles_spin = [datadir / x for x in verify.pop("files_spin")]
+            bs, kpts = read_band_mulliken_output(*bandfiles, bfiles_spin=bandfiles_spin)
             for k, v in verify.items():
                 self.assertEqual(bs.__getattribute__(k), v)
 

@@ -7,5 +7,24 @@
     "_nprjs": 3,
     "_natms": 2,
     "files": ["Si_bandmlk1001.out"]
+  },
+  "GaAs_PBE_k444_XGL_spin": {
+    "_nkpts": 66,
+    "_nbands": 48,
+    "_nelect": 64,
+    "_nspins": 2,
+    "_nprjs": 4,
+    "_natms": 2,
+    "files": ["GaAs_spin_bandmlk1001.out", "GaAs_spin_bandmlk1002.out"],
+    "files_spin": ["GaAs_spin_bandmlk2001.out", "GaAs_spin_bandmlk2002.out"]
+  },
+  "GaAs_PBE_k444_XGL_soc": {
+    "_nkpts": 66,
+    "_nbands": 106,
+    "_nelect": 64,
+    "_nspins": 1,
+    "_nprjs": 8,
+    "_natms": 2,
+    "files": ["GaAs_soc_bandmlk1001.out", "GaAs_soc_bandmlk1002.out"]
   }
 }
