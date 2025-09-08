@@ -18,6 +18,7 @@ package_names = {
     "vasp": "VASP",
     "w2k": "WIEN2k",
     "gpaw": "GPAW",
+    "abacus": "ABACUS",
     "abi": "ABINIT",
     "aims": "FHI-aims",
     "qe": "Quantum ESPRESSO",
@@ -59,6 +60,8 @@ _package_specific_fullnames = {
     "pw.in": "qe",
     "ph.in": "qe",
     "geometry.in": "aims",
+    "control.in": "aims",
+    "STRU": "abacus",
 }
 
 # check consistency

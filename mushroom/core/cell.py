@@ -4,6 +4,7 @@
 import json
 import string
 import os
+from io import StringIO
 from collections import OrderedDict
 from copy import deepcopy
 from numbers import Real
@@ -82,7 +83,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
     _err = CellError
     _dtype = 'float64'
     avail_exporters = ['vasp', 'abi', 'json', 'qe', 'qe_alat', 'aims', "abacus"]
-    avail_readers = ['vasp', 'json', 'cif', 'aims']
+    avail_readers = ['vasp', 'json', 'cif', 'aims', 'abacus']
 
     def __init__(self, latt: Latt3T3, atms: Sequence[str], posi: Sequence[RealVec3D],
                  unit: str = 'ang', sort_atms: bool = True,
@@ -1242,6 +1243,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
             'cif': cls.read_cif,
             'json': cls.read_json,
             'aims': cls.read_aims,
+            'abacus': cls.read_abacus,
         }
         try:
             if format is None:
@@ -1257,7 +1259,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
 
     @classmethod
     def read_aims(cls, pgeo="geometry.in"):
-        """initialize the cell by reading a geometry file
+        """initialize the cell by reading a FHI-aims geometry file
 
         Comment and reference are not loaded automatically
 
@@ -1285,6 +1287,54 @@ When other keyword are parsed, they will be filtered out and no exception will b
         if not latt:
             latt = [[100, 0, 0], [0, 100, 0], [0, 0, 100]]
         return cls(latt, atms, posi, unit='ang', coord_sys=coord_sys)
+
+    @classmethod
+    def read_abacus(cls, pstru="STRU"):
+        """initialize the cell by reading an ABACUS STRU file
+
+        Args:
+            pstru (Path-like or StringIO): path to the aims geometry file, default to STRU
+        """
+        with open(pstru, 'r') as h:
+            lines = h.readlines()
+
+        scale = 1.0e0
+        latt = None
+        atms = []
+        posi = []
+        coord_sys = None
+
+        lines_posi = None
+        for i, l in enumerate(lines):
+            if l.startswith("LATTICE_CONSTANT"):
+                scale = float(lines[i + 1].strip())
+            if l.startswith("LATTICE_VECTORS"):
+                latt = np.loadtxt(StringIO("".join(lines[i + 1:i + 4])))
+            if l.startswith("ATOMIC_POSITIONS"):
+                lines_posi = lines[i + 1:]
+                # HACK: assume ATOMIC_POSITIONS appear at the end of the structure file
+                break
+
+        if lines_posi is None:
+            raise ValueError("Incomplete ABACUS structure file {pstru}: does not have ATOMIC_POSITIONS")
+        if lines_posi[0].strip().lower() == "direct":
+            coord_sys = "D"
+        else:
+            coord_sys = "C"
+        # Filter empty lines
+        lines_posi = [x for x in lines_posi[1:] if x.strip() != '']
+        index = 0
+        while index < len(lines_posi):
+            atm = lines_posi[index].strip()
+            n = int(lines_posi[index + 2])
+            for i in range(n):
+                atms.append(str(atm))
+                posi.append(list(map(float, lines_posi[index + 3 + i].split()[:3])))
+            index += 3 + n
+
+        if latt is None or len(atms) == 0 or len(posi) == 0 or coord_sys is None:
+            raise ValueError(f"ABACUS structure file {pstru} is not complete")
+        return cls(latt * scale, atms, posi, unit='au', coord_sys=coord_sys)
 
     @classmethod
     def read_json(cls, pjson):
