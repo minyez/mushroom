@@ -18,12 +18,12 @@ except ImportError:
 _logger = loggers["cryutil"]
 
 
-def get_recp_latt(latt: Latt3T3):
+def get_recp_latt(latt: Latt3T3) -> Latt3T3:
     """get the reciprocal lattice vectors from the real vectors"""
     return np.cross(latt[(1, 2, 0), :], latt[(2, 0, 1), :]) / np.linalg.det(latt) * 2.0E0 * PI
 
 
-def get_volume(latt: Latt3T3):
+def get_volume(latt: Latt3T3) -> float:
     """get the volume from the real vectors"""
     return np.linalg.det(latt)
 

@@ -23,7 +23,7 @@ def rc_gracify(transparent: bool = False, dpi: int = 300, cmap: str = "RdBu", fo
                markersize: float = 12,
                legend_frameon: bool = False, legend_fancybox: bool = False):
     """setup rcParams to mimic the style of XmGrace"""
-    raise_no_module(plt, "matplotlib")
+    raise_no_module(plt, "matplotlib.pyplot")
     plt.rcParams["font.family"] = ["serif",] + plt.rcParams["font.family"]
     plt.rcParams["font.serif"] = ["Times New Roman",] + plt.rcParams["font.serif"]
     plt.rcParams["font.sans-serif"] = ["Helvetica",] + plt.rcParams["font.sans-serif"]
