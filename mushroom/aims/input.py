@@ -445,6 +445,11 @@ class Control:
             s = self.get_species(e)
             s.update_radial_multiplier(v)
 
+    def update_radial_base(self, *elems, n_rad: int = None, radius: float = None):
+        for e in elems:
+            s = self.get_species(e)
+            s.update_radial_base(n_rad, radius)
+
     def adjust_cut_pot(self, *elems,
                        onset: float = None,
                        width: float = None,

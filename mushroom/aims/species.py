@@ -397,6 +397,36 @@ class Species:
             return
         self.update_basic_tag("radial_multiplier", v)
 
+    def get_radial_base(self):
+        """get the radial grid parameters from the radial_base keyword
+
+        Return:
+            int, float
+        """
+        try:
+            s = self.tags["radial_base"]
+            n_rad = int(s.split()[0])
+            radius = float(s.split()[0])
+            return n_rad, radius
+        except KeyError:
+            raise KeyError("radial_base has not been set")
+        except (ValueError, IndexError):
+            raise ValueError("radial_base is not correctly set")
+
+    def update_radial_base(self, n_rad: int = None, radius: float = None):
+        if n_rad is None and radius is None:
+            return
+        try:
+            n_rad_old, radius_old = self.get_radial_base()
+            if n_rad is None:
+                n_rad = n_rad_old
+            if radius is None:
+                radius = radius_old
+        except KeyError:
+            if n_rad is None or radius is None:
+                raise ValueError("radial_base did not set, please provide both n_rad and radius")
+        self.update_basic_tag("radial_base", f"{n_rad:d} {radius:4f}")
+
     def get_cut_pot(self):
         try:
             onset, width, scale = self.tags["cut_pot"].split()
