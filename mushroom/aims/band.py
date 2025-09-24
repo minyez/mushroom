@@ -141,7 +141,8 @@ def _handle_single_band_mulliken_output(bfile):
     lines = [x for x in lines if not (x.startswith("k point") or x.startswith("    State"))]
 
     nkpts = len(kpts)
-    nbands = int(lines[-1].split()[0])
+    # For large system, the beginning state may not be 1
+    nbands = int(lines[-1].split()[0]) - int(lines[2].split()[0]) + 1
     natms = len(lines) // nkpts
     if flag_soc:
         natms = len(lines) // nkpts // 2
