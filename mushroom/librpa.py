@@ -334,3 +334,84 @@ def read_librpa_timing(fn: Union[str, os.PathLike] = "librpa.out", details: bool
             d[key] = entry_timing[key]
 
     return d
+
+
+# Functions to check dataset
+def read_kgrid_eigenvector(filepath, n_basis: int, n_states: int, n_spin: int, soc: bool = False, binary: bool = False):
+    if binary:
+        raise NotImplementedError
+        # return _read_kgrid_eigenvector_binary(filepath, n_basis, n_states, n_spin, soc)
+    return _read_kgrid_eigenvector_plain(filepath, n_basis, n_states, n_spin, soc)
+
+
+def _read_kgrid_eigenvector_plain(filepath, n_basis: int, n_states: int, n_spin: int, soc: bool = False):
+    if n_spin == 2 and soc:
+        raise ValueError("soc is switched on, n_spin must be 1")
+    with open(filepath, 'r') as h:
+        lines = h.readlines()
+    # Check k-point lines
+    n = n_basis * n_states * n_spin
+    try:
+        ikpts = [int(x.strip()) - 1 for x in lines[::n + 1]]
+    except ValueError:
+        raise ValueError(f"Eigenvector file {filepath} is corrupted or wrong arguments")
+    data_all = {}
+    for i, ikpt in enumerate(ikpts):
+        data = np.loadtxt(StringIO("".join(lines[i * (n + 1) + 1: (n + 1) * (i + 1)])))
+        data = data[:, 0] + data[:, 1] * 1.0j
+        if soc:
+            data = data.reshape((1, n_basis, n_states))
+            data = np.swapaxes(data, 1, 2)
+            # reorder up and down component
+            data = np.concatenate([data[:, :, ::2], data[:, :, 1::2]], axis=2)
+        else:
+            data = data.reshape((n_spin, n_states, n_basis), order="F")
+        data_all[ikpt] = data
+    return data_all
+
+
+def read_band_eigenvector(filepath, n_basis: int, n_states: int, n_spin: int,
+                          order_soc_spin_component: bool = False):
+    """Read the eigevenctor at a certain k point from file ``filepath``
+
+    Args:
+        filepath (path-like)
+        n_basis (int): the number of orbital basis (including spin component)
+        n_states (int)
+        n_spin (int)
+    """
+    import struct
+    with open(filepath, 'rb') as h:
+        bindata = h.read()
+    if order_soc_spin_component and n_spin != 1:
+        raise ValueError
+
+    DBS, DBL = "d", 8
+    n = n_basis * n_states * n_spin
+    start, end = 0, n * DBL * 2
+    data = np.array(struct.unpack(n * DBS * 2, bindata[start:end]))
+    data = (data[::2] + data[1::2] * 1.j).reshape(n_spin, n_states, n_basis)
+    if order_soc_spin_component:
+        data = np.concatenate([data[:, :, ::2], data[:, :, 1::2]], axis=2)
+    return data
+
+
+def read_moment_KS_aims(filepath):
+    """Read the momentum matrix at a certain k point from file ``filepath``
+
+    Args:
+        filepath (path-like)
+    """
+    import struct
+    with open(filepath, 'rb') as h:
+        bindata = h.read()
+
+    I8S, I8L = "l", 8
+    I4S, I4L = "i", 4
+    DBS, DBL = "d", 8
+     # write(202) i_k_point, n_state_min, n_state_max, ld, n_spin_in, n_pol_dir
+    start, end = 0, 6 * I4L
+    ikpt, n_state_min, n_state_max, n_state_pairs, n_spin, n_pol = struct.unpack(6 * I4S, bindata[start:end])
+    # print(ikpt, n_state_min, n_state_max, n_state_pairs, n_spin, n_pol)
+    # FIXME: WIP
+    raise NotImplementedError
