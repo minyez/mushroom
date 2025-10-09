@@ -24,6 +24,7 @@ def read_band_output(
         bfiles_spin: Iterable[Union[str, os.PathLike]] = None,
         filter_k_before: int = 0,
         filter_k_behind: int = None,
+        efermi: float = None,
         unit: str = 'ev', **kwargs) -> Tuple[BandStructure, List[RealVec3D]]:
     """read band output files and return a Band structure
 
@@ -32,10 +33,15 @@ def read_band_output(
 
     Args:
         bfiles (str)
-        bfiles_spin
-        unit (str): unit of energies, default to ev
+        bfiles_spin (list of str)
         filter_k_before
         filter_k_behind
+        efermi (float) : the actual Fermi reference of the bands.
+            When FHI-aims generates band output, the fermi energy is subtracted from band energies,
+            thus the fermi energy is the actual energy zero.
+            When efermi is not None, the band energies will be shifted by efermi,
+            therefore the internal zero becomes the reference.
+        unit (str)
 
         Other keyword argments parsed to the BandStructure object
 
@@ -82,7 +88,10 @@ def read_band_output(
         occ = np.array([occ, occ_spin])[:, filter_k_before:filter_k_behind, :]
         ene = np.array([ene, ene_spin])[:, filter_k_before:filter_k_behind, :]
 
-    return BandStructure(ene, occ, unit=unit, **kwargs), kpts
+    if efermi is not None:
+        ene += efermi
+
+    return BandStructure(ene, occ, unit=unit, efermi=efermi, **kwargs), kpts
 
 
 def decode_band_output_line(bstr: str) -> Tuple[List, List, List]:
