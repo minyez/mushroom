@@ -540,6 +540,51 @@ class StdOut:
         d, _ = self.get_QP_result()
         return d["exx"]
 
+    def get_eigenvalues(self):
+        """Get the SCF eigenvalues as a BandStructure object
+
+        Returns
+            BandStructure object, k-points list
+        """
+        kptline = re.compile(r'^  K-point:\s+(\d+)\s+at' +
+                             r'\s+(-?[\d\.]+)' * 3 + r' \(in units of recip\. lattice\)$')
+        if self._scf_lines is None:
+            raise ValueError("no SCF iterations found, calculation broken!")
+        if self._nspins != 1:
+            raise ValueError("Spin-polarized calculation not supported yet!")
+
+        iklines = []
+        iks = []
+        kpts = []
+        for i, line in enumerate(self._scf_lines):
+            m = kptline.match(line)
+            if m is not None:
+                iklines.append(i)
+                iks.append(int(m.group(1)))
+                kpts.append(list(map(float, (m.group(2), m.group(3), m.group(4)))))
+        # number of k-points printed (see output k_eigenvalue)
+        nkpts: int = np.max(iks)
+        if 2 in iks:
+            n_states = iklines[1] - iklines[0] - 4
+        else:
+            # When there is only one k-point
+            for i, line in enumerate(self._scf_lines[::-1]):
+                m = re.match(r"^  What follows are estimated values for band gap, HOMO, LUMO, etc", line)
+                if m is not None:
+                    n_states = len(self._scf_lines) - i - 1 - iklines[-1] - 4
+                    break
+        iklines = iklines[-nkpts:]
+        kpts = kpts[-nkpts:]
+        datalines = []
+        for ikline in iklines:
+            datalines.extend(self._scf_lines[ikline+3:ikline+n_states+3])
+        occ, eigen = np.loadtxt(StringIO("".join(datalines)), usecols=[1, 3], unpack=True)
+        occ = occ.reshape((1, nkpts, n_states))
+        eigen = eigen.reshape((1, nkpts, n_states))
+        # print(n_states, n_kpts)
+        # raise NotImplementedError
+        return BandStructure(eigen, occ, unit='ev', efermi=self.get_chemical_potential()), kpts
+
     def get_QP_bandstructure(self, kind="qp", **kwargs):
         """get the QP band structure
 

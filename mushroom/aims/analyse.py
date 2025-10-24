@@ -136,6 +136,7 @@ def search_band_output_files(path_dir, flag: str = None,
             flag = "gw"
         _logger.info(f"detected band output flag: {flag}")
 
+    flag = flag.lower()
     if flag == "gw":
         pattern1 = "GW_band1*." + ext
         pattern2 = "GW_band2*." + ext

@@ -187,6 +187,16 @@ class Control:
         """copy the control"""
         return deepcopy(self)
 
+    def __add__(self, ctrl):
+        tags = self.tags + ctrl.tags
+        output = self.output + ctrl.output
+        species = self.species + ctrl.speices
+        species.extend(self.species)
+        return type(self)(tags, output, species)
+
+    def __str__(self):
+        return self.export()
+
     def get_species(self, elem: Union[int, str]) -> Species:
         """get the species object of element in the control"""
         if isinstance(elem, str):
