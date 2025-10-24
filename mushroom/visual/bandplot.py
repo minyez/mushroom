@@ -25,6 +25,7 @@ def bandplot(bs: BandStructure, kp: KPathLinearizer,
              engine: str = "matplotlib",
              color: str = "k",
              set_xaxis: bool = True,
+             set_ylabel: bool = True,
              **kwargs):
     """Plot band structure
 
@@ -39,6 +40,7 @@ def bandplot(bs: BandStructure, kp: KPathLinearizer,
         engine (str) : engine for plotting, currently only "matplotlib" (default)
         color (str) : color of bands, parsed to `ax.plot`
         set_xaxis (bool) : whether to set up the x-axis
+        set_ylabel (bool) : whether to set up the label of the y-axis (hard coded to "Energy [eV]")
 
         Other keyword arguments are parsed to `ax.plot` to draw the bands.
 
@@ -86,7 +88,8 @@ def bandplot(bs: BandStructure, kp: KPathLinearizer,
         ax.plot(kp.x, bs.eigen[0, :, ib] - ref_value, label=label, color=color, **kwargs)
 
     ax.axhline(0.0, ls=":", color="k")
-    ax.set_ylabel("Energy [eV]")
+    if set_ylabel:
+        ax.set_ylabel("Energy [eV]")
     if set_xaxis:
         ax.xaxis.set_ticks(kp.special_x, labels=ksymbols)
         ax.xaxis.grid(ls="--", color="k")
