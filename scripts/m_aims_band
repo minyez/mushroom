@@ -6,6 +6,7 @@ from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MultipleLocator
 
 from mushroom.aims.band import read_band_output
 from mushroom.aims.input import Control, get_path_ksymbols
@@ -14,15 +15,20 @@ from mushroom.core.cell import Cell
 from mushroom.core.kpoints import KPathLinearizer
 from mushroom.core.ioutils import get_filename_wo_ext, decode_float_ends, decode_int_ends
 from mushroom.visual.graceplot import Plot
+from mushroom.visual.pyplot import rc_gracify
+
+
+rc_gracify()
 
 
 def _parser():
     """the parser"""
-    p = ArgumentParser(description=__doc__, formatter_class=RawDescriptionHelpFormatter)
+    p = ArgumentParser(description=__doc__,
+                       formatter_class=RawDescriptionHelpFormatter)
     p.add_argument("out_files", nargs="+", type=str, help="band output files")
     p.add_argument("--unit", default='ev', type=str, help="energy unit")
-    p.add_argument("-o", dest="output", type=str, default="plotband.agr",
-                   help="path of agr file to export")
+    p.add_argument("-o", dest="output", type=str, default="plotband",
+                   help="file name of the figure to save (arg file for grace engine)")
     p.add_argument("--data", dest="data_only", action="store_true",
                    help="only extract and print data, do not plot")
     p.add_argument("--rkbf", dest="remove_k_before", type=int, default=0,
@@ -39,10 +45,12 @@ def _parser():
                    help="range of bands to plot, e.g. ~m2 for bands except the highest two")
     p.add_argument("--resolve", nargs="+", default=None, type=str,
                    help="resolve band crossing, e.g. 5,6,7")
-    p.add_argument("--no-band-line", action="store_true", help="do not draw band lines, use marker")
+    p.add_argument("--no-band-line", action="store_true",
+                   help="do not draw band lines, use marker")
     p.add_argument("--use-occ-only", action="store_true",
                    help="only use occupation number to detect band edges, instead of using both energy and occ")
-    p.add_argument("--engine", default="grace", choices=["grace", "plt"], help="plot engine, grace/matplotlib(plt)")
+    p.add_argument("--engine", default="grace",
+                   choices=["grace", "plt"], help="plot engine, grace/matplotlib(plt)")
     p.add_argument("--marker", default="none", help="marker")
     p.add_argument("--ms", dest="marker_size", default=1.0, help="marker size")
     p.add_argument(
@@ -119,11 +127,13 @@ def m_aims_band():
 
     display_band_analysis(bs, kpts, value_only=args.value_only)
     if args.trans is not None:
-        display_transition_energies(args.trans, bs, kpts, value_only=args.value_only)
+        display_transition_energies(
+            args.trans, bs, kpts, value_only=args.value_only)
 
     if args.data_only:
         return
-    ref = get_reference(bs, args.vbm_zero, args.cbm_zero, args.fermi_zero, args.isikib_zero)
+    ref = get_reference(bs, args.vbm_zero, args.cbm_zero,
+                        args.fermi_zero, args.isikib_zero)
 
     kp = KPathLinearizer(kpts, recp_latt)
     if args.band_erange is not None:
@@ -139,10 +149,12 @@ def m_aims_band():
             elif len(args.deriv_thres) == len(args.resolve):
                 deriv_thres = args.deriv_thres
             else:
-                raise ValueError("deriv_thres should be either one number, or the same length as resolve")
+                raise ValueError(
+                    "deriv_thres should be either one number, or the same length as resolve")
         for resband, thres in zip(args.resolve, deriv_thres):
             bands_tuple = tuple(map(int, resband.split(',')))
-            eigen[:, bands_tuple] = resolve_band_crossing(kp.x, eigen[:, bands_tuple], deriv_thres=thres)
+            eigen[:, bands_tuple] = resolve_band_crossing(
+                kp.x, eigen[:, bands_tuple], deriv_thres=thres)
 
     marker = args.marker
     ls = None
@@ -161,13 +173,15 @@ def m_aims_band():
         c_ksym = Control.read(args.ksymbols_cf)
         band_c_ksym = c_ksym.get_output("band", None)
         if band_c_ksym is None:
-            raise ValueError("%s does not include output band" % args.ksymbols_cf)
+            raise ValueError("%s does not include output band" %
+                             args.ksymbols_cf)
         ksymbols = get_path_ksymbols(band_c_ksym)
 
     if ksymbols is not None and len(kp.special_x) != len(ksymbols):
         print(ksymbols)
         print(kp.special_x)
-        raise ValueError("Number of k segments different from number of symbols! Contact developer")
+        raise ValueError(
+            "Number of k segments different from number of symbols! Contact developer")
 
     # check non-continuous special kx
     x_break = []
@@ -182,15 +196,18 @@ def m_aims_band():
         try:
             emin, emax = decode_float_ends(args.energy_range)
         except ValueError as err:
-            raise ValueError("invalid energy range", args.energy_range) from err
+            raise ValueError("invalid energy range",
+                             args.energy_range) from err
     else:
         emin = -20
         emax = 20
 
     if args.engine == "grace":
-        p, ax = Plot.subplots(1, 1, background=not args.transparent)
-        ax.plot(kp.x, eigen.transpose() - ref, color="k", symbol=marker, ls=ls, ssize=args.marker_size)
-        ax.x.set_major(grid=True, size=0.0, color="grey", lw=3, ls="longdashed")
+        fig, ax = Plot.subplots(1, 1, background=not args.transparent)
+        ax.plot(kp.x, eigen.transpose() - ref, color="k",
+                symbol=marker, ls=ls, ssize=args.marker_size)
+        ax.x.set_major(grid=True, size=0.0, color="grey",
+                       lw=3, ls="longdashed")
         ax.x.set_spec(kp.special_x, labels=ksymbols)
 
         if len(ksym_break) > 0:
@@ -199,21 +216,42 @@ def m_aims_band():
             ax.altx.set_tick(switch="off")
             ax.altx.set_ticklabel(switch="off")
             ax.altx.set_spec(x_break, labels=ksym_break)
-            ax.altx.set_major(grid=True, size=0.0, color="black", lw=3, ls="solid")
-
-        # slightly wider than the last symbol to make it visible on graph
-        ax.set_xlim(0.0, kp.x[-1] * 1.001)
-        ax.set_ylim(ymin=emin, ymax=emax)
+            ax.altx.set_major(grid=True, size=0.0,
+                              color="black", lw=3, ls="solid")
         ax.y.set_major(major=4)
-        ax.y.set_label("Energy (eV)")
-        # draw zero line
-        ax.axhline(0.0, ls="dashed")
-        if args.output != "none":
-            p.write(file=args.output)
-            if args.fig_ext is not None:
-                p.savefig(get_filename_wo_ext(args.output) + "." + args.fig_ext)
+    elif args.engine == "plt":
+        fig, ax = plt.subplots(1, 1, figsize=(8, 8))
+        for iband in range(nbands):
+            ax.plot(kp.x, eigen[:, iband] - ref, color="k",
+                    marker=marker, ls=ls, ms=args.marker_size)
+        ksymbols = ["$" + x + "$" for x in ksymbols]
+        ax.xaxis.set_ticks(kp.special_x, labels=ksymbols)
+        ax.xaxis.grid(color='grey', ls="--")
+        ax.set_axisbelow(True)
+        ax.yaxis.set_major_locator(MultipleLocator(4))
     else:
-        raise NotImplemented
+        raise NotImplementedError
+
+    # draw zero line
+    ax.axhline(0.0, ls="--", color="k")
+    # slightly wider than the last symbol to make it visible on graph
+    ax.set_xlim(0.0, kp.x[-1] + 0.0001)
+    ax.set_ylim(ymin=emin, ymax=emax)
+    ax.set_ylabel("Energy [eV]", fontsize=18)
+    print(args.engine, args.output)
+
+    if args.output != "none" or args.output is not None:
+        if args.engine == "grace":
+            fig.write(file=args.output + ".agr")
+        elif args.fig_ext is None:
+            plt.show()
+
+        if args.fig_ext is not None:
+            fn = get_filename_wo_ext(args.output) + "." + args.fig_ext
+            fig.savefig(fn, dpi=300)
+    elif args.engine == "plt":
+        # Take a look if matplotlib is the plotting engine
+        plt.show()
 
 
 if __name__ == "__main__":
