@@ -65,8 +65,10 @@ def _parser():
     p.add_argument("-v", "--value", dest="value_only", action="store_true",
                    help="show values only when displaying band")
 
-    p.add_argument("--rmbs", type=int, default=None)
-    p.add_argument("--rmbe", type=int, default=None)
+    p.add_argument("--rmbs", type=int, default=None,
+                   help="Number of highest bands to prune")
+    p.add_argument("--rmbe", type=int, default=None,
+                   help="Number of lowest bands to prune")
 
     o = p.add_mutually_exclusive_group()
     o.add_argument("--ef", dest="efermi", type=float, default=None,
@@ -238,7 +240,7 @@ def m_aims_band():
     ax.set_xlim(0.0, kp.x[-1] + 0.0001)
     ax.set_ylim(ymin=emin, ymax=emax)
     ax.set_ylabel("Energy [eV]", fontsize=18)
-    print(args.engine, args.output)
+    # print(args.engine, args.output)
 
     if args.output != "none" or args.output is not None:
         if args.engine == "grace":
