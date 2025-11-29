@@ -8,7 +8,10 @@ from typing import Sequence, Union
 from copy import deepcopy
 from numbers import Real, Number
 
-import numpy as np
+try:
+    import numpy as np
+except ImportError:
+    np = None
 
 from mushroom.core.logger import loggers
 from mushroom.core.unit import EnergyUnit

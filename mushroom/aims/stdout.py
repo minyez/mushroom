@@ -3,7 +3,10 @@
 import re
 from io import StringIO
 
-import numpy as np
+try:
+    import numpy as np
+except ImportError:
+    np = None
 
 from mushroom.core.bs import BandStructure
 from mushroom.core.typehint import Path

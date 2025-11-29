@@ -2,8 +2,10 @@
 """Utilities for processing crystall-related quantities"""
 from copy import deepcopy
 from typing import List, Iterable, Tuple, Union
-import numpy as np
-from numpy import cos, sin
+try:
+    import numpy as np
+except ImportError:
+    np = None
 from mushroom.core.typehint import Latt3T3
 from mushroom.core.constants import PI, AU2ANG, NAV
 from mushroom.core.elements import get_atomic_weight
@@ -44,6 +46,8 @@ def get_latt_vecs_from_latt_consts(a: float, b: float, c: float,
             90. is used for each as default.
         decmials (int): round the calculated vectors, parsed to numpy ``around`` function
     """
+    from numpy import cos, sin
+
     angle_thres = 1.E-3
     a = abs(a)
     b = abs(b)
@@ -91,7 +95,7 @@ def get_latt_consts_from_latt_vecs(latt) -> Tuple[float]:
 
 
 def get_all_atoms_from_symops(atms_ineq: Iterable[str], posi_ineq, symops: dict,
-                              left_mult: bool = True, latt: Latt3T3 = np.diag((1., 1., 1.)),
+                              left_mult: bool = True, latt: Latt3T3 = None,
                               unit: str = "ang", iden_thres: float = 1e-5):
     """Get atomic symbols and positions of all atoms in the cell
     by performing symmetry operations on inequivalent atoms
@@ -103,7 +107,7 @@ def get_all_atoms_from_symops(atms_ineq: Iterable[str], posi_ineq, symops: dict,
         left_mult (bool):
             True : x' = Rx + t
             False: x'^T = x^T R + t^T
-        latt (ndarray, (3,3)): lattice vectors
+        latt (ndarray, (3,3)): lattice vectors, default using a diagonal
         unit (str): length unit
         iden_thres (float) : threshold in unit for equalize two atoms
     """
@@ -117,6 +121,8 @@ def get_all_atoms_from_symops(atms_ineq: Iterable[str], posi_ineq, symops: dict,
     atms = []
     _logger.debug("atms_ineq: %r", atms_ineq)
     _logger.debug("posi_ineq: %r", posi_ineq)
+    if latt is None:
+        latt = np.diag((1., 1., 1.))
     try:
         _logger.debug("# of symops: %r", len(symops["translations"]))
         rots, trans = symops["rotations"], symops["translations"]

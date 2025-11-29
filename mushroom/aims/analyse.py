@@ -4,7 +4,10 @@ import os
 import re
 import pathlib
 from typing import Union
-import numpy as np
+try:
+    import numpy as np
+except ImportError:
+    np = None
 
 from mushroom.core.logger import loggers
 from mushroom.aims.stdout import StdOut

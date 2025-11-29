@@ -11,7 +11,10 @@ from numbers import Real
 from typing import List, Sequence, Union, Iterable
 from itertools import product
 
-import numpy as np
+try:
+    import numpy as np
+except ImportError:
+    np = None
 try:
     import spglib
 except ImportError:

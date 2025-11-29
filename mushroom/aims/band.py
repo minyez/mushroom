@@ -3,7 +3,10 @@
 from typing import Tuple, List, Union, Iterable
 import os
 
-import numpy as np
+try:
+    import numpy as np
+except ImportError:
+    np = None
 
 from mushroom.core.typehint import RealVec3D
 from mushroom.core.bs import BandStructure
