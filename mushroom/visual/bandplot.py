@@ -22,7 +22,7 @@ def bandplot(bs: BandStructure, kp: KPathLinearizer,
              ksymbols: Iterable[str] = [],
              label: Union[str, None] = None,
              ax=None,
-             engine: str = "matplotlib",
+             engine: str = "plt",
              color: str = "k",
              set_xaxis: bool = True,
              set_ylabel: bool = True,
@@ -37,7 +37,7 @@ def bandplot(bs: BandStructure, kp: KPathLinearizer,
         ksymbols (iterable of strings) : symbols of special k-points as tick labels of x-axis
         label (str) : label for this band structure as legend
         ax (matplotlib.Axes) : if None, create with current choice of `engine`
-        engine (str) : engine for plotting, currently only "matplotlib" (default)
+        engine (str) : engine for plotting, currently only "plt" (matplotlib, default)
         color (str) : color of bands, parsed to `ax.plot`
         set_xaxis (bool) : whether to set up the x-axis
         set_ylabel (bool) : whether to set up the label of the y-axis (hard coded to "Energy [eV]")
@@ -51,10 +51,11 @@ def bandplot(bs: BandStructure, kp: KPathLinearizer,
         The original `ax` is returned if it is not None.
         Otherwise, matplotlib.Axes if `engine` is `matplotlib`.
     """
-    if engine == "matplotlib":
+    if engine == "plt":
         raise_no_module(plt, "matplotlib.pyplot")
     else:
-        raise NotImplementedError("engine other than matplotlib not support yet")
+        raise NotImplementedError(
+            "engine other than matplotlib not support yet")
     if bs.nspins == 2:
         raise NotImplementedError("spin polarized band plot not support yet")
 
@@ -77,15 +78,17 @@ def bandplot(bs: BandStructure, kp: KPathLinearizer,
         nbands = min(nbands_max, bs.nbands)
 
     if ax is None:
-        if engine == "matplotlib":
+        if engine == "plt":
             fig, ax = plt.subplots(1, 1, figsize=(7, 7))
         else:
-            raise NotImplementedError("engine other than matplotlib not support yet")
+            raise NotImplementedError(
+                "engine other than matplotlib not support yet")
 
     for ib in range(nbands):
         if ib > 0:
             label = None
-        ax.plot(kp.x, bs.eigen[0, :, ib] - ref_value, label=label, color=color, **kwargs)
+        ax.plot(kp.x, bs.eigen[0, :, ib] - ref_value,
+                label=label, color=color, **kwargs)
 
     ax.axhline(0.0, ls=":", color="k")
     if set_ylabel:

@@ -226,7 +226,8 @@ def m_aims_band():
         for iband in range(nbands):
             ax.plot(kp.x, eigen[:, iband] - ref, color="k",
                     marker=marker, ls=ls, ms=args.marker_size)
-        ksymbols = ["$" + x + "$" for x in ksymbols]
+        if ksymbols is not None:
+            ksymbols = ["$" + x + "$" for x in ksymbols]
         ax.xaxis.set_ticks(kp.special_x, labels=ksymbols)
         ax.xaxis.grid(color='grey', ls="--")
         ax.set_axisbelow(True)
@@ -239,7 +240,7 @@ def m_aims_band():
     # slightly wider than the last symbol to make it visible on graph
     ax.set_xlim(0.0, kp.x[-1] + 0.0001)
     ax.set_ylim(ymin=emin, ymax=emax)
-    ax.set_ylabel("Energy [eV]", fontsize=18)
+    ax.set_ylabel("Energy [eV]")
     # print(args.engine, args.output)
 
     if args.output != "none" or args.output is not None:
