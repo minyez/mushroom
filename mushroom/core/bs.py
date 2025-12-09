@@ -170,7 +170,8 @@ class BandStructure(EnergyUnit):
             self._set_occupations(occ)
 
         _logger.info("Read bandstructure. Dimensions")
-        _logger.info(">> nspins = %d, nkpts = %d, nbands = %d", self._nspins, self._nkpts, self._nbands)
+        _logger.info(">> nspins = %d, nkpts = %d, nbands = %d",
+                     self._nspins, self._nkpts, self._nbands)
 
         self._pwav = None
         self._atms = None
@@ -191,16 +192,19 @@ class BandStructure(EnergyUnit):
         try:
             shape_o = np.shape(occ)
         except ValueError as err:
-            raise ValueError("can not retrive the shape of input occupations") from err
+            raise ValueError(
+                "can not retrive the shape of input occupations") from err
         shape_e = (self._nspins, self._nkpts, self._nbands)
         if shape_e != shape_o:
-            info = "inconsistent eigen/occ shapes: {}, {}".format(shape_e, shape_o)
+            info = "inconsistent eigen/occ shapes: {}, {}".format(
+                shape_e, shape_o)
             _logger.error(info)
             raise BandStructureError
         self._occ = np.array(occ, dtype=self._dtype)
         # self._nelect_sp_kp = np.sum(self._occ, axis=2) * self._emulti
         self._nelect_sp_kp = np.sum(self._occ, axis=2)
-        self._nelect_sp = np.dot(self._nelect_sp_kp, self._weight) / np.sum(self._weight)
+        self._nelect_sp = np.dot(
+            self._nelect_sp_kp, self._weight) / np.sum(self._weight)
         self._nelect = np.sum(self._nelect_sp)
         # since occupation is changed, band edges need to be recomputed
         _logger.info("occupation (re)set, reset band edges")
@@ -222,11 +226,13 @@ class BandStructure(EnergyUnit):
         if occ is not None:
             self._set_occupations(occ, True)
         elif efermi is not None:
-            self._set_occupations_by_efermi(efermi, unit=unit, allow_reset=True)
+            self._set_occupations_by_efermi(
+                efermi, unit=unit, allow_reset=True)
         elif n_states is not None:
             self._set_occupations_by_states(n_states, allow_reset=True)
         else:
-            raise ValueError("occ, efermi, nelec are None. Please specify one of them.")
+            raise ValueError(
+                "occ, efermi, nelec are None. Please specify one of them.")
 
     def get_band_indices(self, *bands):
         '''Filter the band indices in ``bands``.
@@ -265,9 +271,11 @@ class BandStructure(EnergyUnit):
             return
 
         if remove_from_start < 0:
-            raise ValueError(f"remove_from_start cannot be negative: {remove_from_start}")
+            raise ValueError(f"remove_from_start cannot be negative: {
+                             remove_from_start}")
         if remove_from_end < 0:
-            raise ValueError(f"remove_from_end cannot be negative: {remove_from_end}")
+            raise ValueError(f"remove_from_end cannot be negative: {
+                             remove_from_end}")
 
         ed = self.nbands - remove_from_end
         self._eigen = self._eigen[:, :, remove_from_start:ed]
@@ -401,15 +409,18 @@ class BandStructure(EnergyUnit):
         if atms is not None:
             natms = len(atms)
             if natms != self._natms:
-                raise BandStructureError("inconsistent atms input {}".format(atms))
+                raise BandStructureError(
+                    "inconsistent atms input {}".format(atms))
             self._atms = atms
             _logger.info("Read atoms of partial wave, dimension = %s", natms)
         if prjs is not None:
             nprjs = len(prjs)
             if nprjs != self._nprjs:
-                raise BandStructureError("inconsistent prjs input {}".format(prjs))
+                raise BandStructureError(
+                    "inconsistent prjs input {}".format(prjs))
             self._prjs = prjs
-            _logger.info("Read projectors of partial wave, dimension = %s", nprjs)
+            _logger.info(
+                "Read projectors of partial wave, dimension = %s", nprjs)
         self._pwav = np.array(pwav, dtype=self._dtype)
         _logger.info("Read partial wave")
 
@@ -427,7 +438,8 @@ class BandStructure(EnergyUnit):
         if self._pwav is None:
             raise BandStructureError("no partial wave found")
         if len(new) != self._natms:
-            raise ValueError("Inconsistent atms input. Should be {:d}-long".format(self._natms))
+            raise ValueError(
+                "Inconsistent atms input. Should be {:d}-long".format(self._natms))
         self._atms = new
 
     @property
@@ -445,7 +457,8 @@ class BandStructure(EnergyUnit):
         if self._pwav is None:
             raise BandStructureError("no partial wave found")
         if len(new) != self._nprjs:
-            raise ValueError("Inconsistent prjs input. Should be {:d}-long".format(self._nprjs))
+            raise ValueError(
+                "Inconsistent prjs input. Should be {:d}-long".format(self._nprjs))
         self._prjs = new
 
     @property
@@ -486,7 +499,8 @@ class BandStructure(EnergyUnit):
             reload (bool) : redo the calculation of band edges
         '''
         if self._occ is None:
-            raise BandStructureError("need occupation number before computing band edges!")
+            raise BandStructureError(
+                "need occupation number before computing band edges!")
         if self._bandedge_calculated and not reload:
             return
 
@@ -538,7 +552,8 @@ class BandStructure(EnergyUnit):
                     self._vbm_sp_kp[i, j] = -np.inf
                 else:
                     self._vbm_sp_kp[i, j] = self.eigen[i, j, vb]
-                    _logger.debug("Updating VB %d %d %d %s", i, j, vb, self._vbm_sp_kp[i, j])
+                    _logger.debug("Updating VB %d %d %d %s", i,
+                                  j, vb, self._vbm_sp_kp[i, j])
                 if vb == self.nbands - 1:
                     self._has_infty_cbm = True
                     info = "VBM index for spin-kpt channel (%d,%d) equals nbands. %s"
@@ -548,10 +563,12 @@ class BandStructure(EnergyUnit):
                 else:
                     if np.isnan(self.eigen[i, j, vb + 1]):
                         self._cbm_sp_kp[i, j] = np.inf
-                        _logger.warning("Encounter NaN in CB %d %d %d", i, j, vb + 1)
+                        _logger.warning(
+                            "Encounter NaN in CB %d %d %d", i, j, vb + 1)
                     else:
                         self._cbm_sp_kp[i, j] = self.eigen[i, j, vb + 1]
-                        _logger.debug("Updating CB %d %d %d %s", i, j, vb + 1, self._cbm_sp_kp[i, j])
+                        _logger.debug("Updating CB %d %d %d %s",
+                                      i, j, vb + 1, self._cbm_sp_kp[i, j])
         # VB indices
         self._ivbm_sp = np.array(((0, 0),) * self.nspins)
         self._vbm_sp = np.max(self._vbm_sp_kp, axis=1)
@@ -580,8 +597,10 @@ class BandStructure(EnergyUnit):
         is_occ = self._occ > THRES_OCC
         thres_degen = THRES_DEGENERATE / self._get_eunit_conversion("ev")
 
-        self._vbm_sp_kp = np.zeros((self.nspins, self.nkpts), dtype=self._dtype)
-        self._cbm_sp_kp = np.zeros((self.nspins, self.nkpts), dtype=self._dtype)
+        self._vbm_sp_kp = np.zeros(
+            (self.nspins, self.nkpts), dtype=self._dtype)
+        self._cbm_sp_kp = np.zeros(
+            (self.nspins, self.nkpts), dtype=self._dtype)
         self._ivbm_sp_kp = np.zeros((self.nspins, self.nkpts), dtype=int)
         self._icbm_sp_kp = np.zeros((self.nspins, self.nkpts), dtype=int)
         self._vbm_sp = np.zeros((self.nspins), dtype=self._dtype)
@@ -609,13 +628,15 @@ class BandStructure(EnergyUnit):
                             abs(self._eigen[isp, ik, ib] - self._vbm_sp_kp[isp, ik]) < thres_degen):
                         self._vbm_sp_kp[isp, ik] = self._eigen[isp, ik, ib]
                         self._ivbm_sp_kp[isp, ik] = ib
-                        _logger.debug("Updating VB %d %d %d %d", isp, ik, ib, self._vbm_sp_kp[isp, ik])
+                        _logger.debug("Updating VB %d %d %d %d",
+                                      isp, ik, ib, self._vbm_sp_kp[isp, ik])
                     if not is_occ[isp, ik, ibr] and (
                             self._eigen[isp, ik, ibr] < self._cbm_sp_kp[isp, ik] or
                             abs(self._eigen[isp, ik, ibr] - self._cbm_sp_kp[isp, ik]) < thres_degen):
                         self._cbm_sp_kp[isp, ik] = self._eigen[isp, ik, ibr]
                         self._icbm_sp_kp[isp, ik] = ibr
-                        _logger.debug("Updating CB %d %d %d %d", isp, ik, ib, self._cbm_sp_kp[isp, ik])
+                        _logger.debug("Updating CB %d %d %d %d",
+                                      isp, ik, ib, self._cbm_sp_kp[isp, ik])
                 if self._vbm_sp_kp[isp, ik] > self._vbm_sp[isp]:
                     self._vbm_sp[isp] = self._vbm_sp_kp[isp, ik]
                     self._ivbm_sp[isp, :] = [ik, self._ivbm_sp_kp[isp, ik]]
@@ -628,8 +649,10 @@ class BandStructure(EnergyUnit):
             if self._cbm_sp[isp] < self._cbm:
                 self._cbm = self._cbm_sp[isp]
                 self._icbm[:] = [isp, *self._icbm_sp[isp]]
-            _logger.debug("VBM of Spin %d: %r", isp + 1, self._ivbm_sp_kp[isp, :])
-            _logger.debug("CBM of Spin %d: %r", isp + 1, self._icbm_sp_kp[isp, :])
+            _logger.debug("VBM of Spin %d: %r", isp +
+                          1, self._ivbm_sp_kp[isp, :])
+            _logger.debug("CBM of Spin %d: %r", isp +
+                          1, self._icbm_sp_kp[isp, :])
         _logger.debug("global VBM: %r %f", self._ivbm[:], self._vbm)
         _logger.debug("global CBM: %r %f", self._icbm[:], self._cbm)
 
@@ -645,7 +668,8 @@ class BandStructure(EnergyUnit):
         """
         gap = self.fund_gap()
         if gap < 0:
-            raise NotImplementedError("Scissor operator not yet implemented for metal")
+            raise NotImplementedError(
+                "Scissor operator not yet implemented for metal")
         if gap + scissor < 0 and not force_metal:
             raise ValueError("Scissor operator will leads to a metal state")
         icb = self.icbm[2]
@@ -665,7 +689,8 @@ class BandStructure(EnergyUnit):
             return None
         v = self.__getattribute__(attr)
         if v is None:
-            raise ValueError("attribute {} is not available for band".format(attr.strip("_")))
+            raise ValueError(
+                "attribute {} is not available for band".format(attr.strip("_")))
         return v
 
     def is_metal(self):
@@ -924,7 +949,8 @@ class BandStructure(EnergyUnit):
         else:
             cb_coef = cb_coefs[:, :, icb]
         # ! abs is added in case ivb and icb are put in the opposite
-        inv = np.sum(np.abs(np.reciprocal(self.direct_gaps()) * vb_coef * cb_coef))
+        inv = np.sum(np.abs(np.reciprocal(
+            self.direct_gaps()) * vb_coef * cb_coef))
         if np.allclose(inv, 0.0):
             return np.infty
         return 1.0 / inv
@@ -1024,6 +1050,15 @@ class BandStructure(EnergyUnit):
         """
         raise NotImplementedError
 
+    def reorder_by_eigen(self):
+        """Reorder the bands by ascending eigenvalues"""
+        # reset band edges cache
+        if self.has_proj():
+            raise NotImplementedError(
+                "reorder_by_eigen does not support projections yet")
+        self._bandedge_calculated = False
+        raise NotImplementedError
+
     def __add__(self, y: Union[float, int]):
         newbs = deepcopy(self)
         newbs += y
@@ -1060,7 +1095,8 @@ class BandStructure(EnergyUnit):
             newbs = deepcopy(self)
             newbs._eigen = newbs._eigen - y
         else:
-            raise TypeError("expected BandStructure or float, got {}".format(type(y)))
+            raise TypeError(
+                "expected BandStructure or float, got {}".format(type(y)))
         # must reset Fermi energy in this case
         newbs._bandedge_calculated = False
         newbs._efermi = None
@@ -1108,7 +1144,8 @@ class BandStructure(EnergyUnit):
         tdos = np.zeros((self.nspins, nedos), dtype=self._dtype)
         pdos = None
         if self.has_proj():
-            pdos = np.zeros((self.nspins, nedos, self.natoms, self.nprojs), dtype=self._dtype)
+            pdos = np.zeros((self.nspins, nedos, self.natoms,
+                            self.nprojs), dtype=self._dtype)
         # ? the convolution may be optimized
         for i in range(nedos):
             # shape of d: (nspins, nkpts, nbands)
@@ -1183,7 +1220,8 @@ def random_band_structure(nspins: int = 1, nkpts: int = 1, nbands: int = 2,
         for ispin in range(nspins):
             for ik in range(nkpts):
                 for ib in range(nbands):
-                    pwav[ispin, ik, ib, :, :] /= np.sum(pwav[ispin, ik, ib, :, :])
+                    pwav[ispin, ik, ib, :,
+                         :] /= np.sum(pwav[ispin, ik, ib, :, :])
     return BandStructure(eigen, occ, weight=weight, efermi=efermi,
                          pwav=pwav, atms=atms, prjs=prjs)
 
@@ -1205,7 +1243,8 @@ def split_apb(apb: str):
         list, list, list
     """
     if " " in apb:
-        raise ValueError("whitespace is not allowed in atom-projector-band string, got", apb)
+        raise ValueError(
+            "whitespace is not allowed in atom-projector-band string, got", apb)
     try:
         a, p, b = apb.split(":")
     except ValueError as err:
@@ -1253,7 +1292,8 @@ def display_band_analysis(bs: BandStructure,
             slist.extend(args)
 
         if not value_only:
-            sprint("> band edge between band index {:3d} -> {:3d}".format(ivb, icb))
+            sprint(
+                "> band edge between band index {:3d} -> {:3d}".format(ivb, icb))
             if bs.is_gap_direct():
                 sprint("> fundamental gap = {:8.4f} {}".format(eg_dir, unit))
                 if kpts is None:
@@ -1264,7 +1304,8 @@ def display_band_analysis(bs: BandStructure,
             else:
                 sprint("> fundamental gap = {:8.4f} {}".format(eg_ind, unit))
                 if kpts is None:
-                    sprint(">> ikvb={:<3d} -> ikcb={:<3d}".format(ik_vb, ik_cb))
+                    sprint(
+                        ">> ikvb={:<3d} -> ikcb={:<3d}".format(ik_vb, ik_cb))
                 else:
                     sprint(">> ikvb={:<3d} ({:7.4f},{:7.4f},{:7.4f}) -> ikcb={:<3d} ({:7.4f},{:7.4f},{:7.4f})"
                            .format(ik_vb, *kpts[ik_vb, :], ik_cb, *kpts[ik_cb, :]))
@@ -1282,7 +1323,8 @@ def display_band_analysis(bs: BandStructure,
                 if kpts is None:
                     sprint("{:8.4f}".format(eg_dir))
                 else:
-                    sprint("{:8.4f} # {:d} -> {:d} ({:f},{:f},{:f})".format(eg_dir, ivb, icb, *kpts[ik_eg_dir, :]))
+                    sprint("{:8.4f} # {:d} -> {:d} ({:f},{:f},{:f})".format(eg_dir,
+                           ivb, icb, *kpts[ik_eg_dir, :]))
             else:
                 if kpts is None:
                     sprint("{:8.4f} {:8.4f} {:8.4f} # {:d} -> {:d}"
@@ -1361,10 +1403,12 @@ def display_transition_energies(trans: Sequence[str],
             sprint(">> {:8s} {:29s}    {:29s}".format("E", "kpt_v", "kpt_c"))
         for t in trans:
             ivk, ick, ivb, icb = _decode_itrans_string(t)
-            et, ivk, ick, ivb, icb = bs.get_transition(ivk, ick, ivb=ivb, icb=icb, return_index=True)
+            et, ivk, ick, ivb, icb = bs.get_transition(
+                ivk, ick, ivb=ivb, icb=icb, return_index=True)
             if not value_only:
                 if kpts is None:
-                    sprint(">> {:8.4f} {:<29d} -> {:<29d}".format(et, ivk, ick))
+                    sprint(
+                        ">> {:8.4f} {:<29d} -> {:<29d}".format(et, ivk, ick))
                 else:
                     vk_str = "{:7.4f},{:7.4f},{:7.4f}".format(*kpts[ivk, :])
                     ck_str = "{:7.4f},{:7.4f},{:7.4f}".format(*kpts[ick, :])
@@ -1382,7 +1426,8 @@ def display_transition_energies(trans: Sequence[str],
             sprint("")
         bs.unit = was_unit
     except BandStructureError as err:
-        raise BandStructureError("fail to display transition energies") from err
+        raise BandStructureError(
+            "fail to display transition energies") from err
     s = "\n".join(slist)
     if not silent:
         print(s)
@@ -1429,7 +1474,8 @@ def resolve_band_crossing(kx, bands, occ=None, pwav=None,
         shape_pwav = np.shape(pwav)
         _logger.debug("pwav shape: %r", shape_pwav)
         if len(shape_pwav) < 4 or shape_pwav[0] != nk or shape_pwav[1] != nbands:
-            raise ValueError("Invalid shape of pwav, should be 4d: (nk, nbands, :, :)")
+            raise ValueError(
+                "Invalid shape of pwav, should be 4d: (nk, nbands, :, :)")
 
     kx = np.array(kx)
 
@@ -1451,7 +1497,8 @@ def resolve_band_crossing(kx, bands, occ=None, pwav=None,
         # by checking the absolute difference between the band energies
         sumediff = np.sum(np.abs(bands_res[i, :] - bands_res[i + 1, :]))
         if sumediff < sumediff_thres:
-            _logger.debug("Current and next k-point the same, sum(ediff) < %f: %d", sumediff_thres, i)
+            _logger.debug(
+                "Current and next k-point the same, sum(ediff) < %f: %d", sumediff_thres, i)
             continue
 
         # left side
@@ -1469,16 +1516,22 @@ def resolve_band_crossing(kx, bands, occ=None, pwav=None,
         bands_adjacent[:, 3] = bands_res[j, :]
 
         # inband derivatives
-        derivs_inband[:, 0] = (bands_adjacent[:, 1] - bands_adjacent[:, 0]) / (kx[i] - kl)
-        derivs_inband[:, 1] = (bands_adjacent[:, 2] - bands_adjacent[:, 3]) / (kx[i] - kr)
+        derivs_inband[:, 0] = (bands_adjacent[:, 1] -
+                               bands_adjacent[:, 0]) / (kx[i] - kl)
+        derivs_inband[:, 1] = (bands_adjacent[:, 2] -
+                               bands_adjacent[:, 3]) / (kx[i] - kr)
         # crossband derivatives
         for ipermut, permut in enumerate(permuts):
             # left, the same for all
-            derivs_crossband[ipermut, :, 0] = (bands_adjacent[:, 1] - bands_adjacent[:, 0]) / (kx[i] - kl)
+            derivs_crossband[ipermut, :, 0] = (
+                bands_adjacent[:, 1] - bands_adjacent[:, 0]) / (kx[i] - kl)
             # right
-            derivs_crossband[ipermut, :, 1] = (bands_adjacent[:, 2] - bands_adjacent[permut, 3]) / (kx[i] - kr)
-        diff_derivs_inband = np.sum(np.abs(derivs_inband[:, 1] - derivs_inband[:, 0]))
-        diff_derivs_crossband = np.sum(np.abs(derivs_crossband[:, :, 1] - derivs_crossband[:, :, 0]), axis=1)
+            derivs_crossband[ipermut, :, 1] = (
+                bands_adjacent[:, 2] - bands_adjacent[permut, 3]) / (kx[i] - kr)
+        diff_derivs_inband = np.sum(
+            np.abs(derivs_inband[:, 1] - derivs_inband[:, 0]))
+        diff_derivs_crossband = np.sum(
+            np.abs(derivs_crossband[:, :, 1] - derivs_crossband[:, :, 0]), axis=1)
         arg = np.argmin(diff_derivs_crossband)
         _logger.debug("deriv. diff: inband %f vs min-crossband %f, at %d",
                       diff_derivs_inband, diff_derivs_crossband[arg], i)
@@ -1488,7 +1541,8 @@ def resolve_band_crossing(kx, bands, occ=None, pwav=None,
                      diff_derivs_inband, diff_derivs_crossband[arg], deriv_thres, i, permuts[arg])
         _logger.debug("kx: %f %f %f", kl, kx[i], kr)
         for ib in range(nbands):
-            _logger.debug("related %d-th band energies: %r", ib, bands_adjacent[ib, :])
+            _logger.debug("related %d-th band energies: %r",
+                          ib, bands_adjacent[ib, :])
         temp = bands_res[i + 1:, :]
         temp = temp[:, permuts[arg]]
         bands_res[i + 1:, :] = temp[:, :]

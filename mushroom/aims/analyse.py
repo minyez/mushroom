@@ -138,8 +138,9 @@ def search_band_output_files(path_dir, flag: str = None,
         if (path_dir / ("GW_band1001." + ext)).exists():
             flag = "gw"
         _logger.info(f"detected band output flag: {flag}")
+    else:
+        flag = flag.lower()
 
-    # flag = flag.lower()
     if flag == "gw":
         pattern1 = "GW_band1*." + ext
         pattern2 = "GW_band2*." + ext
@@ -150,7 +151,8 @@ def search_band_output_files(path_dir, flag: str = None,
         pattern1 = "band1*." + ext
         pattern2 = "band2*." + ext
     else:
-        raise ValueError(f"band output flag not supported: {flag}")
+        return []
+        # raise ValueError(f"band output flag not supported: {flag}")
 
     if suffix is not None:
         pattern1 = pattern1 + suffix
@@ -189,6 +191,7 @@ def get_recp_latt_from_geometry(path_geometry: str = "geometry.in"):
             if _l.strip().startswith("lattice_vector"):
                 latt.append(list(map(float, _l.split()[1:4])))
     if len(latt) != 3:
-        raise ValueError("Lattice vectors less than 1, check your geometry file!")
+        raise ValueError(
+            "Lattice vectors less than 1, check your geometry file!")
     latt = np.array(latt)
     return np.cross(latt[(1, 2, 0), :], latt[(2, 0, 1), :]) / np.linalg.det(latt) * 2.0E0 * np.pi
