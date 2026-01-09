@@ -6,6 +6,8 @@ import re
 from typing import List
 from io import StringIO
 
+import numpy as np
+
 from mushroom.core.crystutils import get_latt_vecs_from_latt_consts, get_all_atoms_from_symops
 from mushroom.core.ioutils import open_textio
 from mushroom.core.data import conv_estimate_number, closest_frac
@@ -292,9 +294,11 @@ class Cif:
             atms_ineq.append(re.sub(r"[\d]+[+-]?", "", l["_atom_site_type_symbol"]))
             # Optional check
             try:
-                natoms_per_ineq.append(int(l["_atom_site_symmetry_multiplicity"]))
+                multi = float(l["_atom_site_symmetry_multiplicity"])
+                _logger.debug("_atom_site_symmetry_multiplicity {}".format(multi))
+                natoms_per_ineq.append(int(np.rint(multi)))
             except KeyError:
-                _logger.warn("no _atom_site_symmetry_multiplicity key in cif")
+                _logger.warning("no _atom_site_symmetry_multiplicity key in cif")
         self.posi_ineq = posi_ineq
         self.atms_ineq = atms_ineq
         self.natm_ineq = natoms_per_ineq
