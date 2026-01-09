@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """convenient functions to analyse FHI-aims input/output"""
+from types import ModuleType
 import os
 import re
 import pathlib
@@ -7,9 +8,10 @@ from typing import Union
 try:
     import numpy as np
 except ImportError:
-    np = None
+    np: Union[None, ModuleType] = None
 
 from mushroom.core.logger import loggers
+from mushroom.core.utils import raise_no_module
 from mushroom.aims.stdout import StdOut
 
 
@@ -79,7 +81,7 @@ def get_chemical_potential(aimsout):
 
 
 def is_finished_aimsdir(dirpath: Union[str, os.PathLike], aimsout_pat: str = "aims.out*",
-                        use_regex: bool = False) -> str:
+                        use_regex: bool = False) -> Union[str, None]:
     """check if the calculation inside dirpath is completed.
 
     This is done by searching aims output files matching pattern ``aimsout_pat``
@@ -114,9 +116,9 @@ def is_finished_aimsdir(dirpath: Union[str, os.PathLike], aimsout_pat: str = "ai
     return None
 
 
-def search_band_output_files(path_dir, flag: str = None,
+def search_band_output_files(path_dir, flag: Union[str, None] = None,
                              ext: str = "out",
-                             suffix: str = None, with_spin: bool = False):
+                             suffix: Union[str, None] = None, with_spin: bool = False):
     """Search band output files under `path_dir`
 
     Args:
@@ -182,8 +184,9 @@ def get_atoms_from_geometry(path_geometry: str = "geometry.in"):
     return atms
 
 
-def get_recp_latt_from_geometry(path_geometry: str = "geometry.in"):
+def get_recp_latt_from_geometry(path_geometry: Union[str, os.PathLike] = "geometry.in"):
     """get reciprocal lattice vectors of from aims geometry file"""
+    raise_no_module(np, "numpy")
     latt = []
     with open(path_geometry, 'r') as h:
         lines = h.readlines()

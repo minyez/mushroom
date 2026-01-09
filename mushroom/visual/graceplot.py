@@ -2903,7 +2903,7 @@ class Plot:
     def __getitem__(self, i):
         return self._get_graph(i)
 
-    def get(self, i: int = None):
+    def get(self, i: Union[int, None] = None):
         """Get the Graph object of index i
 
         Args:
@@ -3004,7 +3004,8 @@ class Plot:
         for g in self._graphs:
             g.set_ylim(ymin=ymin, ymax=ymax)
 
-    def write(self, file: Union[str, TextIOWrapper, PathLike] = sys.stdout, mode: str = 'w'):
+    def write(self, file: Union[str, TextIOWrapper, PathLike] = sys.stdout,
+              mode: str = 'w'):
         """write grace plot file to `fn`
 
         Args:
@@ -3030,7 +3031,7 @@ class Plot:
             g.tight_graph(nxticks=nxticks, nyticks=nyticks,
                           xscale=xscale, yscale=yscale)
 
-    def savefig(self, figname, device: str = None, dpi: int = 300):
+    def savefig(self, figname, device: Union[str, None] = None, dpi: int = 300):
         """export to a figure file `figname` by the gracebat engine
 
         This method is adapted from PyGrace.grace

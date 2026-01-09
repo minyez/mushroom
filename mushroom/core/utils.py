@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 """some general utilities that I do not know where to put"""
 from datetime import datetime
+from types import ModuleType
+from typing import Union
 
 
-def get_current_timestamp(with_weekday: bool = False, datetime_str: str = None):
+def get_current_timestamp(with_weekday: bool = False,
+                          datetime_str: Union[str, None] = None) -> str:
     """return the current timestamp
 
     Args:
@@ -48,9 +51,9 @@ def get_current_timestamp(with_weekday: bool = False, datetime_str: str = None):
     return timestamp
 
 
-def raise_no_module(mod, modname: str, msg: str = None):
-    """
-    Raise when a module is not found (set to None) when it is required
+def raise_no_module(mod: Union[None, ModuleType], modname: str,
+                    msg: Union[str, None] = None):
+    """Raise if a module is not found (set to None) when it is required
     """
     if mod is None:
         if msg is None:
