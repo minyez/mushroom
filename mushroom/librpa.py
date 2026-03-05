@@ -158,6 +158,7 @@ def get_occ_numbers_from_bandout(fn_bandout: str = "band_out"):
 
 
 def read_librpa_dimension(fn: Union[str, os.PathLike] = "librpa.out"):
+    _logger.debug("Load dimension from {}".format(fn))
     with open(fn, 'r') as h:
         lines = h.readlines()
     # Read all internal parameters
@@ -173,31 +174,34 @@ def read_librpa_dimension(fn: Union[str, os.PathLike] = "librpa.out"):
     ]
 
     d = {}
-    for l in lines:
-        if l.startswith("Maximumal number of threads"):
-            d["n_threads"] = int(l.split()[-1])
-            _logger.info("Found dimension n_threads: %d", d["n_threads"])
-        if l.startswith("Total number of tasks:"):
-            d["n_procs"] = int(l.split()[-1])
-            _logger.info("Found dimension n_procs: %d", d["n_procs"])
-        if l.startswith("| Number of atoms"):
-            d["n_atoms"] = int(l.split()[-1])
-            _logger.info("Found dimension n_atoms: %d", d["n_atoms"])
-        if l.startswith("nfreq = "):
-            d["n_freq"] = int(l.split()[-1])
-            _logger.info("Found dimension n_freq: %d", d["n_freq"])
-        if l.startswith("| number of spins"):
-            d["n_spin"] = int(l.split()[-1])
-            _logger.info("Found dimension n_spin: %d", d["n_spin"])
-        if l.startswith("| number of k-points"):
-            d["n_kpts"] = int(l.split()[-1])
-            _logger.info("Found dimension n_kpts: %d", d["n_kpts"])
-        if l.startswith("| number of bands"):
-            d["n_bands"] = int(l.split()[-1])
-            _logger.info("Found dimension n_bands: %d", d["n_bands"])
-        if l.startswith("| number of NAOs"):
-            d["n_basis"] = int(l.split()[-1])
-            _logger.info("Found dimension n_basis: %d", d["n_basis"])
+    for line in lines:
+        if line.startswith("Maximumal number of threads"):
+            d["n_threads"] = int(line.split()[-1])
+            _logger.debug("Found dimension n_threads: %d", d["n_threads"])
+        if line.startswith("Maximal number of threads"):
+            d["n_threads"] = int(line.split()[-1])
+            _logger.debug("Found dimension n_threads: %d", d["n_threads"])
+        if line.startswith("Total number of tasks"):
+            d["n_procs"] = int(line.split()[-1])
+            _logger.debug("Found dimension n_procs: %d", d["n_procs"])
+        if line.startswith("| Number of atoms"):
+            d["n_atoms"] = int(line.split()[-1])
+            _logger.debug("Found dimension n_atoms: %d", d["n_atoms"])
+        if line.startswith("nfreq = "):
+            d["n_freq"] = int(line.split()[-1])
+            _logger.debug("Found dimension n_freq: %d", d["n_freq"])
+        if line.startswith("| number of spins"):
+            d["n_spin"] = int(line.split()[-1])
+            _logger.debug("Found dimension n_spin: %d", d["n_spin"])
+        if line.startswith("| number of k-points"):
+            d["n_kpts"] = int(line.split()[-1])
+            _logger.debug("Found dimension n_kpts: %d", d["n_kpts"])
+        if line.startswith("| number of bands"):
+            d["n_bands"] = int(line.split()[-1])
+            _logger.debug("Found dimension n_bands: %d", d["n_bands"])
+        if line.startswith("| number of NAOs"):
+            d["n_basis"] = int(line.split()[-1])
+            _logger.debug("Found dimension n_basis: %d", d["n_basis"])
 
     float_pars = [
         "libri_chi0_threshold_C",
@@ -218,18 +222,19 @@ def read_librpa_dimension(fn: Union[str, os.PathLike] = "librpa.out"):
     except ValueError:
         pass
 
-    for l in lines_control_pars:
-        k, _, v = l.split()
+    for line in lines_control_pars:
+        k, _, v = line.split()
         if k in float_pars:
             v = float(v)
         d[k] = v
 
+    _logger.debug("Finished loading dimension")
     return d
 
 
 def _check_librpa_finished(lines) -> bool:
-    for l in reversed(lines):
-        if l.strip().lower().startswith("librpa finished"):
+    for line in reversed(lines):
+        if line.strip().lower().startswith("librpa finished"):
             return True
     return False
 
@@ -245,7 +250,7 @@ def read_librpa_timing(fn: Union[str, os.PathLike] = "librpa.out", details: bool
     with open(fn, 'r') as h:
         lines = h.readlines()
     for i, l in enumerate(lines):
-        if l.startswith("Total   "):
+        if l.startswith("Total   ") or l.startswith("Total for driver"):
             break
     lines = [x.rstrip() for x in lines[i:]]
 
@@ -254,9 +259,10 @@ def read_librpa_timing(fn: Union[str, os.PathLike] = "librpa.out", details: bool
     if not finished:
         return None
 
+    _logger.debug("Start scanning timing entries")
     # all useful entries
     scan = {
-        "total": ("Total   ", ),
+        "total": ("Total   ", "Total for driver"),
         "cal_chi0s": ("Call cal_chi0s", ),
         "cal_exx": ("Call libRI Hexx calculation", ),
         "cal_sigc": ("Call libRI cal_Sigc", ),
