@@ -51,6 +51,10 @@ _package_specific_exts = {
     "struct": "w2k",
 }
 _package_specific_exts.update(dict((k, k) for k in package_names))
+_package_specific_endswith = {
+    "POSCAR": "vasp",
+    "geometry.in": "aims",
+}
 _package_specific_fullnames = {
     "POSCAR": "vasp",
     "CONTCAR": "vasp",
@@ -71,6 +75,9 @@ for v in _package_specific_prefix.values():
 for v in _package_specific_fullnames.values():
     if v not in package_names:
         raise ValueError(f"invalid pkg name in fullname match: {v}")
+for v in _package_specific_endswith.values():
+    if v not in package_names:
+        raise ValueError(f"invalid pkg name in ending match: {v}")
 for v in _package_specific_exts.values():
     if v not in package_names:
         raise ValueError(f"invalid pkg name in extension match: {v}")
@@ -115,6 +122,10 @@ def detect_matchfn(path: Union[str, PathLike, TextIOWrapper], fail_with_ext: boo
     if pkg is not None:
         _logger.debug(detected_str, full, pkg)
         return pkg
+    for ending, pkg in _package_specific_endswith.items():
+        if str(path).endswith(ending):
+            _logger.debug(detected_str, full, pkg)
+            return pkg
     _logger.debug("fail detecting by matchfn %s", full)
     return fail
 
