@@ -14,7 +14,7 @@ from mushroom.core.bs import BandStructure
 _logger = loggers["librpa"]
 
 
-def read_self_energy_imagfreq(fn: str):
+def read_self_energy_imagfreq(fn: str = "self_energy_omega.dat"):
     """Read self energy on imaginary frequency from data file ``fn``
 
     Args:

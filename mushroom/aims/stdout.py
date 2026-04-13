@@ -447,6 +447,10 @@ class StdOut:
         """
         return self._nbasbas
 
+    def get_n_kpts(self):
+        """get number of k-points"""
+        return self._nkpts
+
     def _handle_scf(self):
         """process the data in the self-consistency iterations"""
         if self._scf_lines is not None:
@@ -523,7 +527,8 @@ class StdOut:
                 st = i
             if l.strip().startswith("DFT/Hartree-Fock") \
                     or l.strip().startswith("Valence band maximum (VBM) from the GW") \
-                    or l.strip().startswith("Spin-up valence band maximum"):
+                    or l.strip().startswith("Spin-up valence band maximum") \
+                    or l.strip().startswith("Below printing the LibRPA internal profiling"):
                 ed = i
         if st is None or ed is None:
             raise ValueError(errmsg.format('finished'))
