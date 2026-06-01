@@ -25,7 +25,7 @@ def _parser():
 def m_librpa_gap():
     """the main stearm"""
     args = _parser().parse_args()
-    bs, kpts = read_quasi_particle_energies_stdout(args.stdout, unit="ev",
+    bs, kpts = read_quasi_particle_energies_stdout(args.stdout, kind=args.kind, unit="ev",
                                                    use_occ_only=args.use_occ_only)
     display_band_analysis(bs, kpts, value_only=args.value_only)
     if args.trans is not None:
