@@ -1278,6 +1278,8 @@ def display_band_analysis(bs: BandStructure,
         was_unit = bs.unit
         bs.unit = unit.lower()
         eg_ind = bs.fund_gap()
+        evb = bs.vbm
+        ecb = bs.cbm
         direct_gaps = bs.direct_gaps()[0]
         eg_dir = np.min(direct_gaps)
         ik_eg_dir = np.argmin(direct_gaps)
@@ -1294,6 +1296,8 @@ def display_band_analysis(bs: BandStructure,
         if not value_only:
             sprint(
                 "> band edge between band index {:3d} -> {:3d}".format(ivb, icb))
+            sprint("> VBM = {:8.4f} {}".format(evb, unit))
+            sprint("> CBM = {:8.4f} {}".format(ecb, unit))
             if bs.is_gap_direct():
                 sprint("> fundamental gap = {:8.4f} {}".format(eg_dir, unit))
                 if kpts is None:
