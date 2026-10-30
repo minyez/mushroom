@@ -1,15 +1,21 @@
 # -*- coding: utf-8 -*-
 """test the unified command line entry"""
+import os
+import re
 import tempfile
 import unittest as ut
 from pathlib import Path
+from unittest.mock import patch
 
+import click
 from click.testing import CliRunner
 
-from mushroom.cli import main, SCRIPT_COMMANDS, SCRIPTS_DIR
+from mushroom.cli import main
 from mushroom.cli._utils import expand_multi_values, fill_optional_values
 from mushroom.cli.cell import _READERS, _WRITERS
 from mushroom.cli.gap import _EPS_KINDS
+from mushroom.cli.tools import _AVAILABLE_EOS
+from mushroom.core.eos import available_eos
 from mushroom.gap import Eps
 from mushroom.io import CellIO
 
@@ -22,13 +28,17 @@ class test_cli(ut.TestCase):
     def setUp(self):
         self.runner = CliRunner()
 
-    def test_all_scripts_registered(self):
-        registered = {script for _, cmds in SCRIPT_COMMANDS.values() for script in cmds.values()}
-        native = {"m_aims_check_ob_ortho"}
-        native.update(p.name for p in SCRIPTS_DIR.glob("m_*")
-                      if "deprecated" in p.read_text())
-        existing = {p.name for p in SCRIPTS_DIR.glob("m_*")}
-        self.assertEqual(registered | native, existing)
+    def test_deprecated_scripts_forward_to_commands(self):
+        scripts_dir = Path(__file__).resolve().parents[2] / "scripts"
+        scripts = [p for p in scripts_dir.glob("m_*") if p.name != "m_aims_check_ob_ortho"]
+        self.assertGreater(len(scripts), 0)
+        for script in scripts:
+            matched = re.search(r"run_deprecated\((.*)\)", script.read_text())
+            self.assertIsNotNone(matched, msg=script.name)
+            command = main
+            for name in re.findall(r'"([^"]+)"', matched.group(1)):
+                command = command.commands[name]
+            self.assertIsInstance(command, click.Command, msg=script.name)
 
     def test_help(self):
         result = self.runner.invoke(main, ["-h"])
@@ -38,12 +48,6 @@ class test_cli(ut.TestCase):
         result = self.runner.invoke(main, ["aims", "-h"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn("extract the band energies from aims output", result.output)
-
-    def test_script_help_passthrough(self):
-        result = self.runner.invoke(main, ["kpt", "kmesh", "-h"])
-        self.assertEqual(result.exit_code, 0)
-        self.assertIn("compute the k-point mesh of a k-grids", result.output)
-        self.assertIn("--gamma-center", result.output)
 
     def test_detect(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -329,6 +333,89 @@ class test_cell_kpt_commands(ut.TestCase):
             output = self.invoke("kpt", "kmesh", "2", "2", "2", "--ir", "-I", "POSCAR").output
             self.assertIn("->", output)
         self.assertEqual(self.runner.invoke(main, ["kpt", "kmesh", "2", "2", "2", "--ir"]).exit_code, 2)
+
+
+class test_remaining_commands(ut.TestCase):
+
+    LIBRPA_STDOUT = """
+spin  1, k-point    1: (0.00000, 0.00000, 0.00000)
+---------------------------------------------------------------
+State   occ   e_mf   v_xc   v_exx   ReSigc   ImSigc   e_qp
+---------------------------------------------------------------
+    1   2.00000   -5.57966   -13.26760   -14.13742   1.94627   -0.04455   -4.50347
+    2   0.00000   -2.60827   -15.34527   -10.17580   -3.36010   -0.06585   -0.79917
+
+"""
+    SBATCH_TEMPLATE = "#!/bin/bash\n#SBATCH -N 1\nsrun hello\n"
+
+    def setUp(self):
+        self.runner = CliRunner()
+
+    def invoke(self, *args):
+        result = self.runner.invoke(main, list(args))
+        self.assertIsNone(result.exception, msg=result.output)
+        return result
+
+    def test_librpa_gap(self):
+        with self.runner.isolated_filesystem():
+            Path("librpa.out").write_text(self.LIBRPA_STDOUT)
+            self.assertIn("gap", self.invoke("librpa", "gap", "librpa.out").output.lower())
+
+    def test_eos_names(self):
+        self.assertEqual(_AVAILABLE_EOS, available_eos)
+
+    def test_fiteos(self):
+        data = "\n".join("{} {}".format(v, -5.0 + 0.02 * (v - 20.0)**2 + 0.0004 * (v - 20.0)**3)
+                         for v in (17.0, 18.0, 19.0, 19.5, 20.0, 20.5, 21.0, 22.0, 23.0))
+        with self.runner.isolated_filesystem():
+            Path("eos.dat").write_text(data)
+            self.assertIn("V0 =", self.invoke("fiteos", "eos.dat").output)
+            self.assertTrue(Path("eos.dat_fitted").exists())
+
+    def test_quickgrace_legend_and_optional_symbol(self):
+        with self.runner.isolated_filesystem():
+            Path("xy.dat").write_text("0 1 2\n1 3 5\n2 5 9\n")
+            self.invoke("quickgrace", "xy.dat", "--xy", "0:1", "0:2", "--l-add-fn", "-s")
+            agr = Path("xy_quickgp.agr").read_text()
+            self.assertIn("xy.dat:0:1", agr)
+            self.assertIn("xy.dat:0:2", agr)
+
+    def test_quickgrace_exclusive_options(self):
+        args = ["quickgrace", "a.dat", "-x", "1", "--xy", "0:1"]
+        self.assertEqual(self.runner.invoke(main, args).exit_code, 2)
+
+    def test_doctemp_list(self):
+        self.assertIn("tex-prb", self.invoke("doctemp", "-l").output)
+
+    def test_workflow_list(self):
+        self.assertIn("vasp_gw_calc", self.invoke("workflow", "-p").output)
+
+    def test_job_submit_with_dependency(self):
+        fake = '#!/bin/sh\necho "$@" > sbatch.args\necho Submitted batch job 41\n'
+        with self.runner.isolated_filesystem():
+            cwd = Path(".").resolve()
+            Path("sacct").write_text("#!/bin/sh\nexit 0\n")
+            Path("fake_sbatch").write_text(fake)
+            Path("t.sh").write_text(self.SBATCH_TEMPLATE)
+            for name in ("sacct", "fake_sbatch"):
+                Path(name).chmod(0o755)
+            Path("c1").mkdir()
+            Path("c2").mkdir()
+            with patch.dict(os.environ, {"PATH": f"{cwd}:{os.environ['PATH']}"}):
+                output = self.invoke("job", "submit", "t.sh", "--cmd", "fake_sbatch",
+                                     "--dep", "ok", "--dep-jobid", "7").output
+            self.assertIn("Newly submitted tasks: 2", output)
+            args = sorted(Path(d, "sbatch.args").read_text().strip() for d in ("c1", "c2"))
+            self.assertEqual(args, ["--dependency=afterok:41 t.sh", "--dependency=afterok:7 t.sh"])
+            self.assertTrue(Path("c1/.submitted").exists())
+
+    def test_job_submit_dry(self):
+        with self.runner.isolated_filesystem():
+            Path("t.sh").write_text(self.SBATCH_TEMPLATE)
+            Path("c1").mkdir()
+            self.assertIn("exiting as dry-run", self.invoke("job", "submit", "t.sh", "--dry").output)
+            self.assertTrue(Path("c1/t.sh").exists())
+            self.assertFalse(Path("c1/.submitted").exists())
 
 
 if __name__ == "__main__":
