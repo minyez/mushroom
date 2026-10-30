@@ -124,7 +124,7 @@ def band(ctx, casename, dirpath, energyfile, ksymbols, output, removek, fig_ext,
     ax.plot(kp.x, bs.eigen[0, :, :].transpose() - ref, color="k", symbol="none")
     ax.x.set_major(grid=True, color="grey", lw=3, ls="dashed")
     # try to use symbols found in the energy file if not specified
-    ax.x.set_spec(kp.special_x, labels=get_ksymbols(ksymbols) if ksymbols else symbols)
+    ax.x.set_spec(kp.special_x, labels=get_ksymbols(ksymbols) or symbols or None)
     ax.set_xlim(0.0, kp.x[-1] + 0.0001)
     scale_plot = (kp.x[-1] - kp.x[0]) / len(kp.x) * 36.0 * scale
     if apbs:

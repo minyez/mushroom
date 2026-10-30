@@ -252,6 +252,12 @@ class test_w2k_commands(ut.TestCase):
             self.invoke("band", "--vbmz", "--sym", "G", "X", "L", "-o", "b.agr")
             self.assertTrue(Path("b.agr").exists())
 
+    def test_band_without_symbols(self):
+        with self.runner.isolated_filesystem():
+            self.copy_case()
+            self.invoke("band")
+            self.assertTrue(Path("plotband.agr").exists())
+
     def test_band_exclusive_options(self):
         result = self.runner.invoke(main, ["w2k", "band", "--ferz", "--vbmz"])
         self.assertEqual(result.exit_code, 2)
