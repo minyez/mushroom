@@ -1,19 +1,18 @@
 """Regression check for the optional band overlay in both plot engines."""
-import contextlib
-import io
 from pathlib import Path
-import runpy
 import tempfile
 import unittest
 from unittest.mock import patch
 
+from click.testing import CliRunner
 import matplotlib.pyplot as plt
 import numpy as np
+
+from mushroom.cli import main
 
 
 class TestBandOverlay(unittest.TestCase):
     def test_compare(self):
-        script = Path(__file__).resolve().parents[3] / "scripts" / "m_aims_band"
         source = Path(__file__).parent / "data" / "Si_GW_band1001.out"
         data = np.loadtxt(source)
         data[:, 5::2] += 2.0
@@ -26,14 +25,14 @@ class TestBandOverlay(unittest.TestCase):
             np.savetxt(comparison2, data[2:])
             for engine in ("plt", "grace"):
                 for compare in (False, True):
-                    argv = [str(script), str(source), "--engine", engine,
+                    argv = ["aims", "band", str(source), "--engine", engine,
                             "--geo", str(Path(directory) / "geometry.in"),
                             "--vbmz", "-o", str(output)]
                     if compare:
                         argv += ["--compare", str(comparison), str(comparison2)]
-                    with patch("sys.argv", argv), patch.object(plt, "show"), \
-                            contextlib.redirect_stdout(io.StringIO()):
-                        runpy.run_path(str(script), run_name="__main__")
+                    with patch.object(plt, "show"):
+                        result = CliRunner().invoke(main, argv)
+                    self.assertIsNone(result.exception)
                     if engine == "plt":
                         lines = plt.gca().lines
                         self.assertEqual(len(lines), nbands * (1 + compare) + 1)

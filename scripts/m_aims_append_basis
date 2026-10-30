@@ -1,62 +1,6 @@
 #!/usr/bin/env python3
-"""a helper script to append aims basis"""
-import os
-from argparse import ArgumentParser, RawDescriptionHelpFormatter
-from mushroom.core.elements import element_symbols
-from mushroom.aims.species import readlines_species_defaults, search_basis_directories, \
-    get_basis_directory_from_alias
-from mushroom.aims.input import divide_control_lines
-from mushroom.aims import get_atoms_from_geometry
-
-
-def _parser():
-    """the parser"""
-    p = ArgumentParser(description=__doc__, formatter_class=RawDescriptionHelpFormatter)
-    p.add_argument("control_file", help="the control file to append/replace")
-    p.add_argument("directory", help="available basis directories")
-    p.add_argument("--sd", dest="species_defaults", help="species_defaults directory", default=None)
-
-    aelem = p.add_mutually_exclusive_group()
-    aelem.add_argument("-e", dest="elements", nargs="+", default=None, help="Elements to add")
-    aelem.add_argument("-i", dest="pgeometry", nargs="?", const="geometry.in", default=None,
-                       help="geometry file to load elements")
-    return p
-
-
-def m_aims_apppend_basis(control_file, directory, *elem, species_defaults=None):
-    """the main stream"""
-    sl = readlines_species_defaults(directory, *elem, species_defaults=species_defaults)
-
-    if os.path.exists(control_file):
-        regions = divide_control_lines(control_file)
-        gl = regions[0]
-        if len(regions) > 1:
-            print("Replacing existing basis information in control file {}".format(control_file))
-        ctrl_new = "".join(gl) + sl
-    else:
-        ctrl_new = sl
-
-    with open(control_file, 'w') as h:
-        print(ctrl_new, file=h)
-
+"""deprecated, use ``mushroom aims append-basis`` instead"""
+from mushroom.cli import run_deprecated
 
 if __name__ == '__main__':
-    args = _parser().parse_args()
-
-    if args.elements is None:
-        if args.pgeometry is None:
-            raise ValueError("specify elements either by -e or -i")
-        elements = list(set(get_atoms_from_geometry(args.pgeometry)))
-    else:
-        elements = args.elements
-
-    directory = args.directory
-    try:
-        directory = get_basis_directory_from_alias(directory)
-    except ValueError:
-        basis_avail = search_basis_directories(args.species_defaults)
-        if directory not in basis_avail:
-            raise ValueError("Basis {} is not available".format(directory))
-
-    print("Appending elements {} from {} to {}".format(elements, directory, args.control_file))
-    m_aims_apppend_basis(args.control_file, directory, *elements, species_defaults=args.species_defaults)
+    run_deprecated("aims", "append-basis")

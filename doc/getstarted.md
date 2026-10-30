@@ -43,10 +43,13 @@ export PATH="path/to/mushroom/scripts:$PATH"
 
 ## Command line interface
 
-All scripts in `scripts` can be called through the unified entry `mushroom`.
-For example, `mushroom aims band` runs `m_aims_band`, and the arguments after
-the subcommand are passed to the script.
+All tools can be called through the unified entry `mushroom`.
 Use `mushroom -h` to list the code groups and `mushroom <group> -h` to list the subcommands.
+For example, `mushroom aims band` replaces `m_aims_band`.
+
+The `m_aims_*` scripts are deprecated and forward to `mushroom aims`.
+They are kept for compatibility, and new usage should go through `mushroom`.
+Other scripts are not migrated yet, and their subcommands pass the arguments to the script.
 
 To check which code the calculation in a directory belongs to
 
