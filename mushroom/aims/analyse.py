@@ -75,8 +75,12 @@ def get_chemical_potential(aimsout):
     chempot = None
     with open(aimsout, 'r') as h:
         for l in h.readlines():
-            if l.startswith("  | Chemical Potential") or l.startswith("  | Chemical potential"):
+            if l.startswith("  | Chemical Potential (Fermi level):") or l.startswith("  | Chemical potential (Fermi level):"):
+                _logger.debug("Getting chemical potential from: %s", l)
                 chempot = float(l.split()[-2])
+            if l.startswith("  | Chemical potential (Fermi level) in eV"):
+                _logger.debug("Getting chemical potential from: %s", l)
+                chempot = float(l.split()[-1])
     return chempot
 
 
