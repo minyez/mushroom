@@ -31,7 +31,7 @@ def gap():
 def analyze_eqpev(casename, dirpath, eqpevfile, trans, method, removehead, occ_thres):
     """analyze GAP eqpeV data from casename.eqpeV_GW and casename.eqpeV_GW0"""
     from mushroom.core.bs import display_band_analysis, display_transition_energies
-    from mushroom.core.display import one_line_center_banner
+    from mushroom.core.ioutils import one_line_center_banner
     from mushroom.gap import Eqpev
 
     if eqpevfile is not None:

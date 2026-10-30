@@ -248,6 +248,10 @@ class test_gap_commands(ut.TestCase):
     def test_eps_kinds(self):
         self.assertEqual(_EPS_KINDS, Eps.known_kind)
 
+    def test_analyze_eqpev(self):
+        output = self.invoke("analyze-eqpev", "-f", str(TEST_DATA / "diamond_1.eqpeV_GW")).output
+        self.assertIn("G0W0 band structure", output)
+
     def test_degw(self):
         with self.runner.isolated_filesystem():
             self.invoke("degw", "-e", str(TEST_DATA / "diamond_1.eqpeV_GW"), "-o", "d.dat")
