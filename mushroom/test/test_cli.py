@@ -217,6 +217,17 @@ class test_w2k_commands(ut.TestCase):
         self.assertEqual(result.exit_code, 2)
         self.assertIn("mutually exclusive", result.output)
 
+    def test_dos(self):
+        """total dos can be plotted, and pdos is exported with atoms from struct"""
+        lines = ["# title", "# fermi", "# ENERGY TOTAL 1:s 2:s"]
+        lines.extend(f"{i - 5}.0 1.0 0.1 0.2" for i in range(11))
+        with self.runner.isolated_filesystem():
+            self.copy_case()
+            Path("1.dos1ev").write_text("\n".join(lines) + "\n")
+            self.invoke("dos", "-d", "1.dos1ev", "--ap", "Ti:s", "C:s")
+            self.assertTrue(Path("plotpdos.agr").exists())
+            self.assertEqual(Path("pdos.dat").read_text().count("#atom-projector"), 2)
+
     def test_dos_requires_dosfile(self):
         result = self.runner.invoke(main, ["w2k", "dos"])
         self.assertEqual(result.exit_code, 2)

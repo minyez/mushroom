@@ -205,7 +205,7 @@ def dos_(casename, unit, dosfiles, dirpath, output, energy_range, aps, fig_ext):
     dos.unit = "ev"
 
     p, ax = Plot.subplots()
-    ax.plot(dos.egrid - dos.efermi, dos.get_dos(), color="k", symbol="none", label="Total")
+    ax.plot(dos.egrid - dos.efermi, dos.get_tdos(ispin=-1), color="k", symbol="none", label="Total")
     if energy_range is not None:
         try:
             emin, emax = decode_float_ends(energy_range)
