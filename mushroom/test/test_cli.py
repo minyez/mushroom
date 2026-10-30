@@ -301,6 +301,12 @@ class test_gap_commands(ut.TestCase):
             self.invoke("degw", "-e", str(TEST_DATA / "diamond_1.eqpeV_GW"), "-o", "d.dat")
             self.assertTrue(Path("d.dat").read_text().startswith("# "))
 
+    def test_eps_diff(self):
+        with self.runner.isolated_filesystem():
+            peps = str(TEST_DATA / "diamond.eps-q1")
+            self.invoke("eps", peps, "-n", "4", "-w", "1", "--plot", "--diff", peps)
+            self.assertTrue(Path("eps_iq_1_iomega_1.png").exists())
+
     def test_degw_requires_input(self):
         self.assertEqual(self.runner.invoke(main, ["gap", "degw"]).exit_code, 2)
 

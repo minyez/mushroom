@@ -234,6 +234,9 @@ def eps_(ctx, epsfile, kind, nbyte_recl, iomega, plot, show, data, compare_eps):
     if iomega is not None:
         _print_eps_omega(eps, iomega)
         if plot or show:
+            if compare_eps is not None:
+                compare_eps = Eps(compare_eps, is_q0=iq == 1, kind=kind, nbyte_recl=nbyte_recl,
+                                  cache=True)
             fig, _ = _plot_eps(eps, iomega, compare_eps=compare_eps, print_data=data)
             if show:
                 plt.show()
