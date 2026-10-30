@@ -424,6 +424,21 @@ State   occ   e_mf   v_xc   v_exx   ReSigc   ImSigc   e_qp
             self.assertIn("xy.dat:0:1", agr)
             self.assertIn("xy.dat:0:2", agr)
 
+    def test_fiteos_e0_not_in_data(self):
+        data = "\n".join("{} {}".format(v, -5.0 + 0.02 * (v - 20.0)**2 + 0.0004 * (v - 20.0)**3)
+                         for v in (17.0, 18.0, 19.0, 19.5, 20.0, 20.5, 21.0, 22.0, 23.0))
+        with self.runner.isolated_filesystem():
+            Path("eos.dat").write_text(data)
+            self.assertIn("V0 =", self.invoke("fiteos", "eos.dat", "-e", "-4.9").output)
+
+    def test_quickgrace_yscale(self):
+        with self.runner.isolated_filesystem():
+            Path("xy.dat").write_text("1 1\n2 3\n3 9\n")
+            self.invoke("quickgrace", "xy.dat", "--yscale", "log", "-o", "y.agr")
+            agr = Path("y.agr").read_text()
+            self.assertIn("yaxes scale Logarithmic", agr)
+            self.assertNotIn("xaxes scale Logarithmic", agr)
+
     def test_doctemp_creates_dst(self):
         with self.runner.isolated_filesystem():
             self.invoke("doctemp", "-d", "tex-prb", "--dst", "new/dir")

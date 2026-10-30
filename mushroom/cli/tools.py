@@ -172,7 +172,8 @@ def fiteos(input_file, nfu, v0, e0, eosname, ivcol, iecol):
 
     if e0 is None:
         e0 = min(enes)
-    v0_guess = vols[np.where(enes == e0)][0]
+    # volume of the data point closest to the guess of E0
+    v0_guess = vols[np.argmin(np.abs(enes - e0))]
     if v0 is not None:
         v0_guess = v0
 
@@ -337,7 +338,7 @@ def quickgrace(ctx, data_files, title, xlabel, xrange, ylabel, linewidth, color,
     if xscale is not None:
         ax.set_xscale(xscale)
     if yscale is not None:
-        ax.set_yscale(xscale)
+        ax.set_yscale(yscale)
 
     if output is None:
         output = get_filename_wo_ext(data_files[0]) + "_quickgp.agr"
