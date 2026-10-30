@@ -7,24 +7,10 @@ import sys
 
 import click
 
-from mushroom.cli._utils import Group, check_exclusive, multi_option, opt_trans, optional_value_option
+from mushroom.cli._utils import (Group, check_exclusive, get_ksymbols, multi_option, opt_fig_ext,
+                                 opt_ksymbols, opt_removek, opt_trans, optional_value_option)
 
-_opt_removek = click.option("--removek", type=int, default=0,
-                            help="number of kpoints at first to remove")
 _opt_poscar = click.option("--pos", "poscar", default="POSCAR", help="POSCAR structure file")
-_opt_fig_ext = click.option("--savefig", "fig_ext", default=None,
-                            help="figure extension to convert")
-_opt_ksymbols = multi_option("--sym", "ksymbols", metavar="SYMBOL...",
-                             help="Symbols of high symmetry points")
-
-
-def _get_ksymbols(ksymbols):
-    """get the list of symbols. A single value is split by spaces"""
-    if not ksymbols:
-        return None
-    if len(ksymbols) == 1:
-        return ksymbols[0].split()
-    return list(ksymbols)
 
 
 @click.group(cls=Group)
@@ -37,13 +23,13 @@ def vasp():
 @_opt_poscar
 @click.option("-o", "output", default="plotband.agr", help="path of agr file to export")
 @click.option("--data", "data_only", is_flag=True, help="only extract and print data, do not plot")
-@_opt_removek
-@_opt_fig_ext
+@opt_removek
+@opt_fig_ext
 @click.option("-e", "energy_range", default=None,
               help="energy range (y-axis), e.g. 'm8~5' for -8.0 to 5.0")
 @click.option("--ferz", "fermi_zero", is_flag=True, help="use Fermi energy as energy zero")
 @click.option("--vbmz", "vbm_zero", is_flag=True, help="use VBM as energy zero")
-@_opt_ksymbols
+@opt_ksymbols
 @optional_value_option("--sym-kf", "ksymbols_kf", const="KPOINTS", default=None,
                        help="Read symbols of high symmetry points from KPOINTS file")
 @click.pass_context
@@ -76,7 +62,7 @@ def band(ctx, eigenval, poscar, output, data_only, removek, fig_ext, energy_rang
     kp = KPathLinearizer(kpts, c.b)
     ax.plot(kp.x, bs.eigen[0, :, :].transpose() - ref, color="k", symbol="none")
     ax.x.set_major(grid=True, color="grey", lw=3, ls="dashed")
-    ax.x.set_spec(kp.special_x, labels=_get_ksymbols(ksymbols))
+    ax.x.set_spec(kp.special_x, labels=get_ksymbols(ksymbols))
     if energy_range is not None:
         try:
             emin, emax = decode_float_ends(energy_range)
@@ -160,7 +146,7 @@ def _plot_tdos(graph, dos):
 @click.option("--pos", "poscar", default="POSCAR", help="POSCAR structure file to read atoms")
 @click.option("-e", "energy_range", default=None, help="energy range, e.g. 'm8~5' for -8.0 to 5.0")
 @multi_option("--ap", "aps", metavar="AP...", help="atom-projector (ap) string")
-@_opt_fig_ext
+@opt_fig_ext
 @click.pass_context
 def dos_(ctx, doscar, vasprunxml, output, poscar, energy_range, aps, fig_ext):
     """draw projected density of states from vasp output DOSCAR and export to an XmGrace plot.
@@ -211,7 +197,7 @@ def dos_(ctx, doscar, vasprunxml, output, poscar, energy_range, aps, fig_ext):
 
 @vasp.command()
 @click.option("-v", "eigenval", default="EIGENVAL", help="EIGENVAL file to read band data")
-@_opt_removek
+@opt_removek
 @opt_trans
 @click.option("-D", "debug", is_flag=True, help="debug mode")
 def gap(eigenval, removek, trans, debug):
@@ -269,15 +255,15 @@ def _plot_pwav(graph, x, bs, apbs, spin, scale, colors=None, prop_area=False):
 @vasp.command()
 @click.option("-p", "procar", default="PROCAR", help="PROCAR file to read band data")
 @_opt_poscar
-@_opt_ksymbols
+@opt_ksymbols
 @click.option("-o", "output", default="plotpwav.agr", help="path of agr file to export")
-@_opt_removek
+@opt_removek
 @click.option("--area", "prop_area", is_flag=True,
               help="area proportional to partial wave instead of diameter")
 @multi_option("--apb", "apbs", metavar="APB...", help="atom-projector-band (apb) string")
 @click.option("-s", "scale", type=float, default=1.0, help="scale for the area of partial wave")
 @click.option("--spin", type=click.IntRange(0, 1), default=0, help="spin to draw")
-@_opt_fig_ext
+@opt_fig_ext
 @click.option("-e", "energy_range", default=None, help="energy range, e.g. 'm8~5' for -8.0 to 5.0")
 def pwav(procar, poscar, ksymbols, output, removek, prop_area, apbs, scale, spin, fig_ext,
          energy_range):
@@ -308,7 +294,7 @@ def pwav(procar, poscar, ksymbols, output, removek, prop_area, apbs, scale, spin
     # draw bands
     ax.plot(kp.x, bs.eigen[spin, :, :].transpose() - bs.efermi, color="k", symbol="none")
     ax.x.set_major(grid=True, color="grey", lw=3, ls="dashed")
-    ax.x.set_spec(kp.special_x, labels=_get_ksymbols(ksymbols))
+    ax.x.set_spec(kp.special_x, labels=get_ksymbols(ksymbols))
     ax.y.set_label("Energy (eV)")
     # 36.0 is a base factor
     scale_plot = (kp.x[-1] - kp.x[0]) / len(kp.x) * 36.0 * scale

@@ -186,5 +186,41 @@ class test_vasp_commands(ut.TestCase):
             self.assertEqual(Path("pwav.dat").read_text().count("#atom-projector-band"), 2)
 
 
+class test_w2k_commands(ut.TestCase):
+
+    def setUp(self):
+        self.runner = CliRunner()
+
+    def invoke(self, *args):
+        result = self.runner.invoke(main, ["w2k", *args])
+        self.assertIsNone(result.exception, msg=result.output)
+        return result
+
+    @staticmethod
+    def copy_case():
+        for suffix in ("struct", "energy", "in1"):
+            Path(f"1.{suffix}").write_bytes((TEST_DATA / f"1.{suffix}").read_bytes())
+
+    def test_gap(self):
+        with self.runner.isolated_filesystem():
+            self.copy_case()
+            self.assertIn("gap", self.invoke("gap", "-u", "ry").output.lower())
+
+    def test_band(self):
+        with self.runner.isolated_filesystem():
+            self.copy_case()
+            self.invoke("band", "--vbmz", "--sym", "G", "X", "L", "-o", "b.agr")
+            self.assertTrue(Path("b.agr").exists())
+
+    def test_band_exclusive_options(self):
+        result = self.runner.invoke(main, ["w2k", "band", "--ferz", "--vbmz"])
+        self.assertEqual(result.exit_code, 2)
+        self.assertIn("mutually exclusive", result.output)
+
+    def test_dos_requires_dosfile(self):
+        result = self.runner.invoke(main, ["w2k", "dos"])
+        self.assertEqual(result.exit_code, 2)
+
+
 if __name__ == "__main__":
     ut.main()

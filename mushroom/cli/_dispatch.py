@@ -16,11 +16,6 @@ SCRIPTS_DIR = Path(__file__).resolve().parents[2] / "scripts"
 # group name -> (group help, {subcommand: script name})
 # group name None means the subcommand is attached to the top level
 SCRIPT_COMMANDS = {
-    "w2k": ("WIEN2k utilities", {
-        "band": "m_w2k_band",
-        "dos": "m_w2k_dos",
-        "gap": "m_w2k_gap",
-    }),
     "gap": ("GAP utilities", {
         "analyze-eqpev": "m_gap_analyze_eqpev",
         "degw": "m_gap_degw",

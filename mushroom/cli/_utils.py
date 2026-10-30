@@ -102,6 +102,21 @@ optional_value_option = partial(click.option, cls=OptionalValueOption)
 
 opt_trans = multi_option("-t", "trans", metavar="IVK:ICK...",
                          help="transitions of interest, in the form of 'ivk:ick'")
+opt_removek = click.option("--removek", type=int, default=0,
+                           help="number of kpoints at first to remove")
+opt_fig_ext = click.option("--savefig", "fig_ext", default=None,
+                           help="figure extension to convert")
+opt_ksymbols = multi_option("--sym", "ksymbols", metavar="SYMBOL...",
+                            help="Symbols of high symmetry points")
+
+
+def get_ksymbols(ksymbols):
+    """get the list of symbols. A single value is split by spaces"""
+    if not ksymbols:
+        return None
+    if len(ksymbols) == 1:
+        return ksymbols[0].split()
+    return list(ksymbols)
 
 
 def check_exclusive(ctx: click.Context, *names):
