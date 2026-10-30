@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""print the dimensions of the calculation from aims stdout file"""
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from mushroom.aims.analyse import StdOut, get_dimensions
 

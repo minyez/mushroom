@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""prepare a control.in file and print it"""
 import pathlib
 import argparse
 

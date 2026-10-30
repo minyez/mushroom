@@ -41,6 +41,21 @@ export PYTHONPATH="path/to/mushroom:$PYTHONPATH"
 export PATH="path/to/mushroom/scripts:$PATH"
 ```
 
+## Command line interface
+
+All scripts in `scripts` can be called through the unified entry `mushroom`.
+For example, `mushroom aims band` runs `m_aims_band`, and the arguments after
+the subcommand are passed to the script.
+Use `mushroom -h` to list the code groups and `mushroom <group> -h` to list the subcommands.
+
+To check which code the calculation in a directory belongs to
+
+```bash
+mushroom detect               # current directory
+mushroom detect dir1 dir2     # several directories
+mushroom detect -q dir1       # print only the most probable code, e.g. "aims"
+```
+
 ## Test
 
 Extra dependencies have to be installed to test the code.
