@@ -165,6 +165,67 @@ class test_BS_no_projection(ut.TestCase):
         self.assertEqual(bs.direct_gap(), gap)
         self.assertTrue(bs.is_gap_direct())
 
+    def test_reorder_by_eigen(self):
+        """test reordering bands by energy with fixed occupations"""
+        eigen = np.array([
+            [
+                [5.0, 3.0, 4.0, 2.0, 0.0, 1.0],
+                [1.0, -1.0, 0.0, 8.0, 6.0, 7.0],
+            ],
+            [
+                [9.0, 7.0, 8.0, 12.0, 10.0, 11.0],
+                [2.0, 3.0, 1.0, 6.0, 4.0, 5.0],
+            ],
+        ])
+        occ = np.zeros_like(eigen)
+        occ[:, :, :3] = 1.0
+        expected = np.array([
+            [
+                [3.0, 4.0, 5.0, 0.0, 1.0, 2.0],
+                [-1.0, 0.0, 1.0, 6.0, 7.0, 8.0],
+            ],
+            [
+                [7.0, 8.0, 9.0, 10.0, 11.0, 12.0],
+                [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            ],
+        ])
+
+        bs = BS(eigen, occ)
+        self.assertIs(bs.reorder_by_eigen(), bs)
+
+        self.assertTrue(np.array_equal(bs.eigen, expected))
+        self.assertTrue(np.array_equal(bs.occ, occ))
+
+        bs_without_occ = BS(eigen)
+        self.assertRaises(BSErr, bs_without_occ.reorder_by_eigen)
+
+    def test_reorder_by_eigen_with_fractional_occ(self):
+        """test fractional occupations are kept in the occupied region"""
+        eigen = np.array([
+            [
+                [-2.0, -3.0, 1.0, 2.0],
+                [-5.0, -4.0, 4.0, 3.0],
+            ],
+        ])
+        occ = np.array([
+            [
+                [1.0, 0.5, 0.0, 0.0],
+                [0.5, 1.0, 0.0, 0.0],
+            ],
+        ])
+        expected = np.array([
+            [
+                [-3.0, -2.0, 1.0, 2.0],
+                [-5.0, -4.0, 3.0, 4.0],
+            ],
+        ])
+
+        bs = BS(eigen, occ)
+        bs.reorder_by_eigen()
+
+        self.assertTrue(np.array_equal(bs.eigen, expected))
+        self.assertTrue(np.array_equal(bs.occ, occ))
+
     def test_scissor(self):
         """test scissor operator"""
         nsp, nkp, nb = 1, 4, 4
@@ -303,6 +364,49 @@ class test_BS_projection(ut.TestCase):
         bs.atms = ['Si',] * natm
         self.assertRaises(ValueError, type(bs).prjs.__set__, bs, ['s',] * (nprj - 1))
         bs.prjs = ['s',] * nprj
+
+    def test_reorder_by_eigen_with_projection(self):
+        """test projections are reordered together with eigenvalues"""
+        eigen = np.array([
+            [
+                [4.0, 3.0, 1.0, 0.0],
+                [10.0, 8.0, 9.0, 7.0],
+            ],
+        ])
+        occ = np.zeros_like(eigen)
+        occ[:, :, :2] = 1.0
+        pwav = np.zeros((1, 2, 4, 2, 1))
+        for ikpt in range(2):
+            for iband in range(4):
+                pwav[0, ikpt, iband, :, 0] = 10 * ikpt + iband
+
+        bs = BS(eigen, occ, pwav=pwav, atms=["Si", "O"], prjs=["s"])
+        bs.reorder_by_eigen()
+
+        expected_eigen = np.array([
+            [
+                [3.0, 4.0, 0.0, 1.0],
+                [8.0, 10.0, 7.0, 9.0],
+            ],
+        ])
+        expected_pwav = np.array([
+            [
+                [[1.0], [1.0]],
+                [[0.0], [0.0]],
+                [[3.0], [3.0]],
+                [[2.0], [2.0]],
+            ],
+            [
+                [[11.0], [11.0]],
+                [[10.0], [10.0]],
+                [[13.0], [13.0]],
+                [[12.0], [12.0]],
+            ],
+        ]).reshape(1, 2, 4, 2, 1)
+
+        self.assertTrue(np.array_equal(bs.eigen, expected_eigen))
+        self.assertTrue(np.array_equal(bs.occ, occ))
+        self.assertTrue(np.array_equal(bs.pwav, expected_pwav))
 
 
 class test_BS_randomize(ut.TestCase):

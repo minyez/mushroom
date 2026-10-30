@@ -271,11 +271,9 @@ class BandStructure(EnergyUnit):
             return
 
         if remove_from_start < 0:
-            raise ValueError(f"remove_from_start cannot be negative: {
-                             remove_from_start}")
+            raise ValueError(f"remove_from_start cannot be negative: {remove_from_start}")
         if remove_from_end < 0:
-            raise ValueError(f"remove_from_end cannot be negative: {
-                             remove_from_end}")
+            raise ValueError(f"remove_from_end cannot be negative: {remove_from_end}")
 
         ed = self.nbands - remove_from_end
         self._eigen = self._eigen[:, :, remove_from_start:ed]
@@ -1050,14 +1048,37 @@ class BandStructure(EnergyUnit):
         """
         raise NotImplementedError
 
-    def reorder_by_eigen(self):
-        """Reorder the bands by ascending eigenvalues"""
-        # reset band edges cache
-        if self.has_proj():
-            raise NotImplementedError(
-                "reorder_by_eigen does not support projections yet")
+    def reorder_by_eigen(self, occ_thres: float = THRES_EMP):
+        """Reorder the bands by ascending eigenvalues.
+
+        The occupation numbers are kept fixed.  For each spin-kpoint channel,
+        occupied and unoccupied bands are sorted independently so a band is not
+        moved across the occupation boundary.  Partial wave data, when present,
+        is permuted together with the corresponding eigenvalue.
+
+        Args:
+            occ_thres (float): states with occupation larger than this value are
+                considered occupied when splitting the two regions.
+        """
+        if self._occ is None:
+            raise BandStructureError(
+                "need occupation number before reordering by eigen")
+        for ispin in range(self.nspins):
+            for ikpt in range(self.nkpts):
+                nocc = np.count_nonzero(
+                    self._occ[ispin, ikpt, :] > occ_thres)
+                for ibands in (np.arange(nocc), np.arange(nocc, self.nbands)):
+                    if len(ibands) < 2:
+                        continue
+                    order = np.argsort(
+                        self._eigen[ispin, ikpt, ibands], kind="mergesort")
+                    self._eigen[ispin, ikpt, ibands] = \
+                        self._eigen[ispin, ikpt, ibands][order]
+                    if self.has_proj():
+                        self._pwav[ispin, ikpt, ibands, :, :] = \
+                            self._pwav[ispin, ikpt, ibands, :, :][order, :, :]
         self._bandedge_calculated = False
-        raise NotImplementedError
+        return self
 
     def __add__(self, y: Union[float, int]):
         newbs = deepcopy(self)
