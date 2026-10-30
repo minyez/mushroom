@@ -258,8 +258,6 @@ class DBWorkflow(PlainTextDB):
                     raise NotADirectoryError("directory {} does not exist".format(dst))
             except PermissionError as err:
                 raise PermissionError("cannot create directory due to limited permission") from err
-            else:
-                raise OSError("cannot create directory")
             _logger.info("Created directory under %s", str(dst))
         _logger.info("Copying %s files to %s", p.name, dst.name)
         for x in p.glob("*"):
@@ -311,8 +309,6 @@ class DBDoctemp(PlainTextDB):
                     raise NotADirectoryError("directory {} does not exist".format(dst))
             except PermissionError as err:
                 raise PermissionError("cannot create directory due to limited permission") from err
-            else:
-                raise OSError("cannot create directory")
             _logger.info("Created directory under %s", str(dst))
         _logger.info("Copying %s files to %s", p.name, dst.name)
         if p.is_file():

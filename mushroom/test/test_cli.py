@@ -412,6 +412,11 @@ State   occ   e_mf   v_xc   v_exx   ReSigc   ImSigc   e_qp
             self.assertIn("xy.dat:0:1", agr)
             self.assertIn("xy.dat:0:2", agr)
 
+    def test_doctemp_creates_dst(self):
+        with self.runner.isolated_filesystem():
+            self.invoke("doctemp", "-d", "tex-prb", "--dst", "new/dir")
+            self.assertTrue(Path("new/dir").is_dir())
+
     def test_quickgrace_exclusive_options(self):
         args = ["quickgrace", "a.dat", "-x", "1", "--xy", "0:1"]
         self.assertEqual(self.runner.invoke(main, args).exit_code, 2)
