@@ -441,15 +441,15 @@ State   occ   e_mf   v_xc   v_exx   ReSigc   ImSigc   e_qp
 
     def test_doctemp_creates_dst(self):
         with self.runner.isolated_filesystem():
-            self.invoke("doctemp", "-d", "tex-prb", "--dst", "new/dir")
-            self.assertTrue(Path("new/dir").is_dir())
+            self.invoke("doctemp", "-d", "tex-beamerpku", "--dst", "new/dir")
+            self.assertTrue(Path("new/dir/Makefile").exists())
 
     def test_quickgrace_exclusive_options(self):
         args = ["quickgrace", "a.dat", "-x", "1", "--xy", "0:1"]
         self.assertEqual(self.runner.invoke(main, args).exit_code, 2)
 
     def test_doctemp_list(self):
-        self.assertIn("tex-prb", self.invoke("doctemp", "-l").output)
+        self.assertIn("tex-beamerpku", self.invoke("doctemp", "-l").output)
 
     def test_workflow_list(self):
         self.assertIn("vasp_gw_calc", self.invoke("workflow", "-p").output)
