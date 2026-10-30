@@ -63,14 +63,14 @@ def band(ctx, eigenval, poscar, output, data_only, removek, fig_ext, energy_rang
     ax.plot(kp.x, bs.eigen[0, :, :].transpose() - ref, color="k", symbol="none")
     ax.x.set_major(grid=True, color="grey", lw=3, ls="dashed")
     ax.x.set_spec(kp.special_x, labels=get_ksymbols(ksymbols))
+    emin, emax = -6, 6
     if energy_range is not None:
         try:
             emin, emax = decode_float_ends(energy_range)
-            ax.set_ylim(ymin=emin, ymax=emax)
         except ValueError as err:
             raise ValueError("invalid energy range", energy_range) from err
     ax.set_xlim(0.0, kp.x[-1] + 0.0001)
-    ax.set_ylim(-6, 6)
+    ax.set_ylim(ymin=emin, ymax=emax)
     ax.y.set_major(major=4)
     ax.y.set_label("Energy (eV)")
     # draw zero line

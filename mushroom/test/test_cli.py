@@ -210,6 +210,14 @@ class test_vasp_commands(ut.TestCase):
             result = self.runner.invoke(main, ["vasp", "pwav", "-p", procar, "--apb", "1:s:0"])
             self.assertIsInstance(result.exception, ValueError)
 
+    def test_band_energy_range(self):
+        with self.runner.isolated_filesystem():
+            Path("POSCAR").write_text(self.POSCAR)
+            self.invoke("band", "-v", str(TEST_DATA / "EIGENVAL_1"), "-e", "m8~5")
+            world = re.search(r"@\s+world (.*)", Path("plotband.agr").read_text()).group(1)
+            self.assertEqual(float(world.split(",")[1]), -8.0)
+            self.assertEqual(float(world.split(",")[3]), 5.0)
+
     def test_pwav(self):
         with self.runner.isolated_filesystem():
             Path("POSCAR").write_text(self.POSCAR)
