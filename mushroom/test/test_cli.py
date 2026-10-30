@@ -10,6 +10,7 @@ from mushroom.cli import main, SCRIPT_COMMANDS, SCRIPTS_DIR
 from mushroom.cli._utils import expand_multi_values, fill_optional_values
 
 AIMS_DATA = Path(__file__).resolve().parents[1] / "aims" / "test" / "data"
+TEST_DATA = Path(__file__).resolve().parent / "data"
 
 
 class test_cli(ut.TestCase):
@@ -131,6 +132,47 @@ class test_aims_commands(ut.TestCase):
             self.assertTrue(Path("geometry.in").exists())
             self.assertIn("exists, skip", self.invoke("get-input", self.aimsout).output)
             self.assertIn("Overwriting", self.invoke("get-input", self.aimsout, "-f").output)
+
+
+class test_vasp_commands(ut.TestCase):
+
+    POSCAR = "Cu\n3.6\n0 .5 .5\n.5 0 .5\n.5 .5 0\nCu\n1\nDirect\n0 0 0\n"
+
+    def setUp(self):
+        self.runner = CliRunner()
+
+    def invoke(self, *args):
+        result = self.runner.invoke(main, ["vasp", *args])
+        self.assertIsNone(result.exception, msg=result.output)
+        return result
+
+    def test_gap(self):
+        output = self.invoke("gap", "-v", str(TEST_DATA / "EIGENVAL_1")).output
+        self.assertIn("gap", output.lower())
+
+    def test_band(self):
+        with self.runner.isolated_filesystem():
+            Path("POSCAR").write_text(self.POSCAR)
+            self.invoke("band", "-v", str(TEST_DATA / "EIGENVAL_1"), "--vbmz", "--sym", "G", "X", "L")
+            self.assertTrue(Path("plotband.agr").exists())
+
+    def test_band_exclusive_options(self):
+        result = self.runner.invoke(main, ["vasp", "band", "--ferz", "--vbmz"])
+        self.assertEqual(result.exit_code, 2)
+        self.assertIn("mutually exclusive", result.output)
+
+    def test_chg(self):
+        with self.runner.isolated_filesystem():
+            Path("CHGCAR").write_bytes((TEST_DATA / "CHGCAR_1.vasp").read_bytes())
+            self.invoke("chg")
+            self.assertTrue(Path("CHGCAR.cube").exists())
+
+    def test_pwav(self):
+        with self.runner.isolated_filesystem():
+            Path("POSCAR").write_text(self.POSCAR)
+            self.invoke("pwav", "-p", str(TEST_DATA / "PROCAR_1"), "--apb", "1:s:1,2", "1:p:3")
+            self.assertTrue(Path("plotpwav.agr").exists())
+            self.assertEqual(Path("pwav.dat").read_text().count("#atom-projector-band"), 2)
 
 
 if __name__ == "__main__":

@@ -12,6 +12,7 @@ from mushroom import __version__
 from mushroom.cli._dispatch import SCRIPT_COMMANDS, SCRIPTS_DIR, ScriptCommand
 from mushroom.cli.aims import aims
 from mushroom.cli.detect import detect
+from mushroom.cli.vasp import vasp
 
 _CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
 
@@ -24,6 +25,7 @@ def main():
 
 main.add_command(aims)
 main.add_command(detect)
+main.add_command(vasp)
 
 for _group, (_help, _commands) in SCRIPT_COMMANDS.items():
     if _group is None:

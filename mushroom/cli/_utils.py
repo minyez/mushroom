@@ -100,6 +100,9 @@ class Group(click.Group):
 multi_option = partial(click.option, cls=MultiValueOption)
 optional_value_option = partial(click.option, cls=OptionalValueOption)
 
+opt_trans = multi_option("-t", "trans", metavar="IVK:ICK...",
+                         help="transitions of interest, in the form of 'ivk:ick'")
+
 
 def check_exclusive(ctx: click.Context, *names):
     """raise usage error if more than one of the parameters are set in command line"""

@@ -9,11 +9,9 @@ from types import SimpleNamespace
 
 import click
 
-from mushroom.cli._utils import Group, check_exclusive, multi_option, optional_value_option
+from mushroom.cli._utils import Group, check_exclusive, multi_option, opt_trans, optional_value_option
 
 _opt_unit = click.option("--unit", default="ev", help="energy unit")
-_opt_trans = multi_option("-t", "trans", metavar="IVK:ICK...",
-                          help="transitions of interest, in the form of 'ivk:ick'")
 _opt_remove_k_before = click.option("--rkbf", "remove_k_before", type=int, default=0,
                                     help="number of kpoints at first to remove")
 _opt_remove_k_behind = click.option("--rkbh", "remove_k_behind", type=int, default=None,
@@ -116,7 +114,7 @@ def _get_reference(bs, vbm_zero, cbm_zero, fermi_zero, isikib_zero):
               help="derivative threshold for band resolution. "
                    "Try some negative value when you need resolution earlier")
 @click.option("--transparent", is_flag=True, help="Set background of Grace graph to transparent")
-@_opt_trans
+@opt_trans
 @click.option("-v", "--value", "value_only", is_flag=True,
               help="show values only when displaying band")
 @click.option("--rmbs", type=int, default=None, help="Number of lowest bands to prune")
@@ -420,7 +418,7 @@ def dim(aimsout):
 @aims.command()
 @click.argument("out_files", nargs=-1, required=True)
 @_opt_unit
-@_opt_trans
+@opt_trans
 @_opt_remove_k_before
 @_opt_remove_k_behind
 def gap(out_files, unit, trans, remove_k_before, remove_k_behind):
@@ -610,7 +608,7 @@ def qp_dos(stdout, sigma, output, filter_below_ef, ks, filter_above_ef):
 
 @aims.command("qp-gap")
 @click.argument("stdout")
-@_opt_trans
+@opt_trans
 @click.option("--ks", is_flag=True, help="KS gap instead of QP")
 @click.option("-v", "--value", "value_only", is_flag=True, help="Value only")
 @_opt_use_occ_only
