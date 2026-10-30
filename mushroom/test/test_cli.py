@@ -8,6 +8,8 @@ from click.testing import CliRunner
 
 from mushroom.cli import main, SCRIPT_COMMANDS, SCRIPTS_DIR
 from mushroom.cli._utils import expand_multi_values, fill_optional_values
+from mushroom.cli.gap import _EPS_KINDS
+from mushroom.gap import Eps
 
 AIMS_DATA = Path(__file__).resolve().parents[1] / "aims" / "test" / "data"
 TEST_DATA = Path(__file__).resolve().parent / "data"
@@ -231,6 +233,40 @@ class test_w2k_commands(ut.TestCase):
     def test_dos_requires_dosfile(self):
         result = self.runner.invoke(main, ["w2k", "dos"])
         self.assertEqual(result.exit_code, 2)
+
+
+class test_gap_commands(ut.TestCase):
+
+    def setUp(self):
+        self.runner = CliRunner()
+
+    def invoke(self, *args):
+        result = self.runner.invoke(main, ["gap", *args])
+        self.assertIsNone(result.exception, msg=result.output)
+        return result
+
+    def test_eps_kinds(self):
+        self.assertEqual(_EPS_KINDS, Eps.known_kind)
+
+    def test_degw(self):
+        with self.runner.isolated_filesystem():
+            self.invoke("degw", "-e", str(TEST_DATA / "diamond_1.eqpeV_GW"), "-o", "d.dat")
+            self.assertTrue(Path("d.dat").read_text().startswith("# "))
+
+    def test_degw_requires_input(self):
+        self.assertEqual(self.runner.invoke(main, ["gap", "degw"]).exit_code, 2)
+
+    def test_eps(self):
+        output = self.invoke("eps", str(TEST_DATA / "diamond.eps-q1"), "-n", "4", "-w", "2").output
+        self.assertIn("E_macro", output)
+
+    def test_eps_plot_requires_iomega(self):
+        result = self.runner.invoke(main, ["gap", "eps", "any.eps-q1", "--plot"])
+        self.assertEqual(result.exit_code, 2)
+
+    def test_vmat(self):
+        output = self.invoke("vmat", str(TEST_DATA / "1_diamond_q1.vmat"), "-s", "-20").output
+        self.assertIn("matrix size = 143", output)
 
 
 if __name__ == "__main__":

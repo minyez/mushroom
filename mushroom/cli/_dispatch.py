@@ -16,12 +16,6 @@ SCRIPTS_DIR = Path(__file__).resolve().parents[2] / "scripts"
 # group name -> (group help, {subcommand: script name})
 # group name None means the subcommand is attached to the top level
 SCRIPT_COMMANDS = {
-    "gap": ("GAP utilities", {
-        "analyze-eqpev": "m_gap_analyze_eqpev",
-        "degw": "m_gap_degw",
-        "eps": "m_gap_eps",
-        "vmat": "m_gap_vmat",
-    }),
     "librpa": ("LibRPA utilities", {
         "gap": "m_librpa_gap",
     }),

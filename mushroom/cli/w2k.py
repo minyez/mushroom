@@ -5,12 +5,9 @@ Modules heavier than click are imported inside the commands to keep the entry fa
 """
 import click
 
-from mushroom.cli._utils import (Group, check_exclusive, get_ksymbols, multi_option, opt_fig_ext,
-                                 opt_ksymbols, opt_removek, opt_trans)
+from mushroom.cli._utils import (Group, check_exclusive, get_ksymbols, multi_option, opt_casename,
+                                 opt_dirpath, opt_fig_ext, opt_ksymbols, opt_removek, opt_trans)
 
-_opt_casename = click.option("-c", "casename", default=None, help="casename")
-_opt_dirpath = click.option("-p", "dirpath", default=".",
-                            help="path to the directory containg inputs and outputs")
 _opt_energyfile = click.option("-f", "energyfile", default=None, help="path of energy file")
 
 
@@ -84,8 +81,8 @@ def _plot_pwav(graph, x, bs, apbs, spin, ref, scale, colors=None, prop_area=Fals
 
 
 @w2k.command()
-@_opt_casename
-@_opt_dirpath
+@opt_casename
+@opt_dirpath
 @_opt_energyfile
 @opt_ksymbols
 @click.option("-o", "output", default="plotband.agr", help="path of agr file to export")
@@ -178,11 +175,11 @@ def _plot_pdos(graph, dos, aps, spin=None, colors=None):
 
 
 @w2k.command("dos")
-@_opt_casename
+@opt_casename
 @click.option("-u", "unit", default=None,
               help="unit of dos input, default to detect by the extension")
 @multi_option("-d", "dosfiles", metavar="FILE...", required=True, help="path of dosev files")
-@_opt_dirpath
+@opt_dirpath
 @click.option("-o", "output", default="plotpdos.agr",
               help="path of agr file to export projected density of states")
 @click.option("-e", "energy_range", default=None, help="energy range, e.g. 'm8~5' for -8.0 to 5.0")
@@ -235,8 +232,8 @@ def dos_(casename, unit, dosfiles, dirpath, output, energy_range, aps, fig_ext):
 
 
 @w2k.command()
-@_opt_casename
-@_opt_dirpath
+@opt_casename
+@opt_dirpath
 @_opt_energyfile
 @click.option("-u", "unit", default="eV", type=click.Choice(["eV", "au", "ry", "ha"]),
               help="unit of energy")

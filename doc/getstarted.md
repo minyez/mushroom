@@ -47,7 +47,7 @@ All tools can be called through the unified entry `mushroom`.
 Use `mushroom -h` to list the code groups and `mushroom <group> -h` to list the subcommands.
 For example, `mushroom aims band` replaces `m_aims_band`.
 
-The `m_aims_*`, `m_vasp_*` and `m_w2k_*` scripts are deprecated and forward to the corresponding `mushroom` groups.
+The `m_aims_*`, `m_vasp_*`, `m_w2k_*` and `m_gap_*` scripts are deprecated and forward to the corresponding `mushroom` groups.
 They are kept for compatibility, and new usage should go through `mushroom`.
 Other scripts are not migrated yet, and their subcommands pass the arguments to the script.
 

@@ -108,6 +108,9 @@ opt_fig_ext = click.option("--savefig", "fig_ext", default=None,
                            help="figure extension to convert")
 opt_ksymbols = multi_option("--sym", "ksymbols", metavar="SYMBOL...",
                             help="Symbols of high symmetry points")
+opt_casename = click.option("-c", "casename", default=None, help="casename")
+opt_dirpath = click.option("-p", "dirpath", default=".",
+                           help="path to the directory containg inputs and outputs")
 
 
 def get_ksymbols(ksymbols):

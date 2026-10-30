@@ -12,6 +12,7 @@ from mushroom import __version__
 from mushroom.cli._dispatch import SCRIPT_COMMANDS, SCRIPTS_DIR, ScriptCommand
 from mushroom.cli.aims import aims
 from mushroom.cli.detect import detect
+from mushroom.cli.gap import gap
 from mushroom.cli.vasp import vasp
 from mushroom.cli.w2k import w2k
 
@@ -26,6 +27,7 @@ def main():
 
 main.add_command(aims)
 main.add_command(detect)
+main.add_command(gap)
 main.add_command(vasp)
 main.add_command(w2k)
 
