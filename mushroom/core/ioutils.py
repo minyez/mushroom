@@ -516,6 +516,34 @@ def get_str_indices_by_iden(container, iden=None):
     return ret
 
 
+def get_prj_indices(prjs, prj):
+    """Return the indices of projectors identified by ``prj``.
+
+    A shell name, e.g. "p", selects all orbitals of that shell, e.g. "px", "py" and "pz",
+    when the shell itself is not in ``prjs``.
+
+    Args:
+        prjs (list or tuple): names of projectors
+        prj (int, str, Iterable): the identifier of projectors
+
+    Returns:
+        list, unique indices of identified projectors
+
+    Raises:
+        ValueError, when no projector is found
+    """
+    idens = list(prj) if isinstance(prj, Iterable) and not isinstance(prj, str) else [prj,]
+    ret = []
+    for iden in idens:
+        if isinstance(iden, str) and iden in "spdf" and iden not in prjs:
+            ret.extend(i for i, name in enumerate(prjs) if name.startswith(iden))
+        else:
+            ret.extend(get_str_indices_by_iden(prjs, iden))
+    if not ret:
+        raise ValueError("projector {} is not found in {}".format(prj, list(prjs)))
+    return list(OrderedDict.fromkeys(ret).keys())
+
+
 def print_file_or_iowrapper(*s, f=None, mode='w', encoding='utf-8', **kwargs):
     """print string s to file handler f
     Args:

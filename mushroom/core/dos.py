@@ -4,7 +4,7 @@ import numpy as np
 
 from mushroom.core.unit import EnergyUnit
 from mushroom.core.data import export_2d_data
-from mushroom.core.ioutils import (get_str_indices_by_iden,
+from mushroom.core.ioutils import (get_prj_indices, get_str_indices_by_iden,
                                    split_comma)
 from mushroom.core.logger import loggers
 
@@ -242,7 +242,10 @@ class DensityOfStates(EnergyUnit):
                 if not has_str:
                     return atm
             raise ValueError("parse atms first for atom string")
-        return get_str_indices_by_iden(self._atms, atm)
+        indices = get_str_indices_by_iden(self._atms, atm)
+        if not indices:
+            raise ValueError("atom {} is not found in {}".format(atm, list(self._atms)))
+        return indices
 
     def _get_prj_indices(self, prj):
         if self._prjs is None:
@@ -253,7 +256,7 @@ class DensityOfStates(EnergyUnit):
                 if not has_str:
                     return prj
             raise ValueError("parse prjs first for projector string")
-        return get_str_indices_by_iden(self._prjs, prj)
+        return get_prj_indices(self._prjs, prj)
 
     def get_tdos(self, ispin: int = None, reverse_spindn: bool = False):
         """get the total dos data

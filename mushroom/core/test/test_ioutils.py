@@ -7,7 +7,7 @@ import os
 import unittest as ut
 import tempfile as tf
 
-from mushroom.core.ioutils import (split_comma, decode_int_ends, decode_int_range, decode_float_ends, grep,
+from mushroom.core.ioutils import (get_prj_indices, split_comma, decode_int_ends, decode_int_range, decode_float_ends, grep,
                                    get_dirpath, get_file_ext, get_filename_wo_ext,
                                    get_cwd_name, get_matched_files, trim_after,
                                    get_first_last_line, readlines_remove_comment,
@@ -284,6 +284,21 @@ class test_banner(ut.TestCase):
         s = block_banner("Hello World!", width=30, fence="-", fill="-")
         self.assertEqual(s,
                          "-" * 30 + "\n" + "-" * 8 + " Hello World! " + "-" * 8 + "\n" + "-" * 30)
+
+
+class test_get_prj_indices(ut.TestCase):
+
+    def test_shell_and_orbitals(self):
+        prjs = ["s", "py", "pz", "px", "dxy"]
+        self.assertEqual(get_prj_indices(prjs, "p"), [1, 2, 3])
+        self.assertEqual(get_prj_indices(prjs, "px"), [3])
+        self.assertEqual(get_prj_indices(prjs, ["s", "p"]), [0, 1, 2, 3])
+        self.assertEqual(get_prj_indices(prjs, [0, "p", "py"]), [0, 1, 2, 3])
+        self.assertEqual(get_prj_indices(["s", "p", "d"], "p"), [1])
+
+    def test_not_found(self):
+        self.assertRaises(ValueError, get_prj_indices, ["s", "py"], "d")
+        self.assertRaises(ValueError, get_prj_indices, ["s", "py"], 5)
 
 
 if __name__ == "__main__":

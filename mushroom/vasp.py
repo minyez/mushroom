@@ -35,6 +35,16 @@ __all__ = [
 
 
 # pylint: disable=R0914
+# projectors in DOSCAR by the number of projectors, in the order of PROCAR
+_DOSCAR_PRJS = {
+    3: ["s", "p", "d"],
+    4: ["s", "p", "d", "f"],
+    9: ["s", "py", "pz", "px", "dxy", "dyz", "dz2", "dxz", "dx2-y2"],
+    16: ["s", "py", "pz", "px", "dxy", "dyz", "dz2", "dxz", "dx2-y2",
+         "f-3", "f-2", "f-1", "f0", "f1", "f2", "f3"],
+}
+
+
 def _dict_read_doscar(path: str = "DOSCAR",
                       read_pdos: bool = True, ncl: bool = False) -> dict:
     """read DOSCAR file and returns a dict
@@ -78,8 +88,10 @@ def _dict_read_doscar(path: str = "DOSCAR",
     tdos = [x[1:1 + nspins] for x in lines[6:6 + nedos]]
     tdos = np.array(tdos).transpose()
     pdos = None
+    prjs = None
     if read_pdos and len(lines) > nedos + 7:
         nprjs = (len(lines[nedos + 7]) - 1) // nspins
+        prjs = _DOSCAR_PRJS.get(nprjs)
         pdos = np.zeros((nspins, nedos, natms, nprjs))
         for ia in range(natms):
             start = (ia + 1) * (nedos + 1) + 6
@@ -89,6 +101,7 @@ def _dict_read_doscar(path: str = "DOSCAR",
             "tdos": tdos,
             "efermi": efermi,
             "pdos": pdos,
+            "prjs": prjs,
             }
 
 
@@ -141,7 +154,7 @@ def _dict_read_procar(path: str = "PROCAR") -> dict:
     # extra line "tot" for more than 1 atom
     has_tot_line = int(natms > 1)
     # remove the ion index and tot
-    prjs = lines[7].split()[1:-1]
+    prjs = lines[6].split()[1:-1]
     nprjs = len(prjs)
     kpt_span = nbands * (natms + 4 + has_tot_line) + 3
     if len(lines) > (1 + nkpts * kpt_span):

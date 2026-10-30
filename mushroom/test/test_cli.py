@@ -186,10 +186,34 @@ class test_vasp_commands(ut.TestCase):
             self.assertEqual(len(tdos_lines[1].split()), 2)
             self.assertEqual(Path("pdos.dat").read_text().count("#atom-projector"), 2)
 
+    def test_dos_projector_names(self):
+        """shell name in --ap is the sum of its orbitals, and unknown names are rejected"""
+        with self.runner.isolated_filesystem():
+            Path("POSCAR").write_text(self.POSCAR)
+            doscar = str(TEST_DATA / "DOSCAR_2")
+            self.invoke("dos", "-d", doscar, "--ap", "Cu:p", "Cu:px,py,pz")
+            shell, orbitals = Path("pdos.dat").read_text().strip().split("#atom-projector:")[1:]
+            shell = shell.strip().splitlines()[1:]
+            self.assertEqual(shell, orbitals.strip().splitlines()[1:])
+            self.assertTrue(any(float(l.split()[1]) > 0 for l in shell))
+            result = self.runner.invoke(main, ["vasp", "dos", "-d", doscar, "--ap", "Cu:xyz"])
+            self.assertIsInstance(result.exception, ValueError)
+
+    def test_pwav_projector_names(self):
+        """s weight of the lowest band in PROCAR_1 is nonzero, and unknown atoms are rejected"""
+        with self.runner.isolated_filesystem():
+            Path("POSCAR").write_text(self.POSCAR)
+            procar = str(TEST_DATA / "PROCAR_1")
+            self.invoke("pwav", "-p", procar, "--apb", "Cu:s:0")
+            values = [float(l) for l in Path("pwav.dat").read_text().split("\n")[1:] if l]
+            self.assertGreater(max(values), 0.0)
+            result = self.runner.invoke(main, ["vasp", "pwav", "-p", procar, "--apb", "1:s:0"])
+            self.assertIsInstance(result.exception, ValueError)
+
     def test_pwav(self):
         with self.runner.isolated_filesystem():
             Path("POSCAR").write_text(self.POSCAR)
-            self.invoke("pwav", "-p", str(TEST_DATA / "PROCAR_1"), "--apb", "1:s:1,2", "1:p:3")
+            self.invoke("pwav", "-p", str(TEST_DATA / "PROCAR_1"), "--apb", "Cu:s:1,2", "Cu:p:3")
             self.assertTrue(Path("plotpwav.agr").exists())
             self.assertEqual(Path("pwav.dat").read_text().count("#atom-projector-band"), 2)
 

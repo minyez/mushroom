@@ -15,7 +15,7 @@ except ImportError:
 
 from mushroom.core.logger import loggers
 from mushroom.core.unit import EnergyUnit
-from mushroom.core.ioutils import get_str_indices_by_iden, split_comma
+from mushroom.core.ioutils import get_prj_indices, get_str_indices_by_iden, split_comma
 from mushroom.core.typehint import Key
 
 __all__ = [
@@ -1025,7 +1025,10 @@ class BandStructure(EnergyUnit):
                 if not has_str:
                     return atm
             raise ValueError("parse atms first for atom string")
-        return get_str_indices_by_iden(self._atms, atm)
+        indices = get_str_indices_by_iden(self._atms, atm)
+        if not indices:
+            raise ValueError("atom {} is not found in {}".format(atm, list(self._atms)))
+        return indices
 
     def _get_prj_indices(self, prj):
         if self._prjs is None:
@@ -1036,7 +1039,7 @@ class BandStructure(EnergyUnit):
                 if not has_str:
                     return prj
             raise ValueError("parse prjs first for projector string")
-        return get_str_indices_by_iden(self._prjs, prj)
+        return get_prj_indices(self._prjs, prj)
 
     def resolve(self, eres=0.01):
         """resolve band entanglements and making each band energy continuous in k
