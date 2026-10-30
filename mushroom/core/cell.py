@@ -971,7 +971,11 @@ When other keyword are parsed, they will be filtered out and no exception will b
         Returns:
             cell (3,3), pos (n,3), index of atom type (n), with n = self.natm
         '''
-        return self.latt, self.posi, self.type_index()
+        posi = self.posi
+        if self.coord_sys == "C":
+            posi = np.matmul(posi, np.linalg.inv(self.latt))
+        _logger.debug("spglib posi: %r", posi)
+        return self.latt, posi, self.type_index()
 
     # * Exporter implementations
     def write(self, output_format: str, filename=None, scale: float = 1.0):
