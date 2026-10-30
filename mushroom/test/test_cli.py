@@ -8,8 +8,10 @@ from click.testing import CliRunner
 
 from mushroom.cli import main, SCRIPT_COMMANDS, SCRIPTS_DIR
 from mushroom.cli._utils import expand_multi_values, fill_optional_values
+from mushroom.cli.cell import _READERS, _WRITERS
 from mushroom.cli.gap import _EPS_KINDS
 from mushroom.gap import Eps
+from mushroom.io import CellIO
 
 AIMS_DATA = Path(__file__).resolve().parents[1] / "aims" / "test" / "data"
 TEST_DATA = Path(__file__).resolve().parent / "data"
@@ -271,6 +273,62 @@ class test_gap_commands(ut.TestCase):
     def test_vmat(self):
         output = self.invoke("vmat", str(TEST_DATA / "1_diamond_q1.vmat"), "-s", "-20").output
         self.assertIn("matrix size = 143", output)
+
+
+class test_cell_kpt_commands(ut.TestCase):
+
+    POSCAR = ("Si\n1.0\n0 2.7 2.7\n2.7 0 2.7\n2.7 2.7 0\nSi\n2\nCartesian\n"
+              "0 0 0\n1.35 1.35 1.35\n")
+
+    def setUp(self):
+        self.runner = CliRunner()
+
+    def invoke(self, *args):
+        result = self.runner.invoke(main, list(args))
+        self.assertIsNone(result.exception, msg=result.output)
+        return result
+
+    def test_cell_formats(self):
+        self.assertEqual(list(_READERS), CellIO.avail_readers)
+        self.assertEqual(list(_WRITERS), CellIO.avail_writers)
+
+    def test_convert(self):
+        with self.runner.isolated_filesystem():
+            Path("POSCAR").write_text(self.POSCAR)
+            self.invoke("cell", "convert", "-I", "POSCAR", "-o", "aims", "-O", "geometry.in")
+            self.assertEqual(Path("geometry.in").read_text().count("atom_frac"), 2)
+
+    def test_convert_supercell(self):
+        with self.runner.isolated_filesystem():
+            Path("POSCAR").write_text(self.POSCAR)
+            self.invoke("cell", "convert", "-I", "POSCAR", "--sc", "2", "2", "1", "-O", "sc.vasp")
+            self.assertEqual(Path("transformation_matrix.dat").read_text(),
+                             "2 0 0\n0 2 0\n0 0 1\n")
+            self.assertEqual(len(Path("unfolding_map.dat").read_text().split()), 8)
+
+    def test_convert_exclusive_and_required(self):
+        args = ["cell", "convert"]
+        self.assertEqual(self.runner.invoke(main, args).exit_code, 2)
+        args += ["-I", "POSCAR", "-c", "0"]
+        self.assertEqual(self.runner.invoke(main, args).exit_code, 2)
+
+    def test_cell_database(self):
+        self.assertIn("AgBr", self.invoke("cell", "convert", "-f", "AgBr").output)
+
+    def test_info(self):
+        with self.runner.isolated_filesystem():
+            Path("POSCAR").write_text(self.POSCAR)
+            self.assertIn("Fd-3m (#227)", self.invoke("cell", "info", "POSCAR", "-r", "-s").output)
+
+    def test_kmesh(self):
+        self.assertEqual(len(self.invoke("kpt", "kmesh", "2", "2", "2").output.splitlines()), 8)
+
+    def test_kmesh_irreducible(self):
+        with self.runner.isolated_filesystem():
+            Path("POSCAR").write_text(self.POSCAR)
+            output = self.invoke("kpt", "kmesh", "2", "2", "2", "--ir", "-I", "POSCAR").output
+            self.assertIn("->", output)
+        self.assertEqual(self.runner.invoke(main, ["kpt", "kmesh", "2", "2", "2", "--ir"]).exit_code, 2)
 
 
 if __name__ == "__main__":

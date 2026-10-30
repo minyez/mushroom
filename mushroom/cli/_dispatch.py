@@ -19,13 +19,6 @@ SCRIPT_COMMANDS = {
     "librpa": ("LibRPA utilities", {
         "gap": "m_librpa_gap",
     }),
-    "cell": ("crystal cell utilities", {
-        "convert": "m_cell",
-        "info": "m_cell_info",
-    }),
-    "kpt": ("k-point utilities", {
-        "kmesh": "m_kpt_get_kmesh",
-    }),
     "job": ("HPC job utilities", {
         "add-header": "m_job_add_header",
         "submit": "m_job_submit",
