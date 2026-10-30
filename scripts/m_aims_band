@@ -26,6 +26,9 @@ def _parser():
     p = ArgumentParser(description=__doc__,
                        formatter_class=RawDescriptionHelpFormatter)
     p.add_argument("out_files", nargs="+", type=str, help="band output files")
+    p.add_argument("--compare", nargs="+", type=str, default=None,
+                   help="band output files to overlay as red dashed lines; use the same k path, "
+                        "with the selected energy-zero option applied independently")
     p.add_argument("--unit", default='ev', type=str, help="energy unit")
     p.add_argument("-o", dest="output", type=str, default="plotband",
                    help="file name of the figure to save (arg file for grace engine)")
@@ -138,6 +141,19 @@ def m_aims_band():
                         args.fermi_zero, args.isikib_zero)
 
     kp = KPathLinearizer(kpts, recp_latt)
+    if args.compare is not None:
+        bs_compare, kpts_compare = read_band_output(
+            *args.compare, unit=args.unit,
+            filter_k_before=args.remove_k_before,
+            filter_k_behind=args.remove_k_behind, use_occ_only=args.use_occ_only)
+        if args.efermi is not None or args.n_states is not None:
+            bs_compare.reset_occupations(efermi=args.efermi, n_states=args.n_states)
+        bs_compare.prune_bands(args.rmbs, args.rmbe)
+        ref_compare = get_reference(bs_compare, args.vbm_zero, args.cbm_zero,
+                                    args.fermi_zero, args.isikib_zero)
+        kp_compare = KPathLinearizer(kpts_compare, recp_latt)
+        eigen_compare = bs_compare.eigen[0, :, :] - ref_compare
+
     if args.band_erange is not None:
         band_lb, band_ub = decode_int_ends(args.band_erange)
 
@@ -208,6 +224,8 @@ def m_aims_band():
         fig, ax = Plot.subplots(1, 1, background=not args.transparent)
         ax.plot(kp.x, eigen.transpose() - ref, color="k",
                 symbol=marker, ls=ls, ssize=args.marker_size)
+        if args.compare is not None:
+            ax.plot(kp_compare.x, eigen_compare.transpose(), color="red", ls="--")
         ax.x.set_major(grid=True, size=0.0, color="grey",
                        lw=3, ls="longdashed")
         ax.x.set_spec(kp.special_x, labels=ksymbols)
@@ -226,6 +244,8 @@ def m_aims_band():
         for iband in range(nbands):
             ax.plot(kp.x, eigen[:, iband] - ref, color="k",
                     marker=marker, ls=ls, ms=args.marker_size)
+        if args.compare is not None:
+            ax.plot(kp_compare.x, eigen_compare, color="red", ls="--")
         if ksymbols is not None:
             ksymbols = ["$" + x + "$" for x in ksymbols]
         ax.xaxis.set_ticks(kp.special_x, labels=ksymbols)
