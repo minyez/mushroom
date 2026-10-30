@@ -145,10 +145,10 @@ def _plot_tdos(graph, dos):
     """plot total density of states and export to tdos.dat"""
     from mushroom.core.data import export_2d_data
 
-    graph.plot(dos.egrid - dos.efermi, dos.get_dos(), color="k", symbol="none", label="Total")
+    graph.plot(dos.egrid - dos.efermi, dos.get_tdos(ispin=-1), color="k", symbol="none", label="Total")
     with open('tdos.dat', 'w') as tdos_dat:
         print("#fermi-energy: {}".format(dos.efermi), file=tdos_dat)
-        print("\n".join(export_2d_data([dos.egrid, dos.get_dos()], transpose=True)),
+        print("\n".join(export_2d_data([dos.egrid, dos.get_tdos(ispin=-1)], transpose=True)),
               file=tdos_dat)
 
 

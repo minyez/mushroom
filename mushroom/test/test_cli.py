@@ -167,6 +167,17 @@ class test_vasp_commands(ut.TestCase):
             self.invoke("chg")
             self.assertTrue(Path("CHGCAR.cube").exists())
 
+    def test_dos(self):
+        """total dos is summed over spins, and projectors can be given by index"""
+        with self.runner.isolated_filesystem():
+            Path("POSCAR").write_text(self.POSCAR)
+            self.invoke("dos", "-d", str(TEST_DATA / "DOSCAR_2"), "--ap", "Cu:0", "Cu:1,2,3")
+            self.assertTrue(Path("plotpdos.agr").exists())
+            tdos_lines = Path("tdos.dat").read_text().splitlines()
+            self.assertEqual(len(tdos_lines), 302)
+            self.assertEqual(len(tdos_lines[1].split()), 2)
+            self.assertEqual(Path("pdos.dat").read_text().count("#atom-projector"), 2)
+
     def test_pwav(self):
         with self.runner.isolated_filesystem():
             Path("POSCAR").write_text(self.POSCAR)
