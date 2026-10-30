@@ -1,10 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """test facilities related to crystal manipulation"""
+import contextlib
+import io
 import unittest as ut
+from types import SimpleNamespace
 
 import numpy as np
 
+from mushroom.core import crystutils
 from mushroom.core.constants import PI, NAV, ANG2AU
 from mushroom.core.crystutils import (atms_from_sym_nat, axis_list, get_volume, get_recp_latt,
                                       periodic_duplicates_in_cell, sym_nat_from_atms,
@@ -112,7 +116,40 @@ class test_cell_utils(ut.TestCase):
 
 class test_symmetry_related(ut.TestCase):
 
+    def test_display_symmetry_info_sort_operations(self):
+        rotations = np.array([
+            [[1, 1, 0], [0, 0, 0], [0, 0, -1]],
+            [[1, 0, 0], [0, 1, 0], [0, 0, -1]],
+            [[1, 0, 1], [0, 1, 0], [0, 0, -1]],
+        ])
+        translations = np.array([[0.1, 0.0, 0.0],
+                                 [0.2, 0.0, 0.0],
+                                 [0.3, 0.0, 0.0]])
+        fake_spglib = SimpleNamespace(get_symmetry_dataset=lambda _: SimpleNamespace(
+            number=1, hall="P 1", hall_number=1, international="P1", pointgroup="1",
+            rotations=rotations, translations=translations))
+
+        old_spglib = crystutils.spglib
+        crystutils.spglib = fake_spglib
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                display_symmetry_info(np.eye(3), [[0.0, 0.0, 0.0]], [1],
+                                      sort_operations=True)
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                display_symmetry_info(np.eye(3), [[0.0, 0.0, 0.0]], [1],
+                                      print_sym_per_row=True, sort_operations=True)
+        finally:
+            crystutils.spglib = old_spglib
+
+        values = [float(line.rsplit("|", 1)[1].split()[0])
+                  for line in out.getvalue().splitlines() if "|" in line]
+        self.assertEqual(values, [0.3, 0.2, 0.1])
+
     def test_display_symmetry_info(self):
+        if crystutils.spglib is None:
+            self.skipTest("require spglib")
+
         # silicon, 227
         latt = np.array([[0.0, 3.0, 3.0], [3.0, 0.0, 3.0], [3.0, 3.0, 0.0]])
         posi = [[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]]

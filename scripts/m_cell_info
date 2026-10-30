@@ -16,6 +16,10 @@ def _parser():
     p.add_argument("input_cell")
     p.add_argument("-i", dest="input_format", default=None,
                    help="Format of input file")
+    p.add_argument("-r", dest="sym_per_row", action="store_true",
+                   help="print each symmetry operation in one row")
+    p.add_argument("-s", dest="sort_operations", action="store_true",
+                   help="sort symmetry operations by rotation matrix")
     return p
 
 
@@ -32,4 +36,6 @@ if __name__ == '__main__':
     if spglib is None:
         print("Spglib not avaiable, skip symmetry analysis")
     else:
-        display_symmetry_info(*(cell.get_spglib_input()))
+        display_symmetry_info(*(cell.get_spglib_input()),
+                              print_sym_per_row=args.sym_per_row,
+                              sort_operations=args.sort_operations)

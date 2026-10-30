@@ -330,7 +330,9 @@ def get_density(latt: Latt3T3, atms: List[Union[int, str]], latt_unit: str = "an
     return density_n, density_m
 
 
-def display_symmetry_info(latt, posi, atms, n_sym_cols: int = 4):
+def display_symmetry_info(latt, posi, atms, n_sym_cols: int = 4,
+                          print_sym_per_row: bool = False,
+                          sort_operations: bool = False):
     """display the symmetry of the input crystal cell"""
     raise_no_module(spglib, "spglib")
     atms_uniq = list(set(atms))
@@ -361,26 +363,47 @@ def display_symmetry_info(latt, posi, atms, n_sym_cols: int = 4):
     print("Point group:", pointgroup)
     print("Hall: {} (#{})".format(hall, hall_number))
     print("Symmetry operations")
-    fmtstr = "{:2s} {:2d} {:2d} {:2d} | {:.2f}"
-    rowsep = "-" * 18
-    rowsep = (rowsep + "  ") * (n_sym_cols - 1) + rowsep
-    print(rowsep)
-    nsyms = len(rotations)
-    nrows = nsyms // n_sym_cols + int(nsyms % n_sym_cols != 0)
 
-    def p(*s):
-        print(*s, sep="  ")
+    if sort_operations:
+        order = sorted(range(len(rotations)),
+                       key=lambda i: (tuple(rotations[i].diagonal()) +
+                                      tuple(rotations[i].ravel())),
+                       reverse=True)
+        rotations = rotations[order]
+        translations = translations[order]
 
-    for irow in range(nrows):
-        rots = rotations[irow * n_sym_cols:(irow + 1) * n_sym_cols]
-        trans = translations[irow * n_sym_cols:(irow + 1) * n_sym_cols]
-        p(*[fmtstr.format("", *rot[0, :], tran[0])
-            for rot, tran in zip(rots, trans)])
-        p(*[fmtstr.format(str(i + 1 + irow * n_sym_cols), *rot[1, :], tran[1])
-            for i, (rot, tran) in enumerate(zip(rots, trans))])
-        p(*[fmtstr.format("", *rot[2, :], tran[2])
-            for rot, tran in zip(rots, trans)])
+    if print_sym_per_row:
+        fmtstr = "{:5d}: " + "{:2d} " * 9 + "|" + " {:9.7f}" * 3
+        for isym, (rot, trans) in enumerate(zip(rotations, translations)):
+            trans_filter = [trans[0], trans[1], trans[2]]
+            # filter -0.00000
+            for i in range(3):
+                if abs(trans_filter[i]) < 1e-5:
+                    trans_filter[i] = abs(trans_filter[i])
+            print(fmtstr.format(isym + 1, *rot[0, :], *rot[1, :], *rot[2, :], *trans_filter[:]))
+    else:
+        fmtstr = "{:2s} {:2d} {:2d} {:2d} | {:.2f}"
+        rowsep = "-" * 18
+        rowsep = (rowsep + "  ") * (n_sym_cols - 1) + rowsep
         print(rowsep)
+        nsyms = len(rotations)
+        nrows = nsyms // n_sym_cols + int(nsyms % n_sym_cols != 0)
+
+        def p(*s):
+            print(*s, sep="  ")
+
+        for irow in range(nrows):
+            rots = rotations[irow * n_sym_cols:(irow + 1) * n_sym_cols]
+            trans = translations[irow * n_sym_cols:(irow + 1) * n_sym_cols]
+            # filter -0.00000
+            trans = np.where(np.abs(trans) < 1e-5, np.abs(trans), trans)
+            p(*[fmtstr.format("", *rot[0, :], tran[0])
+                for rot, tran in zip(rots, trans)])
+            p(*[fmtstr.format(str(i + 1 + irow * n_sym_cols), *rot[1, :], tran[1])
+                for i, (rot, tran) in enumerate(zip(rots, trans))])
+            p(*[fmtstr.format("", *rot[2, :], tran[2])
+                for rot, tran in zip(rots, trans)])
+            print(rowsep)
 
     # ds["choice"]
     # ds["transformation_matrix"]
