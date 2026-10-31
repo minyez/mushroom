@@ -1,6 +1,0 @@
-#!/usr/bin/env python3
-"""deprecated, use ``mushroom doctemp`` instead"""
-from mushroom.cli import run_deprecated
-
-if __name__ == '__main__':
-    run_deprecated("doctemp")

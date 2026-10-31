@@ -5,7 +5,7 @@ Modules heavier than click are imported inside the commands to keep the entry fa
 """
 import click
 
-from mushroom.cli._utils import Group, check_exclusive, multi_option
+from mushroom.cli._utils import Group, multi_option
 
 # same as mushroom.io.CellIO.avail_readers and avail_writers,
 # which are not imported here to keep the entry fast
@@ -36,12 +36,7 @@ def _write_transformation_matrix(supercell):
 
 
 @cell.command()
-@click.option("-I", "input_file", default=None, help="input file")
-@click.option("-f", "search", default=None,
-              help="search and print out cells with file names matching the regex")
-@click.option("-c", "sample", default=None,
-              help="extract predefined sample cell. int or str. see -l")
-@click.option("-l", "show", is_flag=True, help="list predefined sample cells")
+@click.option("-I", "input_file", required=True, help="input file")
 @multi_option("--sc", "supercell", type=int, metavar="N...", help="create super cell")
 @click.option("--coord", "coord_system", default="D", type=click.Choice(["d", "c", "D", "C"]),
               help="coordinate system of output, direct or Cartesian")
@@ -49,41 +44,17 @@ def _write_transformation_matrix(supercell):
 @click.option("--std", "standardize", is_flag=True, help="standardize the cell (spglib required)")
 @click.option("-i", "input_format", type=click.Choice(_READERS), default=None,
               help="format of input file, default use automatic detection")
-@click.option("--db", "db_cell_path", default=None, help="(absolute) path of the cell database")
 @click.option("-O", "output_path", default=None, help="output file")
 @click.option("-o", "output_format", type=click.Choice(_WRITERS), default=None, help="output format")
-@click.pass_context
-def convert(ctx, input_file, search, sample, show, supercell, coord_system, primitize, standardize,
-            input_format, db_cell_path, output_path, output_format):
-    """create/read a cell and export to various code-specific format
-
-    \b
-    Use `-I` for converting file of one cell format to another
-    Use `-c` for creating from predefined sample, stored in `db/cell`.
-    Use `-l` for curating available cell samples.
-    """
+def convert(input_file, supercell, coord_system, primitize, standardize, input_format, output_path,
+            output_format):
+    """read a cell and export to various code-specific format"""
     from os.path import isfile
 
-    from mushroom.db import DBCell
     from mushroom.io import CellIO
 
-    check_exclusive(ctx, "input_file", "search", "sample", "show")
-    if input_file is not None:
-        if not isfile(input_file):
-            raise FileNotFoundError(input_file)
-    else:
-        # cell database operations
-        cdb = DBCell(db_cell_path)
-        if sample is not None:
-            input_file = cdb.get_cell_path(sample)
-        elif show or search:
-            if cdb.N == 0:
-                print("No cell entries are found at", cdb._db_path)
-            for i, s in cdb.filter(search):
-                print("{:>3d} : {:s}".format(i, s))
-            return
-        else:
-            raise click.UsageError("specify one of -I, -f, -c and -l", ctx=ctx)
+    if not isfile(input_file):
+        raise FileNotFoundError(input_file)
 
     supercell = list(supercell) or None
     cio = CellIO(input_file, format=input_format)

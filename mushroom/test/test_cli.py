@@ -354,14 +354,8 @@ class test_cell_kpt_commands(ut.TestCase):
                              "2 0 0\n0 2 0\n0 0 1\n")
             self.assertEqual(len(Path("unfolding_map.dat").read_text().split()), 8)
 
-    def test_convert_exclusive_and_required(self):
-        args = ["cell", "convert"]
-        self.assertEqual(self.runner.invoke(main, args).exit_code, 2)
-        args += ["-I", "POSCAR", "-c", "0"]
-        self.assertEqual(self.runner.invoke(main, args).exit_code, 2)
-
-    def test_cell_database(self):
-        self.assertIn("AgBr", self.invoke("cell", "convert", "-f", "AgBr").output)
+    def test_convert_requires_input(self):
+        self.assertEqual(self.runner.invoke(main, ["cell", "convert"]).exit_code, 2)
 
     def test_info(self):
         with self.runner.isolated_filesystem():
@@ -439,20 +433,9 @@ State   occ   e_mf   v_xc   v_exx   ReSigc   ImSigc   e_qp
             self.assertIn("yaxes scale Logarithmic", agr)
             self.assertNotIn("xaxes scale Logarithmic", agr)
 
-    def test_doctemp_creates_dst(self):
-        with self.runner.isolated_filesystem():
-            self.invoke("doctemp", "-d", "tex-beamerpku", "--dst", "new/dir")
-            self.assertTrue(Path("new/dir/Makefile").exists())
-
     def test_quickgrace_exclusive_options(self):
         args = ["quickgrace", "a.dat", "-x", "1", "--xy", "0:1"]
         self.assertEqual(self.runner.invoke(main, args).exit_code, 2)
-
-    def test_doctemp_list(self):
-        self.assertIn("tex-beamerpku", self.invoke("doctemp", "-l").output)
-
-    def test_workflow_list(self):
-        self.assertIn("vasp_gw_calc", self.invoke("workflow", "-p").output)
 
     def test_job_submit_with_dependency(self):
         fake = '#!/bin/sh\necho "$@" > sbatch.args\necho Submitted batch job 41\n'

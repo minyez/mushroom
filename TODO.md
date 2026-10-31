@@ -121,7 +121,6 @@ Require `pymatgen`
 ### 特殊点路径 kpath
 
 - [ ] 参考 SetayawanW10-AFLOW, 更好地对路径进行分类
-- [ ] 数据库对象 `DBKPath` 的处理输入结构对称性的方法
 
 ### 工作流 workflows
 

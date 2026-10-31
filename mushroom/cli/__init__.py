@@ -15,7 +15,7 @@ from mushroom.cli.gap import gap
 from mushroom.cli.job import job
 from mushroom.cli.kpt import kpt
 from mushroom.cli.librpa import librpa
-from mushroom.cli.tools import doctemp, fiteos, quickgrace, workflow
+from mushroom.cli.tools import fiteos, quickgrace
 from mushroom.cli.vasp import vasp
 from mushroom.cli.w2k import w2k
 
@@ -26,8 +26,7 @@ def main():
     """mushroom, a Multi-fUnctional, Simple and Helpful Research tOOlkit for Material science"""
 
 
-for _command in (aims, cell, detect, doctemp, fiteos, gap, job, kpt, librpa, quickgrace, vasp, w2k,
-                 workflow):
+for _command in (aims, cell, detect, fiteos, gap, job, kpt, librpa, quickgrace, vasp, w2k):
     main.add_command(_command)
 
 
