@@ -25,6 +25,7 @@ __all__ = [
     "require_files",
     "largest_div_below_sqrt",
     "get_npar_kpar",
+    "with_hard_stack_limit",
     "run_command",
     "open_example",
     "diff_files",
@@ -63,15 +64,35 @@ def get_npar_kpar(ntasks: int) -> Tuple[int, int]:
     return ntasks // kpar, kpar
 
 
+def with_hard_stack_limit(command: Union[str, List[str]]) -> List[str]:
+    """wrap a command to run it with the stack limit raised to the hard limit
+
+    The limit is set in a new shell, not in Python. macOS can refuse to raise the
+    limit of a running Python, while a new process can do it. The hard limit is
+    about 64 MB on macOS, and other systems can have no limit.
+
+    Args:
+        command (str or list) : the command to run
+
+    Returns:
+        list, the wrapped command
+    """
+    if isinstance(command, str):
+        command = shlex.split(command)
+    return ["bash", "-c", 'ulimit -s hard && exec "$@"', "--", *command]
+
+
 def run_command(command: Union[str, List[str]], output: Path, cwd: Path = ".",
-                stdin: str = None):
-    """run a command and redirect both stdout and stderr to a file
+                stdin: str = None, error: Path = None):
+    """run a command and redirect its stdout and stderr to files
 
     Args:
         command (str or list) : the command to run
         output (Path) : the path of output file, relative to ``cwd``
         cwd (Path) : the working directory
         stdin (str) : the text to send to standard input
+        error (Path) : the path of file for stderr, relative to ``cwd``.
+            Default to write stderr to ``output``
 
     Raises:
         subprocess.CalledProcessError : when the command fails
@@ -80,7 +101,12 @@ def run_command(command: Union[str, List[str]], output: Path, cwd: Path = ".",
         command = shlex.split(command)
     _logger.info("running %r in %s", command, cwd)
     with (pathlib.Path(cwd) / output).open("w") as h:
-        sp.run(command, cwd=cwd, input=stdin, text=True, stdout=h, stderr=sp.STDOUT, check=True)
+        if error is None:
+            sp.run(command, cwd=cwd, input=stdin, text=True, stdout=h, stderr=sp.STDOUT, check=True)
+        else:
+            with (pathlib.Path(cwd) / error).open("w") as h_err:
+                sp.run(command, cwd=cwd, input=stdin, text=True, stdout=h, stderr=h_err,
+                       check=True)
 
 
 @contextmanager

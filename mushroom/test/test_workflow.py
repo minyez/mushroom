@@ -54,6 +54,29 @@ class test_run_command(ut.TestCase):
                               [sys.executable, "-c", code.format(1)], "o", cwd=tmpdir)
 
 
+class test_stack_limit(ut.TestCase):
+    """test running a command at the hard stack limit"""
+
+    def test_wrapped_command(self):
+        """the soft limit of the child process is the hard limit"""
+        code = "import resource; s, h = resource.getrlimit(resource.RLIMIT_STACK); print(s == h)"
+        output = sp.run(workflow.with_hard_stack_limit([sys.executable, "-c", code]),
+                        capture_output=True, text=True, check=True).stdout
+        self.assertEqual(output.strip(), "True")
+
+
+class test_run_command_stderr(ut.TestCase):
+    """test writing stderr to its own file"""
+
+    def test_error_file(self):
+        """stdout and stderr go to different files"""
+        code = "import sys; print('out'); print('err', file=sys.stderr)"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workflow.run_command([sys.executable, "-c", code], "o", cwd=tmpdir, error="e")
+            self.assertEqual((pathlib.Path(tmpdir) / "o").read_text(), "out\n")
+            self.assertEqual((pathlib.Path(tmpdir) / "e").read_text(), "err\n")
+
+
 class test_run_command_stdin(ut.TestCase):
     """test sending text to a command"""
 

@@ -111,6 +111,8 @@ class StdOut:
         if len(lines) > 1:
             testline = lines[-2].strip()
             self._finished = testline == 'Have a nice day.' or testline == '*** scf_solver: SCF cycle not converged.'
+            # a run without SCF cycles, e.g. sc_iter_limit 0, ends without the nice-day line
+            self._finished = self._finished or any(l.strip() == 'Leaving FHI-aims.' for l in lines[-60:])
             if testline == 'Have a nice day.':
                 self._converged = True
 
