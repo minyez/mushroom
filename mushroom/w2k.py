@@ -296,6 +296,31 @@ def _w2k_read_latt_posi_for_kind(kind, coord_sys, latt_consts, posi_types):
     return latt, posi_types
 
 
+def _w2k_write_latt_consts_for_kind(kind, latt):
+    """get the lattice constants of lattice kind in w2k when writing from primitive vectors"""
+    latt = np.array(latt)
+    if kind == "R":
+        # constants in hexagonal axes
+        a = np.linalg.norm(latt[0] - latt[1])
+        return np.array([a, a, np.linalg.norm(latt.sum(axis=0)), 90.0, 90.0, 120.0])
+    if kind == "F":
+        a = np.linalg.norm(latt[0]) * np.sqrt(2.0)
+        return np.array([a, a, a, 90.0, 90.0, 90.0])
+    if kind == "B":
+        a = np.linalg.norm(latt[0]) * 2.0 / SQRT3
+        return np.array([a, a, a, 90.0, 90.0, 90.0])
+    return np.array(get_latt_consts_from_latt_vecs(latt))
+
+
+def _w2k_write_posi_for_kind(kind, latt, posi):
+    """convert direct positions in primitive vectors to those of lattice kind in w2k when writing"""
+    if kind in ["F", "B"]:
+        # positions are in the conventional cubic axes
+        a = _w2k_write_latt_consts_for_kind(kind, latt)[0]
+        return np.mod(np.round(np.dot(posi, latt) / a, decimals=8), 1.0)
+    return posi
+
+
 class Struct:
     """object for generating struct files
 
@@ -549,12 +574,7 @@ class Struct:
                  "{:<4s}LATTICE,NONEQUIV.ATOMS:{:3d}".format(self.kind, self.ntypes),
                  "MODE OF CALC={}".format(self.mode_calc.upper()),]
         latt_consts_form = "{:10.6f}" * 6
-        latt_consts = np.array(get_latt_consts_from_latt_vecs(self.latt))
-        if self.kind == "R":
-            # w2k expects the constants in hexagonal axes for rhombohedral lattice
-            latt = np.array(self.latt)
-            a = np.linalg.norm(latt[0] - latt[1])
-            latt_consts = np.array([a, a, np.linalg.norm(latt.sum(axis=0)), 90.0, 90.0, 120.0])
+        latt_consts = _w2k_write_latt_consts_for_kind(self.kind, self.latt)
         latt_consts[:3] = latt_consts[:3] * scale
         _logger.info("scaled lattice constants before rounding: %r", latt_consts)
         # rounding to 5 decimal to avoid symmetry breaking with error in last digit
@@ -567,7 +587,7 @@ class Struct:
                                                                         self.rzeros,
                                                                         self.rmts,
                                                                         self.isplits)):
-            posi = self._cell.get_atm_posi(at)
+            posi = _w2k_write_posi_for_kind(self.kind, self.latt, self._cell.get_atm_posi(at))
             mult = len(posi)
             Z = get_atomic_number(at)
             slist_atm = ["ATOM{:4d}: X={:10.8f} Y={:10.8f} Z={:10.8f}".format(iat + 1,

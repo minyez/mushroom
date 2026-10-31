@@ -67,6 +67,24 @@ class test_struct(ut.TestCase):
         np.testing.assert_allclose(r.latt, s.latt, atol=1e-4)
         np.testing.assert_allclose(r.get_cell().posi, s.get_cell().posi, atol=1e-7)
 
+    def test_write_cubic_centered(self):
+        """F and B lattices are written in the conventional cubic axes"""
+        symops = {"rotations": np.array([np.eye(3, dtype=int)]),
+                  "translations": np.zeros((1, 3))}
+        for kind in ["F", "B"]:
+            s = Struct((8.0, 8.0, 8.0, 90.0, 90.0, 90.0), ["Fe"],
+                       [np.array([[0.1, 0.2, 0.3]])], kind=kind, symops=symops)
+            lines = s.export().splitlines()
+            self.assertEqual(lines[3], "  8.000000  8.000000  8.000000"
+                                       " 90.000000 90.000000 90.000000")
+            self.assertTrue(lines[4].endswith("X=0.10000000 Y=0.20000000 Z=0.30000000"))
+            with tempfile.TemporaryDirectory() as d:
+                path = pathlib.Path(d) / "cubic.struct"
+                path.write_text(s.export())
+                r = Struct.read(str(path))
+            np.testing.assert_allclose(r.latt, s.latt)
+            np.testing.assert_allclose(r.get_cell().posi, s.get_cell().posi, atol=1e-7)
+
 
 class test_match_lines(ut.TestCase):
     """test matching Fortran-formatted lines"""
