@@ -265,25 +265,15 @@ def _w2k_read_latt_posi_for_kind(kind, coord_sys, latt_consts, posi_types):
     _logger.debug("latt_consts: %r", latt_consts)
     _logger.debug("posi_types: %r", posi_types)
     if kind == "H":
-        # recp: [2/SQRT(3), 0, 0], [1/SQRT(3),1,0], [0,0,1]
+        # positions are already in the basis of latt
         latt = [[latt_consts[0], 0, 0],
                 [-latt_consts[0] / 2, latt_consts[1] * SQRT3 / 2, 0],
                 [0, 0, latt_consts[2]]]
-        if coord_sys.lower() == "d":
-            for i, p in enumerate(posi_types):
-                posi_types[i] = np.dot(p, [[2 / SQRT3, 0, 0],
-                                           [1 / SQRT3, 1, 0],
-                                           [0, 0, 1]])
     elif kind == "R":
-        # recp: [1/SQRT(3), -1, 1], [1/SQRT(3),1,1], [-2/SQRT(3),0,1]
+        # positions are already in the rhombohedral basis of latt
         latt = [[latt_consts[0] / 2, latt_consts[1] / 2 / SQRT3, latt_consts[2] / 3],
                 [-latt_consts[0] / 2, latt_consts[1] / 2 / SQRT3, latt_consts[2] / 3],
                 [0.0, -latt_consts[1] / SQRT3, latt_consts[2] / 3]]
-        if coord_sys.lower() == "d":
-            for i, p in enumerate(posi_types):
-                posi_types[i] = np.dot(p, [[1 / SQRT3, -1, 1],
-                                           [1 / SQRT3, 1, 1],
-                                           [-2 / SQRT3, 0, 1]])
     elif kind == "B":
         # recp: [[0, 1, 1], [1, 0, 1], [1, 1, 0]]
         latt = np.multiply([[-1, 1, 1], [1, -1, 1], [1, 1, -1]], latt_consts[0] / 2)
@@ -560,6 +550,11 @@ class Struct:
                  "MODE OF CALC={}".format(self.mode_calc.upper()),]
         latt_consts_form = "{:10.6f}" * 6
         latt_consts = np.array(get_latt_consts_from_latt_vecs(self.latt))
+        if self.kind == "R":
+            # w2k expects the constants in hexagonal axes for rhombohedral lattice
+            latt = np.array(self.latt)
+            a = np.linalg.norm(latt[0] - latt[1])
+            latt_consts = np.array([a, a, np.linalg.norm(latt.sum(axis=0)), 90.0, 90.0, 120.0])
         latt_consts[:3] = latt_consts[:3] * scale
         _logger.info("scaled lattice constants before rounding: %r", latt_consts)
         # rounding to 5 decimal to avoid symmetry breaking with error in last digit

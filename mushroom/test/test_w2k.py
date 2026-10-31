@@ -42,6 +42,31 @@ class test_struct(ut.TestCase):
                 s.write(h)
             tf.close()
 
+    def test_read_posi(self):
+        """positions of hexagonal and rhombohedral lattices are in the basis of latt"""
+        dir_struct = pathlib.Path(__file__).parent / "data"
+        verifies = {
+            "3.struct": [[0.0, 0.0, 0.0], [0.5, 0.5, 0.5],
+                         [0.10802134, 0.10802134, 0.10802134],
+                         [0.89197866, 0.89197866, 0.89197866]],
+            "4.struct": [[1 / 3, 2 / 3, 0.0], [2 / 3, 1 / 3, 0.5],
+                         [1 / 3, 2 / 3, 0.382], [2 / 3, 1 / 3, 0.882]],
+        }
+        for f, posi in verifies.items():
+            s = Struct.read(str(dir_struct / f))
+            np.testing.assert_allclose(s.get_cell().posi, posi, atol=1e-7)
+
+    def test_write_rhombohedral(self):
+        """rhombohedral lattice is unchanged after writing and reading"""
+        dir_struct = pathlib.Path(__file__).parent / "data"
+        s = Struct.read(str(dir_struct / "3.struct"))
+        with tempfile.TemporaryDirectory() as d:
+            path = pathlib.Path(d) / "rhombohedral.struct"
+            path.write_text(s.export())
+            r = Struct.read(str(path))
+        np.testing.assert_allclose(r.latt, s.latt, atol=1e-4)
+        np.testing.assert_allclose(r.get_cell().posi, s.get_cell().posi, atol=1e-7)
+
 
 class test_match_lines(ut.TestCase):
     """test matching Fortran-formatted lines"""
