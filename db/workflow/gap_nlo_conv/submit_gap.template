@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-gapcmd="__gapcmd__"
-$gapcmd > out 2> err

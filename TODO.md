@@ -5,7 +5,7 @@
 ### 文件树
 
 - `mushroom` : 核心 python 包, 定义工作流和脚本中可能用到的对象.
-- `scripts` : 利用 `mushroom` 中定义的对象来实现的完成多种研究目的的脚本, 也包含拷贝 `workflows` 中脚本的 convenience function 和 helper function.
+- `scripts` : 利用 `mushroom` 中定义的对象来实现的完成多种研究目的的脚本.
 - `doc` : mushroom 使用与开发文档
 - `examples` : 除了 mushroom 包的使用样例外, 也包含一些小技巧和原型
 - `db` : 数据库
@@ -13,7 +13,6 @@
 ### 单元测试
 
 对于 Python 库, 每个子 package 的测试文件放置在该 package 下的 `test` 文件夹内. 使用 pytest 和 unittest 框架.
-对于 workflow 中的 Bash 脚本, 暂不考虑做测试. 今后视情况用 bats 进行测试.
 
 ## Python 库 mushroom
 

@@ -73,7 +73,6 @@ $(DIST_TARBALL): $(DIST_FILES)
 		--exclude="*.pyc" --exclude="__pycache__" \
 		--exclude="*.log" \
 		--exclude=".git*" \
-		--exclude="*_*/common.sh" \
 		--exclude=".pytest_cache" \
 		-zcvf $(shell basename $@) $(PROJ)
 	rm -rf dist/$(PROJ)
@@ -87,7 +86,6 @@ $(DIST_TARBALL_TEST): $(DIST_FILES) prototype
 		--exclude="*.pyc" --exclude="__pycache__" \
 		--exclude="*.log" \
 		--exclude=".git*" \
-		--exclude="*_*/common.sh" \
 		--exclude=".pytest_cache" \
 		-zcvf $(shell basename $@) $(PROJ)
 	rm -rf dist/$(PROJ)
