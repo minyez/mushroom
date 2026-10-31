@@ -4,6 +4,8 @@
 import unittest as ut
 import pathlib
 import json
+import sys
+import tempfile
 import numpy as np
 
 from mushroom import vasp
@@ -179,6 +181,144 @@ class test_chglike(ut.TestCase):
         self.assertTrue(np.array_equal(chg_diff.rawdata, data_diff))
         self.assertTrue(np.array_equal(chg_add.rawdata, data_add))
         self.assertRaises(TypeError, chg_another_shape.__sub__, chg1)
+
+
+
+class test_incar(ut.TestCase):
+    """test editing INCAR"""
+    text = "# ALGO = comment\nIALGO = 53\n ALGO = GW0 ;\n" \
+        "A = 1 ; ENCUT = 5 ; B = 2 # note\nENCUTGW = 9 ! note\n\nENCUT = 7\n"
+
+    def test_get(self):
+        """whole words of the first statement out of comments are matched"""
+        incar = vasp.Incar(self.text)
+        self.assertEqual(incar.get("ALGO"), "GW0")
+        self.assertEqual(incar.get("encut"), "5")
+        self.assertEqual(incar.get("ENCUTGW"), "9")
+        self.assertEqual(incar.get("B"), "2")
+        self.assertIsNone(incar.get("NBANDS"))
+
+    def test_set(self):
+        """only the value of first statement is changed, new tag is appended"""
+        incar = vasp.Incar(self.text)
+        incar.set("ALGO", "Damped")
+        incar.set("ENCUT", 6)
+        incar.set("ENCUTGW", 10)
+        incar.set("NBANDS", 8)
+        self.assertEqual(incar.export(),
+                         "# ALGO = comment\nIALGO = 53\n ALGO = Damped ;\n"
+                         "A = 1 ; ENCUT = 6 ; B = 2 # note\nENCUTGW = 10 ! note\n\n"
+                         "ENCUT = 7\nNBANDS = 8\n")
+
+    def test_delete(self):
+        """all statements of the tag are deleted, other tags on the line are kept"""
+        incar = vasp.Incar(self.text)
+        incar.delete("ENCUT")
+        self.assertEqual(incar.export(),
+                         "# ALGO = comment\nIALGO = 53\n ALGO = GW0 ;\n"
+                         "A = 1; B = 2 # note\nENCUTGW = 9 ! note\n\n")
+        incar.delete("A")
+        self.assertEqual(incar.get("B"), "2")
+        self.assertIsNone(incar.get("A"))
+
+    def test_set_npar_kpar(self):
+        """tag is skipped when the value is 1"""
+        incar = vasp.Incar()
+        incar.set_npar_kpar(2, 1)
+        self.assertEqual(incar.export(), "NPAR = 2\n")
+
+    def test_read_template(self):
+        """placeholders are filled, and raise when any is left"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = pathlib.Path(tmpdir) / "INCAR"
+            path.write_text("ENCUT = _encut_\nPREC = _prec_\nLWANNIER90_RUN = T\n")
+            incar = vasp.Incar.read(path, encut=500, prec="Accurate")
+            self.assertEqual(incar.get("ENCUT"), "500")
+            self.assertEqual(incar.get("LWANNIER90_RUN"), "T")
+            self.assertRaises(ValueError, vasp.Incar.read, path, encut=500)
+
+    def test_from_template(self):
+        """create from string"""
+        incar = vasp.Incar.from_template("ENCUT = _encut_\n", encut=500)
+        self.assertEqual(incar.export(), "ENCUT = 500\n")
+
+
+class test_outcar(ut.TestCase):
+    """test reading OUTCAR"""
+    text = """ NKPTS =     10   k-points in BZ     NKDIM =     10   number of bands    NBANDS=      8
+   NELECT =       8.0000    total number of electrons
+  energy without entropy =      -10.00000000  energy(sigma->0) =      -10.00000000
+  energy  without entropy=      -10.10000000  energy(sigma->0) =      -10.20000000
+  energy  without entropy=      -10.30000000  energy(sigma->0) =      -10.40000000
+                            Elapsed time (sec):       12.345
+"""
+
+    def test_read(self):
+        """read values, where only the double-space energy lines are for ionic steps"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = pathlib.Path(tmpdir) / "OUTCAR"
+            path.write_text(self.text)
+            outcar = vasp.Outcar(path)
+            self.assertEqual(outcar.nbands, 8)
+            self.assertEqual(outcar.nelect, 8.0)
+            self.assertEqual(outcar.wall_time, 12.345)
+            self.assertEqual(outcar.get_total_energy(), -10.4)
+            self.assertEqual(outcar.get_total_energy(0), -10.2)
+
+
+class test_kpoints_export(ut.TestCase):
+    """test exporting KPOINTS"""
+
+    def test_grid(self):
+        """export grid mode"""
+        kpoints = vasp.KPoints("G", nkgrids=(2, 4, 6), kshifts=(0, 0, 0), comment="grid")
+        self.assertEqual(kpoints.export(), "grid\n0\nG\n2 4 6\n0 0 0\n")
+
+    def test_not_implemented(self):
+        """other modes cannot be exported"""
+        self.assertRaises(NotImplementedError, vasp.KPoints("A", kdense=20).export)
+
+
+class test_read_band_edges(ut.TestCase):
+    """test reading band edges from EIGENVAL"""
+
+    def test_edges(self):
+        """edges at a k-point do not go beyond the global edges"""
+        path = pathlib.Path(__file__).parent / "data" / "EIGENVAL_1"
+        bs = vasp.read_eigen(path)[0]
+        vbm, cbm = vasp.read_band_edges(path)
+        self.assertEqual((vbm, cbm), (bs.vbm, bs.cbm))
+        vb, cb = vasp.read_band_edges(path, ik=1)
+        self.assertLessEqual(vb, vbm)
+        self.assertGreaterEqual(cb, cbm)
+
+
+class test_run_step(ut.TestCase):
+    """test running a VASP step with a fake executable"""
+
+    def test_hf_3steps(self):
+        """inputs of each step are used, and results are backed up"""
+        fake = "import shutil; shutil.copy('INCAR', 'OUTCAR'); print('done')"
+        finished = " Elapsed time (sec):  1.0\n"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workdir = pathlib.Path(tmpdir)
+            for name in ("pbe", "coarse", "hf"):
+                (workdir / "INCAR.{}".format(name)).write_text(name + finished)
+            (workdir / "KPOINTS.scf").write_text("kpoints")
+            vasp.run_hf_3steps([sys.executable, "-c", fake], cwd=workdir)
+            for name in ("pbe", "coarse", "hf"):
+                self.assertEqual((workdir / "OUTCAR.{}".format(name)).read_text(), name + finished)
+                self.assertEqual((workdir / "out.{}".format(name)).read_text(), "done\n")
+            self.assertEqual((workdir / "KPOINTS").read_text(), "kpoints")
+
+    def test_unfinished(self):
+        """VASP stopped by an internal error with exit code 0 is caught"""
+        fake = "open('OUTCAR', 'w').write('VERY BAD NEWS')"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workdir = pathlib.Path(tmpdir)
+            (workdir / "INCAR.pbe").write_text("pbe")
+            self.assertRaises(RuntimeError, vasp.run_step,
+                              [sys.executable, "-c", fake], "pbe", cwd=workdir)
 
 
 if __name__ == "__main__":

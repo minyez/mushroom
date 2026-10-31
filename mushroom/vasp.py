@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """utilities of vasp"""
 import os
+import re
+import shutil
 import struct
 from io import StringIO
 from copy import deepcopy
@@ -22,6 +24,7 @@ from mushroom.core.bs import BandStructure
 from mushroom.core.pw import PWBasis
 from mushroom.core.cell import Cell, latt_equal
 from mushroom.core.typehint import Path
+from mushroom.workflow import run_command
 
 _logger = loggers["vasp"]
 
@@ -31,6 +34,13 @@ __all__ = [
     "read_doscar",
     "read_poscar",
     "read_xml",
+    "read_band_edges",
+    "Incar",
+    "Outcar",
+    "KPoints",
+    "backup_results",
+    "run_step",
+    "run_hf_3steps",
 ]
 
 
@@ -316,6 +326,23 @@ def read_eigen(path: str = "EIGENVAL", filter_k_before: int = 0, filter_k_behind
     weight = weight[filter_k_before:filter_k_behind]
     kpoints = kpoints[filter_k_before:filter_k_behind, :]
     return BandStructure(eigen, occ, weight), natms, kpoints
+
+
+def read_band_edges(path: str = "EIGENVAL", ik: int = None) -> Tuple[float, float]:
+    """read the valence and conduction band edges from EIGENVAL
+
+    Args:
+        path (str) : path to EIGENVAL
+        ik (int) : index of k-point, starting from 1.
+            Default to use the VBM and CBM over all k-points.
+
+    Returns:
+        two floats, energies of valence and conduction band edges
+    """
+    bs = read_eigen(path)[0]
+    if ik is None:
+        return bs.vbm, bs.cbm
+    return np.max(bs.vbm_sp_kp[:, ik - 1]), np.min(bs.cbm_sp_kp[:, ik - 1])
 
 
 read_poscar = Cell.read_vasp
@@ -658,7 +685,11 @@ class KPoints:
 
     def export(self):
         """export to string"""
-        raise NotImplementedError
+        if self._mode not in ("G", "M"):
+            raise NotImplementedError("export is not implemented for mode {}".format(self._mode))
+        return "\n".join([self._comment or "", "0", self._mode,
+                          " ".join(str(x) for x in self._nkgrids),
+                          " ".join(str(x) for x in self._kshifts), ""])
 
     @classmethod
     def read(cls, path_kpoints: Union[os.PathLike, str] = "KPOINTS"):
@@ -742,6 +773,209 @@ class KPoints:
         lines_tetra = lines[ngrids:]
 
         return cls(mode, kpts=kpts, weights=weights, comment=comment)
+
+
+class Incar:
+    """handling the INCAR file
+
+    The file is edited line by line to keep the comments and the order of tags.
+    Tags are case insensitive. Whole-word match is used, hence ALGO does not hit IALGO.
+
+    Args:
+        text (str) : content of INCAR
+    """
+
+    def __init__(self, text: str = ""):
+        self._lines = text.splitlines()
+
+    @classmethod
+    def from_template(cls, text: str, **placeholders):
+        """create INCAR from a template
+
+        Args:
+            text (str) : the template
+            placeholders : values for placeholders in the template.
+                For example, ``encut=500`` replaces ``_encut_`` with 500.
+
+        Raises:
+            ValueError : when placeholders are left in the template
+        """
+        for key, value in placeholders.items():
+            text = text.replace("_{}_".format(key), str(value))
+        left = re.findall(r"(?<![A-Za-z0-9])_[a-z0-9]+_(?![A-Za-z0-9])", text)
+        if left:
+            raise ValueError("Unset placeholders in template: {}".format(left))
+        return cls(text)
+
+    @classmethod
+    def read(cls, path: Path = "INCAR", **placeholders):
+        """read INCAR from file, which may be a template. See ``from_template``"""
+        with open(path, "r") as h:
+            return cls.from_template(h.read(), **placeholders)
+
+    @staticmethod
+    def _regex_tag(tag: str):
+        """regex for a statement of tag. Comments in the end of line are not part of the match
+
+        The groups are the prefix, the tag with the equal sign and the padding before next ;"""
+        return re.compile(r"(^[^#!]*?;\s*|^\s*)({}\s*=)[^;#!]*?(\s*)(?=;|#|!|$)".format(tag),
+                          re.IGNORECASE)
+
+    def get(self, tag: str) -> Union[str, None]:
+        """get the raw string value of tag, None if it is not set
+
+        VASP uses the first occurrence when a tag is set multiple times"""
+        regex = self._regex_tag(tag)
+        for line in self._lines:
+            m = regex.search(line)
+            if m:
+                return m.group(0)[len(m.group(1)) + len(m.group(2)):].strip()
+        return None
+
+    def set(self, tag: str, value):
+        """set the value of tag. It is appended to the end when not set yet"""
+        regex = self._regex_tag(tag)
+        for i, line in enumerate(self._lines):
+            m = regex.search(line)
+            if m:
+                self._lines[i] = "{}{} = {}{}{}".format(m.group(1), tag, value, m.group(3),
+                                                       line[m.end():])
+                return
+        self._lines.append("{} = {}".format(tag, value))
+
+    def delete(self, tag: str):
+        """delete all statements of tag. Lines with nothing left are also removed"""
+        regex = self._regex_tag(tag)
+        lines = []
+        for line in self._lines:
+            m = regex.search(line)
+            matched = m is not None
+            while m:
+                head, tail = m.group(1).rstrip("; \t"), line[m.end():]
+                line = head + tail if head else tail.lstrip("; \t")
+                m = regex.search(line)
+            if line.strip() or not matched:
+                lines.append(line)
+        self._lines = lines
+
+    def set_npar_kpar(self, npar: int, kpar: int):
+        """set NPAR and KPAR. Each tag is skipped when its value is 1"""
+        if npar != 1:
+            self.set("NPAR", npar)
+        if kpar != 1:
+            self.set("KPAR", kpar)
+
+    def export(self) -> str:
+        """export to string"""
+        return "\n".join(self._lines) + "\n"
+
+    def write(self, path: Path = "INCAR"):
+        """write to file"""
+        with open(path, "w") as h:
+            h.write(self.export())
+
+
+class Outcar:
+    """reader of the OUTCAR file
+
+    Args:
+        path (Path) : path to OUTCAR
+    """
+
+    def __init__(self, path: Path = "OUTCAR"):
+        with open_textio(path, "r") as h:
+            self._text = h.read()
+
+    def _search(self, pattern: str) -> str:
+        m = re.search(pattern, self._text)
+        if m is None:
+            raise ValueError("pattern {} is not found in OUTCAR".format(pattern))
+        return m.group(1)
+
+    @property
+    def is_finished(self) -> bool:
+        """whether VASP reached the end of the run
+
+        VASP may exit with code 0 on an internal error, so the exit code is not enough"""
+        return "Elapsed time (sec):" in self._text
+
+    @property
+    def nelect(self) -> float:
+        """number of electrons"""
+        return float(self._search(r"NELECT\s*=\s*(\S+)"))
+
+    @property
+    def nbands(self) -> int:
+        """total number of bands"""
+        return int(self._search(r"NBANDS\s*=\s*(\d+)"))
+
+    @property
+    def wall_time(self) -> float:
+        """elapsed wall time in second"""
+        return float(self._search(r"Elapsed time \(sec\):\s*(\S+)"))
+
+    def get_total_energy(self, ionic_step: int = -1) -> float:
+        """get the total energy with sigma->0 in eV
+
+        Args:
+            ionic_step (int) : index of ionic step, starting from 0. -1 means the last step
+        """
+        energies = re.findall(r"energy  without entropy\s*=.*energy\(sigma->0\)\s*=\s*(\S+)",
+                              self._text)
+        if not energies:
+            raise ValueError("total energy is not found in OUTCAR")
+        return float(energies[ionic_step])
+
+
+# result files to back up after each step of a workflow
+_RESULT_FILES = ["OUTCAR", "EIGENVAL", "DOSCAR", "PROCAR", "vasprun.xml", "OSZICAR",
+                 "ELFCAR", "LOCPOT"]
+
+
+def backup_results(suffix: str, cwd: Path = "."):
+    """back up the result files to files with the name suffix"""
+    cwd = pathlib.Path(cwd)
+    for name in _RESULT_FILES:
+        if (cwd / name).is_file():
+            shutil.copy(cwd / name, cwd / "{}.{}".format(name, suffix))
+
+
+def run_step(command: Union[str, List[str]], name: str, cwd: Path = ".",
+             kpoints: str = None):
+    """run one VASP step and back up the results
+
+    The input is INCAR.<name>. Output is redirected to out.<name>, and the results are
+    backed up with suffix ``name``.
+
+    Args:
+        command (str or list) : the VASP command, e.g. "mpirun -np 4 vasp_std"
+        name (str) : name of the step
+        cwd (Path) : the working directory
+        kpoints (str) : KPOINTS file to use, relative to ``cwd``. Default to leave KPOINTS unchanged
+
+    Raises:
+        RuntimeError : when VASP stops before the end of the run
+    """
+    cwd = pathlib.Path(cwd)
+    shutil.copy(cwd / "INCAR.{}".format(name), cwd / "INCAR")
+    if kpoints is not None:
+        shutil.copy(cwd / kpoints, cwd / "KPOINTS")
+    run_command(command, "out.{}".format(name), cwd=cwd)
+    backup_results(name, cwd=cwd)
+    if not Outcar(cwd / "OUTCAR").is_finished:
+        raise RuntimeError("VASP step {} in {} is not finished, check out.{}".format(
+            name, cwd, name))
+
+
+def run_hf_3steps(command: Union[str, List[str]], cwd: Path = "."):
+    """run hybrid functional calculation in three steps
+
+    The steps are preconverging PBE, coarse HF and accurate HF.
+    INCAR.pbe, INCAR.coarse, INCAR.hf and KPOINTS.scf are required in ``cwd``.
+    """
+    run_step(command, "pbe", cwd=cwd, kpoints="KPOINTS.scf")
+    run_step(command, "coarse", cwd=cwd)
+    run_step(command, "hf", cwd=cwd)
 
 
 def get_qp_energies_from_outcar(path_outcar, qp_iteration: int = -1, extract_KS: bool = False):
