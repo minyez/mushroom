@@ -4,6 +4,9 @@ import os
 import re
 import shutil
 import struct
+import warnings
+import xml.etree.ElementTree as ET
+from filecmp import cmp
 from io import StringIO
 from copy import deepcopy
 from itertools import product
@@ -35,12 +38,17 @@ __all__ = [
     "read_poscar",
     "read_xml",
     "read_band_edges",
+    "read_vasprun_kpoints",
+    "read_ibzkpt",
     "Incar",
     "Outcar",
     "KPoints",
     "backup_results",
+    "clean_results",
+    "warn_changed",
     "run_step",
     "run_hf_3steps",
+    "run_gw_3steps",
 ]
 
 
@@ -328,21 +336,50 @@ def read_eigen(path: str = "EIGENVAL", filter_k_before: int = 0, filter_k_behind
     return BandStructure(eigen, occ, weight), natms, kpoints
 
 
-def read_band_edges(path: str = "EIGENVAL", ik: int = None) -> Tuple[float, float]:
+def read_band_edges(path: str = "EIGENVAL", ik: int = None,
+                    removek: int = 0) -> Tuple[float, float]:
     """read the valence and conduction band edges from EIGENVAL
 
     Args:
         path (str) : path to EIGENVAL
-        ik (int) : index of k-point, starting from 1.
+        ik (int) : index of k-point, starting from 1, after removing k-points.
             Default to use the VBM and CBM over all k-points.
+        removek (int) : number of k-points at the beginning to remove
 
     Returns:
         two floats, energies of valence and conduction band edges
     """
-    bs = read_eigen(path)[0]
+    bs = read_eigen(path, filter_k_before=removek)[0]
     if ik is None:
         return bs.vbm, bs.cbm
     return np.max(bs.vbm_sp_kp[:, ik - 1]), np.min(bs.cbm_sp_kp[:, ik - 1])
+
+
+def read_vasprun_kpoints(path: Path = "vasprun.xml") -> np.ndarray:
+    """read the list of k-points in fractional coordinates from vasprun.xml
+
+    The file may come from an unfinished run, as long as the k-points are written.
+    """
+    node = None
+    for _, elem in ET.iterparse(path, events=("end",)):
+        if elem.tag == "varray" and elem.get("name") == "kpointlist":
+            node = elem
+            break
+    if node is None:
+        raise ValueError("k-point list is not found in {}".format(path))
+    return np.array([[float(x) for x in v.text.split()] for v in node.findall("v")])
+
+
+def read_ibzkpt(path: Path = "IBZKPT") -> Tuple[np.ndarray, np.ndarray]:
+    """read the irreducible k-points and their integer weights from IBZKPT
+
+    Returns:
+        2d-array of k-points in fractional coordinates, 1d-array of weights
+    """
+    with open(path, "r") as h:
+        lines = h.readlines()
+    data = np.loadtxt(StringIO("".join(lines[3:3 + int(lines[1])])), ndmin=2)
+    return data[:, :3], data[:, 3].astype(int)
 
 
 read_poscar = Cell.read_vasp
@@ -685,6 +722,11 @@ class KPoints:
 
     def export(self):
         """export to string"""
+        if self._mode == "expl_recp":
+            lines = [self._comment or "", str(len(self._kpts)), "Reciprocal lattice"]
+            lines += ["{:.8f}   {:.8f}   {:.8f}   {}".format(*k, w)
+                      for k, w in zip(self._kpts, self._weights)]
+            return "\n".join(lines) + "\n"
         if self._mode not in ("G", "M"):
             raise NotImplementedError("export is not implemented for mode {}".format(self._mode))
         return "\n".join([self._comment or "", "0", self._mode,
@@ -914,6 +956,27 @@ class Outcar:
         """elapsed wall time in second"""
         return float(self._search(r"Elapsed time \(sec\):\s*(\S+)"))
 
+    def get_qp_table(self, ik: int = 1) -> np.ndarray:
+        """get the table of quasi-particle data at a k-point of the first GW iteration
+
+        Args:
+            ik (int) : index of k-point, starting from 1
+
+        Returns:
+            2d-array, each row for one band. The columns are those printed in OUTCAR:
+            band index, KS energy, QP energy, sigma(KS), V_xc(KS), V_x^pw, Z and occupation
+        """
+        lines = self._text.splitlines()
+        heads = [i for i, l in enumerate(lines) if l.startswith("  band No.  KS-energies")]
+        if len(heads) < ik:
+            raise ValueError("QP data of k-point {} is not found in OUTCAR".format(ik))
+        rows = []
+        for line in lines[heads[ik - 1] + 2:]:
+            if not line.strip():
+                break
+            rows.append([float(x) for x in line.split()[:8]])
+        return np.array(rows)
+
     def get_total_energy(self, ionic_step: int = -1) -> float:
         """get the total energy with sigma->0 in eV
 
@@ -940,8 +1003,33 @@ def backup_results(suffix: str, cwd: Path = "."):
             shutil.copy(cwd / name, cwd / "{}.{}".format(name, suffix))
 
 
+def clean_results(cwd: Path = ".", restart: bool = False):
+    """clean result and temporary files. Back up what you need before calling it
+
+    Args:
+        cwd (Path) : the working directory
+        restart (bool) : also clean the restart files, e.g. WAVECAR and CHGCAR
+    """
+    cwd = pathlib.Path(cwd)
+    names = ["IBZKPT", "XDATCAR", "CONTCAR", "PROCAR", "OUTCAR", "OSZICAR", "vasprun.xml",
+             "REPORT", "ELFCAR", "LOCPOT", "PCDAT", "DOSCAR", "EIGENVAL", "CHG"]
+    if restart:
+        names += ["CHGCAR", "WAVECAR", "WAVEDER", "WAVECAR.chi"]
+    for path in [cwd / name for name in names] + list(cwd.glob("W*.tmp")):
+        path.unlink(missing_ok=True)
+
+
+def warn_changed(path1: Path, path2: Path):
+    """warn when two CHGCAR/WAVECAR files are different
+
+    It is used to check non-SCF calculations, and may often happen in spin-polarized cases"""
+    if not cmp(path1, path2, shallow=False):
+        warnings.warn("{} and {} are different, it might have changed during calculation".format(
+            path1, path2))
+
+
 def run_step(command: Union[str, List[str]], name: str, cwd: Path = ".",
-             kpoints: str = None):
+             kpoints: str = None, tags: dict = None):
     """run one VASP step and back up the results
 
     The input is INCAR.<name>. Output is redirected to out.<name>, and the results are
@@ -952,12 +1040,16 @@ def run_step(command: Union[str, List[str]], name: str, cwd: Path = ".",
         name (str) : name of the step
         cwd (Path) : the working directory
         kpoints (str) : KPOINTS file to use, relative to ``cwd``. Default to leave KPOINTS unchanged
+        tags (dict) : tags to set in INCAR on top of INCAR.<name>
 
     Raises:
         RuntimeError : when VASP stops before the end of the run
     """
     cwd = pathlib.Path(cwd)
-    shutil.copy(cwd / "INCAR.{}".format(name), cwd / "INCAR")
+    incar = Incar.read(cwd / "INCAR.{}".format(name))
+    for tag, value in (tags or {}).items():
+        incar.set(tag, value)
+    incar.write(cwd / "INCAR")
     if kpoints is not None:
         shutil.copy(cwd / kpoints, cwd / "KPOINTS")
     run_command(command, "out.{}".format(name), cwd=cwd)
@@ -967,15 +1059,39 @@ def run_step(command: Union[str, List[str]], name: str, cwd: Path = ".",
             name, cwd, name))
 
 
-def run_hf_3steps(command: Union[str, List[str]], cwd: Path = "."):
+def run_hf_3steps(command: Union[str, List[str]], cwd: Path = ".", fixed_chg: str = None):
     """run hybrid functional calculation in three steps
 
     The steps are preconverging PBE, coarse HF and accurate HF.
     INCAR.pbe, INCAR.coarse, INCAR.hf and KPOINTS.scf are required in ``cwd``.
+
+    Args:
+        command (str or list) : the VASP command
+        cwd (Path) : the working directory
+        fixed_chg (str) : CHGCAR file to use as the fixed charge, relative to ``cwd``
     """
-    run_step(command, "pbe", cwd=cwd, kpoints="KPOINTS.scf")
-    run_step(command, "coarse", cwd=cwd)
-    run_step(command, "hf", cwd=cwd)
+    cwd = pathlib.Path(cwd)
+    if fixed_chg is None:
+        tags = [None] * 3
+    else:
+        shutil.copy(cwd / fixed_chg, cwd / "CHGCAR")
+        tags = [{"ICHARG": 11}] + [{"ISTART": 1, "ICHARG": 11}] * 2
+    run_step(command, "pbe", cwd=cwd, kpoints="KPOINTS.scf", tags=tags[0])
+    for name, tag in zip(("coarse", "hf"), tags[1:]):
+        run_step(command, name, cwd=cwd, tags=tag)
+    if fixed_chg is not None:
+        warn_changed(cwd / fixed_chg, cwd / "CHGCAR")
+
+
+def run_gw_3steps(command: Union[str, List[str]], cwd: Path = "."):
+    """run GW calculation in three steps
+
+    The steps are SCF, exact diagonalization and GW.
+    INCAR.scf, INCAR.diag, INCAR.gw, KPOINTS.scf and KPOINTS.gw are required in ``cwd``.
+    """
+    run_step(command, "scf", cwd=cwd, kpoints="KPOINTS.scf")
+    run_step(command, "diag", cwd=cwd, kpoints="KPOINTS.gw")
+    run_step(command, "gw", cwd=cwd)
 
 
 def get_qp_energies_from_outcar(path_outcar, qp_iteration: int = -1, extract_KS: bool = False):

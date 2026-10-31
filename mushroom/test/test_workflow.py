@@ -5,6 +5,7 @@ import os
 import pathlib
 import subprocess as sp
 import sys
+import tarfile
 import tempfile
 import unittest as ut
 from unittest import mock
@@ -27,6 +28,11 @@ class test_utilities(ut.TestCase):
         for num, div in ((1, 1), (4, 2), (7, 1), (12, 3), (36, 6), (48, 6)):
             self.assertEqual(workflow.largest_div_below_sqrt(num), div)
 
+    def test_get_npar_kpar(self):
+        """the product is the number of tasks"""
+        self.assertTupleEqual(workflow.get_npar_kpar(6), (3, 2))
+        self.assertTupleEqual(workflow.get_npar_kpar(1), (1, 1))
+
     def test_require(self):
         """raise when missing"""
         self.assertRaises(FileNotFoundError, workflow.require_files, __file__, "no_such_file")
@@ -46,6 +52,27 @@ class test_run_command(ut.TestCase):
             self.assertEqual(sorted(lines), ["err", "out"])
             self.assertRaises(sp.CalledProcessError, workflow.run_command,
                               [sys.executable, "-c", code.format(1)], "o", cwd=tmpdir)
+
+
+class test_example(ut.TestCase):
+    """test utilities to check against the example"""
+
+    def test_open_and_diff(self):
+        """files are extracted, and different files are found"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            top = pathlib.Path(tmpdir)
+            (top / "example").mkdir()
+            (top / "other").mkdir()
+            for d, value in (("example", "1"), ("other", "1")):
+                (top / d / "same").write_text(value)
+            (top / "example" / "changed").write_text("1")
+            (top / "other" / "changed").write_text("2")
+            with tarfile.open(top / "example.tar.gz", "w:gz") as h:
+                h.add(top / "example", arcname="example")
+            with workflow.open_example(top / "example.tar.gz") as example:
+                self.assertListEqual(
+                    workflow.diff_files(example, top / "other", ["same", "changed"]), ["changed"])
+            self.assertFalse(example.exists())
 
 
 if __name__ == '__main__':

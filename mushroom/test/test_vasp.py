@@ -6,6 +6,7 @@ import pathlib
 import json
 import sys
 import tempfile
+import warnings
 import numpy as np
 
 from mushroom import vasp
@@ -266,6 +267,64 @@ class test_outcar(ut.TestCase):
             self.assertEqual(outcar.get_total_energy(0), -10.2)
 
 
+class test_outcar_qp(ut.TestCase):
+    """test reading QP table from OUTCAR"""
+    text = """
+  band No.  KS-energies  QP-energies   sigma(KS)   V_xc(KS)     V^pw_x(r,r')   Z   occupation Imag(sigma)
+
+      1      -6.0949      -6.3083     -10.6667     -10.3937     -17.3238       0.7818       2.0000  0.1
+      2       5.8855       5.4173     -12.0023     -11.4567     -14.5228       0.8581       0.0000  0.1
+
+ k-point   2 :
+  band No.  KS-energies  QP-energies   sigma(KS)   V_xc(KS)     V^pw_x(r,r')   Z   occupation Imag(sigma)
+
+      1      -5.0000      -5.5000     -10.0000     -10.3937     -17.3238       0.7818       2.0000  0.1
+
+"""
+
+    def test_table(self):
+        """rows of the chosen k-point are returned"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = pathlib.Path(tmpdir) / "OUTCAR"
+            path.write_text(self.text)
+            outcar = vasp.Outcar(path)
+            self.assertTupleEqual(outcar.get_qp_table(1).shape, (2, 8))
+            self.assertEqual(outcar.get_qp_table(1)[1, 2], 5.4173)
+            self.assertEqual(outcar.get_qp_table(2)[0, 7], 2.0)
+            self.assertRaises(ValueError, outcar.get_qp_table, 3)
+
+
+class test_read_kpoints(ut.TestCase):
+    """test reading k-points of a calculation"""
+
+    def test_vasprun(self):
+        """the k-points are read from an unfinished file"""
+        text = """<modeling>
+ <kpoints>
+  <varray name="kpointlist" >
+   <v>       0.0  0.0  0.0 </v>
+   <v>       0.5  0.0  0.25 </v>
+  </varray>
+  <varray name="weights" >
+   <v>       0.5 </v>
+"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = pathlib.Path(tmpdir) / "vasprun.xml"
+            path.write_text(text)
+            kpts = vasp.read_vasprun_kpoints(path)
+        self.assertTrue(np.array_equal(kpts, [[0.0, 0.0, 0.0], [0.5, 0.0, 0.25]]))
+
+    def test_ibzkpt(self):
+        """tetrahedra data at the end are ignored"""
+        text = "mesh\n 2\nReciprocal lattice\n 0.0 0.0 0.0 1\n 0.5 0.0 0.0 7\nTetrahedra\n 1 2\n"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = pathlib.Path(tmpdir) / "IBZKPT"
+            path.write_text(text)
+            kpts, weights = vasp.read_ibzkpt(path)
+        self.assertTupleEqual(kpts.shape, (2, 3))
+        self.assertListEqual(weights.tolist(), [1, 7])
+
+
 class test_kpoints_export(ut.TestCase):
     """test exporting KPOINTS"""
 
@@ -277,6 +336,14 @@ class test_kpoints_export(ut.TestCase):
     def test_not_implemented(self):
         """other modes cannot be exported"""
         self.assertRaises(NotImplementedError, vasp.KPoints("A", kdense=20).export)
+
+    def test_explicit(self):
+        """export explicit k-points in fractional coordinates"""
+        kpoints = vasp.KPoints("expl_recp", kpts=[(0.0, 0.0, 0.5), (0.25, 0.0, 0.0)],
+                               weights=[1, 0], comment="list")
+        self.assertEqual(kpoints.export(), "list\n2\nReciprocal lattice\n"
+                         "0.00000000   0.00000000   0.50000000   1\n"
+                         "0.25000000   0.00000000   0.00000000   0\n")
 
 
 class test_read_band_edges(ut.TestCase):
@@ -291,6 +358,36 @@ class test_read_band_edges(ut.TestCase):
         vb, cb = vasp.read_band_edges(path, ik=1)
         self.assertLessEqual(vb, vbm)
         self.assertGreaterEqual(cb, cbm)
+
+
+class test_results_files(ut.TestCase):
+    """test handling result files"""
+
+    def test_clean(self):
+        """restart files are kept by default"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workdir = pathlib.Path(tmpdir)
+            for name in ("DOSCAR", "WAVECAR", "CHGCAR", "CHGCAR.hf", "W0001.tmp", "POSCAR"):
+                (workdir / name).write_text("")
+            vasp.clean_results(workdir)
+            left = sorted(x.name for x in workdir.iterdir())
+            self.assertListEqual(left, ["CHGCAR", "CHGCAR.hf", "POSCAR", "WAVECAR"])
+            vasp.clean_results(workdir, restart=True)
+            left = sorted(x.name for x in workdir.iterdir())
+            self.assertListEqual(left, ["CHGCAR.hf", "POSCAR"])
+
+    def test_warn_changed(self):
+        """warn only when the content is different"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workdir = pathlib.Path(tmpdir)
+            (workdir / "a").write_text("1")
+            (workdir / "b").write_text("1")
+            (workdir / "c").write_text("2")
+            with warnings.catch_warnings():
+                warnings.simplefilter("error")
+                vasp.warn_changed(workdir / "a", workdir / "b")
+            with self.assertWarns(UserWarning):
+                vasp.warn_changed(workdir / "a", workdir / "c")
 
 
 class test_run_step(ut.TestCase):
@@ -310,6 +407,24 @@ class test_run_step(ut.TestCase):
                 self.assertEqual((workdir / "OUTCAR.{}".format(name)).read_text(), name + finished)
                 self.assertEqual((workdir / "out.{}".format(name)).read_text(), "done\n")
             self.assertEqual((workdir / "KPOINTS").read_text(), "kpoints")
+
+    def test_tags_and_fixed_chg(self):
+        """tags are set in INCAR only, and the charge is copied"""
+        fake = "import shutil; shutil.copy('INCAR', 'OUTCAR')"
+        finished = " Elapsed time (sec):  1.0\n"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workdir = pathlib.Path(tmpdir)
+            for name in ("pbe", "coarse", "hf"):
+                (workdir / "INCAR.{}".format(name)).write_text(finished)
+            (workdir / "KPOINTS.scf").write_text("kpoints")
+            (workdir / "CHGCAR.ref").write_text("charge")
+            vasp.run_hf_3steps([sys.executable, "-c", fake], cwd=workdir, fixed_chg="CHGCAR.ref")
+            self.assertEqual((workdir / "INCAR.hf").read_text(), finished)
+            self.assertEqual((workdir / "CHGCAR").read_text(), "charge")
+            incar = vasp.Incar.read(workdir / "OUTCAR.pbe")
+            self.assertEqual(incar.get("ICHARG"), "11")
+            self.assertIsNone(incar.get("ISTART"))
+            self.assertEqual(vasp.Incar.read(workdir / "OUTCAR.hf").get("ISTART"), "1")
 
     def test_unfinished(self):
         """VASP stopped by an internal error with exit code 0 is caught"""

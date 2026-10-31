@@ -9,7 +9,10 @@ import pathlib
 import shlex
 import shutil
 import subprocess as sp
-from typing import List, Union
+import tarfile
+import tempfile
+from contextlib import contextmanager
+from typing import Iterable, List, Tuple, Union
 
 from mushroom.core.logger import loggers
 from mushroom.core.typehint import Path
@@ -21,7 +24,10 @@ __all__ = [
     "require_executable",
     "require_files",
     "largest_div_below_sqrt",
+    "get_npar_kpar",
     "run_command",
+    "open_example",
+    "diff_files",
 ]
 
 
@@ -51,6 +57,12 @@ def largest_div_below_sqrt(num: int) -> int:
     raise ValueError("expect a positive integer, got {}".format(num))
 
 
+def get_npar_kpar(ntasks: int) -> Tuple[int, int]:
+    """get the band and k-point parallel groups from the number of tasks"""
+    kpar = largest_div_below_sqrt(ntasks)
+    return ntasks // kpar, kpar
+
+
 def run_command(command: Union[str, List[str]], output: Path, cwd: Path = "."):
     """run a command and redirect both stdout and stderr to a file
 
@@ -67,3 +79,18 @@ def run_command(command: Union[str, List[str]], output: Path, cwd: Path = "."):
     _logger.info("running %r in %s", command, cwd)
     with (pathlib.Path(cwd) / output).open("w") as h:
         sp.run(command, cwd=cwd, stdout=h, stderr=sp.STDOUT, check=True)
+
+
+@contextmanager
+def open_example(tarball: Path):
+    """extract the example of a workflow and yield the path to the top directory ``example``"""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        with tarfile.open(tarball) as h:
+            h.extractall(tmpdir, filter="data")
+        yield pathlib.Path(tmpdir) / "example"
+
+
+def diff_files(dir1: Path, dir2: Path, names: Iterable[str]) -> List[str]:
+    """get the names of text files that are different in two directories"""
+    dir1, dir2 = pathlib.Path(dir1), pathlib.Path(dir2)
+    return [name for name in names if (dir1 / name).read_text() != (dir2 / name).read_text()]

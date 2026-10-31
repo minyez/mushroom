@@ -3,6 +3,8 @@
 from itertools import product
 from typing import Sequence
 import numpy as np
+
+from mushroom.core.constants import ANG2AU, EV2HA, PI
 from mushroom.core.typehint import Latt3T3, RealVec3D, IntVec3D
 from mushroom.core.unit import LengthUnit, EnergyUnit
 from mushroom.core.crystutils import get_recp_latt
@@ -117,6 +119,19 @@ class PWBasis(LengthUnit, EnergyUnit):
             symops = None
             folded = symmetrize_G(ipw, kpt, symops)
         return ipw, folded
+
+
+def estimate_npw(encut: float, vol: float) -> int:
+    """estimate the number of plane waves within a kinetic energy cutoff
+
+    Args:
+        encut (float) : the cutoff in eV
+        vol (float) : volume of the cell in Angstrom^3
+
+    Returns:
+        int
+    """
+    return int(0.5 + (2.0 * encut * EV2HA) ** 1.5 * vol * ANG2AU ** 3 / 6.0 / PI ** 2)
 
 
 def symmetrize_G(ipw: Sequence[IntVec3D], kpt: RealVec3D, symops: dict):

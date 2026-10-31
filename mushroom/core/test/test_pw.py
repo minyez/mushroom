@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """test plane-wave basis"""
 import unittest as ut
-from mushroom.core.pw import PWBasis
+from mushroom.core.pw import PWBasis, estimate_npw
 from mushroom.core.unit import ANG2AU, EV2RY
 
 
@@ -26,6 +26,15 @@ class test_pwbasis(ut.TestCase):
                      lunit="ang")
         self.assertEqual(93, len(pw.get_ipw(0)[0]))
         self.assertEqual(93, len(pw.get_ipw(0, order_kind='vasp')[0]))
+
+
+class test_estimate_npw(ut.TestCase):
+    """estimation of the number of plane waves"""
+
+    def test_scaling(self):
+        """check a known value and the scaling with cutoff and volume"""
+        self.assertEqual(estimate_npw(250.0, 40.0), 359)
+        self.assertEqual(estimate_npw(250.0, 80.0), 718)
 
 
 if __name__ == "__main__":
