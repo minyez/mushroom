@@ -55,7 +55,10 @@ def sph_harm(l: Sequence[int], m: Sequence[int], theta: Sequence[float], phi: Se
         theta, phi (array): polar and azimuthal angles
     """
     raise_no_module(special, "scipy.special")
-    return special.sph_harm_y(l, m, theta, phi)
+    if hasattr(special, "sph_harm_y"):
+        return special.sph_harm_y(l, m, theta, phi)
+    # scipy < 1.15, which is the only choice on Python 3.9
+    return special.sph_harm(m, l, phi, theta)
 
 
 def sph_harm_xyz(l: Sequence[int], m: Sequence[int], xyz: Sequence[RealVec3D]):
