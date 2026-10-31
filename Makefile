@@ -73,7 +73,6 @@ $(DIST_TARBALL): $(DIST_FILES)
 		--exclude="*.pyc" --exclude="__pycache__" \
 		--exclude="*.log" \
 		--exclude=".git*" \
-		--exclude="vasp_*/vasp.sh" \
 		--exclude="w2k_*/w2k.sh" \
 		--exclude="*_*/common.sh" \
 		--exclude=".pytest_cache" \
@@ -89,7 +88,6 @@ $(DIST_TARBALL_TEST): $(DIST_FILES) prototype
 		--exclude="*.pyc" --exclude="__pycache__" \
 		--exclude="*.log" \
 		--exclude=".git*" \
-		--exclude="vasp_*/vasp.sh" \
 		--exclude="w2k_*/w2k.sh" \
 		--exclude="*_*/common.sh" \
 		--exclude=".pytest_cache" \
