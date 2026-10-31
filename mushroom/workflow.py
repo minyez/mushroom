@@ -83,7 +83,7 @@ def with_hard_stack_limit(command: Union[str, List[str]]) -> List[str]:
 
 
 def run_command(command: Union[str, List[str]], output: Path, cwd: Path = ".",
-                stdin: str = None, error: Path = None):
+                stdin: str = None, error: Path = None, env: dict = None):
     """run a command and redirect its stdout and stderr to files
 
     Args:
@@ -93,20 +93,23 @@ def run_command(command: Union[str, List[str]], output: Path, cwd: Path = ".",
         stdin (str) : the text to send to standard input
         error (Path) : the path of file for stderr, relative to ``cwd``.
             Default to write stderr to ``output``
+        env (dict) : variables to add to the environment of the command
 
     Raises:
         subprocess.CalledProcessError : when the command fails
     """
     if isinstance(command, str):
         command = shlex.split(command)
+    env = None if env is None else {**os.environ, **env}
     _logger.info("running %r in %s", command, cwd)
     with (pathlib.Path(cwd) / output).open("w") as h:
         if error is None:
-            sp.run(command, cwd=cwd, input=stdin, text=True, stdout=h, stderr=sp.STDOUT, check=True)
+            sp.run(command, cwd=cwd, input=stdin, text=True, stdout=h, stderr=sp.STDOUT, check=True,
+                   env=env)
         else:
             with (pathlib.Path(cwd) / error).open("w") as h_err:
                 sp.run(command, cwd=cwd, input=stdin, text=True, stdout=h, stderr=h_err,
-                       check=True)
+                       check=True, env=env)
 
 
 @contextmanager

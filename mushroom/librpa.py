@@ -1,15 +1,18 @@
 # -*- coding: utf-8 -*-
 """Utilities for LibRPA"""
 import os
+import pathlib
 import re
 from io import StringIO
-from typing import Union
+from typing import List, Union
 
 import numpy as np
 
 from mushroom.core.ioutils import open_textio
 from mushroom.core.logger import loggers
 from mushroom.core.bs import BandStructure
+from mushroom.core.typehint import Path
+from mushroom.workflow import run_command, with_hard_stack_limit
 
 _logger = loggers["librpa"]
 
@@ -237,6 +240,30 @@ def _check_librpa_finished(lines) -> bool:
         if line.strip().lower().startswith("librpa finished"):
             return True
     return False
+
+
+def run_librpa(command: Union[str, List[str]], cwd: Path = ".", output: str = "librpa.out",
+               error: str = "librpa.err", omp_threads: int = 1):
+    """run the LibRPA driver and check that it ends normally
+
+    The stack limit is raised to the hard limit, as for FHI-aims.
+
+    Args:
+        command (str or list) : the LibRPA command, e.g. "mpirun -np 4 chi0_main.exe"
+        cwd (Path) : the working directory, with ``librpa.in``
+        output (str) : file of standard output, relative to ``cwd``
+        error (str) : file of standard error, relative to ``cwd``
+        omp_threads (int) : number of OpenMP threads of each task
+
+    Raises:
+        RuntimeError : when LibRPA does not end normally
+    """
+    run_command(with_hard_stack_limit(command), output, cwd=cwd, error=error,
+                env={"OMP_NUM_THREADS": str(omp_threads)})
+    path = pathlib.Path(cwd) / output
+    with path.open("r", errors="ignore") as h:
+        if not _check_librpa_finished(h.readlines()):
+            raise RuntimeError("LibRPA does not end normally, check {}".format(path))
 
 
 def read_librpa_timing(fn: Union[str, os.PathLike] = "librpa.out", details: bool = False):

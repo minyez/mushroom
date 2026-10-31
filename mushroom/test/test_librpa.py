@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """test LibRPA related utitlies"""
+import pathlib
+import sys
+import tempfile
 import unittest as ut
 from io import StringIO
 
@@ -71,6 +74,26 @@ State              occ             e_mf             v_xc            v_exx       
         self.assertAlmostEqual(bs.fund_gap(), 9.01068)
         bs, kpts = librpa.read_quasi_particle_energies_stdout(StringIO(stdout), kind="exx")
         self.assertAlmostEqual(bs.fund_gap(), 8.75884)
+
+class test_run_librpa(ut.TestCase):
+    """test running the LibRPA driver"""
+
+    def _run(self, text):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            librpa.run_librpa([sys.executable, "-c", text], cwd=tmpdir, omp_threads=3)
+            return (pathlib.Path(tmpdir) / "librpa.out").read_text()
+
+    def test_finished(self):
+        """the number of threads reaches the command"""
+        out = self._run("import os; print(os.environ['OMP_NUM_THREADS']); "
+                        "print('libRPA finished successfully')")
+        self.assertTrue(out.startswith("3\n"))
+
+    def test_not_finished(self):
+        """exit code 0 without the final line is a failure"""
+        with self.assertRaises(RuntimeError):
+            self._run("print('stopped')")
+
 
 if __name__ == "__main__":
     ut.main()
