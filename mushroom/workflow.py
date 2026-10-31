@@ -63,13 +63,15 @@ def get_npar_kpar(ntasks: int) -> Tuple[int, int]:
     return ntasks // kpar, kpar
 
 
-def run_command(command: Union[str, List[str]], output: Path, cwd: Path = "."):
+def run_command(command: Union[str, List[str]], output: Path, cwd: Path = ".",
+                stdin: str = None):
     """run a command and redirect both stdout and stderr to a file
 
     Args:
         command (str or list) : the command to run
         output (Path) : the path of output file, relative to ``cwd``
         cwd (Path) : the working directory
+        stdin (str) : the text to send to standard input
 
     Raises:
         subprocess.CalledProcessError : when the command fails
@@ -78,7 +80,7 @@ def run_command(command: Union[str, List[str]], output: Path, cwd: Path = "."):
         command = shlex.split(command)
     _logger.info("running %r in %s", command, cwd)
     with (pathlib.Path(cwd) / output).open("w") as h:
-        sp.run(command, cwd=cwd, stdout=h, stderr=sp.STDOUT, check=True)
+        sp.run(command, cwd=cwd, input=stdin, text=True, stdout=h, stderr=sp.STDOUT, check=True)
 
 
 @contextmanager

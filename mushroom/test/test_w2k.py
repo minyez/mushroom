@@ -4,6 +4,7 @@
 import json
 import os
 import pathlib
+import sys
 import unittest as ut
 import tempfile
 
@@ -11,7 +12,7 @@ import numpy as np
 
 from mushroom.w2k import (Struct, _energy_kpt_line, read_energy,
                           _read_efermi_from_second_to_last_el,
-                          get_casename, get_inputs, In1)
+                          get_casename, get_inputs, In1, run_step, write_machines)
 
 
 class test_struct(ut.TestCase):
@@ -150,6 +151,30 @@ class test_in1(ut.TestCase):
                     self.assertTrue(np.array_equal(objv, v), msg)
 
 # TODO: add qtl and dos reader test
+
+
+class test_workflow_utilities(ut.TestCase):
+    """test utilities for workflows"""
+
+    def test_write_machines(self):
+        """k-points are distributed evenly, and the host with no k-point is dropped"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = pathlib.Path(tmpdir) / ".machines"
+            write_machines(path, 3, 7, host="node")
+            self.assertEqual(path.read_text(),
+                             "2:node\n2:node\n3:node\n\ngranularity:1\nextrafine:1\n")
+            write_machines(path, 4, 2, host="node")
+            self.assertEqual(path.read_text(),
+                             "1:node\n1:node\n\ngranularity:1\nextrafine:1\n")
+
+    def test_run_step(self):
+        """raise only for a non-empty error file"""
+        empty = "open('lapw1.error', 'w').close()"
+        filled = "open('lapw2.error', 'w').write('Error')"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            run_step([sys.executable, "-c", empty], "out", cwd=tmpdir)
+            self.assertRaises(RuntimeError, run_step, [sys.executable, "-c", filled], "out",
+                              cwd=tmpdir)
 
 
 if __name__ == "__main__":

@@ -54,6 +54,17 @@ class test_run_command(ut.TestCase):
                               [sys.executable, "-c", code.format(1)], "o", cwd=tmpdir)
 
 
+class test_run_command_stdin(ut.TestCase):
+    """test sending text to a command"""
+
+    def test_stdin(self):
+        """the text reaches standard input"""
+        code = "import sys; print(sys.stdin.read().upper())"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workflow.run_command([sys.executable, "-c", code], "o", cwd=tmpdir, stdin="abc\n")
+            self.assertEqual((pathlib.Path(tmpdir) / "o").read_text().strip(), "ABC")
+
+
 class test_example(ut.TestCase):
     """test utilities to check against the example"""
 

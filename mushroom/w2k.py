@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """classes that manipulate WIEN2k inputs and outputs"""
 import pathlib
+import socket
 from io import StringIO
-from typing import Sequence, Union, Tuple
+from typing import List, Sequence, Union, Tuple
 import re
 
 import numpy as np
@@ -19,6 +20,7 @@ from mushroom.core.crystutils import (get_latt_vecs_from_latt_consts,
 from mushroom.core.logger import loggers
 from mushroom.core.bs import BandStructure
 from mushroom.core.dos import DensityOfStates
+from mushroom.workflow import run_command
 
 __all__ = [
     "Struct",
@@ -26,6 +28,8 @@ __all__ = [
     "KList",
     "InTetra",
     "In1",
+    "write_machines",
+    "run_step",
 ]
 
 _logger = loggers["w2k"]
@@ -158,6 +162,41 @@ def get_casename(dirpath: Path = ".", casename: str = None):
             return get_filename_wo_ext(filename)
         return abspath.name
     raise TypeError("{} is not a directory".format(abspath))
+
+
+def write_machines(path: Path, nprocs: int, nkpts: int, host: str = None):
+    """write a .machines file for k-point parallelization on one host
+
+    Args:
+        path (Path) : path of the file
+        nprocs (int) : number of processes
+        nkpts (int) : number of k-points, distributed evenly over the processes
+        host (str) : name of host. Default to the current one
+    """
+    host = host or socket.gethostname()
+    kperp, res = divmod(nkpts, nprocs)
+    weights = [kperp] * (nprocs - res) + [kperp + 1] * res
+    lines = ["{}:{}".format(w, host) for w in weights if w > 0]
+    with open(path, "w") as h:
+        h.write("\n".join(lines + ["", "granularity:1", "extrafine:1", ""]))
+
+
+def run_step(command: Union[str, List[str]], output: Path, cwd: Path = ".", stdin: str = None):
+    """run a WIEN2k command and check the error files
+
+    Args:
+        command (str or list) : the command, e.g. "x lapw1"
+        output (Path) : file for the standard output and error, relative to ``cwd``
+        cwd (Path) : the working directory
+        stdin (str) : the text to send to standard input
+
+    Raises:
+        RuntimeError : when any .error file in ``cwd`` is not empty
+    """
+    run_command(command, output, cwd=cwd, stdin=stdin)
+    errors = [x.name for x in pathlib.Path(cwd).glob("*.error") if x.stat().st_size > 0]
+    if errors:
+        raise RuntimeError("{} fails with error files: {}".format(command, errors))
 
 
 def search_cplx_input(path: Path) -> str:
