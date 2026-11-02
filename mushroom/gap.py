@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """utilities related to GAP2 code
 
-TODO:
+Todo:
     check out the use of nbyte_recl
 """
 import struct
@@ -14,6 +14,7 @@ from mushroom.core.ioutils import conv_string
 from mushroom.core.data import reshape_2n_float_n_cmplx
 
 from mushroom.w2k import get_casename
+from typing import Optional
 
 _logger = loggers["gap"]
 
@@ -27,11 +28,12 @@ class Eps:
         peps (Path): path to the epsilon binary file
         is_q0 (bool)
         kind (str)
-        nbyte_recl (int) : number of bytes as unit of record length. default to 4.
+        nbyte_recl (int): number of bytes as unit of record length. default to 4.
             Use 1 if GAP is compiled with ``assume bytenbyte_recl`` or compiled with gcc
             After fixing gap2e, this argument is obsolete.
-        cache (bool) : cache eps data
+        cache (bool): cache eps data
     """
+
     known_kind = ("eps", "inv", "invm1")
 
     def __init__(self, peps: Path, is_q0: bool = False,
@@ -59,10 +61,16 @@ class Eps:
                 self._nomega += 1
 
     def close(self):
-        """close the binary handle"""
+        """close the retained binary file handle; cached arrays remain available"""
         if self._fhandle is not None:
             self._fhandle.close()
             self._fhandle = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
 
     @classmethod
     def _check_kind(cls, kind):
@@ -106,7 +114,7 @@ class Eps:
         """get the raw eps data at frequency point iomega
 
         Args:
-            iomega (int)
+            iomega (int): zero-based frequency index
         """
         rawdata = self._rawdata.get(iomega, None)
         if self._cache and rawdata is not None:
@@ -155,8 +163,7 @@ class Eps:
         """get the dielectric matrix elements at frequency point iomega
 
         Args:
-            iomega (int)
-            cache (bool)
+            iomega (int): zero-based frequency index
         """
         rawdata = self.get(iomega)
         if self.kind == "inv":
@@ -175,7 +182,7 @@ class Eps:
         """get the inverse of dielectric matrix elements at frequency point iomega
 
         Args:
-            iomega (int)
+            iomega (int): zero-based frequency index
         """
         rawdata = self.get(iomega)
         if self.kind == "invm1":
@@ -203,11 +210,12 @@ class Eqpev:
             This is used in cases that numerical error leads to small positive band energy for
             states under VBM.
     """
+
     _head_lines = 10
 
     # pylint: disable=R0914
     def __init__(self, peqpev: Path = None, dirpath: Path = ".",
-                 casename: str = None, method: str = 'g0w0',
+                 casename: Optional[str] = None, method: str = 'g0w0',
                  occ_thres: float = 0.01):
         if casename is None:
             casename = get_casename(dirpath)
@@ -278,7 +286,8 @@ class Eqpev:
 
     def _get_bandstructure(self, kind):
         e = {"qp": self._eqp, "ks": self._eks, "hf": self._ehf}
-        assert kind in e
+        if not (kind in e):
+            raise ValueError(f"unsupported band structure kind: {kind}")
         e = e[kind]
         occ = 1.0 * (e <= self._occ_thres)
         weight = [1.0,] * self.nibzkpts

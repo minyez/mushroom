@@ -8,20 +8,13 @@ import warnings
 import xml.etree.ElementTree as ET
 from filecmp import cmp
 from io import StringIO
-from copy import deepcopy
 from itertools import product
-from typing import Tuple, List, Union
+from typing import Union, Optional
 import pathlib
 
 import numpy as np
-try:
-    from bs4 import BeautifulSoup as BS
-except ImportError:
-    BS = None
-
 from mushroom.core.logger import loggers
 from mushroom.core.ioutils import conv_string, open_textio
-from mushroom.core.utils import raise_no_module
 from mushroom.core.dos import DensityOfStates
 from mushroom.core.bs import BandStructure
 from mushroom.core.pw import PWBasis
@@ -68,15 +61,14 @@ def _dict_read_doscar(path: str = "DOSCAR",
     """read DOSCAR file and returns a dict
 
     Args:
-        path (str) : path to DOSCAR file. default to "DOSCAR"
-        read_pdos (bool) : if read projected densit of states
-        ncl (bool) : DOS file from non-collinear calculation
+        path (str): path to DOSCAR file. default to "DOSCAR"
+        read_pdos (bool): if read projected densit of states
+        ncl (bool): DOS file from non-collinear calculation
 
     Returns:
         dict
 
-    TODO:
-        - automatic ncl check
+    TODO:         - automatic ncl check
     """
     def __read_splitted_atom_data(dls, nspins):
         data = np.array([x[1:] for x in dls])
@@ -128,11 +120,11 @@ def read_doscar(path: str = "DOSCAR", read_pdos: bool = True,
     """read DOSCAR file and returns a DensityOfStates object
 
     Args:
-        path (str) : path to DOSCAR file. default to "DOSCAR"
-        read_pdos (bool) : if read projected densit of states
-        reset_fermi (bool) : unset Fermi energy obtained from DOSCAR
+        path (str): path to DOSCAR file. default to "DOSCAR"
+        read_pdos (bool): if read projected densit of states
+        reset_fermi (bool): unset Fermi energy obtained from DOSCAR
             this is useful when one wants a dos with it VBM as energy zero
-        ncl (bool) : DOS file from non-collinear calculation
+        ncl (bool): DOS file from non-collinear calculation
 
     Returns:
         a DensityOfStates object
@@ -148,7 +140,7 @@ def _dict_read_procar(path: str = "PROCAR") -> dict:
     """read PROCAR file
 
     Args:
-        path (str) : path to PROCAR file. default to "PROCAR"
+        path (str): path to PROCAR file. default to "PROCAR"
     """
     def __read_band_data(dls):
         """Read data from datalines in the form
@@ -202,13 +194,13 @@ def _dict_read_procar(path: str = "PROCAR") -> dict:
 
 # pylint: disable=R0914
 def read_procar(path: str = "PROCAR", filter_k_before: int = 0,
-                filter_k_behind: int = None) -> Tuple[BandStructure, np.ndarray]:
+                filter_k_behind: Optional[int] = None) -> tuple[BandStructure, np.ndarray]:
     """read PROCAR and return a BandStructure object
 
     Args:
-        path (str) : path to the PROCAR file
-        filter_k_before (int)
-        filter_k_behind (int)
+        path (str): path to the PROCAR file
+        filter_k_before (int): number of initial k-points to omit
+        filter_k_behind (int): exclusive upper k-point index; None keeps the remaining points
     """
     d = _dict_read_procar(path=path)
     eigen, occ, weight, kpoints, pwav, prjs = \
@@ -224,53 +216,42 @@ def read_procar(path: str = "PROCAR", filter_k_before: int = 0,
 
 
 def read_xml(*datakey, path: str = "vasprun.xml") -> dict:
-    """read vasprun.xml to extract data.
+    """extract selected data from vasprun.xml
 
-    The reason to use positional arguments to specify the data to extract
-    is to avoid processing uncessary data for large XML file.
+    The k-point reader stops after the kpointlist node, so the remainder of the
+    file may still be incomplete.
 
     Args:
-        path (str) : path to the vasp xml file. Default to vasprun.xml
-        arguments: key/identifier of data to extract.
-            Currently supported:
-                kpoints: kpoints in reciprocal vector coordinates
+        *datakey (str): data identifiers; currently only kpoints is supported
+        path (path-like): path of vasprun.xml
+
     Returns:
-        dict
+        dict: requested arrays; kpoints has shape (nkpts, 3) in fractional
+        reciprocal coordinates
+
+    Raises:
+        ValueError: if a key is unsupported or the complete file has no k-point list
     """
-    raise_no_module(BS, "BeautifulSoup", "reading vasprun.xml")
     objects = {}
     avail_keys = {
-        "kpoints": __read_xml_kpoints,
+        "kpoints": read_vasprun_kpoints,
     }
     if not datakey:
         _logger.warning("no identifier specified in XML")
         return objects
-    with open(path, 'rb') as h:
-        xml = BS(h.read(), 'xml')
     for key in datakey:
         try:
-            objects[key] = avail_keys.get(key)(xml)
+            objects[key] = avail_keys[key](path)
         except KeyError as err:
             raise ValueError("datakey {} is not supported for vasp xml parser".format(key)) from err
     return objects
-
-
-def __read_xml_dos(xml: BS):
-    """get the density of states from xml"""
-
-
-def __read_xml_kpoints(xml: BS):
-    """get the kpoints from xml"""
-    kpts = "".join(k.string for k in xml.find(name="varray", attrs={"name": "kpointlist"}))
-    kpts = np.loadtxt(StringIO(kpts))
-    return kpts
 
 
 def _dict_read_eigen(path="EIGENVAL") -> dict:
     """read band structure from EIGENVAL
 
     Args:
-        path (str) : path to EIGENVAL
+        path (str): path to EIGENVAL
 
     Note:
         The occupation number in vasp eigenvalue file is not always the true number.
@@ -313,14 +294,13 @@ def _dict_read_eigen(path="EIGENVAL") -> dict:
     return d
 
 
-def read_eigen(path: str = "EIGENVAL", filter_k_before: int = 0, filter_k_behind: int = None):
+def read_eigen(path: str = "EIGENVAL", filter_k_before: int = 0, filter_k_behind: Optional[int] = None):
     """read band structure from EIGENVAL
 
     Args:
-        path (str) : path to EIGENVAL
-        filter_k_before (int)
-        filter_k_behind (int)
-
+        path (str): path to EIGENVAL
+        filter_k_before (int): number of initial k-points to omit
+        filter_k_behind (int): exclusive upper k-point index; None keeps the remaining points
     Returns:
         BandStructure, int, 2d-array
     """
@@ -336,15 +316,15 @@ def read_eigen(path: str = "EIGENVAL", filter_k_before: int = 0, filter_k_behind
     return BandStructure(eigen, occ, weight), natms, kpoints
 
 
-def read_band_edges(path: str = "EIGENVAL", ik: int = None,
-                    removek: int = 0) -> Tuple[float, float]:
+def read_band_edges(path: str = "EIGENVAL", ik: Optional[int] = None,
+                    removek: int = 0) -> tuple[float, float]:
     """read the valence and conduction band edges from EIGENVAL
 
     Args:
-        path (str) : path to EIGENVAL
-        ik (int) : index of k-point, starting from 1, after removing k-points.
+        path (str): path to EIGENVAL
+        ik (int): index of k-point, starting from 1, after removing k-points.
             Default to use the VBM and CBM over all k-points.
-        removek (int) : number of k-points at the beginning to remove
+        removek (int): number of k-points at the beginning to remove
 
     Returns:
         two floats, energies of valence and conduction band edges
@@ -370,7 +350,7 @@ def read_vasprun_kpoints(path: Path = "vasprun.xml") -> np.ndarray:
     return np.array([[float(x) for x in v.text.split()] for v in node.findall("v")])
 
 
-def read_ibzkpt(path: Path = "IBZKPT") -> Tuple[np.ndarray, np.ndarray]:
+def read_ibzkpt(path: Path = "IBZKPT") -> tuple[np.ndarray, np.ndarray]:
     """read the irreducible k-points and their integer weights from IBZKPT
 
     Returns:
@@ -393,6 +373,7 @@ class WaveCar:
     For system with inversion symmetry, when symmetry is switched on (ISYM>0),
     VASP seems to use C_{-G} = C^*_{G} to reduce the size of coefficients.
     """
+
     known_nprec = {
         45200: ('complex64', 16, False),
         # 45210: ('complex128', 32, False),
@@ -439,6 +420,18 @@ class WaveCar:
         self._kpts = None
         self._nplanes = None
         self._coeffs = {}
+
+    def close(self):
+        """close the retained binary file handle; cached arrays remain available"""
+        if self._fhandle is not None:
+            self._fhandle.close()
+            self._fhandle = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
 
     @property
     def recl(self):
@@ -493,7 +486,7 @@ class WaveCar:
         with open(self.pwavecar, 'rb') as h:
             for ispin, ikpt in product(*map(range, [self._nspins, self._nkpts])):
                 h.seek(self._seek_record(ispin, ikpt, iband=-1))
-                data = struct.unpack('d' * n, h.read(8 * n))
+                data = np.frombuffer(h.read(8 * n), dtype="=f8", count=n)
                 nplanes.append(int(data[0]))
                 kpts.append(data[1:4])
                 eigen.extend(data[4::interval])
@@ -531,6 +524,9 @@ class WaveCar:
         """get the raw plane-wave coefficient of band state
 
         Args:
+            ispin: spin-channel index
+            ikpt: k-point index
+            iband: zero-based band index; -1 selects the k-point header
             ispin, ikpt, iband (int): the spin, kpoint and band index of a particular band
             cache (bool): use cached data
         """
@@ -551,8 +547,7 @@ class WaveCar:
         """get the integer planewave index at kpoint ``ikpt``
 
         Args:
-            ikpt (int)
-
+            ikpt (int): k-point index
         Returns:
             list
             tuple
@@ -560,20 +555,16 @@ class WaveCar:
         return self._pw.get_ipw(self.kpts[ikpt], symmetrize=self.is_symmetrized)
 
     def export_cube(self, ispin: int, ikpt: int, iband: int):
-        """export the wavefunction at k-point ``ikpt`` and band ``iband``
-        """
+        """export the wavefunction at k-point ``ikpt`` and band ``iband``"""
         raise NotImplementedError
-
-    def close(self):
-        """close the binary handle"""
-        if self._fhandle is not None:
-            self._fhandle.close()
-            self._fhandle = None
 
     def _seek_record(self, ispin: int, ikpt: int, iband: int):
         """seek to the record for the coefficients at ispin, ikpt, iband
 
         Args:
+            ispin: spin-channel index
+            ikpt: k-point index
+            iband: zero-based band index; -1 selects the k-point header
             ispin, ikpt, iband (int): the spin, kpoint and band index of a particular band
                 Particularly, set iband to -1 to reach the information line of each kpoint.
         """
@@ -665,7 +656,7 @@ def read_chg(pchg: Path):
         data = np.loadtxt(datastring)
         rawdata = data.reshape(shape, order='F')
         return ChgLike(cell, rawdata)
-    raise IOError("fail to read charge file {}".format(pchg))
+    raise OSError("fail to read charge file {}".format(pchg))
 
 
 class KPoints:
@@ -682,6 +673,7 @@ class KPoints:
             [coord_start, coord_end, symbol_start, symbol_end].
             coord_start/end are strings, while symbol_start/end can be string or None.
     """
+
     modes_avail = {
         "band_recp": ["_kpaths", "_ngrids_kpath"],
         "band_cart": ["_kpaths", "_ngrids_kpath"],
@@ -693,14 +685,14 @@ class KPoints:
     }
 
     def __init__(self, mode: str,
-                 nkgrids: Tuple[int] = None,
-                 kshifts: Tuple[int] = None,
-                 kdense: int = None,
-                 kpts: List[Tuple[float]] = None,
-                 weights: List[float] = None,
-                 kpaths: List[Tuple[str, str, Union[str, None], Union[str, None]]] = None,
-                 ngrids_kpath: int = None,
-                 comment: str = None):
+                 nkgrids: Optional[tuple[int]] = None,
+                 kshifts: Optional[tuple[int]] = None,
+                 kdense: Optional[int] = None,
+                 kpts: Optional[list[tuple[float]]] = None,
+                 weights: Optional[list[float]] = None,
+                 kpaths: Optional[list[tuple[str, str, Union[str, None], Union[str, None]]]] = None,
+                 ngrids_kpath: Optional[int] = None,
+                 comment: Optional[str] = None):
         self._mode = mode
         self._nkgrids = nkgrids
         self._kshifts = kshifts
@@ -738,7 +730,7 @@ class KPoints:
         """read from a KPOINTS file ``path_kpoints``
 
         Args:
-            path_kpoints (path-like)
+            path_kpoints (path-like): path of KPOINTS
         """
         with open(path_kpoints, 'r') as h:
             lines = h.readlines()
@@ -812,7 +804,7 @@ class KPoints:
                 raise ValueError("fail to convert line {} to kpoint and weight".format(i + 4)) from e
 
         # TODO: handle tetrahedra
-        lines_tetra = lines[ngrids:]
+        # TODO: parse tetrahedron data after the k-point list.
 
         return cls(mode, kpts=kpts, weights=weights, comment=comment)
 
@@ -824,7 +816,7 @@ class Incar:
     Tags are case insensitive. Whole-word match is used, hence ALGO does not hit IALGO.
 
     Args:
-        text (str) : content of INCAR
+        text (str): content of INCAR
     """
 
     def __init__(self, text: str = ""):
@@ -835,7 +827,7 @@ class Incar:
         """create INCAR from a template
 
         Args:
-            text (str) : the template
+            text (str): the template
             placeholders : values for placeholders in the template.
                 For example, ``encut=500`` replaces ``_encut_`` with 500.
 
@@ -859,14 +851,16 @@ class Incar:
     def _regex_tag(tag: str):
         """regex for a statement of tag. Comments in the end of line are not part of the match
 
-        The groups are the prefix, the tag with the equal sign and the padding before next ;"""
+        The groups are the prefix, the tag with the equal sign and the padding before next ;
+        """
         return re.compile(r"(^[^#!]*?;\s*|^\s*)({}\s*=)[^;#!]*?(\s*)(?=;|#|!|$)".format(tag),
                           re.IGNORECASE)
 
     def get(self, tag: str) -> Union[str, None]:
         """get the raw string value of tag, None if it is not set
 
-        VASP uses the first occurrence when a tag is set multiple times"""
+        VASP uses the first occurrence when a tag is set multiple times
+        """
         regex = self._regex_tag(tag)
         for line in self._lines:
             m = regex.search(line)
@@ -921,7 +915,7 @@ class Outcar:
     """reader of the OUTCAR file
 
     Args:
-        path (Path) : path to OUTCAR
+        path (Path): path to OUTCAR
     """
 
     def __init__(self, path: Path = "OUTCAR"):
@@ -938,7 +932,8 @@ class Outcar:
     def is_finished(self) -> bool:
         """whether VASP reached the end of the run
 
-        VASP may exit with code 0 on an internal error, so the exit code is not enough"""
+        VASP may exit with code 0 on an internal error, so the exit code is not enough
+        """
         return "Elapsed time (sec):" in self._text
 
     @property
@@ -960,7 +955,7 @@ class Outcar:
         """get the table of quasi-particle data at a k-point of the first GW iteration
 
         Args:
-            ik (int) : index of k-point, starting from 1
+            ik (int): index of k-point, starting from 1
 
         Returns:
             2d-array, each row for one band. The columns are those printed in OUTCAR:
@@ -981,7 +976,7 @@ class Outcar:
         """get the total energy with sigma->0 in eV
 
         Args:
-            ionic_step (int) : index of ionic step, starting from 0. -1 means the last step
+            ionic_step (int): index of ionic step, starting from 0. -1 means the last step
         """
         energies = re.findall(r"energy  without entropy\s*=.*energy\(sigma->0\)\s*=\s*(\S+)",
                               self._text)
@@ -1007,8 +1002,8 @@ def clean_results(cwd: Path = ".", restart: bool = False):
     """clean result and temporary files. Back up what you need before calling it
 
     Args:
-        cwd (Path) : the working directory
-        restart (bool) : also clean the restart files, e.g. WAVECAR and CHGCAR
+        cwd (Path): the working directory
+        restart (bool): also clean the restart files, e.g. WAVECAR and CHGCAR
     """
     cwd = pathlib.Path(cwd)
     names = ["IBZKPT", "XDATCAR", "CONTCAR", "PROCAR", "OUTCAR", "OSZICAR", "vasprun.xml",
@@ -1022,25 +1017,26 @@ def clean_results(cwd: Path = ".", restart: bool = False):
 def warn_changed(path1: Path, path2: Path):
     """warn when two CHGCAR/WAVECAR files are different
 
-    It is used to check non-SCF calculations, and may often happen in spin-polarized cases"""
+    It is used to check non-SCF calculations, and may often happen in spin-polarized cases
+    """
     if not cmp(path1, path2, shallow=False):
         warnings.warn("{} and {} are different, it might have changed during calculation".format(
-            path1, path2))
+            path1, path2), stacklevel=2)
 
 
-def run_step(command: Union[str, List[str]], name: str, cwd: Path = ".",
-             kpoints: str = None, tags: dict = None):
+def run_step(command: Union[str, list[str]], name: str, cwd: Path = ".",
+             kpoints: Optional[str] = None, tags: Optional[dict] = None):
     """run one VASP step and back up the results
 
     The input is INCAR.<name>. Output is redirected to out.<name>, and the results are
     backed up with suffix ``name``.
 
     Args:
-        command (str or list) : the VASP command, e.g. "mpirun -np 4 vasp_std"
-        name (str) : name of the step
-        cwd (Path) : the working directory
-        kpoints (str) : KPOINTS file to use, relative to ``cwd``. Default to leave KPOINTS unchanged
-        tags (dict) : tags to set in INCAR on top of INCAR.<name>
+        command (str or list): the VASP command, e.g. "mpirun -np 4 vasp_std"
+        name (str): name of the step
+        cwd (Path): the working directory
+        kpoints (str): KPOINTS file to use, relative to ``cwd``. Default to leave KPOINTS unchanged
+        tags (dict): tags to set in INCAR on top of INCAR.<name>
 
     Raises:
         RuntimeError : when VASP stops before the end of the run
@@ -1059,16 +1055,16 @@ def run_step(command: Union[str, List[str]], name: str, cwd: Path = ".",
             name, cwd, name))
 
 
-def run_hf_3steps(command: Union[str, List[str]], cwd: Path = ".", fixed_chg: str = None):
+def run_hf_3steps(command: Union[str, list[str]], cwd: Path = ".", fixed_chg: Optional[str] = None):
     """run hybrid functional calculation in three steps
 
     The steps are preconverging PBE, coarse HF and accurate HF.
     INCAR.pbe, INCAR.coarse, INCAR.hf and KPOINTS.scf are required in ``cwd``.
 
     Args:
-        command (str or list) : the VASP command
-        cwd (Path) : the working directory
-        fixed_chg (str) : CHGCAR file to use as the fixed charge, relative to ``cwd``
+        command (str or list): the VASP command
+        cwd (Path): the working directory
+        fixed_chg (str): CHGCAR file to use as the fixed charge, relative to ``cwd``
     """
     cwd = pathlib.Path(cwd)
     if fixed_chg is None:
@@ -1083,7 +1079,7 @@ def run_hf_3steps(command: Union[str, List[str]], cwd: Path = ".", fixed_chg: st
         warn_changed(cwd / fixed_chg, cwd / "CHGCAR")
 
 
-def run_gw_3steps(command: Union[str, List[str]], cwd: Path = "."):
+def run_gw_3steps(command: Union[str, list[str]], cwd: Path = "."):
     """run GW calculation in three steps
 
     The steps are SCF, exact diagonalization and GW.
@@ -1098,10 +1094,10 @@ def get_qp_energies_from_outcar(path_outcar, qp_iteration: int = -1, extract_KS:
     """Get the quasi-particle energies from the OUTCAR file
 
     Args:
-        path_outcar (str) : path to the OUTCAR file
-        qp_iteration (int) : index of iteration to use, starting from 0.
+        path_outcar (str): path to the OUTCAR file
+        qp_iteration (int): index of iteration to use, starting from 0.
             -1 means last iteration
-        extract_KS (bool) : if True, will reture the Kohn-Sham energies instead of QP.
+        extract_KS (bool): if True, will reture the Kohn-Sham energies instead of QP.
             Particularly, extract_KS True and qp_iteration 0 gives the Kohn-Sham results.
 
     Returns:
@@ -1174,8 +1170,7 @@ def get_bandstructure_outcar_wannier(path_outcar):
     """Get the band structure from the OUTCAR of a Wannier intepolation
 
     Args:
-        path_outcar (str)
-
+        path_outcar (str): path of OUTCAR
     Returns:
         BandStructure objects, ndarray of kpoints
     """

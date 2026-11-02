@@ -8,7 +8,8 @@ of the weights of the matched patterns and markers reaches the threshold.
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Sequence, Tuple, Union
+from typing import Union, Optional
+from collections.abc import Sequence
 
 # number of bytes to read from the head of a file when probing its content
 PROBE_NBYTES = 16384
@@ -29,19 +30,21 @@ class CodeSignature:
         markers (list): (glob pattern, marker, weight) triplets. The marker is searched
             in the head of the files matching the pattern
     """
+
     code: str
     name: str
-    patterns: List[Tuple[str, int]] = field(default_factory=list)
-    markers: List[Tuple[str, str, int]] = field(default_factory=list)
+    patterns: list[tuple[str, int]] = field(default_factory=list)
+    markers: list[tuple[str, str, int]] = field(default_factory=list)
 
 
 @dataclass
 class DetectResult:
     """result of code detection in a directory"""
+
     code: str
     name: str
     score: int
-    evidences: List[str]
+    evidences: list[str]
 
 
 SIGNATURES = [
@@ -81,7 +84,7 @@ SIGNATURES = [
 ]
 
 
-def _glob(dirpath: Path, pattern: str) -> List[Path]:
+def _glob(dirpath: Path, pattern: str) -> list[Path]:
     """glob a pattern in dirpath. A pattern ending with "/" matches directories only"""
     only_dir = pattern.endswith("/")
     matched = dirpath.glob(pattern.rstrip("/"))
@@ -99,8 +102,8 @@ def _has_marker(path: Path, marker: str) -> bool:
 
 
 def detect_codes(dirpath: Union[str, os.PathLike] = ".",
-                 signatures: Sequence[CodeSignature] = None,
-                 thres: int = DETECT_THRES) -> List[DetectResult]:
+                 signatures: Optional[Sequence[CodeSignature]] = None,
+                 thres: int = DETECT_THRES) -> list[DetectResult]:
     """detect the codes whose calculation files are in dirpath
 
     Args:

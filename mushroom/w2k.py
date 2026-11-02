@@ -3,7 +3,8 @@
 import pathlib
 import socket
 from io import StringIO
-from typing import List, Sequence, Union, Tuple
+from typing import Union, Optional
+from collections.abc import Sequence
 import re
 
 import numpy as np
@@ -116,8 +117,7 @@ def _read_symops(lines):
     """Read lines containing symmetry information in struct file
 
     Args:
-        lines (list of str):
-
+        lines (list of str): input text lines
     Returns:
         dict with two keys, "rotations" and "translations"
     """
@@ -136,7 +136,7 @@ def _read_symops(lines):
     return symops
 
 
-def get_casename(dirpath: Path = ".", casename: str = None):
+def get_casename(dirpath: Path = ".", casename: Optional[str] = None):
     """get the case name of the wien2k calculation under directory `dirpath`
 
     It will first search for .struct file under dirpath and
@@ -144,8 +144,8 @@ def get_casename(dirpath: Path = ".", casename: str = None):
     Otherwise the name of the directory will be returned
 
     Args:
-        dirpath (str) : the path to the wien2k working directory
-        casename (str) : manually specified casename.
+        dirpath (str): the path to the wien2k working directory
+        casename (str): manually specified casename.
             if casename.struct is not found under dirpath,
             FileNotFoundError will be raised
     """
@@ -164,14 +164,14 @@ def get_casename(dirpath: Path = ".", casename: str = None):
     raise TypeError("{} is not a directory".format(abspath))
 
 
-def write_machines(path: Path, nprocs: int, nkpts: int, host: str = None):
+def write_machines(path: Path, nprocs: int, nkpts: int, host: Optional[str] = None):
     """write a .machines file for k-point parallelization on one host
 
     Args:
-        path (Path) : path of the file
-        nprocs (int) : number of processes
-        nkpts (int) : number of k-points, distributed evenly over the processes
-        host (str) : name of host. Default to the current one
+        path (Path): path of the file
+        nprocs (int): number of processes
+        nkpts (int): number of k-points, distributed evenly over the processes
+        host (str): name of host. Default to the current one
     """
     host = host or socket.gethostname()
     kperp, res = divmod(nkpts, nprocs)
@@ -181,14 +181,14 @@ def write_machines(path: Path, nprocs: int, nkpts: int, host: str = None):
         h.write("\n".join(lines + ["", "granularity:1", "extrafine:1", ""]))
 
 
-def run_step(command: Union[str, List[str]], output: Path, cwd: Path = ".", stdin: str = None):
+def run_step(command: Union[str, list[str]], output: Path, cwd: Path = ".", stdin: Optional[str] = None):
     """run a WIEN2k command and check the error files
 
     Args:
-        command (str or list) : the command, e.g. "x lapw1"
-        output (Path) : file for the standard output and error, relative to ``cwd``
-        cwd (Path) : the working directory
-        stdin (str) : the text to send to standard input
+        command (str or list): the command, e.g. "x lapw1"
+        output (Path): file for the standard output and error, relative to ``cwd``
+        cwd (Path): the working directory
+        stdin (str): the text to send to standard input
 
     Raises:
         RuntimeError : when any .error file in ``cwd`` is not empty
@@ -220,14 +220,18 @@ def search_cplx_input(path: Path) -> str:
 
 
 def get_inputs(suffix: str, *suffices, dirpath: Path = ".",
-               casename: str = None, relative: Union[bool, Path] = None,
-               search_cplx=True) -> Tuple:
+               casename: Optional[str] = None, relative: Union[bool, Path] = None,
+               search_cplx=True) -> tuple:
     """get path of input files given the suffices
 
     Args:
+        suffix: filename suffix
+        search_cplx: also look for the complex-input suffix ending in c
+        casename: WIEN2k case prefix, or None to detect it
+        *suffices: additional input-file suffixes to locate
         suffix and suffices (str): suffices of input files to get
-        dirpath (path-like)
-        relative (str) : if set to Path, the output will be relative file paths to `relative`.
+        dirpath (path-like): directory in which to search
+        relative (str): if set to Path, the output will be relative file paths to `relative`.
             If set to true, only the filenames will be returned
             If set to CWD, it will return the filenames relative to current directory
 
@@ -337,11 +341,11 @@ class Struct:
                  isplits=None, npts=None,
                  rzeros=None, rmts=None,
                  symops=None,
-                 casename: str = None,
+                 casename: Optional[str] = None,
                  mode: str = "rela",
                  rotmats=None,
-                 reference: str = None,
-                 comment: str = None):
+                 reference: Optional[str] = None,
+                 comment: Optional[str] = None):
         if len(atms_types) != len(posi_types):
             raise ValueError("length of atms_types ({}) and posi_types ({}) are different"
                              .format(len(atms_types), len(posi_types)))
@@ -531,13 +535,10 @@ class Struct:
         latt_consts = tuple(map(lambda i: float(lines[3][10 * i:10 * i + 10]), range(6)))
         # relativity mode: RELA or something else
         unit = 'au'
-        mode = lines[2][13:17].lower()
         if len(lines[2][13:].split()) > 1:
             unit = lines[2][23:].strip().lower()
 
-        atm_blocks = []
         rotmats = []
-        new_atom = True
         # divide lines into block of atoms and symmetry operations
         # each atom block: n (mult) + 2 (mult&isplit, npt&r0&RMT&Z0) + 3 (rotmat)
 
@@ -569,7 +570,8 @@ class Struct:
     def export(self, scale: float = 1.0) -> str:
         """export the cell and atomic setup in the wien2k format
 
-        The lattice is always in atomic unit"""
+        The lattice is always in atomic unit
+        """
         slist = ["{}, {}".format(self.comment, self.get_reference()),
                  "{:<4s}LATTICE,NONEQUIV.ATOMS:{:3d}".format(self.kind, self.ntypes),
                  "MODE OF CALC={}".format(self.mode_calc.upper()),]
@@ -613,8 +615,7 @@ class Struct:
         return "\n".join(slist)
 
     def write(self, filename=None, scale: float = 1.0):
-        """write the w2k formatted string to filename
-        """
+        """write the w2k formatted string to filename"""
         print_file_or_iowrapper(self.export(scale=scale), f=filename)
 
 
@@ -622,12 +623,13 @@ class In1:
     """class for in1 file
 
     Args:
-        casename (str) :
-        efermi (float) : fermi energy in Rydberg unit
+        casename (str):
+        efermi (float): fermi energy in Rydberg unit
         lmax (int)
         lnsmax (int)
         elparams : linearization energy parameters
     """
+
     cont2bool = {"CONT": True, "STOP": False}
     bool2cont = {True: "CONT", False: "STOP"}
 
@@ -648,10 +650,9 @@ class In1:
         """Chek if there is trial energies for l channel of atom iat
 
         Args:
-            iat (int)
-            l (int)
-
-        Return:
+            iat (int): zero-based atom index
+            l (int): angular momentum channel
+        Returns:
             bool
         """
         elparam = self.elparams[iat]
@@ -665,15 +666,14 @@ class In1:
     def lmax_at(self, iat):
         """the maximal l of etrial for atom iat
 
-        Return:
+        Returns:
             int, the max l of linearzation energies of atom iat
         """
         elparam = self.elparams[iat]
         return max(elparam["els"].keys())
 
     def ndiff_at(self, iat):
-        """the number of exceptions of linearzation energies for atom iat in all l channels
-        """
+        """the number of exceptions of linearzation energies for atom iat in all l channels"""
         return sum(len(x) for x in self.elparams[iat]["els"].values())
 
     # pylint: disable=R0914
@@ -755,6 +755,8 @@ class In1:
         """add angular momentum channel
 
         Args:
+            einc: linearization-energy search increment in Ry
+            e: linearization energy in Ry
             iat (int): index of atom type
             l (int): angular momentum
             e, einc (float): linearizaiton energy and its searching stepsize
@@ -822,13 +824,13 @@ def _read_efermi_from_second_to_last_el(l, shift_to_last_digit: int = 1):
 
 
 # pylint: disable=R0914
-def read_energy(penergy: str, penergy_dn: str = None, efermi=None):
+def read_energy(penergy: str, penergy_dn: Optional[str] = None, efermi=None):
     """get a BandStructure instance from the wien2k energy file
 
     Args:
-        penergy (str) : path to the energy file.
+        penergy (str): path to the energy file.
             if penergy_dn is also parsed, penergy is treated as the spin-up eigenvalues
-        penergy_dn (str) : path to the eneryg file for spin-down channel
+        penergy_dn (str): path to the eneryg file for spin-down channel
         efermi (float): fermi energy. can be extracted from casename.output2 beforehand
 
     Notes:
@@ -894,12 +896,12 @@ class KList:
     """
 
     def __init__(self,
-                 xyzd: Sequence[Tuple[int, int, int, int]],
+                 xyzd: Sequence[tuple[int, int, int, int]],
                  weight: Sequence[float],
                  e1: float,
                  e2: float,
-                 ksym: Sequence[Tuple[int, str]] = None,
-                 comment: str = None):
+                 ksym: Optional[Sequence[tuple[int, str]]] = None,
+                 comment: Optional[str] = None):
         self.xyzd = np.array(xyzd)
         self.weight = np.array(weight)
         self.e1 = e1
@@ -982,7 +984,7 @@ def read_qtl(pqtl: Path, data_only: bool = False):
         h.readline()
         h.readline()
         # read fermi energy and natom and multiplicity
-        efermi = float(h.readline().split()[-1])
+        h.readline()  # Skip the Fermi energy; it is not part of the returned data.
         matched = re.search(r"SPIN=(\d)   NAT=(\s+\d+)", h.readline())
         if matched is None:
             raise ValueError("fail to get spin and atoms from qtl {}".format(pqtl))
@@ -1037,8 +1039,8 @@ def read_qtl(pqtl: Path, data_only: bool = False):
 
 def read_dos(pdos1: Path,
              *pdos: Path,
-             unit: str = None,
-             mults: Sequence[int] = None) -> DensityOfStates:
+             unit: Optional[str] = None,
+             mults: Optional[Sequence[int]] = None) -> DensityOfStates:
     """read one or more dos(ev) files and return a DensityOfStates object
 
     Args:
@@ -1052,8 +1054,7 @@ def read_dos(pdos1: Path,
         Fermi energy is usually set to 0.000 in dos files. Therefore zero Fermi energy
         is hard coded in this function at present.
 
-    TODO:
-        read Fermi level from the first dos file
+    TODO:         read Fermi level from the first dos file
     """
     def _load_dos_atms_prjs(fn, n):
         # n is the columns to exclude for projectors

@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 """functionality for IO"""
 import os
-from typing import Union, List
+from typing import Union, Optional
+
+import numpy as np
 
 from mushroom.core.pkg import detect
 from mushroom.core.logger import loggers
@@ -16,12 +18,9 @@ __all__ = [
 ]
 
 
-class AtomsIO:
-    """"""
-
-
 class CellIO:
-    """Read, manipulate and """
+    """Read, manipulate and"""
+
     avail_writers = list(Cell.avail_exporters) + ["w2k", ]
     avail_readers = list(Cell.avail_readers) + ["w2k", ]
 
@@ -47,7 +46,7 @@ class CellIO:
         self._struct: Struct = s
 
     def manipulate(self, primitize=False, standardize=False, no_idealize=False, supercell=None,
-                   **kwargs) -> Union[None, List[int]]:
+                   **kwargs) -> Union[None, list[int]]:
         """manipulate the read cell"""
         if self._format_read == "w2k":
             if primitize or standardize:
@@ -59,14 +58,15 @@ class CellIO:
             if primitize:
                 self._cell = self._cell.primitize()
         if supercell:
-            retval: List[int]
+            retval: list[int]
             self._cell, retval = self._cell.get_supercell(*supercell, **kwargs)
         return retval
 
-    def write(self, output_path: Union[str, os.PathLike] = None, format: str = None, coord_system: str = "D") -> None:
+    def write(self, output_path: Optional[Union[str, os.PathLike]] = None, format: Optional[str] = None, coord_system: str = "D") -> None:
         """write the cell to ``output_path`` in the format of program ``format``
+
         Args:
-            output_path (path-like)
+            output_path (path-like): output structure path, or None to print to stdout
             format (str): identifier for program
             coord_system (str): direct or cartesian, except for wien2k
         """
@@ -88,20 +88,16 @@ class CellIO:
                 self._struct.write(filename=output_path)
             else:
                 c = self._struct.get_cell()
-                cs_old = c.coord_sys
-                c.coord_sys = coord_system
-                c.write(format, filename=output_path)
-                c.coord_sys = cs_old
+                with c.temporary_representation(coord_sys=coord_system):
+                    c.write(format, filename=output_path)
             return
 
         # writer for a non-wien2k read-in cell
         if format == "w2k":
             Struct.from_cell(self._cell).write(filename=output_path)
         else:
-            cs_old = self._cell.coord_sys
-            self._cell.coord_sys = coord_system
-            self._cell.write(format, filename=output_path)
-            self._cell.coord_sys = cs_old
+            with self._cell.temporary_representation(coord_sys=coord_system):
+                self._cell.write(format, filename=output_path)
 
 
 def read_elsi_to_csc(fn, verbose=False):
@@ -110,75 +106,28 @@ def read_elsi_to_csc(fn, verbose=False):
     Adapted from the same function in FHI-aims utitlities
 
     Args:
-        fn (str) : path to the ELSI CSC file
-        verbose (bool) : verbositiy control
+        fn (str): path to the ELSI CSC file
+        verbose (bool): verbositiy control
 
-    Retunrs:
+    Returns:
         scipy sparse matrix
     """
-    import struct
+    # Keep scipy optional at module import time.
     import scipy.sparse as sp
-    import numpy as np
 
-    mat = open(fn, "rb")
-    data = mat.read()
-    mat.close()
-    i8 = "l"
-    i4 = "i"
-
-    # Get header
-    start = 0
-    end = 128
-    header = struct.unpack(i8 * 16, data[start:end])
+    with open(fn, "rb") as handle:
+        data = handle.read()
+    header = np.frombuffer(data, dtype="<i8", count=16)
+    n_basis, nnz = int(header[3]), int(header[5])
     if verbose:
-        print(header)
-
-    # Number of basis functions (matrix size)
-    n_basis = header[3]
-
-    # Total number of non-zero elements
-    nnz = header[5]
-
-    # Get column pointer
-    start = end
-    end = start + n_basis * 8
-    col_ptr = struct.unpack(i8 * n_basis, data[start:end])
-    # print(col_ptr)
-    col_ptr += (nnz + 1, )
-    col_ptr = np.array(col_ptr)
-
-    # Get row index
-    start = end
-    end = start + nnz * 4
-    row_idx = struct.unpack(i4 * nnz, data[start:end])
-    row_idx = np.array(row_idx)
-
-    # Get non-zero value
-    start = end
-
-    if header[2] == 0:
-        if verbose:
-            print("Reading real matrix")
-        # Real case
-        end = start + nnz * 8
-        nnz_val = struct.unpack("d" * nnz, data[start:end])
-    else:
-        if verbose:
-            print("Reading complex matrix")
-        # Complex case
-        end = start + nnz * 16
-        nnz_val = struct.unpack("d" * nnz * 2, data[start:end])
-        nnz_val_real = np.array(nnz_val[0::2])
-        nnz_val_imag = np.array(nnz_val[1::2])
-        nnz_val = nnz_val_real + 1j * nnz_val_imag
-
-    nnz_val = np.array(nnz_val)
-
-    # Change convention to starting index from 0
-    for i_val in range(nnz):
-        row_idx[i_val] -= 1
-
-    for i_col in range(n_basis + 1):
-        col_ptr[i_col] -= 1
-
-    return sp.csc_matrix((nnz_val, row_idx, col_ptr), shape=(n_basis, n_basis))
+        _logger.info("ELSI header: %s", header)
+        _logger.info("Reading %s matrix", "complex" if header[2] else "real")
+    offset = 128
+    col_ptr = np.append(np.frombuffer(data, dtype="<i8", count=n_basis, offset=offset), nnz + 1) - 1
+    offset += n_basis * 8
+    row_idx = np.frombuffer(data, dtype="<i4", count=nnz, offset=offset) - 1
+    offset += nnz * 4
+    dtype = "<c16" if header[2] else "<f8"
+    # CSC values are writable, matching the former array constructor.
+    values = np.frombuffer(data, dtype=dtype, count=nnz, offset=offset).copy()
+    return sp.csc_matrix((values, row_idx, col_ptr), shape=(n_basis, n_basis))

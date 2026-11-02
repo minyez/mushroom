@@ -12,7 +12,8 @@ import subprocess as sp
 import tarfile
 import tempfile
 from contextlib import contextmanager
-from typing import Iterable, List, Tuple, Union
+from typing import Union, Optional
+from collections.abc import Iterable
 
 from mushroom.core.logger import loggers
 from mushroom.core.typehint import Path
@@ -58,13 +59,13 @@ def largest_div_below_sqrt(num: int) -> int:
     raise ValueError("expect a positive integer, got {}".format(num))
 
 
-def get_npar_kpar(ntasks: int) -> Tuple[int, int]:
+def get_npar_kpar(ntasks: int) -> tuple[int, int]:
     """get the band and k-point parallel groups from the number of tasks"""
     kpar = largest_div_below_sqrt(ntasks)
     return ntasks // kpar, kpar
 
 
-def with_hard_stack_limit(command: Union[str, List[str]]) -> List[str]:
+def with_hard_stack_limit(command: Union[str, list[str]]) -> list[str]:
     """wrap a command to run it with the stack limit raised to the hard limit
 
     The limit is set in a new shell, not in Python. macOS can refuse to raise the
@@ -72,7 +73,7 @@ def with_hard_stack_limit(command: Union[str, List[str]]) -> List[str]:
     about 64 MB on macOS, and other systems can have no limit.
 
     Args:
-        command (str or list) : the command to run
+        command (str or list): the command to run
 
     Returns:
         list, the wrapped command
@@ -82,18 +83,18 @@ def with_hard_stack_limit(command: Union[str, List[str]]) -> List[str]:
     return ["bash", "-c", 'ulimit -s hard && exec "$@"', "--", *command]
 
 
-def run_command(command: Union[str, List[str]], output: Path, cwd: Path = ".",
-                stdin: str = None, error: Path = None, env: dict = None):
+def run_command(command: Union[str, list[str]], output: Path, cwd: Path = ".",
+                stdin: Optional[str] = None, error: Path = None, env: Optional[dict] = None):
     """run a command and redirect its stdout and stderr to files
 
     Args:
-        command (str or list) : the command to run
-        output (Path) : the path of output file, relative to ``cwd``
-        cwd (Path) : the working directory
-        stdin (str) : the text to send to standard input
-        error (Path) : the path of file for stderr, relative to ``cwd``.
+        command (str or list): the command to run
+        output (Path): the path of output file, relative to ``cwd``
+        cwd (Path): the working directory
+        stdin (str): the text to send to standard input
+        error (Path): the path of file for stderr, relative to ``cwd``.
             Default to write stderr to ``output``
-        env (dict) : variables to add to the environment of the command
+        env (dict): variables to add to the environment of the command
 
     Raises:
         subprocess.CalledProcessError : when the command fails
@@ -117,11 +118,14 @@ def open_example(tarball: Path):
     """extract the example of a workflow and yield the path to the top directory ``example``"""
     with tempfile.TemporaryDirectory() as tmpdir:
         with tarfile.open(tarball) as h:
-            h.extractall(tmpdir, filter="data")
+            if hasattr(tarfile, "data_filter"):
+                h.extractall(tmpdir, filter="data")
+            else:
+                h.extractall(tmpdir)
         yield pathlib.Path(tmpdir) / "example"
 
 
-def diff_files(dir1: Path, dir2: Path, names: Iterable[str]) -> List[str]:
+def diff_files(dir1: Path, dir2: Path, names: Iterable[str]) -> list[str]:
     """get the names of text files that are different in two directories"""
     dir1, dir2 = pathlib.Path(dir1), pathlib.Path(dir2)
     return [name for name in names if (dir1 / name).read_text() != (dir2 / name).read_text()]

@@ -3,8 +3,9 @@
 import os
 import pathlib
 import re
+import struct
 from io import StringIO
-from typing import List, Union
+from typing import Union
 
 import numpy as np
 
@@ -21,7 +22,7 @@ def read_self_energy_imagfreq(fn: str = "self_energy_omega.dat"):
     """Read self energy on imaginary frequency from data file ``fn``
 
     Args:
-        fn (str) : path to the data file
+        fn (str): path to the data file
 
     Returns:
         2 nd-array. The first is 1d array containing the (imaginary) frequency points.
@@ -54,6 +55,7 @@ def read_quasi_particle_energies_stdout(fn: Union[str, os.PathLike] = "librpa.ou
     """Read QP energies from standard output
 
     Args:
+        **kwargs: additional keyword arguments passed to the underlying operation
         fn (str): path to LibRPA standard output
         kind (str): any of "qp", "ks", and "exx"
 
@@ -145,7 +147,7 @@ def read_quasi_particle_energies_stdout(fn: Union[str, os.PathLike] = "librpa.ou
 
 
 def get_occ_numbers_from_bandout(fn_bandout: str = "band_out"):
-    """"""
+    """read occupations as an array of shape (nspins, nkpts, nstates)"""
     with open(fn_bandout, 'r') as h:
         lines = h.readlines()
     n_spins = int(lines[1].split()[-1])
@@ -161,21 +163,10 @@ def get_occ_numbers_from_bandout(fn_bandout: str = "band_out"):
 
 
 def read_librpa_dimension(fn: Union[str, os.PathLike] = "librpa.out"):
+    """read calculation dimensions and complete control-parameter blocks from LibRPA output"""
     _logger.debug("Load dimension from {}".format(fn))
     with open(fn, 'r') as h:
         lines = h.readlines()
-    # Read all internal parameters
-    keys = [
-        "n_procs",
-        "n_threads",
-        "n_atoms",
-        "n_freq",
-        "n_spin",
-        "n_kpts",
-        "n_bands",
-        "n_basis",
-    ]
-
     d = {}
     for line in lines:
         if line.startswith("Maximumal number of threads"):
@@ -223,7 +214,7 @@ def read_librpa_dimension(fn: Union[str, os.PathLike] = "librpa.out"):
         end = "===== End control parameters   =====\n"
         lines_control_pars = lines_control_pars[:lines_control_pars.index(end)]
     except ValueError:
-        pass
+        lines_control_pars = []
 
     for line in lines_control_pars:
         k, _, v = line.split()
@@ -242,18 +233,18 @@ def _check_librpa_finished(lines) -> bool:
     return False
 
 
-def run_librpa(command: Union[str, List[str]], cwd: Path = ".", output: str = "librpa.out",
+def run_librpa(command: Union[str, list[str]], cwd: Path = ".", output: str = "librpa.out",
                error: str = "librpa.err", omp_threads: int = 1):
     """run the LibRPA driver and check that it ends normally
 
     The stack limit is raised to the hard limit, as for FHI-aims.
 
     Args:
-        command (str or list) : the LibRPA command, e.g. "mpirun -np 4 chi0_main.exe"
-        cwd (Path) : the working directory, with ``librpa.in``
-        output (str) : file of standard output, relative to ``cwd``
-        error (str) : file of standard error, relative to ``cwd``
-        omp_threads (int) : number of OpenMP threads of each task
+        command (str or list): the LibRPA command, e.g. "mpirun -np 4 chi0_main.exe"
+        cwd (Path): the working directory, with ``librpa.in``
+        output (str): file of standard output, relative to ``cwd``
+        error (str): file of standard error, relative to ``cwd``
+        omp_threads (int): number of OpenMP threads of each task
 
     Raises:
         RuntimeError : when LibRPA does not end normally
@@ -276,6 +267,7 @@ def read_librpa_timing(fn: Union[str, os.PathLike] = "librpa.out", details: bool
     # Load timing lines
     with open(fn, 'r') as h:
         lines = h.readlines()
+    i = 0
     for i, l in enumerate(lines):
         if l.startswith("Total   ") or l.startswith("Total for driver"):
             break
@@ -371,6 +363,7 @@ def read_librpa_timing(fn: Union[str, os.PathLike] = "librpa.out", details: bool
 
 # Functions to check dataset
 def read_kgrid_eigenvector(filepath, n_basis: int, n_states: int, n_spin: int, soc: bool = False, binary: bool = False):
+    """read complex eigenvectors keyed by zero-based k-point index"""
     if binary:
         raise NotImplementedError
         # return _read_kgrid_eigenvector_binary(filepath, n_basis, n_states, n_spin, soc)
@@ -386,8 +379,8 @@ def _read_kgrid_eigenvector_plain(filepath, n_basis: int, n_states: int, n_spin:
     n = n_basis * n_states * n_spin
     try:
         ikpts = [int(x.strip()) - 1 for x in lines[::n + 1]]
-    except ValueError:
-        raise ValueError(f"Eigenvector file {filepath} is corrupted or wrong arguments")
+    except ValueError as err:
+        raise ValueError(f"Eigenvector file {filepath} is corrupted or wrong arguments") from err
     data_all = {}
     for i, ikpt in enumerate(ikpts):
         data = np.loadtxt(StringIO("".join(lines[i * (n + 1) + 1: (n + 1) * (i + 1)])))
@@ -408,21 +401,19 @@ def read_band_eigenvector(filepath, n_basis: int, n_states: int, n_spin: int,
     """Read the eigevenctor at a certain k point from file ``filepath``
 
     Args:
-        filepath (path-like)
+        order_soc_spin_component: group spinor coefficients by spin component instead of alternating them
+        filepath (path-like): path of the input data file
         n_basis (int): the number of orbital basis (including spin component)
-        n_states (int)
-        n_spin (int)
+        n_states (int): number of states
+        n_spin (int): number of spin channels
     """
-    import struct
     with open(filepath, 'rb') as h:
         bindata = h.read()
     if order_soc_spin_component and n_spin != 1:
         raise ValueError
 
-    DBS, DBL = "d", 8
     n = n_basis * n_states * n_spin
-    start, end = 0, n * DBL * 2
-    data = np.array(struct.unpack(n * DBS * 2, bindata[start:end]))
+    data = np.frombuffer(bindata, dtype="=f8", count=2 * n)
     data = (data[::2] + data[1::2] * 1.j).reshape(n_spin, n_states, n_basis)
     if order_soc_spin_component:
         data = np.concatenate([data[:, :, ::2], data[:, :, 1::2]], axis=2)
@@ -433,15 +424,12 @@ def read_moment_KS_aims(filepath):
     """Read the momentum matrix at a certain k point from file ``filepath``
 
     Args:
-        filepath (path-like)
+        filepath (path-like): path of the input data file
     """
-    import struct
     with open(filepath, 'rb') as h:
         bindata = h.read()
 
-    I8S, I8L = "l", 8
     I4S, I4L = "i", 4
-    DBS, DBL = "d", 8
      # write(202) i_k_point, n_state_min, n_state_max, ld, n_spin_in, n_pol_dir
     start, end = 0, 6 * I4L
     ikpt, n_state_min, n_state_max, n_state_pairs, n_spin, n_pol = struct.unpack(6 * I4S, bindata[start:end])
