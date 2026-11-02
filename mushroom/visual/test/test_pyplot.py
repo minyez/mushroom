@@ -16,9 +16,8 @@ from mushroom.visual.pyplot import rc_gracify
 class test_pyplot(ut.TestCase):
     """test pyplot object"""
 
+    @ut.skipUnless(PLT_INSTALLED, "matplotlib is not installed")
     def test_rc_gracify(self):
-        if not PLT_INSTALLED:
-            return
         rc_gracify()
 
 

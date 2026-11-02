@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 """facilities related to Gaussian Cube format"""
-from typing import Sequence
+from collections.abc import Sequence
 import numpy as np
 
 from mushroom.core.logger import loggers
 from mushroom.core.elements import get_atomic_number
 from mushroom.core.unit import LengthUnit
 from mushroom.core.typehint import RealVec3D, Latt3T3, Key, TextIO
+from typing import Optional
 
 _logger = loggers['cube']
 
@@ -15,21 +16,22 @@ class Cube(LengthUnit):
     """object for reading/writing Gaussian Cube file
 
     Args:
-        data (ndarray, (n1,n2,n3)) : volumetric data
+        data (ndarray, (n1,n2,n3)): volumetric data
             x, y, z coordiantes as outer, middle and inner loop
-        voxel_vecs (ndarray, (3,3)) : step vector between voxels
-        posi (ndarray) : Cartisian coordinates of atoms
+        voxel_vecs (ndarray, (3,3)): step vector between voxels
+        posi (ndarray): Cartisian coordinates of atoms
         atms (int/str sequence): atomic number or symbol of atoms
         charges (float sequence): charge of atoms
         origin (ndarray, (3,)): origin of the voxels
         unit (str): unit of input
         comment (str): comment information
     """
+
     default_comment = "Cube from mushroom"
 
     def __init__(self, data, voxel_vecs: Latt3T3, atms: Sequence[Key],
                  posi: Sequence[RealVec3D], origin: RealVec3D = None,
-                 charges: Sequence[float] = None, comment: str = None,
+                 charges: Optional[Sequence[float]] = None, comment: Optional[str] = None,
                  unit="bohr"):
         LengthUnit.__init__(self, lunit=unit)
         self.data = np.array(data)

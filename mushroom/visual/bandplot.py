@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """helper functions for band structure plot"""
-from typing import Iterable, Union
+from typing import Union
+from collections.abc import Iterable
 
 from mushroom.core.utils import raise_no_module
 from mushroom.core.bs import BandStructure
@@ -30,24 +31,25 @@ def bandplot(bs: BandStructure, kp: KPathLinearizer,
     """Plot band structure
 
     Args:
-        bs (BandStructure) : band structure to be plotted
-        kp (KPathLinearizer) : the 1-D coordinates for the k-points
-        ref (string or float) : reference energy, can be "vbm", "cbm", "efermi"
-        nbands_max (int)
-        ksymbols (iterable of strings) : symbols of special k-points as tick labels of x-axis
-        label (str) : label for this band structure as legend
-        ax (matplotlib.Axes) : if None, create with current choice of `engine`
-        engine (str) : engine for plotting, currently only "plt" (matplotlib, default)
-        color (str) : color of bands, parsed to `ax.plot`
-        set_xaxis (bool) : whether to set up the x-axis
-        set_ylabel (bool) : whether to set up the label of the y-axis (hard coded to "Energy [eV]")
+        **kwargs: additional keyword arguments passed to the underlying operation
+        bs (BandStructure): band structure to be plotted
+        kp (KPathLinearizer): the 1-D coordinates for the k-points
+        ref (string or float): reference energy, can be "vbm", "cbm", "efermi"
+        nbands_max (int): maximum number of bands to plot
+        ksymbols (iterable of strings): symbols of special k-points as tick labels of x-axis
+        label (str): label for this band structure as legend
+        ax (matplotlib.Axes): if None, create with current choice of `engine`
+        engine (str): engine for plotting, currently only "plt" (matplotlib, default)
+        color (str): color of bands, parsed to `ax.plot`
+        set_xaxis (bool): whether to set up the x-axis
+        set_ylabel (bool): whether to set up the label of the y-axis (hard coded to "Energy [eV]")
 
         Other keyword arguments are parsed to `ax.plot` to draw the bands.
 
     Caveat:
         spin-polarzied band structure is not supported.
 
-    Return:
+    Returns:
         The original `ax` is returned if it is not None.
         Otherwise, matplotlib.Axes if `engine` is `matplotlib`.
     """

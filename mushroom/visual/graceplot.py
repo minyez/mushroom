@@ -7,7 +7,7 @@ with similar methods to matplotlib, and without any concern about
 whether xmgrace is installed or not.
 Therefore, platform-related functions are generally discarded. (minyez)
 
-Note
+Note:
 - 2023-09-14:
     Looked into the graceplot.py in jscatter project for handling DPI.
     To enable
@@ -21,7 +21,7 @@ from io import TextIOWrapper, StringIO
 from shutil import which
 from collections.abc import Iterable
 from copy import deepcopy
-from typing import Union, Tuple, List, Type, TypeVar
+from typing import Union, TypeVar, Optional
 from numpy import shape, absolute, loadtxt
 from itertools import product
 
@@ -29,6 +29,7 @@ from mushroom.core.data import Data
 from mushroom.core.typehint import Path
 from mushroom.core.ioutils import (greeks, open_textio, grep,
                                    get_file_ext)
+from mushroom.core.ioutils import print_file_or_iowrapper
 from mushroom.core.logger import loggers
 
 __all__ = [
@@ -108,6 +109,7 @@ class _MapOutput:
     value : tuple/list, value mapped
 
     """
+
     _marker = None
     _map = None
     _format = '{:s}'
@@ -118,6 +120,7 @@ class _MapOutput:
         self._format = form
 
     def export(self):
+        """return the Grace parameter lines for this MapOutput object"""
         slist = []
         for k, v in self._map.items():
             s = f"map {self._marker} {str(k)} to " + self._format.format(*v)
@@ -129,11 +132,12 @@ class _ColorMap(_MapOutput):
     """Class to map the color
 
     Private attribute:
-        _map (dict) : color map
-        _cn (dict) : color names
+        _map (dict): color map
+        _cn (dict): color names
 
     TODO add system configure
     """
+
     _format = '({:d}, {:d}, {:d}), \"{:s}\"'
     # a pre-defined color map list
     _colors = [
@@ -176,7 +180,7 @@ class _ColorMap(_MapOutput):
         for color in _colors:
             _valid_rgb(*color)
         if len(_color_names) != len(set(_color_names)):
-            raise ValueError('found duplicate color names:', _color_names)
+            raise ValueError(f"found duplicate color names: {_color_names}")
 
         _map = {}
         for i, color in enumerate(_colors):
@@ -193,7 +197,7 @@ class _ColorMap(_MapOutput):
     def export(self):
         """export color maps
 
-        Returns
+        Returns:
             list
         """
         return _MapOutput.export(self)
@@ -207,8 +211,7 @@ class _ColorMap(_MapOutput):
         """return the color code
 
         Args:
-            color (str, int)
-
+            color (str, int): color name or numeric color identifier
         Returns:
             int
         """
@@ -218,7 +221,7 @@ class _ColorMap(_MapOutput):
             if color in self._map:
                 return color
             raise IndexError(f"color {color:d} is not defined in the color map")
-        raise TypeError("color input is not valid, use str or int", color)
+        raise TypeError(f'color input is not valid, use str or int: {color}')
 
     @property
     def names(self):
@@ -229,6 +232,10 @@ class _ColorMap(_MapOutput):
         """Add a new color with its RGB value
 
         Args:
+            r: color channel intensity from 0 to 255
+            name: name identifying the requested object
+            g: color channel intensity from 0 to 255
+            b: color channel intensity from 0 to 255
             r, g, b (int)
         """
         if name is None:
@@ -248,7 +255,7 @@ class _ColorMap(_MapOutput):
         """get the map code of color `name`
 
         Args:
-            name (str) : name of color, case-insensitive
+            name (str): name of color, case-insensitive
         """
         try:
             return self._cn.index(name)
@@ -289,8 +296,8 @@ def _get_int_const(name, pair, marker):
     """get the integer constant in the pair for an integer constant mapping `name`
 
     Args:
-        name (str) : name for the integer constant mapping
-        pair (dict)
+        name (str): name for the integer constant mapping
+        pair (dict): mapping from numeric identifiers to string names
         marker (str or int): the marker of the constant.
             If str, it should be registered in pair.
             If int, it will be directly returned
@@ -318,14 +325,14 @@ class _IntMap:
 
     @classmethod
     def get(cls, marker):
+        """resolve the IntMap value from its name or numeric identifier"""
         return _get_int_const(cls.__name__, cls.pair, marker)
 
 
 class StyleCycler:
     """cycle among choices of styles
 
-    TODO:
-        maybe better to use generator?
+    TODO:         maybe better to use generator?
     """
 
     def __init__(self, styles: Union[Iterable, int]):
@@ -353,6 +360,7 @@ class StyleCycler:
 
 class Color:
     """Predefined color constant"""
+
     WHITE = 0
     BLACK = 1
     RED = 2
@@ -390,6 +398,7 @@ class Color:
 
     @classmethod
     def get(cls, marker):
+        """resolve the Color value from its name or numeric identifier"""
         if marker is None:
             return None
         try:
@@ -401,6 +410,7 @@ class Color:
 
 class Pattern(_IntMap):
     """Pattern"""
+
     NONE = 0
     SOLID = 1
     EMPTY = 8
@@ -414,7 +424,9 @@ class Pattern(_IntMap):
 class Font(_MapOutput):
     """Object to set up the font
 
-    For now adding fonts is not supported"""
+    For now adding fonts is not supported
+    """
+
     _FONTS = [
         "Times-Roman",
         "Times-Italic",
@@ -452,7 +464,9 @@ class LineStyle(_IntMap):
     """line style
 
     Args:
-        ls (int or str)"""
+        ls (int or str)
+    """
+
     NONE = 0
     SOLID = 1
     DOTTED = 2
@@ -471,8 +485,8 @@ class LineStyle(_IntMap):
 
 
 class LineType(_IntMap):
-    """type of data line
-    """
+    """type of data line"""
+
     NONE = 0
     STRAIGHT = 1
     LEFT_STAIRS = 2
@@ -495,6 +509,7 @@ class LineType(_IntMap):
 
 class BaseLineType(_IntMap):
     """type of data baseline"""
+
     ZERO = 0
     SET_MIN = 1
     SET_MAX = 2
@@ -513,6 +528,7 @@ class BaseLineType(_IntMap):
 
 class Just(_IntMap):
     """Justification of text"""
+
     LEFT = 0
     CENTER = 2
     RIGHT = 1
@@ -544,6 +560,7 @@ class Just(_IntMap):
 
 class Switch:
     """Class for switch control"""
+
     ON = 1
     AUTO = -1
     OFF = 0
@@ -551,6 +568,7 @@ class Switch:
 
     @classmethod
     def get(cls, marker):
+        """resolve the Switch value from its name or numeric identifier"""
         if isinstance(marker, bool):
             return {True: cls.ON, False: cls.OFF}[marker]
         return _get_int_const(cls.__name__, cls.pair, marker)
@@ -565,6 +583,7 @@ class Switch:
 
 class Pointing(_IntMap):
     """Class for pointing control"""
+
     IN = -1
     BOTH = 0
     OUT = 1
@@ -585,6 +604,7 @@ class Pointing(_IntMap):
 
 class Placement(_IntMap):
     """Class for place contorl"""
+
     BOTH = 0
     NORMAL = 1
     OPPO = 2
@@ -607,10 +627,11 @@ class _Affix:
     """object to dataset (s0,s1...), graph (g0,g1...), axis (x,y,altx,alty), etc.
 
     Args:
-        affix (str) : the content to add as the affix, 0,1,2 or x,y,altx,alty
-        is_prefix (bool) : if True, the content will be added as prefix to object marker
+        affix (str): the content to add as the affix, 0,1,2 or x,y,altx,alty
+        is_prefix (bool): if True, the content will be added as prefix to object marker
             Otherwise as suffix
     """
+
     _marker = ""
 
     def __init__(self, affix, is_prefix=False):
@@ -628,6 +649,7 @@ class _BaseOutput:
     When type is bool, it will be treated invidually as a special
     attribute.
     """
+
     _attrs = {None: [None, None, None]}
     _marker = ''
 
@@ -669,7 +691,8 @@ class _BaseOutput:
     def export(self):
         """export all object attributes as a list of string
 
-        Each member is a line in agr file"""
+        Each member is a line in agr file
+        """
         slist = []
         prefix = deepcopy(self._marker).replace("_", " ")
         try:
@@ -732,6 +755,7 @@ class _BaseOutput:
 
 class _Region(_BaseOutput, _Affix):
     """Region of plot, i.e. the `r` part"""
+
     _marker = 'r'
     _attrs = {
         'r_switch': (bool, Switch.OFF, '{:s}'),
@@ -769,6 +793,7 @@ class Region(_Region):
 
     def set(self, switch=None, ls=None, lw=None, rt=None,
             color=None, line=None, **kwargs):
+        """update Region attributes; None leaves the corresponding value unchanged"""
         self._set(r_switch=Switch.get(switch), linestyle=LineStyle.get(ls), linewidth=lw,
                   type=rt, color=Color.get(color), line=line)
         _raise_unknown_attr(self, *kwargs)
@@ -776,6 +801,7 @@ class Region(_Region):
 
 class _TitleLike(_BaseOutput):
     """title and subtitle of graph"""
+
     _attrs = {
         'font': (int, 0, "{:d}"),
         'size': (float, 1.5, "{:8f}"),
@@ -785,6 +811,7 @@ class _TitleLike(_BaseOutput):
 
 class _Title(_TitleLike):
     """title of graph"""
+
     _marker = 'title'
     _attrs = dict(**_TitleLike._attrs)
     _attrs[_marker + '_comment'] = (bool, "", "\"{:s}\"")
@@ -799,16 +826,19 @@ class Title(_Title):
         _raise_unknown_attr(self, *kwargs)
 
     def set(self, title=None, font=None, fontsize=None, color=None, **kwargs):
+        """update Title attributes; None leaves the corresponding value unchanged"""
         self._set(title_comment=title, size=fontsize, color=Color.get(color), font=font)
         _raise_unknown_attr(self, *kwargs)
 
     @property
     def title(self):
+        """get or replace the title"""
         return self.title_comment
 
 
 class _SubTitle(_TitleLike):
     """title of graph"""
+
     _marker = 'subtitle'
     _attrs = dict(**_TitleLike._attrs)
     _attrs[_marker + '_comment'] = (bool, "", "\"{:s}\"")
@@ -823,11 +853,13 @@ class SubTitle(_SubTitle):
         _raise_unknown_attr(self, *kwargs)
 
     def set(self, subtitle=None, font=None, fontsize=None, color=None, **kwargs):
+        """update SubTitle attributes; None leaves the corresponding value unchanged"""
         self._set(subtitle_comment=subtitle, size=fontsize, color=Color.get(color), font=font)
         _raise_unknown_attr(self, *kwargs)
 
     @property
     def subtitle(self):
+        """get or replace the subtitle"""
         return self.subtitle_comment
 
 
@@ -840,25 +872,30 @@ def _get_corner(corner):
     try:
         return {'xmin': 0, 'ymin': 1, 'xmax': 2, 'ymax': 3}.get(corner)
     except KeyError as err:
-        raise ValueError("invalid corner name ", corner) from err
+        raise ValueError(f"invalid corner name: {corner}") from err
 
 
 class _WorldLike(_BaseOutput):
     """super class for object with only one attribute whose
+
     value is floats separated by comma
 
     """
+
     _marker = ''
 
     def get(self):
+        """return the four coordinate bounds"""
         return self.__getattribute__(self._marker + '_location')
 
     def set(self, loc):
+        """update WorldLike attributes; None leaves the corresponding value unchanged"""
         self.__setattr__(self._marker + '_location', loc)
 
 
 class World(_WorldLike):
     """world of graph"""
+
     _marker = 'world'
     _attrs = _set_loclike_attr(_marker, '{:8f}', 0., 0., 1., 1.)
 
@@ -870,12 +907,14 @@ class World(_WorldLike):
 
 class StackWorld(_WorldLike):
     """stack world of graph"""
+
     _marker = 'stack_world'
     _attrs = _set_loclike_attr(_marker, '{:8f}', 0., 1., 0., 1.)
 
 
 class View(_WorldLike):
-    """View of graph on the image canvas """
+    """View of graph on the image canvas"""
+
     _marker = 'view'
     _attrs = _set_loclike_attr(_marker, '{:8f}', 0.15, 0.10, 1.20, 0.85)
 
@@ -887,18 +926,19 @@ class View(_WorldLike):
 
 class Znorm(_WorldLike):
     """stack world of graph"""
+
     _marker = 'znorm'
     _attrs = _set_loclike_attr('znorm', '{:d}', 1)
 
 
 def _raise_unknown_attr(obj, *attrs):
     if attrs:
-        raise ValueError("unsupported attributes for {:s}:".format(type(obj).__name__),
-                         *attrs)
+        raise ValueError("unsupported attributes for {}: {}".format(type(obj).__name__, attrs))
 
 
 class _Line(_BaseOutput):
     """Line object of dataset"""
+
     _marker = 'line'
     _attrs = {
         'type': (int, LineType.STRAIGHT, "{:d}"),
@@ -919,6 +959,7 @@ class Line(_Line):
                        linestyle=LineStyle.get(style))
 
     def set(self, lt=None, color=None, pattern=None, width=None, style=None, **kwargs):
+        """update Line attributes; None leaves the corresponding value unchanged"""
         _raise_unknown_attr(self, *kwargs)
         self._set(type=LineType.get(lt), color=Color.get(color), pattern=Pattern.get(pattern),
                   linewidth=width, linestyle=LineStyle.get(style))
@@ -926,6 +967,7 @@ class Line(_Line):
 
 class _Box(_BaseOutput):
     """Box of legend for internal use"""
+
     _marker = 'box'
     _attrs = {
         'color': (int, Color.BLACK, '{:d}'),
@@ -949,6 +991,7 @@ class Box(_Box):
 
     def set(self, color=None, pattern=None, lw=None, ls=None,
             fc=None, fp=None, **kwargs):
+        """update Box attributes; None leaves the corresponding value unchanged"""
         _raise_unknown_attr(self, *kwargs)
         self._set(color=Color.get(color), pattern=Pattern.get(pattern), linewidth=lw,
                   linestyle=LineStyle.get(ls), fill_color=Color.get(fc),
@@ -957,6 +1000,7 @@ class Box(_Box):
 
 class _Legend(_BaseOutput):
     """object to control the appearance of graph legend"""
+
     _marker = 'legend'
     _attrs = {
         'legend_switch': (bool, Switch.ON, '{:d}'),
@@ -987,11 +1031,13 @@ class Legend(_Legend):
         self.box = Box(color=bc, pattern=bp, lw=blw, ls=bls, fc=bfc, fp=bfp)
 
     def export(self):
+        """return the Grace parameter lines for this Legend object"""
         return _Legend.export(self) + [self._marker + " " + i for i in self.box.export()]
 
     def set(self, switch=None, loc=None, loctype=None, font=None,
             color=None, length=None, vgap=None, hgap=None, invert=None,
             charsize=None, **kwargs):
+        """update Legend attributes; None leaves the corresponding value unchanged"""
         _raise_unknown_attr(self, *kwargs)
         self._set(legend_switch=Switch.get(switch), legend_location=loc, loctype=loctype,
                   font=font, color=Color.get(color), length=length, vgap=vgap, hgap=hgap,
@@ -1004,6 +1050,7 @@ class Legend(_Legend):
 
 class _Frame(_BaseOutput, _IntMap):
     """frame"""
+
     CLOSED = 0
     HALFOPEN = 1
     BREAKTOP = 2
@@ -1044,6 +1091,7 @@ class Frame(_Frame):
 
     def set(self, ft=None, ls=None, lw=None, color=None, pattern=None,
             bgc=None, bgp=None, **kwargs):
+        """update Frame attributes; None leaves the corresponding value unchanged"""
         _raise_unknown_attr(self, *kwargs)
         self._set(type=_Frame.get(ft), linestyle=LineStyle.get(ls), linewidth=lw,
                   color=Color.get(color), pattern=Pattern.get(pattern),
@@ -1053,6 +1101,7 @@ class Frame(_Frame):
 
 class _BaseLine(_BaseOutput):
     """baseline of dataset"""
+
     _marker = 'baseline'
     _attrs = {
         'type': (int, BaseLineType.ZERO, '{:d}'),
@@ -1068,12 +1117,14 @@ class BaseLine(_BaseLine):
         _BaseLine.__init__(self, type=BaseLineType.get(lt), baseline_switch=Switch.get(switch))
 
     def set(self, lt=None, switch=None, **kwargs):
+        """update BaseLine attributes; None leaves the corresponding value unchanged"""
         _raise_unknown_attr(self, *kwargs)
         self._set(type=BaseLineType.get(lt), baseline_switch=Switch.get(switch))
 
 
 class _DropLine(_BaseOutput):
     """baseline of dataset"""
+
     _marker = 'dropline'
     _attrs = {
         'dropline_switch': (bool, Switch.OFF, '{:s}'),
@@ -1088,12 +1139,14 @@ class DropLine(_DropLine):
         _DropLine.__init__(self, dropline_switch=Switch.get(switch))
 
     def set(self, switch=None, **kwargs):
+        """update DropLine attributes; None leaves the corresponding value unchanged"""
         _raise_unknown_attr(self, *kwargs)
         self._set(dropline_switch=Switch.get(switch))
 
 
 class _Fill(_BaseOutput, _IntMap):
     """Fill of dataset dropline"""
+
     NONE = 0
     POLYGON = 1
     BASELINE = 2
@@ -1121,6 +1174,7 @@ class Fill(_Fill):
                        pattern=Pattern.get(pattern))
 
     def set(self, ft=None, rule=None, color=None, pattern=None, **kwargs):
+        """update Fill attributes; None leaves the corresponding value unchanged"""
         _raise_unknown_attr(self, *kwargs)
         self._set(type=_Fill.get(ft), rule=rule, color=Color.get(color),
                   pattern=Pattern.get(pattern))
@@ -1128,6 +1182,7 @@ class Fill(_Fill):
 
 class _Default(_BaseOutput):
     """_Default options at head"""
+
     _marker = "default"
     _attrs = {
         "linewidth": (float, 1.5, "{:3.1f}"),
@@ -1154,6 +1209,7 @@ class Default(_Default):
 
     def set(self, lw=None, ls=None, color=None, pattern=None, font=None,
             charsize=None, symbolsize=None, sformat=None, **kwargs):
+        """update Default attributes; None leaves the corresponding value unchanged"""
         _raise_unknown_attr(self, *kwargs)
         self._set(linewidth=lw, linestyle=LineStyle.get(ls),
                   pattern=Pattern.get(pattern), color=Color.get(color),
@@ -1163,6 +1219,7 @@ class Default(_Default):
 
 class AnnotationType(_IntMap):
     """type of annotation value"""
+
     NONE = 0
     X = 1
     Y = 2
@@ -1181,6 +1238,7 @@ class AnnotationType(_IntMap):
 
 class _Annotation(_BaseOutput):
     """dataset annotation"""
+
     _marker = "avalue"
     _attrs = {
         "avalue_switch": (bool, Switch.OFF, "{:s}"),
@@ -1210,6 +1268,7 @@ class Annotation(_Annotation):
 
     def set(self, switch=None, at=None, rot=None, color=None, prec=None, font=None,
             charsize=None, offset=None, append=None, prepend=None, af=None, **kwargs):
+        """update Annotation attributes; None leaves the corresponding value unchanged"""
         _raise_unknown_attr(self, *kwargs)
         self._set(avalue_switch=Switch.get(switch), type=AnnotationType.get(at), char_size=charsize,
                   font=font, color=Color.get(color), rot=rot, format=af, prec=prec,
@@ -1220,7 +1279,9 @@ class _Symbol(_BaseOutput, _IntMap):
     """Symbols of marker
 
     Args:
-        sym (int) : index of symbol, or use predefined Symbol"""
+        sym (int): index of symbol, or use predefined Symbol
+    """
+
     NONE = 0
     CIRCLE = 1
     SQUARE = 2
@@ -1287,6 +1348,7 @@ class Symbol(_Symbol):
     def set(self, st=None, size=None, color=None, pattern=None,
             fc=None, fp=None, lw=None, ls=None, char=None, charfont=None, skip=None,
             **kwargs):
+        """update Symbol attributes; None leaves the corresponding value unchanged"""
         _raise_unknown_attr(self, *kwargs)
         self._set(type=st, size=size, color=Color.get(color),
                   pattern=Pattern.get(pattern), fill_color=Color.get(fc),
@@ -1296,6 +1358,7 @@ class Symbol(_Symbol):
 
 class _Page(_BaseOutput):
     """Page"""
+
     _marker = "page"
     _attrs = {
         "size": (list, [792, 612], "{:d}, {:d}"),
@@ -1314,6 +1377,7 @@ class Page(_Page):
                        background_fill_switch=Switch.get(bgfill))
 
     def set(self, size=None, scroll=None, inout=None, bgfill=None, **kwargs):
+        """update Page attributes; None leaves the corresponding value unchanged"""
         _raise_unknown_attr(self, *kwargs)
         self._set(size=size, scroll=scroll, inout=inout,
                   background_fill_switch=Switch.get(bgfill))
@@ -1321,6 +1385,7 @@ class Page(_Page):
 
 class _TimesStamp(_BaseOutput):
     """Timestamp"""
+
     _marker = "timestamp"
     _attrs = {
         'timestamp_switch': (bool, Switch.OFF, "{:s}"),
@@ -1341,14 +1406,15 @@ class TimesStamp(_TimesStamp):
                              rot=rot, font=font, char_size=charsize)
 
     def set(self, switch=None, color=None, rot=None, font=None, charsize=None, **kwargs):
+        """update TimesStamp attributes; None leaves the corresponding value unchanged"""
         _raise_unknown_attr(self, *kwargs)
         self._set(timestamp_switch=Switch.get(switch), color=Color.get(color),
                   rot=rot, font=font, char_size=charsize)
 
 
 class _Tick(_BaseOutput):
-    """Tick of axis
-    """
+    """Tick of axis"""
+
     _marker = 'tick'
     _attrs = {
         'tick_switch': (bool, Switch.ON, "{:s}"),
@@ -1378,6 +1444,7 @@ class _Tick(_BaseOutput):
         self.spec_majors = []
 
     def export(self):
+        """return the Grace parameter lines for this Tick object"""
         slist = _BaseOutput.export(self)
         if self.__getattribute__("spec_type") in ["ticks", "both"]:
             slist.append("{:s} spec {:d}".format(self._marker, len(self.spec_ticks)))
@@ -1409,10 +1476,25 @@ class Tick(_Tick):
             mjls=None, mjg=None, mic=None, mis=None, mit=None, milw=None, mils=None,
             mig=None, **kwargs):
         """setup axis ticks
+
         Args:
-            major (float) : distance between major ticks
-            mjc, mic (str or int) : color of major and minor ticks
-            mjs, mis (str or int) : tick style of major and minor ticks
+            switch: turn this element on or off
+            pointing: tick direction relative to the axis
+            mjs: major tick size
+            mjlw: major tick line width
+            mjls: major tick line style
+            mjg: major tick grid switch
+            mjc: major tick color
+            mit: minor tick tick count
+            mis: minor tick size
+            milw: minor tick line width
+            mils: minor tick line style
+            mig: minor tick grid switch
+            mic: minor tick color
+            **kwargs: additional keyword arguments passed to the underlying operation
+            major (float): distance between major ticks
+            mjc, mic (str or int): color of major and minor ticks
+            mjs, mis (str or int): tick style of major and minor ticks
         """
         _raise_unknown_attr(self, *kwargs)
         self._set(tick_switch=Switch.get(switch), tick_pointing=Pointing.get(pointing),
@@ -1425,6 +1507,7 @@ class Tick(_Tick):
 
     def set_major(self, major=None, color=None, size=None,
                   lw=None, ls=None, grid=None, **kwargs):
+        """update major attributes"""
         _raise_unknown_attr(self, *kwargs)
         self._set(major=major, major_color=Color.get(color), major_size=size,
                   major_grid_switch=Switch.get(grid),
@@ -1433,12 +1516,14 @@ class Tick(_Tick):
     def set_minor(self, color=None,
                   size=None, ticks=None, grid=None,
                   lw=None, ls=None, **kwargs):
+        """update minor attributes"""
         _raise_unknown_attr(self, *kwargs)
         self._set(minor_color=Color.get(color), minor_size=size,
                   minor_ticks=ticks, minor_grid_switch=Switch.get(grid),
                   minor_linewidth=lw, minor_linestyle=LineStyle.get(ls))
 
     def set_place(self, rounded=None, place=None, **kwargs):
+        """update place attributes"""
         _raise_unknown_attr(self, *kwargs)
         self._set(place_rounded=rounded, place_placement=Placement.get(place))
 
@@ -1448,12 +1533,12 @@ class Tick(_Tick):
         Note that locs should have same length as labels
 
         Args:
-            locs (Iterable) : locations of custom ticks on the axis
-            labels (Iterable) : labels of custom ticks
-            use_minor (Iterable) : index of labels to use minor tick
+            locs (Iterable): locations of custom ticks on the axis
+            labels (Iterable): labels of custom ticks
+            use_minor (Iterable): index of labels to use minor tick
         """
         if not isinstance(locs, Iterable):
-            raise TypeError("locs should be Iterable, but got ", type(locs))
+            raise TypeError(f"locs should be Iterable, but got: {type(locs)}")
         self.__setattr__("spec_type", "ticks")
         spec_ticks = locs
         if labels is not None:
@@ -1471,6 +1556,7 @@ class Tick(_Tick):
 
 class _Bar(_BaseOutput):
     """_Axis bar"""
+
     _marker = 'bar'
     _attrs = {
         'bar_switch': (bool, Switch.ON, '{:s}'),
@@ -1488,6 +1574,7 @@ class Bar(_Bar):
         _Bar.__init__(self, bar_switch=switch, color=color, linestyle=ls, linewidth=lw)
 
     def set(self, switch=None, color=None, ls=None, lw=None, **kwargs):
+        """update Bar attributes; None leaves the corresponding value unchanged"""
         _raise_unknown_attr(self, *kwargs)
         self._set(bar_switch=Switch.get(switch),
                   color=Color.get(color), linestyle=LineStyle.get(ls), linewidth=lw)
@@ -1495,6 +1582,7 @@ class Bar(_Bar):
 
 class _Label(_BaseOutput):
     """Axis label"""
+
     _marker = 'label'
     _attrs = {
         'layout': (str, 'para', '{:s}'),
@@ -1525,7 +1613,14 @@ class Label(_Label):
         """set the label to s
 
         Args:
-            s (str or string-convertable) : the label of the axis
+            place: label placement relative to the axis
+            offset: displacement of the label from its default position
+            layout: layout of the label or drawing object
+            font: Grace font name or identifier
+            color: color name or numeric color identifier
+            charsize: character size in Grace units
+            **kwargs: additional keyword arguments passed to the underlying operation
+            s (str or string-convertable): the label of the axis
         """
         _raise_unknown_attr(self, *kwargs)
         if s:
@@ -1534,6 +1629,7 @@ class Label(_Label):
                   place=place, char_size=charsize, font=font)
 
     def export(self):
+        """return the Grace parameter lines for this Label object"""
         _logger.debug("exporting label: %s", self.label)
         slist = [self._marker + " \"{:s}\"".format(encode_string(self.label)),]
         slist += _BaseOutput.export(self)
@@ -1542,6 +1638,7 @@ class Label(_Label):
 
 class _TickLabel(_BaseOutput):
     """Label of axis tick"""
+
     _marker = 'ticklabel'
     _attrs = {
         'ticklabel_switch': (bool, Switch.ON, "{:s}"),
@@ -1571,8 +1668,8 @@ class TickLabel(_TickLabel):
     """user interface of label of axis tick
 
     Args:
-        switch (bool) : switch of tick label
-        tlf (str) : ticklabel format
+        switch (bool): switch of tick label
+        tlf (str): ticklabel format
         formular (str)
     """
 
@@ -1596,6 +1693,7 @@ class TickLabel(_TickLabel):
             place=None, offset=None, offset_switch=None, charsize=None,
             start=None, stop=None, start_switch=None, stop_switch=None,
             **kwargs):
+        """update TickLabel attributes; None leaves the corresponding value unchanged"""
         _raise_unknown_attr(self, *kwargs)
         self._set(ticklabel_switch=Switch.get(switch), format=tlf, formula=formula, append=append,
                   prepend=prepend, prec=prec, angle=angle, font=font, color=Color.get(color),
@@ -1606,6 +1704,7 @@ class TickLabel(_TickLabel):
 
 class _Errorbar(_BaseOutput):
     """Errorbar of dataset"""
+
     _marker = 'errorbar'
     _attrs = {
         'errorbar_switch': (bool, Switch.ON, '{:s}'),
@@ -1637,6 +1736,7 @@ class Errorbar(_Errorbar):
 
     def set(self, switch=None, place=None, color=None, pattern=None, size=None,
             lw=None, ls=None, rlw=None, rls=None, rc=None, rcl=None, **kwargs):
+        """update Errorbar attributes; None leaves the corresponding value unchanged"""
         _raise_unknown_attr(self, *kwargs)
         self._set(errorbar_switch=Switch.get(switch),
                   place_placement=Placement.get(place), color=Color.get(color),
@@ -1647,8 +1747,8 @@ class Errorbar(_Errorbar):
 
 
 class _Axis(_BaseOutput, _Affix):
-    """Axis of graph
-    """
+    """Axis of graph"""
+
     _marker = 'axis'
     _attrs = {
         'axis_switch': (bool, Switch.ON, '{:s}'),
@@ -1657,7 +1757,8 @@ class _Axis(_BaseOutput, _Affix):
     }
 
     def __init__(self, axis, **kwargs):
-        assert axis in ['x', 'y', 'altx', 'alty']
+        if not (axis in ['x', 'y', 'altx', 'alty']):
+            raise ValueError(f"axis must be x, y, altx or alty, got: {axis}")
         _BaseOutput.__init__(self, **kwargs)
         _Affix.__init__(self, axis, is_prefix=True)
 
@@ -1666,15 +1767,15 @@ class Axis(_Axis):
     """user interface of graph axis apperance
 
     Args:
-        axis (str) : in ['x', 'y', 'altx', 'alty']
+        axis (str): in ['x', 'y', 'altx', 'alty']
         switch (bool):
-        at (str) : axis type
+        at (str): axis type
         offset (2-member list):
         bar (bool)
-        bc (str/int) : bar color
-        bls (str/int) : bar line style
+        bc (str/int): bar color
+        bls (str/int): bar line style
         blw (number)
-        mjls (str/int) : major tick line style
+        mjls (str/int): major tick line style
     """
 
     def __init__(self, axis, switch=None, at=None, offset=None,
@@ -1703,10 +1804,12 @@ class Axis(_Axis):
                                     start_switch=start_switch, stop_switch=stop_switch)
 
     def set(self, switch=None, at=None, offset=None, **kwargs):
+        """update Axis attributes; None leaves the corresponding value unchanged"""
         _raise_unknown_attr(self, *kwargs)
         self._set(axis_switch=Switch.get(switch), type=at, offset=offset)
 
     def export(self):
+        """return the Grace parameter lines for this Axis object"""
         if self.axis_switch is Switch.OFF:
             return [self._affix + self._marker + "  " + Switch.get_str(Switch.OFF),]
         slist = _BaseOutput.export(self)
@@ -1719,7 +1822,7 @@ class Axis(_Axis):
         """Bind Axis objects
 
         Args:
-            axis (Axis) :
+            *axis (Axis): axes to bind to these tick settings
         """
 
     def set_major(self, **kwargs):
@@ -1731,12 +1834,15 @@ class Axis(_Axis):
         self._tick.set_minor(**kwargs)
 
     def set_bar(self, **kwargs):
+        """update bar attributes"""
         self._bar.set(**kwargs)
 
     def set_tick(self, **kwargs):
+        """update tick attributes"""
         self._tick.set(**kwargs)
 
     def set_ticklabel(self, **kwargs):
+        """update ticklabel attributes"""
         self._ticklabel.set(**kwargs)
 
     def set_label(self, s=None, **kwargs):
@@ -1747,8 +1853,9 @@ class Axis(_Axis):
         """set specific tick marks and labels
 
         Args:
-            locs (Iterable)
-            labels (Iterable)
+            use_minor: use the explicitly specified ticks as minor ticks
+            locs (Iterable): explicit tick positions
+            labels (Iterable): labels for the explicitly specified tick locations
         """
         self._tick.set_spec(locs, labels=labels, use_minor=use_minor)
 
@@ -1759,6 +1866,7 @@ class _Axes(_BaseOutput, _Affix):
     Args:
         axes ('x' or 'y')
     """
+
     _marker = 'axes'
     _attrs = {
         'scale': (str, 'Normal', "{:s}"),
@@ -1766,7 +1874,8 @@ class _Axes(_BaseOutput, _Affix):
     }
 
     def __init__(self, axes, **kwargs):
-        assert axes in ['x', 'y']
+        if not (axes in ['x', 'y']):
+            raise ValueError(f"axes must be x or y, got: {axes}")
         _BaseOutput.__init__(self, **kwargs)
         _Affix.__init__(self, axes, is_prefix=True)
 
@@ -1779,12 +1888,14 @@ class Axes(_Axes):
         _Axes.__init__(self, axes, scale=scale, invert_switch=Switch.get(invert))
 
     def set(self, scale=None, invert=None, **kwargs):
+        """update Axes attributes; None leaves the corresponding value unchanged"""
         _raise_unknown_attr(self, *kwargs)
         self._set(scale=scale, invert_switch=Switch.get(invert))
 
 
 class _Dataset(_BaseOutput, _Affix):
     """Object of grace dataset"""
+
     _marker = 's'
     _attrs = {
         'hidden': (str, False, '{:s}'),
@@ -1806,17 +1917,17 @@ class Dataset(_Dataset):
         data_array (arraylike)
         label (str)
         datatype (str)
-        color (str) : global color control
+        color (str): global color control
         comment (str)
-        symbol (str) : symbol type
-        ssize (number) : symbol size
-        sc (str) : symbol color
-        sp (str) : symbol pattern
-        line (str) : line type
-        lw (number) : linewidth
-        ls (str/int) : line style
-        lp (str/int) : line pattern
-        lc (str/int) : line color
+        symbol (str): symbol type
+        ssize (number): symbol size
+        sc (str): symbol color
+        sp (str): symbol pattern
+        line (str): line type
+        lw (number): linewidth
+        ls (str/int): line style
+        lp (str/int): line pattern
+        lc (str/int): line color
         keyword arguments (arraylike): error data
     """
 
@@ -1908,6 +2019,7 @@ class Dataset(_Dataset):
         return self.data.max()
 
     def set_symbol(self, **kwargs):
+        """update symbol attributes"""
         self._symbol.set(**kwargs)
 
     def set_line(self, **kwargs):
@@ -1965,6 +2077,7 @@ class Dataset(_Dataset):
 
 class Arrow(_IntMap):
     """type of line arrow"""
+
     NONE = 0
     START = 1
     END = 2
@@ -1983,6 +2096,7 @@ class Arrow(_IntMap):
 
 class _DrawString(_BaseOutput):
     """class for string drawing"""
+
     _marker = 'string'
     _attrs = {
         "string_switch": (bool, Switch.ON, '{:s}'),
@@ -2004,8 +2118,8 @@ class DrawString(_DrawString):
     """user interface of string drawing
 
     Args:
-        s (str) : content of string
-        xy (2-member list) : location of string
+        s (str): content of string
+        xy (2-member list): location of string
     """
 
     def __init__(self, s: str, xy, ig=None, color=None, just=None, charsize=None,
@@ -2019,12 +2133,14 @@ class DrawString(_DrawString):
         _raise_unknown_attr(self, *kwargs)
 
     def export(self):
+        """return the Grace parameter lines for this DrawString object"""
         return ["with " + self._marker,] + \
                ["    {:s}".format(s) for s in _DrawString.export(self)]
 
 
 class _DrawLine(_BaseOutput):
     """class for line drawing"""
+
     _marker = 'line'
     _attrs = {
         "line_switch": (bool, Switch.ON, '{:s}'),
@@ -2063,12 +2179,14 @@ class DrawLine(_DrawLine):
         _raise_unknown_attr(self, *kwargs)
 
     def export(self):
+        """return the Grace parameter lines for this DrawLine object"""
         return ["with " + self._marker,] + ["    {:s}".format(s) for s in _DrawLine.export(self)] \
             + [self._marker + " def"]
 
 
 class _DrawEllipse(_BaseOutput):
     """class for line drawing"""
+
     _marker = 'ellipse'
     _attrs = {
         _marker + "_switch": (bool, Switch.ON, '{:s}'),
@@ -2089,9 +2207,9 @@ class DrawEllipse(_DrawEllipse):
     """user interface of drawing line object
 
     Args:
-        xy (2-member Iterable) : location of center
-        width (float) : width of ellipse
-        heigh (float) : height of ellipse. Use width if not set
+        xy (2-member Iterable): location of center
+        width (float): width of ellipse
+        heigh (float): height of ellipse. Use width if not set
     """
 
     def __init__(self, xy, width, heigh=None, ig=None, color=None, lw=None, ls=None,
@@ -2111,14 +2229,15 @@ class DrawEllipse(_DrawEllipse):
         _raise_unknown_attr(self, *kwargs)
 
     def export(self):
+        """return the Grace parameter lines for this DrawEllipse object"""
         return ["with " + self._marker,] \
             + ["    {:s}".format(s) for s in _DrawEllipse.export(self)] \
             + [self._marker + " def"]
 
 
 class _Graph(_BaseOutput, _Affix):
-    """Graph object, similar to Axes in matplotlib
-    """
+    """Graph object, similar to Axes in matplotlib"""
+
     _marker = 'g'
     _attrs = {
         'hidden': (str, False, '{:s}'),
@@ -2195,6 +2314,7 @@ class Graph(_Graph):
 
     @property
     def datasets(self):
+        """get or replace the datasets"""
         return self._datasets
 
     def get_datasets(self):
@@ -2212,6 +2332,7 @@ class Graph(_Graph):
 
     def set(self, hidden=None, gt=None, stacked=None, barhgap=None,
             fp=None, fpt=None, fpxy=None, fpform=None, fpprec=None, **kwargs):
+        """update Graph attributes; None leaves the corresponding value unchanged"""
         _raise_unknown_attr(self, *kwargs)
         self._set(hidden=hidden, type=gt, stacked=stacked, bar_hgap=barhgap,
                   fixedpoint_switch=Switch.get(fp), fixedpoint_type=fpt, fixedpoint_xy=fpxy,
@@ -2318,7 +2439,7 @@ class Graph(_Graph):
         """set axis
 
         Args:
-            axis (str) : x, y, altx, alty
+            axis (str): x, y, altx, alty
         """
         d = {'x': self._xaxis, 'y': self._yaxis, 'altx': self._altxaxis, 'alty': self._altyaxis}
         try:
@@ -2375,12 +2496,13 @@ class Graph(_Graph):
     def get_limit(self):
         """get the limits (world) of graph
 
-        Returns
+        Returns:
             tuple. xmin, ymin, xmax, ymax
         """
         return self._world.get_world()
 
     def get_view(self):
+        """get or replace the get view"""
         return self._view.get_view()
 
     def set_view(self, xmin=None, ymin=None, xmax=None, ymax=None):
@@ -2442,8 +2564,9 @@ class Graph(_Graph):
         only for the first set!
 
         Args:
-            x (1d-array)
-            ys (1d or 2d-array)
+            **kwargs: additional keyword arguments passed to the underlying operation
+            x (1d-array): abscissa values
+            ys (1d or 2d-array): one or more ordinate arrays sharing x
             zs: optional z data. For error data, use kwargs (dx,dy,dz,dxl,dyl,dzl)
         """
         # check if multiple y data are parsed
@@ -2536,11 +2659,9 @@ class Graph(_Graph):
             loc_token = kwargs["loc"]
             int(loc_token)
         except ValueError as err:
-            try:
-                loctype = kwargs.get("loctype")
-                assert loctype == "world"
+            if kwargs.get("loctype") == "world":
                 xmin, ymin, xmax, ymax = self._world.get_world()
-            except (KeyError, AssertionError):
+            else:
                 xmin, ymin, xmax, ymax = self._view.get_view()
 
             if loc_token.endswith("left"):
@@ -2596,10 +2717,12 @@ class Graph(_Graph):
 
     @property
     def title(self):
+        """get or replace the title"""
         return self._title.title
 
     @title.setter
     def title(self, new: str):
+        """get or replace the title"""
         self.set_title(title=new)
 
     def set_subtitle(self, subtitle=None, **kwargs):
@@ -2610,18 +2733,28 @@ class Graph(_Graph):
 
     @property
     def subtitle(self):
+        """get or replace the subtitle"""
         return self._subtitle.subtitle
 
     @subtitle.setter
     def subtitle(self, new: str):
+        """get or replace the subtitle"""
         self.set_subtitle(subtitle=new)
 
     def text(self, s, xy, loctype=None, color=None,
              just=None, charsize=None, rot=None, font=None, **kwargs):
         """add string text to the plot
+
         Args:
-            s (str)
-            xy (2-member list) : the location of text string
+            rot: text rotation in degrees
+            loctype: world or view coordinates
+            just: text justification
+            font: Grace font name or identifier
+            color: color name or numeric color identifier
+            charsize: character size in Grace units
+            **kwargs: additional keyword arguments passed to the underlying operation
+            s (str): string to convert
+            xy (2-member list): the location of text string
         """
         o = DrawString(s, xy, ig=self._index, loctype=loctype, color=color, just=just,
                        charsize=charsize, rot=rot, font=font, **kwargs)
@@ -2632,14 +2765,16 @@ class Graph(_Graph):
         """draw a circle on the plot
 
         Args:
-            xy (2-member list)
-            width (float)
+            loctype: world or view coordinates
+            **kwargs: additional keyword arguments passed to the underlying operation
+            xy (2-member list): coordinates of the object's center
+            width (float): width of the object or confinement region
             heigh (float): if left as None, it will try to draw a round circle
-            color (str/int)
-            lw (float) : line width
-            ls (str/int) : line style
-            fc (str/int) : fill color
-            fp (str/int) : fill pattern
+            color (str/int): color name or numeric color identifier
+            lw (float): line width
+            ls (str/int): line style
+            fc (str/int): fill color
+            fp (str/int): fill pattern
         """
         if heigh is None:
             xmin, ymin, xmax, ymax = {"world": self.get_limit, "view": self.get_view}.get(loctype)()
@@ -2652,7 +2787,11 @@ class Graph(_Graph):
         """add a horizontal line
 
         Args:
-            y (float) :
+            xmin: lower horizontal bound
+            xmax: upper horizontal bound
+            loctype: world or view coordinates
+            **kwargs: additional keyword arguments passed to the underlying operation
+            y (float): ordinate values
             xmin, xmax (float, str): endpoints of horizontal line.
                 If str is parsed, it will be recognized as a percentage of the axis
         """
@@ -2679,7 +2818,11 @@ class Graph(_Graph):
         """add a vertical line
 
         Args:
-            x (float) :
+            ymin: lower vertical bound
+            ymax: upper vertical bound
+            loctype: world or view coordinates
+            **kwargs: additional keyword arguments passed to the underlying operation
+            x (float): abscissa values
             ymin, ymax (float, str): endpoints of vertical line.
                 If str is parsed, it will be recognized as a percentage of the axis
         """
@@ -2709,6 +2852,7 @@ class Graph(_Graph):
 
     def arrow(self, start, end, color=None, lw=None, ls=None, arrow="end",
               at=None, length=None, layout=None, loctype=None, **kwargs):
+        """draw an arrow between two points in world or view coordinates"""
         o = DrawLine(start, end, ig=self._index, color=color, lw=lw, ls=ls,
                      arrow=arrow, at=at, length=length, layout=layout, loctype=loctype,
                      **kwargs)
@@ -2723,6 +2867,12 @@ def __ga_regular(rows, cols, hgap, vgap, width_ratios=None, heigh_ratios=None):
     and those in the same row have the same height.
 
     Args:
+        width_ratios: relative graph widths, one per column
+        vgap: vertical spacing between graph rows
+        rows: number of graph rows
+        hgap: horizontal spacing between graph columns
+        heigh_ratios: relative graph heights, one per row
+        cols: number of graph columns
         rows, cols (int)
         hgap, vgap (float or Iterable)
         width_ratios, heigh_ratios (string): ratios of width/height, separated by colon.
@@ -2768,15 +2918,21 @@ def __ga_regular(rows, cols, hgap, vgap, width_ratios=None, heigh_ratios=None):
 
 # pylint: disable=too-many-locals
 def _set_graph_alignment(rows, cols, hgap=0.02, vgap=0.02, width_ratios=None, heigh_ratios=None,
-                         **kwargs) -> List[Graph]:
+                         **kwargs) -> list[Graph]:
     """Set the graph alignment
 
     Args:
+        width_ratios: relative graph widths, one per column
+        vgap: vertical spacing between graph rows
+        rows: number of graph rows
+        hgap: horizontal spacing between graph columns
+        heigh_ratios: relative graph heights, one per row
+        cols: number of graph columns
+        **kwargs: additional keyword arguments passed to the underlying operation
         rows, cols (int)
         hgap, vgap (float or Iterable)
 
-    TODO:
-        intricate handling of graph view with kwargs
+    TODO:         intricate handling of graph view with kwargs
     """
     # graphs from left to right, upper to lower
     if rows * cols == 0:
@@ -2808,14 +2964,14 @@ class Plot:
     """the general control object for the grace plot
 
     Args:
-        rows, cols (int) : graph alignment
-        hgap, vgap (float or Iterable) : horizontal and vertical gap between graphs
-        lw (number) : default linewidth
-        ls (str/int) : default line style
-        color (str/int) : default color
-        bc (str/int) : background color
-        background (str/int) : switch of background fill
-        qtgrace (bool) : if true, QtGrace comments will be added
+        rows, cols (int): graph alignment
+        hgap, vgap (float or Iterable): horizontal and vertical gap between graphs
+        lw (number): default linewidth
+        ls (str/int): default line style
+        color (str/int): default color
+        bc (str/int): background color
+        background (str/int): switch of background fill
+        qtgrace (bool): if true, QtGrace comments will be added
     """
 
     def __init__(self, rows=1, cols=1, hgap=0.02, vgap=0.02, bc=0, background=None,
@@ -2879,22 +3035,14 @@ class Plot:
             slist += g.export_data()
         return "\n".join(slist)
 
-    def write_par(self, file=sys.stdout):
+    def write_par(self, file=None):
         """write grace plot parameters to `file`
 
         Args:
-            file (str or file handle)
+            file (str or file handle): output path or writable text stream; None selects current stdout
         """
         s = "\n".join(self._header_lines(add_at=False))
-        if isinstance(file, str):
-            fp = open(file, 'w')
-            print(s, file=fp)
-            fp.close()
-            return
-        if isinstance(file, TextIOWrapper):
-            print(s, file=file)
-            return
-        raise TypeError("should be str or TextIOWrapper type")
+        print_file_or_iowrapper(s, f=file)
 
     def set_default(self, **kwargs):
         """set default format"""
@@ -2907,7 +3055,7 @@ class Plot:
         """Get the Graph object of index i
 
         Args:
-            i (int) : index of graph.
+            i (int): index of graph.
                 If not specified, all graphs are returned in a list
         """
         if i:
@@ -2938,8 +3086,11 @@ class Plot:
         """plot a data set to the first graph
 
         Args:
+            y: ordinate values
+            x: abscissa values
+            **kwargs: additional keyword arguments passed to the underlying operation
             positional *xy (arraylike): x, y data. Error should be parsed to keyword arguments
-            igraph (int) : index of graph to plot
+            igraph (int): index of graph to plot
             keyword arguments will parsed to Graph object
         """
         self._graphs[0].plot(x, y, **kwargs)
@@ -2986,9 +3137,8 @@ class Plot:
         """set xlimit of all graphs
 
         Args:
-            graph (int)
-            xmin (float)
-            xmax (float)
+            xmin (float): lower horizontal bound
+            xmax (float): upper horizontal bound
         """
         for g in self._graphs:
             g.set_xlim(xmin=xmin, xmax=xmax)
@@ -2997,9 +3147,8 @@ class Plot:
         """set ylimit of all graphs
 
         Args:
-            graph (int)
-            ymin (float)
-            ymax (float)
+            ymin (float): lower vertical bound
+            ymax (float): upper vertical bound
         """
         for g in self._graphs:
             g.set_ylim(ymin=ymin, ymax=ymax)
@@ -3009,8 +3158,8 @@ class Plot:
         """write grace plot file to `fn`
 
         Args:
-            file (str or file handle)
-            mode (str) : used only when `file` is set to a filename
+            file (str or file handle): output path or writable text stream; None selects current stdout
+            mode (str): used only when `file` is set to a filename
         """
         if isinstance(file, (str, PathLike)):
             with open(file, mode) as fp:
@@ -3037,8 +3186,9 @@ class Plot:
         This method is adapted from PyGrace.grace
 
         Args:
-            figname (str)
-            device (str)
+            dpi: requested raster resolution; currently not passed to gracebat
+            figname (str): output figure path
+            device (str): Grace output device, such as PDF or PNG
         """
         ext = get_file_ext(figname)
         if device is None:
@@ -3051,7 +3201,7 @@ class Plot:
 
     # Templates
     @classmethod
-    def subplots(cls: Type[TypePlot], *args, **kwargs) -> Tuple[TypePlot, Union[Graph, List[Graph]]]:
+    def subplots(cls: type[TypePlot], *args, **kwargs) -> tuple[TypePlot, Union[Graph, list[Graph]]]:
         """emulate matplotlib.pyplot.subplots
 
         ArgsL
@@ -3101,7 +3251,7 @@ class Plot:
         """template of a plot with band graph on the left and dos on the right
 
         Args:
-            ratio (str) : the ratio between widths of band and dos graphs
+            ratio (str): the ratio between widths of band and dos graphs
         """
         p = Plot(1, 2, hgap=0.0, width_ratios=ratio)
         # turn off band structure legend
@@ -3131,7 +3281,7 @@ def extract_data_from_agr(pagr):
     """extract all data from agr file
 
     Args:
-        pagr (str) : path to the agr file
+        pagr (str): path to the agr file
 
     Returns:
         list, type of each dataset
@@ -3168,7 +3318,10 @@ def _run_gracebat(agr, figname, device, dpi):
     """run a gracebat command for figure exporting
 
     Args:
-        agr (str) : contents of grace file
+        figname: output figure path
+        dpi: requested raster resolution; currently not passed to gracebat
+        device: Grace output device, such as PDF or PNG
+        agr (str): contents of grace file
     """
     if HAS_GRACEBAT is None:
         raise FileNotFoundError("gracebat is not found in PATH")
@@ -3176,12 +3329,11 @@ def _run_gracebat(agr, figname, device, dpi):
             "-hdevice", device,
             "-printfile", figname,
             "-pipe",]
-    p = subprocess.Popen(cmds, stdin=subprocess.PIPE)
     _logger.debug("Run grace bat with: %s", " ".join(cmds))
-    p.stdin.write(agr.encode())
+    subprocess.run(cmds, input=agr.encode(), check=True)
 
 
-def merge_graphs(base: Graph, *graphs: Graph, colors: Union[str, Iterable] = None,
+def merge_graphs(base: Graph, *graphs: Graph, colors: Optional[Union[str, Iterable]] = None,
                  merge_objects: bool = False):
     """merge datasets in graphs into the base graph
 
@@ -3202,12 +3354,16 @@ def merge_graphs(base: Graph, *graphs: Graph, colors: Union[str, Iterable] = Non
     g = deepcopy(base)
     if isinstance(colors, str):
         colors = [colors,] * (1 + len(graphs))
-    for ds in g.datasets:
-        ds.set_color(colors[0])
+    if colors is None:
+        colors = [None] * (1 + len(graphs))
+    if colors[0] is not None:
+        for ds in g.datasets:
+            ds.set_color(colors[0])
     for mg, c in zip(graphs, colors[1:]):
         dss = mg.get_datasets()
-        for ds in dss:
-            ds.set_color(c)
+        if c is not None:
+            for ds in dss:
+                ds.set_color(c)
         g.add_datasets(*dss)
         if merge_objects:
             g.objects.extend(mg.get_objects())
