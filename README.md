@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="doc/_static/logo.svg" alt="mushroom logo" width="160">
+</p>
+
 # mushroom
 
 [![CircleCI](https://dl.circleci.com/status-badge/img/gh/minyez/mushroom/tree/master.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/minyez/mushroom/tree/master)

@@ -73,5 +73,7 @@ html_theme = 'furo'
 html_static_path = ['_static']
 
 html_title = "mushroom"
+html_logo = "_static/logo.svg"
+html_favicon = "_static/logo.svg"
 
 napoleon_google_docstring = True
