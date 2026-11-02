@@ -13,7 +13,7 @@ workflows:
             matrix:
               parameters:
                 # https://circleci.com/developer/images/image/cimg/python
-                python-version: ["3.9", "3.10", "3.12"]
+                python-version: ["3.9", "3.10", "3.12", "3.13"]
 
 jobs:
   test:
@@ -25,7 +25,6 @@ jobs:
       - image: cimg/python:<< parameters.python-version >>  # every job must define an image for the docker executor and subsequent jobs may define a different image.
         environment:
           PIPENV_VENV_IN_PROJECT: false
-          CODECOV_TOKEN: 01359775-2d3e-4223-a0ef-ecc88779e801
           AIMS_SPECIES_DEFAULTS: ~/fake-FHI-aims/species_defaults
     steps:
       - checkout
@@ -54,6 +53,8 @@ jobs:
       - run:
           name: "Linting"
           command: |
+            ruff check mushroom
+            interrogate -v mushroom
             # flake8 commands from https://github.com/logsdail/carmm/blob/master/.github/workflows/linter.yml
             # stop the build if there are Python syntax errors or undefined names
             flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
@@ -63,14 +64,12 @@ jobs:
           name: "Testing and coverage"
           command: |
             ls ~/mushroom
-            export PYTHONPATH="~/mushroom:$PYTHONPATH"
-            pytest --cov=./ --cov-report xml:coverage.xml
+            export PYTHONPATH="$PWD:$PYTHONPATH"
+            python -m pytest --cov=mushroom --cov-report xml:coverage.xml
       # only upload the converage of lastest version
       # https://circleci.com/docs/using-branch-filters/#branch-filtering-for-job-steps
       - when:
           condition:
             equal: [ "3.12", << parameters.python-version >> ]
           steps:
-          - run:
-              name: "Upload coverage to codecov"
-              command: codecov
+          - codecov/upload

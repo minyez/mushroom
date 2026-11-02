@@ -1,4 +1,5 @@
-DIST_FILES = mushroom \
+DIST_FILES = pyproject.toml \
+             mushroom \
 			examples \
 			doc \
 			db \

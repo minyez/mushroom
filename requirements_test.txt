@@ -1,11 +1,11 @@
 numpy
+click>=8.0
 scipy
 spglib>=2.5.0
-lxml
-BeautifulSoup4
 matplotlib>=3.5.0
 pytest
 pytest-cov
-codecov
 coverage
 flake8
+ruff
+interrogate

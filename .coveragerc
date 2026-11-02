@@ -1,10 +1,11 @@
 [run]
+branch = True
 source = mushroom
 omit =
   */test_*.py
-  mushroom/core/timing.py
 
 [report]
+fail_under = 85
 ignore_errors = True
 exclude_lines =
     # Don't complain about missing debug-only code:
@@ -16,14 +17,6 @@ exclude_lines =
 
     raise NotImplementedError
 
-    # Don't complain missing tests for functions calling external program
-	def _run_gracebat
-
-    # Don't compain the rare event
-    raise FileNotFoundError("database directory is not found", mushroom_db_home.name)
-
     # Don't complain missing tests for some experimental features
     def _read_aims_single_specfunc_dat
-	def savefig
 	def fold_small_G_semisphere
-	def add_scheduler_header

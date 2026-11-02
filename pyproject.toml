@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mushroom"
+dynamic = ["version"]
+description = "Research tools for electronic-structure calculations"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{name = "Min-Ye Zhang"}]
+dependencies = ["numpy", "scipy", "spglib>=2.5.0", "click>=8.0"]
+
+[project.scripts]
+mushroom = "mushroom.cli:main"
+
+[project.optional-dependencies]
+plot = ["matplotlib>=3.5.0"]
+test = ["matplotlib>=3.5.0", "pytest", "pytest-cov", "coverage", "flake8", "ruff", "interrogate"]
+
+[tool.setuptools.dynamic]
+version = {attr = "mushroom.__version__"}
+
+[tool.setuptools.packages.find]
+include = ["mushroom*"]
+exclude = ["*.test", "*.test.*"]
+namespaces = false
+
+[tool.setuptools.package-data]
+"mushroom.aims" = ["*.json"]
+
+[tool.ruff]
+target-version = "py39"
+extend-exclude = ["mushroom/abacus.py", "mushroom/core/atoms.py", "mushroom/core/bz.py"]
+
+[tool.ruff.lint]
+select = ["D"]
+ignore = ["D105", "D107", "D403", "D415"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"**/test/*" = ["D"]
+
+[tool.interrogate]
+fail-under = 90
+ignore-init-method = true
+ignore-magic = true
+ignore-private = true
+exclude = ["mushroom/test", "mushroom/core/test", "mushroom/aims/test", "mushroom/visual/test", "mushroom/abacus.py", "mushroom/core/atoms.py", "mushroom/core/bz.py"]

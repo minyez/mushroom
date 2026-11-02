@@ -27,9 +27,11 @@ clean:
 
 pytest:
 	$(MAKE) clean
-	@echo "Run pytest"; pytest --cov=./ --cov-report xml:coverage.xml
+	@echo "Run pytest"; python -m pytest --cov=mushroom --cov-report xml:coverage.xml
 
 lint:
+	ruff check mushroom
+	interrogate -v mushroom
 	# flake8 commands from https://github.com/logsdail/carmm/blob/master/.github/workflows/linter.yml
 	# stop the build if there are Python syntax errors or undefined names
 	flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
