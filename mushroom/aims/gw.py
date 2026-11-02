@@ -3,7 +3,7 @@
 import os
 import re
 import struct
-from typing import Callable, Union
+from typing import Callable, Union, Optional
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 import numpy as np
@@ -22,9 +22,8 @@ def _read_aims_single_sigc_dat(sigcdat_fn):
     """read single sigc.dat file to get correlation self-energy
 
     Args:
-        sigcdat_fn (path-like)
-
-    Retunrs:
+        sigcdat_fn (path-like): path of a single-state self-energy file
+    Returns:
         Two nd-array: 1d real array for frequencies, 1d complex array for self-energy
     """
     omegas = []
@@ -37,15 +36,15 @@ def _read_aims_single_sigc_dat(sigcdat_fn):
             except ValueError:
                 try:
                     omega, reval, imval = line.split()[0], 0.0, 0.0
-                except ValueError:
-                    raise ValueError("Fail to read {}".format(sigcdat_fn))
+                except ValueError as err:
+                    raise ValueError("Fail to read {}".format(sigcdat_fn)) from err
             omegas.append(float(omega))
             sigc.append(float(reval) + 1j * float(imval))
     return omegas, sigc
 
 
 def fullmatch_nsbk_file_name(fn: str, prefix: str, suffix: str):
-    """
+    """match a filename and decode its state, spin, band-path and k-point indices
 
     Args:
         fn (str): filename to match
@@ -78,11 +77,12 @@ def fullmatch_nsbk_file_name(fn: str, prefix: str, suffix: str):
 
 
 def get_nsbk_filename_pattern(prefix, suffix,
-                              istate: Union[int, str] = None,
-                              ispin: int = None,
-                              iband: Union[int, str] = None,
-                              ikpt: Union[int, str] = None,
+                              istate: Optional[Union[int, str]] = None,
+                              ispin: Optional[int] = None,
+                              iband: Optional[Union[int, str]] = None,
+                              ikpt: Optional[Union[int, str]] = None,
                               spin_polarized: bool = False, out_band: bool = False):
+    """build a regular expression for state, spin, band-path and k-point file indices"""
     middle_pattern = []
 
     if istate is None:
@@ -119,11 +119,17 @@ def get_nsbk_filename_pattern(prefix, suffix,
     return prefix + r"\.".join(middle_pattern) + suffix
 
 
-def get_nsbk_filename(prefix, suffix, istate: int, ikpt: int, ispin: int = None, iband: int = None,
+def get_nsbk_filename(prefix, suffix, istate: int, ikpt: int, ispin: Optional[int] = None, iband: Optional[int] = None,
                       spin_polarized: bool = False):
     """Read a single n.s.b.k file
 
     Args:
+        suffix: filename suffix
+        spin_polarized: include a spin index in the filename
+        prefix: filename prefix
+        istate: state index used in the filename
+        ikpt: k-point index
+        iband: band-path index used in the filename
         ispin (int): 0 or 1.
            If ispin is 0 and spin_polarized is False, the file is treated from non-spin-polarization calculation.
            Otherwise it is spin polarized.
@@ -137,8 +143,9 @@ def get_nsbk_filename(prefix, suffix, istate: int, ikpt: int, ispin: int = None,
     return prefix + ".".join(middle) + suffix
 
 
-def glob_nsbk_files(dir, prefix, suffix, ikpt: int, ispin: int = None, iband: int = None,
+def glob_nsbk_files(dir, prefix, suffix, ikpt: int, ispin: Optional[int] = None, iband: Optional[int] = None,
                     spin_polarized: bool = False):
+    """list self-energy files matching the requested spin and k-point indices"""
     raise NotImplementedError
 
 
@@ -150,17 +157,18 @@ def __process_single_self_energy_data(fpath):
 
 
 def read_aims_self_energy_dir(sedir: str = "self_energy",
-                              filter_isbk_file: Callable[[int, int, int, int], bool] = None,
+                              filter_isbk_file: Optional[Callable[[int, int, int, int], bool]] = None,
                               merge_band_kpoints: bool = False,
                               filethres_mp: int = 10000):
     """read all sigc data in self energy directory `sedir`
 
     Args:
-        sedir (path-like)
-        filter_isbk: callable taking 4 int arguments (istate, ispin, iband, ikpt) and returning bool.
+        filter_isbk_file: predicate on the state, spin, band-path and k-point indices
+        sedir (path-like): directory containing the self-energy files
+        filter_isbk_file (callable): predicate taking state, spin, band-path and k-point indices.
             When the int arguments obtained from the file leads to True by calling it, this file will be kept
             in parsing the self-energy. Otherwise the file is filtered out.
-        merge_band_kpoints (bool)
+        merge_band_kpoints (bool): concatenate k-points from separate band paths
         filethres_mp (int): the number of files beyond which multiprocessing will be used.
 
     Returns:
@@ -177,7 +185,6 @@ def read_aims_self_energy_dir(sedir: str = "self_energy",
     data_dict_band = {}
     omegas = []
 
-    nkpts = 0
     nstates = 0
 
     fpaths = []
@@ -264,10 +271,10 @@ def _read_aims_single_specfunc_dat(specfuncdat_fn, unit: str = "ev"):
     """read single spectral function data file "spectral_function.dat" in 'spectral_function/' directory
 
     Args:
-        sigcdat_fn (path-like)
+        specfuncdat_fn: path of a single-state spectral-function file
         unit (str): "ev" or "au", unit to export
 
-    Retunrs:
+    Returns:
         float: Kohn-Sham eigenvalue
         float:
         nd-array: 1d real array for frequencies
@@ -277,7 +284,8 @@ def _read_aims_single_specfunc_dat(specfuncdat_fn, unit: str = "ev"):
     """
     from mushroom.core.constants import HA2EV
 
-    assert unit in ["ev", "au"]
+    if not (unit in ["ev", "au"]):
+        raise ValueError(f"unit must be ev or au, got: {unit}")
 
     with open(specfuncdat_fn, 'r') as h:
         eKS = float(h.readline().split()[1])
@@ -313,15 +321,10 @@ def read_aims_self_energy_restart_file(fn: Union[str, os.PathLike] = "self_energ
     header = struct.unpack("i" * 4, data[:16])
     nspin, nkpts, nstates, nfreq = header
 
-    begin, end = 16, 16 + 8 * nfreq
-    omega_imag = struct.unpack('d' * nfreq, data[begin:end])
-    begin, end = end, 16 + 8 * nfreq + 16 * nfreq * (2 + nspin * nkpts * nstates)
-    data = struct.unpack('d' * nspin * nkpts * nstates * nfreq * 2,
-                         data[begin:end])
-    # convert to numpy array
-    omega_imag = np.array(omega_imag)
-    data = np.array(data[0::2]) + np.array(data[1::2]) * 1.0j
-    data = np.reshape(data, (nspin, nkpts, nstates, nfreq))
+    omega_imag = np.frombuffer(data, dtype="=f8", count=nfreq, offset=16).copy()
+    values = np.frombuffer(data, dtype="=c16", count=nspin * nkpts * nstates * nfreq,
+                           offset=16 + 8 * nfreq).copy()
+    data = values.reshape(nspin, nkpts, nstates, nfreq)
     return omega_imag, data
 
 
@@ -335,7 +338,8 @@ def read_aims_self_energy_omega(fn: Union[str, os.PathLike] = "self_energy_omega
     for line in lines[3::2]:
         l = line.replace("(", " ").replace(")", " ").replace(",", " ")
         data.extend(list(map(float, l.split())))
-    assert (len(data) == nstates * nfreq * 2)
+    if not (len(data) == nstates * nfreq * 2):
+        raise ValueError(f"expected {nstates * nfreq * 2} values, got {len(data)}")
     data = np.array(data)
     data = data[::2] + data[1::2] * 1.0j
     return omega_imag, data.reshape((nstates, nfreq))

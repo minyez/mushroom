@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """utilities for parsing standard output of FHI-aims"""
-from typing import Tuple, List, Union, Iterable
+from typing import Union, Optional
+from collections.abc import Iterable
 import os
 
 try:
@@ -24,28 +25,28 @@ _logger = loggers["aims"]
 
 def read_band_output(
         *bfiles,
-        bfiles_spin: Iterable[Union[str, os.PathLike]] = None,
+        bfiles_spin: Optional[Iterable[Union[str, os.PathLike]]] = None,
         filter_k_before: int = 0,
-        filter_k_behind: int = None,
-        efermi: float = None,
-        unit: str = 'ev', **kwargs) -> Tuple[BandStructure, List[RealVec3D]]:
+        filter_k_behind: Optional[int] = None,
+        efermi: Optional[float] = None,
+        unit: str = 'ev', **kwargs) -> tuple[BandStructure, list[RealVec3D]]:
     """read band output files and return a Band structure
 
     Note that all band energies are treated in the same spin channel,
     the resulting ``BandStructure`` object always has nspins=1
 
     Args:
-        bfiles (str)
-        bfiles_spin (list of str)
-        filter_k_before
-        filter_k_behind
-        efermi (float) : the actual Fermi reference of the bands.
+        **kwargs: additional keyword arguments passed to the underlying operation
+        *bfiles (str): band-output files in path order
+        bfiles_spin (list of str): spin-down band files, or None for a single spin channel
+        filter_k_before: number of initial k-points to omit
+        filter_k_behind: exclusive upper k-point index; None keeps the remaining points
+        efermi (float): the actual Fermi reference of the bands.
             When FHI-aims generates band output, the fermi energy is subtracted from band energies,
             thus the fermi energy is the actual energy zero.
             When efermi is not None, the band energies will be shifted by efermi,
             therefore the internal zero becomes the reference.
-        unit (str)
-
+        unit (str): energy unit, ev or au/ha as supported by the called reader
         Other keyword argments parsed to the BandStructure object
 
     Returns:
@@ -97,7 +98,7 @@ def read_band_output(
     return BandStructure(ene, occ, unit=unit, efermi=efermi, **kwargs), kpts
 
 
-def decode_band_output_line(bstr: str) -> Tuple[List, List, List]:
+def decode_band_output_line(bstr: str) -> tuple[list, list, list]:
     """decode a line of band output file, e.g. scfband1001.out, band2001.out
 
     Each line is like
@@ -105,8 +106,7 @@ def decode_band_output_line(bstr: str) -> Tuple[List, List, List]:
         index k1 k2 k3 occ_1 ene_1 occ_2 ene_2 ...
 
     Args:
-        bstr (str)
-
+        bstr (str): one output band specification from control.in
     Returns:
         three list: k-points, occupation numbers, energies
     """
@@ -197,20 +197,20 @@ def _handle_single_band_mulliken_output(bfile):
 
 def read_band_mulliken_output(
         *bfiles,
-        bfiles_spin: Iterable[Union[str, os.PathLike]] = None,
+        bfiles_spin: Optional[Iterable[Union[str, os.PathLike]]] = None,
         filter_k_before: int = 0,
-        filter_k_behind: int = None,
-        unit: str = 'ev') -> Tuple[BandStructure, List[RealVec3D]]:
+        filter_k_behind: Optional[int] = None,
+        unit: str = 'ev') -> tuple[BandStructure, list[RealVec3D]]:
     """read band mulliken output files and return a Band structure object
 
     Note that all band energies are treated in the same spin channel,
     the resulting ``BandStructure`` object always has nspins=1
 
     Args:
-        bfiles (str)
-        bfiles_spin (list of str)
-        filter_k_before (int)
-        filter_k_behind (int)
+        *bfiles (str): band-output files in path order
+        bfiles_spin (list of str): spin-down band files, or None for a single spin channel
+        filter_k_before (int): number of initial k-points to omit
+        filter_k_behind (int): exclusive upper k-point index; None keeps the remaining points
         unit (str): unit of energies, default to ev
 
     Returns:

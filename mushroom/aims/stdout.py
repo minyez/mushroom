@@ -25,6 +25,7 @@ _logger = loggers["aims"]
 
 class AimsNotFinishedError(Exception):
     """Exception for aims calculation is not finished"""
+
     pass
 
 
@@ -36,13 +37,12 @@ def _processing_pgw_kgrid_lines(lines, nspins: int, nkpts: int):
     """Processing the lines containing quasi-particle energies on k-grid from periodc GW calculations
 
     Args:
-        lines (list of str)
-        nspins (int) : number of spin channels.
+        lines (list of str): input text lines
+        nspins (int): number of spin channels.
             Could be None or zero, in which case it will be determined.
-        nkpts (int) : number of k-points.
+        nkpts (int): number of k-points.
             Must be a positive integer.
     """
-
     eqpline = re.compile(r'^\s*(\d+)' + r'\s+(-?[\d\.]+)' * 6 + r'(\\n)?$')
     kptline = re.compile(r'^  K_point\s+(\d+)\s+:' + r'\s+(-?[\d\.]+)' * 3 + r'(\\n)?$')
 
@@ -72,7 +72,9 @@ def _processing_pgw_kgrid_lines(lines, nspins: int, nkpts: int):
             raise ValueError(msg)
         nspins = nkpts_times_nspins // nkpts
     else:
-        assert (nspins * nkpts == nkpts_times_nspins)
+        if not (nspins * nkpts == nkpts_times_nspins):
+            raise ValueError(f"nspins {nspins} and nkpts {nkpts} are inconsistent with "
+                             f"{nkpts_times_nspins} QP energy headers")
 
     # molecule cases
     if len(kpts) == 0:
@@ -491,8 +493,9 @@ class StdOut:
     def get_n_spin_kpt_band_basis(self):
         """get the most requested dimensions of the system
 
-        Return:
-            4 int, number of spins, kpoints, bands/states and basis functions"""
+        Returns:
+            4 int, number of spins, kpoints, bands/states and basis functions
+        """
         return self._nspins, self._nkpts, self._nbands, self._nbasis
 
     def get_QP_result(self):
@@ -553,7 +556,7 @@ class StdOut:
     def get_eigenvalues(self):
         """Get the SCF eigenvalues as a BandStructure object
 
-        Returns
+        Returns:
             BandStructure object, k-points list
         """
         kptline = re.compile(r'^  K-point:\s+(\d+)\s+at' +
@@ -599,11 +602,12 @@ class StdOut:
         """get the QP band structure
 
         Args:
+            **kwargs: additional keyword arguments passed to the underlying operation
             kind (str): the key of QP energies, default to "eqp".
                 use "exx" or "hf" to get the EXX band structure, and
                 use "eps" to get the KS band structure,
 
-        Returns
+        Returns:
             BandStructure object, k-points list
         """
         d, kpts = self.get_QP_result()

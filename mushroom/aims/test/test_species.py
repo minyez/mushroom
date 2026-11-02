@@ -15,19 +15,6 @@ from mushroom.aims.species import _SPECIES_DEFAULTS_ENV, \
     get_species_filepaths
 
 
-def _check_if_species_defaults_set():
-    """return True, if species_defaults is not available"""
-    try:
-        species_defaults = os.environ[_SPECIES_DEFAULTS_ENV]
-    except KeyError:
-        try:
-            from mushroom.__config__ import aims_species_defaults as species_defaults
-        except ImportError:
-            print("Environment variable {} not set, skip species directory test".format(_SPECIES_DEFAULTS_ENV))
-            return True
-    return False
-
-
 class test_species_utils(ut.TestCase):
 
     def test_species_default(self):
@@ -54,10 +41,11 @@ class test_species_utils(ut.TestCase):
         # test can be done without an existing aims directory
         self.assertRaises(ValueError, search_basis_directories, "some/random/path/should/not/exist")
         self.assertListEqual([], search_basis_directories("some/random/path/should/not/exist", False))
-        if _check_if_species_defaults_set():
-            return
-        paths = search_basis_directories()
-        self.assertIn("defaults_2010/tight", paths)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            (root / 'defaults_2010/tight').mkdir(parents=True)
+            (root / 'defaults_2010/tight/01_H_default').write_text('species H\n')
+            self.assertEqual(search_basis_directories(root), ['defaults_2010/tight'])
 
     def test_alias(self):
         self.assertRaises(ValueError, get_basis_directory_from_alias, "unknown")
@@ -70,11 +58,12 @@ class test_species_utils(ut.TestCase):
     def test_get_specie_filename(self):
         self.assertRaises(ValueError, get_species_filepaths,
                           "unknown", "Ne", species_defaults="path/to/species_defaults")
-        if _check_if_species_defaults_set():
-            return
-        d = get_species_defaults_directory()
-        self.assertListEqual([os.path.join(d, "defaults_2010", "tight", "01_H_default"),],
-                             get_species_filepaths("defaults_2010/tight", "H"))
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            (root / 'defaults_2010/tight').mkdir(parents=True)
+            expected = root / 'defaults_2010/tight/01_H_default'
+            expected.write_text('species H\n')
+            self.assertEqual(get_species_filepaths('defaults_2010/tight', 'H', species_defaults=tmp), [str(expected)])
 
     def test_get_num_obfs(self):
         """Test get number of basis functions"""
@@ -145,32 +134,19 @@ class test_read_species(ut.TestCase):
         tf.close()
 
     def test_read_default(self):
-        if not _check_if_species_defaults_set():
-            return
-        try:
-            species_defaults = get_species_defaults_directory()
-        except ValueError:
-            return
-        try:
-            s = Species.read_default('H', 'defaults_2010/tight')
-        except ValueError:
-            pass
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp) / 'defaults_2010/tight'
+            root.mkdir(parents=True)
+            (root / '01_H_default').write_text('species H\n')
+            with patch.dict(os.environ, {_SPECIES_DEFAULTS_ENV: tmp}):
+                self.assertEqual(Species.read_default('H', 'defaults_2010/tight').elem, 'H')
 
     def test_read_multiple(self):
-        try:
-            pspecies = get_species_filepaths('defaults_2010/tight', 'H')[0]
-        except (ValueError, KeyError):
-            return
-        with open(pspecies, 'r') as h:
-            lines = h.readlines()
-        tf = tempfile.NamedTemporaryFile()
-        with open(tf.name, 'w') as h:
-            for _ in range(3):
-                for l in lines:
-                    print(l, file=h)
-        ss = Species.read_multiple(tf.name)
-        self.assertEqual(len(ss), 3)
-        tf.close()
+        with tempfile.TemporaryDirectory() as tmp:
+            path = pathlib.Path(tmp) / 'species'
+            path.write_text('species H\n' * 3)
+            self.assertEqual([s.elem for s in Species.read_multiple(path)], ['H', 'H', 'H'])
 
 
 class test_species_manipulate(ut.TestCase):

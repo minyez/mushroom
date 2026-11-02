@@ -126,7 +126,8 @@ def search_band_output_files(path_dir, flag: Union[str, None] = None,
     """Search band output files under `path_dir`
 
     Args:
-        path_dir (path-like)
+        with_spin: return separate lists of spin-up and spin-down files
+        path_dir (path-like): directory containing band-output files
         flag (str): "dft", "gw" or "mlk". Default to None for auto detect.
         ext (str): extension of band output files, default "out"
         suffix (str): suffix for the files, e.g. ".no_soc" for non-SOC files
@@ -174,8 +175,7 @@ def get_atoms_from_geometry(path_geometry: str = "geometry.in"):
     """Get the atoms in the geometry file
 
     Args:
-        path_geometry (str)
-
+        path_geometry (str): path of geometry.in
     Returns:
         List of str
     """

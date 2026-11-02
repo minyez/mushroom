@@ -69,8 +69,7 @@ class test_control(ut.TestCase):
         index_json = dir_control / "aimscontrol.json"
         with index_json.open('r') as h:
             cfiles = list(json.load(h).keys())
-        if not cfiles:
-            return
+        self.assertTrue(cfiles, "control fixture manifest is empty")
         # use the first to test
         cfile = cfiles[0]
         c = read_control(dir_control / cfile)

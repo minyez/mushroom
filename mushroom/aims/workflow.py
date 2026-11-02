@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """workflow objects for FHI-aims"""
 import pathlib
-from typing import List, Union
+from typing import Union, Optional
 
 from mushroom.aims.analyse import get_atoms_from_geometry
 from mushroom.aims.species import readlines_species_defaults
@@ -20,7 +20,7 @@ __all__ = [
 class AimsWorkdir:
     """Class to handle a FHI-aims calculation working folder"""
 
-    def __init__(self, dirpath: str, aimsout: str = "aims.out", aimserr: str = None):
+    def __init__(self, dirpath: str, aimsout: str = "aims.out", aimserr: Optional[str] = None):
         dirpath = pathlib.Path(dirpath).absolute()
         self.dirpath = dirpath
         self.path_control = dirpath / "control.in"
@@ -42,25 +42,28 @@ class AimsWorkdir:
         self._aimsout = None
 
     def load_output(self):
+        """load aims.out from this working directory"""
         self._aimsout = StdOut(self.path_aimsout, lazy_load=False)
 
     def is_finished(self):
+        """check whether the loaded output reports normal termination"""
         return self._aimsout.is_finished(False)
 
     def is_converged(self):
+        """check whether the loaded output reports SCF convergence"""
         return self._aimsout.is_finished(True)
 
 
-def get_species_text(path_geometry: Path, directory: str, species_defaults: str = None) -> str:
+def get_species_text(path_geometry: Path, directory: str, species_defaults: Optional[str] = None) -> str:
     """get the species defaults of all elements in a geometry file
 
     The blocks are copied without change, to keep the comments and commented basis tiers.
 
     Args:
-        path_geometry (Path) : path of geometry.in
-        directory (str) : directory of species category or its alias,
+        path_geometry (Path): path of geometry.in
+        directory (str): directory of species category or its alias,
             e.g. "defaults_2020/intermediate_gw"
-        species_defaults (str) : path of species_defaults. Default to use the configuration
+        species_defaults (str): path of species_defaults. Default to use the configuration
 
     Returns:
         str, with blocks in the alphabetic order of elements
@@ -69,13 +72,13 @@ def get_species_text(path_geometry: Path, directory: str, species_defaults: str 
     return readlines_species_defaults(directory, *elements, species_defaults=species_defaults)
 
 
-def link_files(source: Path, target: Path, pattern: str) -> List[pathlib.Path]:
+def link_files(source: Path, target: Path, pattern: str) -> list[pathlib.Path]:
     """link files from a directory to another one, e.g. restart files
 
     Args:
-        source (Path) : directory of the files
-        target (Path) : directory of the links
-        pattern (str) : glob pattern of file names
+        source (Path): directory of the files
+        target (Path): directory of the links
+        pattern (str): glob pattern of file names
 
     Returns:
         list of the links
@@ -96,7 +99,7 @@ def link_files(source: Path, target: Path, pattern: str) -> List[pathlib.Path]:
     return links
 
 
-def run_aims(command: Union[str, List[str]], cwd: Path = ".", output: str = "aims.out",
+def run_aims(command: Union[str, list[str]], cwd: Path = ".", output: str = "aims.out",
              error: str = "aims.err", require_converge: bool = True):
     """run FHI-aims and check that it ends normally
 
@@ -104,11 +107,11 @@ def run_aims(command: Union[str, List[str]], cwd: Path = ".", output: str = "aim
     FHI-aims reports the value in its output.
 
     Args:
-        command (str or list) : the FHI-aims command, e.g. "mpirun -np 4 aims.x"
-        cwd (Path) : the working directory
-        output (str) : file of standard output, relative to ``cwd``
-        error (str) : file of standard error, relative to ``cwd``
-        require_converge (bool) : also require a converged SCF cycle.
+        command (str or list): the FHI-aims command, e.g. "mpirun -np 4 aims.x"
+        cwd (Path): the working directory
+        output (str): file of standard output, relative to ``cwd``
+        error (str): file of standard error, relative to ``cwd``
+        require_converge (bool): also require a converged SCF cycle.
             Switch it off for runs without SCF, e.g. with ``sc_iter_limit 0``
 
     Raises:

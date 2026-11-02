@@ -2,11 +2,11 @@
 """Class to handle basis set for atom species"""
 import os
 import pathlib
-from typing import Union, List, Tuple
+from typing import Union, Optional
 from io import StringIO
 from copy import deepcopy
 
-from mushroom.core.elements import element_symbols, get_atomic_number, l_channels, l_int
+from mushroom.core.elements import element_symbols, get_atomic_number, l_int
 from mushroom.core.ioutils import open_textio
 from mushroom.core.logger import loggers
 
@@ -26,10 +26,9 @@ def get_num_obfs(basis_key, basis_string):
     """Get the number of orbital basis functions of ``basis_key`` basis represented by ``basis_string``
 
     Args:
-        basis_key (str)
-        basis_string (str)
-
-    Return:
+        basis_key (str): FHI-aims radial basis keyword
+        basis_string (str): radial basis definition following the keyword
+    Returns:
         int
     """
     if basis_key in ["valence", "ion_occ"]:
@@ -52,10 +51,9 @@ def get_l_nrad(basis_key, basis_string):
     """Get angular momentum number and number of radial functions of ``basis_key`` basis represented by ``basis_string``
 
     Args:
-        basis_key (str)
-        basis_string (str)
-
-    Return:
+        basis_key (str): FHI-aims radial basis keyword
+        basis_string (str): radial basis definition following the keyword
+    Returns:
         int
     """
     if basis_key in ["valence", "ion_occ"]:
@@ -75,6 +73,7 @@ def get_l_nrad(basis_key, basis_string):
 
 
 def search_basis_directories(aims_species_defaults=None, error_dir_not_found: bool = True):
+    """list species-default directories relative to the supplied root directory"""
     if aims_species_defaults is None:
         aims_species_defaults = get_species_defaults_directory()
     if error_dir_not_found and not os.path.isdir(aims_species_defaults):
@@ -83,8 +82,7 @@ def search_basis_directories(aims_species_defaults=None, error_dir_not_found: bo
     root_dir = pathlib.Path(aims_species_defaults)
     paths = []
     for path in root_dir.glob('**/01_H_default'):
-        spath = str(path)
-        paths.append(os.path.dirname(spath[len(os.path.commonprefix([path, root_dir])) + 1:]))
+        paths.append(str(path.parent.relative_to(root_dir)))
     _logger.debug("Avail defaults: %r", paths)
 
     return paths
@@ -116,9 +114,9 @@ def get_species_defaults_directory():
     except KeyError as _e:
         try:
             from mushroom.__config__ import aims_species_defaults as species_defaults
-        except ImportError:
+        except ImportError as err:
             raise KeyError("Environment variable {} or aims_species_defaults in config file is required"
-                           .format(_SPECIES_DEFAULTS_ENV))
+                           .format(_SPECIES_DEFAULTS_ENV)) from err
     if not os.path.isdir(species_defaults):
         raise ValueError("species_defaults {} is not a directory".format(species_defaults))
     return species_defaults
@@ -126,15 +124,16 @@ def get_species_defaults_directory():
 
 def get_species_filepaths(directory: str,
                           elem: str, *elems: str,
-                          species_defaults: str = None,
+                          species_defaults: Optional[str] = None,
                           error_dir_not_found: bool = True):
     """get the paths of species files of a particular basis
 
     Args:
+        error_dir_not_found: raise if the species-default directory does not exist
+        elem: element symbol
+        *elems: additional element symbols
         directory (str): directory of species category or its alias
-        elem and elems (str)
-        species_defaults (str)
-
+        species_defaults (str): root directory of FHI-aims species defaults
     Returns:
         List of str
     """
@@ -158,13 +157,14 @@ def get_species_filepaths(directory: str,
     return pspecies
 
 
-def readlines_species_defaults(directory: str, elem: str, *elems: str, species_defaults: str = None):
+def readlines_species_defaults(directory: str, elem: str, *elems: str, species_defaults: Optional[str] = None):
     """read the species files specified by `directory` and elements `elem` and `elems`
 
     Args:
+        elem: element symbol
+        *elems: additional element symbols
         directory (str): directory of species category or its alias
-        elem and elems (str)
-        species_defaults (str)
+        species_defaults (str): root directory of FHI-aims species defaults
     """
     lines = []
     for pspecie in get_species_filepaths(directory, elem, *elems,
@@ -175,32 +175,24 @@ def readlines_species_defaults(directory: str, elem: str, *elems: str, species_d
 
 
 class NaoBasisPool:
-    """"""
+    """container reserved for collections of numerical atomic orbital basis functions"""
 
 
 class Species:
-    """object handling species
+    """store an FHI-aims species block and its radial basis definitions
 
     Args:
-        elem (str)
-        basis (list): the basis set configuration.
-            The value is a list, each element representes a basis function.
-            Each member should be a list ``[basis_type, basis_string, is_aux, tier, enabled]``,
-            where
-            - ``basis_type`` should be one of the basis type in ``Species.basis_types``.
-            - ``basis_string`` is string representing the left information to define the basis
-            - ``is_aux`` should be a bool, whether this basis is only used for constructing
-              auxliary basis
-            - ``tier`` should be a non-negative integer or None.
-              0 stands for minimal basis, 1 for tier1 and so on so forth.
-            - ``enabled`` is a bool. When True, the basis will be exported but commented out.
-
-        tags (dict)
-
-        header (str)
-
-        raw_lines (list of str): raw text lines with new line symbol stripped
+        elem (str): element symbol
+        tags (dict): basic species keywords and their values
+        basis (list): records [basis_type, basis_string, is_aux, tier, enabled].
+            basis_type is a radial basis keyword; basis_string contains its parameters.
+            is_aux selects auxiliary functions. Tier 0 is the minimal basis, positive
+            tiers are numbered additions, and -1 denotes further functions.
+            Disabled functions are exported as comments.
+        header (str): comments preceding the species block
+        raw_lines (list[str]): original input lines without newline characters
     """
+
     species_basic_tag = ["nucleus", "mass", "l_hartree", "cut_pot", "basis_dep_cutoff",
                          "radial_base", "radial_multiplier", "angular_min", "angular_acc",
                          "innermost_max", "logarithmic", "include_min_basis", "pure_gauss",
@@ -212,9 +204,9 @@ class Species:
     # TODO: use regular expression pattern to match the basis function lines
     # TODO: move basis set reading to NaoBasis class
 
-    def __init__(self, elem: str, tags: dict = None,
-                 basis: List[Tuple[str, str, bool, int, bool]] = None,
-                 header: str = None, raw_lines: List[str] = None):
+    def __init__(self, elem: str, tags: Optional[dict] = None,
+                 basis: Optional[list[tuple[str, str, bool, int, bool]]] = None,
+                 header: Optional[str] = None, raw_lines: Optional[list[str]] = None):
         self.elem = elem
         self.tags = tags
         self.basis = basis
@@ -245,8 +237,8 @@ class Species:
                 v = {True: ".true.", False: ".false."}.get(value, str(value))
                 self.tags[tag] = v
                 _logger.info("tag '%s' updated to: %s", tag, v)
-            except ValueError:
-                raise ValueError(f"cannot turn value into string: {value}")
+            except ValueError as err:
+                raise ValueError(f"cannot turn value into string: {value}") from err
         else:
             try:
                 _logger.info("removed tag '%s', original value: %s", tag, self.tags.pop(tag))
@@ -258,9 +250,9 @@ class Species:
         """Add basis function to the species
 
         Args:
-            basis_type (str)
-            basis_string (str)
-            basis_strings (str)
+            basis_type (str): FHI-aims radial basis keyword
+            basis_string (str): radial basis definition following the keyword
+            *basis_strings (str): additional radial basis definitions
             is_aux (bool): whether this function is used only to construct ABF
             tier (int): if the basis belongs to some tier.
                 0 for minimal and < 0 for not belong to any tier
@@ -284,17 +276,17 @@ class Species:
         self.add_basis(basis_type, basis_string, *basis_strings, is_aux=True, tier=tier, enabled=enabled)
 
     def get_basis(self,
-                  basis_type: str = None,
-                  is_aux: bool = None,
-                  tier: int = None,
-                  enabled: bool = None):
+                  basis_type: Optional[str] = None,
+                  is_aux: Optional[bool] = None,
+                  tier: Optional[int] = None,
+                  enabled: Optional[bool] = None):
         """get the basis functions
 
         Args:
-            basis_type (str)
-            is_aux (bool)
-            tier (int)
-
+            enabled: select enabled or disabled radial functions
+            basis_type (str): FHI-aims radial basis keyword
+            is_aux (bool): select auxiliary rather than orbital basis functions
+            tier (int): basis tier to select
         Returns:
             list
         """
@@ -317,17 +309,20 @@ class Species:
         return basis
 
     def get_abf(self,
-                basis_type: str = None,
-                tier: int = None):
+                basis_type: Optional[str] = None,
+                tier: Optional[int] = None):
         """A wrapper of get_basis method for auxliary basis functions"""
         return self.get_basis(basis_type=basis_type, is_aux=True, tier=tier)
 
     @classmethod
     def _modify_basis_common(cls, basis: dict, btype: str, index: Union[int, str], bparam: str,
-                             l_channel: str = None):
+                             l_channel: Optional[str] = None):
         """modify the basis function in basis dictionary
 
         Args:
+            btype: radial basis keyword to match
+            bparam: replacement radial basis parameters
+            basis: basis records to modify
             basis, btype and bparam: same to _add_basis_common.
                 If bparam is set to None, the basis will be deleted.
             index: the index of the basis function to modify
@@ -370,29 +365,31 @@ class Species:
         # else:
         #     b[index] = bparam
 
-    def modify_basis(self, btype: str, index: Union[int, str], bparam: str, l_channel: str = None):
+    def modify_basis(self, btype: str, index: Union[int, str], bparam: str, l_channel: Optional[str] = None):
         """modify basis function"""
         self._modify_basis_common(self.basis, btype, index, bparam, l_channel)
 
-    def delete_basis(self, btype: str, index: Union[int, str], l_channel: str = None):
+    def delete_basis(self, btype: str, index: Union[int, str], l_channel: Optional[str] = None):
         """delete basis function"""
         self._modify_basis_common(self.basis, btype, index, None, l_channel)
 
-    def modify_abf(self, btype: str, index: Union[int, str], bparam: str, l_channel: str = None):
+    def modify_abf(self, btype: str, index: Union[int, str], bparam: str, l_channel: Optional[str] = None):
         """modify ABF"""
         self._modify_basis_common(self.abf, btype, index, bparam, l_channel)
 
-    def delete_abf(self, btype: str, index: Union[int, str], l_channel: str = None):
+    def delete_abf(self, btype: str, index: Union[int, str], l_channel: Optional[str] = None):
         """delete ABF"""
         self._modify_basis_common(self.abf, btype, index, None, l_channel)
 
     def get_radial_multiplier(self):
+        """return the radial-grid multiplier as text; raise KeyError if it is absent"""
         try:
             return self.tags["radial_multiplier"]
-        except KeyError:
-            raise KeyError("radial_multiplier has not been set")
+        except KeyError as err:
+            raise KeyError("radial_multiplier has not been set") from err
 
-    def update_radial_multiplier(self, v: int = None):
+    def update_radial_multiplier(self, v: Optional[int] = None):
+        """update the radial-grid multiplier when a value is supplied"""
         if v is None:
             return
         self.update_basic_tag("radial_multiplier", v)
@@ -400,20 +397,21 @@ class Species:
     def get_radial_base(self):
         """get the radial grid parameters from the radial_base keyword
 
-        Return:
+        Returns:
             int, float
         """
         try:
             s = self.tags["radial_base"]
             n_rad = int(s.split()[0])
-            radius = float(s.split()[0])
+            radius = float(s.split()[1])
             return n_rad, radius
-        except KeyError:
-            raise KeyError("radial_base has not been set")
-        except (ValueError, IndexError):
-            raise ValueError("radial_base is not correctly set")
+        except KeyError as err:
+            raise KeyError("radial_base has not been set") from err
+        except (ValueError, IndexError) as err:
+            raise ValueError("radial_base is not correctly set") from err
 
-    def update_radial_base(self, n_rad: int = None, radius: float = None):
+    def update_radial_base(self, n_rad: Optional[int] = None, radius: Optional[float] = None):
+        """update the radial-grid point count and outer radius in Angstrom"""
         if n_rad is None and radius is None:
             return
         try:
@@ -422,28 +420,31 @@ class Species:
                 n_rad = n_rad_old
             if radius is None:
                 radius = radius_old
-        except KeyError:
+        except KeyError as err:
             if n_rad is None or radius is None:
-                raise ValueError("radial_base did not set, please provide both n_rad and radius")
+                raise ValueError("radial_base did not set, please provide both n_rad and radius") from err
         self.update_basic_tag("radial_base", f"{n_rad:d} {radius:4f}")
 
     def get_cut_pot(self):
+        """return the confinement onset and width in Angstrom and the scale factor"""
         try:
             onset, width, scale = self.tags["cut_pot"].split()
             return onset, width, scale
-        except KeyError:
-            raise KeyError("cut_pot has not been set")
-        except ValueError:
-            raise ValueError("invalid original cut_pot value")
+        except KeyError as err:
+            raise KeyError("cut_pot has not been set") from err
+        except ValueError as err:
+            raise ValueError("invalid original cut_pot value") from err
 
     def adjust_cut_pot(self,
-                       onset: float = None,
-                       width: float = None,
-                       scale: float = None):
+                       onset: Optional[float] = None,
+                       width: Optional[float] = None,
+                       scale: Optional[float] = None):
         """Adjust cutoff potential
 
         Args:
-            onset, width, scale (float)
+            width: width of the object or confinement region
+            scale: multiplicative scaling factor
+            onset: confinement-potential onset in Angstrom
         """
         if onset is None and width is None and scale is None:
             return
@@ -460,8 +461,8 @@ class Species:
             onset = onset or onset_old
             width = width or width_old
             scale = scale or scale_old
-        except ValueError:
-            raise ValueError("invalid original cut_pot value")
+        except ValueError as err:
+            raise ValueError("invalid original cut_pot value") from err
 
         self.update_basic_tag("cut_pot", "{} {} {}".format(onset, width, scale))
 
@@ -479,8 +480,7 @@ class Species:
         The order follows the ``basis_tag`` class attribute
 
         Args:
-            basis_key (str)
-            prefix (str): added just before the tag of ``basis_tag``
+            padding: number of leading spaces
         """
         slist = []
         tier_string_dict = {
@@ -531,7 +531,7 @@ class Species:
         """export the species to a string
 
         Args:
-            padding (int)
+            padding (int): number of leading spaces
             use_raw (bool): use the raw text format
         """
         header = "### Start species ###"
@@ -554,6 +554,7 @@ class Species:
         return "\n".join(slist)
 
     def export(self, padding: int = 0, use_raw: bool = False):
+        """return the species input block, optionally retaining its original text"""
         if use_raw:
             return self._export_raw(padding)
         return self._export(padding)
@@ -574,7 +575,6 @@ class Species:
         elem = None
         tags = {}
         basis = []
-        abf = []
         agt = cls.angular_grids_tag[0]
 
         i = -1

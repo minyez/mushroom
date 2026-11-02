@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 """FHI-aims related"""
 import os
-import pathlib
 import json
-from typing import Tuple, List, Dict, Union
+from typing import Union, Optional
 from io import StringIO
 from copy import deepcopy
 
@@ -25,12 +24,11 @@ _logger = loggers["aims"]
 read_geometry = Cell.read_aims
 
 
-def divide_control_lines(pcontrol: Union[str, os.PathLike]) -> List[List[str]]:
+def divide_control_lines(pcontrol: Union[str, os.PathLike]) -> list[list[str]]:
     """read and divide control file into general lines and species lines
 
     Args:
-        pcontrol (pathlike)
-
+        pcontrol (pathlike): control.in path or readable text stream
     Returns:
         list. Each member is a list of str.
         The first is the lines of general and output setting.
@@ -78,7 +76,7 @@ def divide_control_lines(pcontrol: Union[str, os.PathLike]) -> List[List[str]]:
     return regions
 
 
-def get_path_ksymbols(ctrl_output_band: List) -> List[Union[str, None]]:
+def get_path_ksymbols(ctrl_output_band: list) -> list[Union[str, None]]:
     """get the ksymbol list for band plot from the output band tag of a control object
 
     Args:
@@ -152,7 +150,7 @@ class Control:
 
     Args:
         tags (dict): general tags
-        output (dict): tag controlling output
+        output_tags (dict): tags controlling output
         species (dict)
     """
 
@@ -161,7 +159,7 @@ class Control:
     with open(basic_tags_ref_json, 'r') as h:
         basic_tags_ref = json.load(h)
 
-    def __init__(self, tags: Dict = None, output_tags: Dict = None, species: List[Species] = None):
+    def __init__(self, tags: Optional[dict] = None, output_tags: Optional[dict] = None, species: Optional[list[Species]] = None):
         self.tags = {}
         self.update_tags(tags)
         self.output = {}
@@ -188,11 +186,13 @@ class Control:
         return deepcopy(self)
 
     def __add__(self, ctrl):
-        tags = self.tags + ctrl.tags
-        output = self.output + ctrl.output
-        species = self.species + ctrl.speices
-        species.extend(self.species)
-        return type(self)(tags, output, species)
+        if not isinstance(ctrl, Control):
+            return NotImplemented
+        combined = self.copy()
+        combined.update_tags(deepcopy(ctrl.tags))
+        combined.update_output_tags(deepcopy(ctrl.output))
+        combined.add_species(*deepcopy(ctrl.species))
+        return combined
 
     def __str__(self):
         return self.export()
@@ -211,24 +211,24 @@ class Control:
         """get the value of tag"""
         try:
             return self.tags[tag]
-        except KeyError:
+        except KeyError as err:
             if default:
                 return default[0]
             sim_key = get_similar_str(tag, list(self.tags.keys()))
             if sim_key is None:
-                raise KeyError(f"no tag {tag} is found in control")
+                raise KeyError(f"no tag {tag} is found in control") from err
             else:
-                raise KeyError(f"no tag {tag} is found in control, do you mean '{sim_key}'?")
+                raise KeyError(f"no tag {tag} is found in control, do you mean '{sim_key}'?") from err
 
     # pylint: disable=W0707
     def get_output(self, tag, *default):
         """get the value of tag"""
         try:
             return self.output[tag]
-        except KeyError:
+        except KeyError as err:
             if default:
                 return default[0]
-            raise KeyError(f"no output tag {tag} is found in control")
+            raise KeyError(f"no output tag {tag} is found in control") from err
 
     def update_tag(self, tag: str, value: str):
         """update the value of tag
@@ -271,7 +271,7 @@ class Control:
             return
         self.output[output_tag] = str2bool(value)
 
-    def update_output_tags(self, output_tags: Dict):
+    def update_output_tags(self, output_tags: dict):
         """collective update output tag values"""
         if output_tags is not None:
             for k, v in output_tags.items():
@@ -314,8 +314,9 @@ class Control:
             else:
                 self.update_tag("spin", "none")
             return
-        if spin in ["collinear",]:
+        if spin in ["collinear", "none"]:
             self.update_tag("spin", spin)
+            return
 
         raise ValueError("Unsupported spin tag")
 
@@ -323,8 +324,9 @@ class Control:
         """get the basis of element ``elem``
 
         Args:
+            *args: positional arguments passed to the corresponding species method
+            **kwargs: additional keyword arguments passed to the underlying operation
             elem (str or int): name of element, or its index in the control
-            args and kwargs: parsed to the Species.get_basis method
         """
         return self.get_species(elem).get_basis(*args, **kwargs)
 
@@ -332,8 +334,9 @@ class Control:
         """get the abf of element ``elem``
 
         Args:
+            *args: positional arguments passed to the corresponding species method
+            **kwargs: additional keyword arguments passed to the underlying operation
             elem (str or int): name of element, or its index in the control
-            args and kwargs: parsed to the Species.get_abf method
         """
         return self.get_species(elem).get_abf(*args, **kwargs)
 
@@ -341,8 +344,9 @@ class Control:
         """add basis to speices of element ``elem``
 
         Args:
+            *args: positional arguments passed to the corresponding species method
+            **kwargs: additional keyword arguments passed to the underlying operation
             elem (str or int): name of element, or its index in the control
-            args and kwargs: parsed to the Species.add_basis method
         """
         self.get_species(elem).add_basis(*args, **kwargs)
 
@@ -350,8 +354,9 @@ class Control:
         """add abf to speices of element ``elem``
 
         Args:
+            *args: positional arguments passed to the corresponding species method
+            **kwargs: additional keyword arguments passed to the underlying operation
             elem (str or int): name of element, or its index in the control
-            args and kwargs: parsed to the Species.add_abf method
         """
         self.get_species(elem).add_abf(*args, **kwargs)
 
@@ -359,8 +364,9 @@ class Control:
         """modify basis in speices of element ``elem``
 
         Args:
+            *args: positional arguments passed to the corresponding species method
+            **kwargs: additional keyword arguments passed to the underlying operation
             elem (str or int): name of element, or its index in the control
-            args and kwargs: parsed to the Species.modify_basis method
         """
         self.get_species(elem).modify_basis(*args, **kwargs)
 
@@ -368,8 +374,9 @@ class Control:
         """modify ABFs in speices of element ``elem``
 
         Args:
+            *args: positional arguments passed to the corresponding species method
+            **kwargs: additional keyword arguments passed to the underlying operation
             elem (str or int): name of element, or its index in the control
-            args and kwargs: parsed to the Species.modify_abf method
         """
         s = self.get_species(elem)
         s.modify_abf(*args, **kwargs)
@@ -378,8 +385,9 @@ class Control:
         """modify basis in speices of element ``elem``
 
         Args:
+            *args: positional arguments passed to the corresponding species method
+            **kwargs: additional keyword arguments passed to the underlying operation
             elem (str or int): name of element, or its index in the control
-            args and kwargs: parsed to the Species.delete_basis method
         """
         s = self.get_species(elem)
         s.delete_basis(*args, **kwargs)
@@ -388,13 +396,15 @@ class Control:
         """modify basis in speices of element ``elem``
 
         Args:
+            *args: positional arguments passed to the corresponding species method
+            **kwargs: additional keyword arguments passed to the underlying operation
             elem (str or int): name of element, or its index in the control
-            args and kwargs: parsed to the Species.delete_abf method
         """
         s = self.get_species(elem)
         s.delete_abf(*args, **kwargs)
 
-    def switch_tier(self, tier: int, enable: bool, elem: str = None, **kwargs):
+    def switch_tier(self, tier: int, enable: bool, elem: Optional[str] = None, **kwargs):
+        """enable or disable the selected basis tier for one or all species"""
         if elem is None:
             for s in self.species:
                 s.switch_tier(tier, enable, **kwargs)
@@ -441,29 +451,33 @@ class Control:
 
     def add_default_species(self, directory: str, *elems,
                             error_replace: bool = True,
-                            species_defaults: str = None):
+                            species_defaults: Optional[str] = None):
         """add species to the control file"""
         ss = [Species.read_default(elem, directory=directory) for elem in elems]
         self.add_species(*ss, error_replace=error_replace)
 
     def get_cut_pot(self, elem):
+        """return the confinement onset and width in Angstrom and the scale factor"""
         s = self.get_species(elem)
         return s.get_cut_pot()
 
-    def update_radial_multiplier(self, *elems, v: int = None):
+    def update_radial_multiplier(self, *elems, v: Optional[int] = None):
+        """update the radial-grid multiplier when a value is supplied"""
         for e in elems:
             s = self.get_species(e)
             s.update_radial_multiplier(v)
 
-    def update_radial_base(self, *elems, n_rad: int = None, radius: float = None):
+    def update_radial_base(self, *elems, n_rad: Optional[int] = None, radius: Optional[float] = None):
+        """update the radial-grid point count and outer radius in Angstrom"""
         for e in elems:
             s = self.get_species(e)
             s.update_radial_base(n_rad, radius)
 
     def adjust_cut_pot(self, *elems,
-                       onset: float = None,
-                       width: float = None,
-                       scale: float = None):
+                       onset: Optional[float] = None,
+                       width: Optional[float] = None,
+                       scale: Optional[float] = None):
+        """update the confinement onset and width in Angstrom and scale for selected species"""
         for e in elems:
             s = self.get_species(e)
             s.adjust_cut_pot(onset, width, scale)
@@ -600,7 +614,7 @@ class Control:
         return cls(tags, output, species)
 
     @classmethod
-    def default(cls, periodic: bool = False, spin: Union[bool, str] = None):
+    def default(cls, periodic: bool = False, spin: Optional[Union[bool, str]] = None):
         """A default control setup"""
         tags = {
             "xc": "pbe",
