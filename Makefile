@@ -27,7 +27,7 @@ clean:
 
 pytest:
 	$(MAKE) clean
-	@echo "Run pytest"; python -m pytest --cov=mushroom --cov-report xml:coverage.xml
+	@echo "Run pytest"; python -m pytest --cov=./ --cov-report xml:coverage.xml
 
 lint:
 	ruff check mushroom
