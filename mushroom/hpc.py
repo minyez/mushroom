@@ -10,7 +10,8 @@ where `uid` is the output of `whoami`, and `host` the output of `uname -n`
 import pathlib
 import subprocess as sp
 from re import split as rsplit
-from typing import Union, Iterable
+from typing import Union, Optional
+from collections.abc import Iterable
 from os import PathLike
 from io import StringIO
 from mushroom.core.ioutils import open_textio
@@ -127,11 +128,11 @@ class SbatchScript:
     """
 
     def __init__(self,
-                 commands: Union[str, Iterable[str]] = None,
+                 commands: Optional[Union[str, Iterable[str]]] = None,
                  sheban: str = "#!/usr/bin/env bash",
-                 template: str = None,
-                 commands_template: Union[str, PathLike, StringIO] = None,
-                 sbatch_options_template: Union[str, PathLike, StringIO] = None,
+                 template: Optional[str] = None,
+                 commands_template: Optional[Union[str, PathLike, StringIO]] = None,
+                 sbatch_options_template: Optional[Union[str, PathLike, StringIO]] = None,
                  **kwargs):
         if template is not None and commands_template is None:
             commands_template = template
@@ -155,13 +156,16 @@ class SbatchScript:
 
     @property
     def commands(self):
+        """get or replace the shell commands following the scheduler header"""
         return self._commands
 
     @commands.setter
     def commands(self, commands):
+        """get or replace the shell commands following the scheduler header"""
         self._commands = commands
 
     def set_sbatch(self, **kwargs):
+        """update the SBATCH options from keyword arguments"""
         self._sbatch_options.set(**kwargs)
 
     def __str__(self):
@@ -173,6 +177,7 @@ class SbatchScript:
         return "\n".join(slist)
 
     def write(self, fn="run.sh"):
+        """write the shell script and scheduler header to a path or stream"""
         if self._commands is None:
             _logger.warning("You are writing no commands to sbatch script!")
         with open(fn, 'w') as h:
@@ -183,10 +188,9 @@ def get_scheduler_header(platform: str, use_pbs: bool = False) -> str:
     """get platform-specific sbatch/pbs header lines.
 
     Args:
-        platform (str) : identifier of platform. should be found in sbatch_headers or pbs_headers
-        use_pbs (bool)
-
-    Return:
+        platform (str): identifier of platform. should be found in sbatch_headers or pbs_headers
+        use_pbs (bool): use PBS directives instead of SBATCH directives
+    Returns:
         str
     """
     try:
@@ -234,35 +238,30 @@ def add_scheduler_header(pscript: Union[str, PathLike],
 def is_slurm_enabled() -> bool:
     """check if slurm is enabled and configured on the platform.
 
-    This is achieved by calling sacct and reading its returncode"""
-    import subprocess as sp
+    This is achieved by calling sacct and reading its returncode
+    """
     try:
-        p = sp.Popen(["sacct", "-h"], stderr=sp.PIPE, stdout=sp.PIPE)
-        ret = p.wait()
-        if ret == 0:
-            return True
+        return sp.run(["sacct", "-h"], capture_output=True).returncode == 0
     except FileNotFoundError:
-        # sacct not found
-        pass
-    return False
+        return False
 
 
-def sbatch_submit(script_name: str) -> int:
-    """submit a script by sbatch and get the return code
-
-    sbatch is assumed available.
+def sbatch_submit(script_name: str, sbatch_cmd: str = "sbatch", extra_args=None,
+                  cwd=None) -> tuple[int, Union[int, str]]:
+    """submit a script and return its exit status and job ID or failure output
 
     Args:
-        script_name (str): the path of script file to submit
+        script_name (str): script path, relative to cwd when specified
+        sbatch_cmd (str): sbatch executable
+        extra_args (sequence[str]): options inserted before the script path
+        cwd (path-like): working directory of sbatch; the caller's cwd is unchanged
 
-    Return
-        return code, jobid
+    Returns:
+        tuple[int, int or str]: exit code and job ID on success, or output on failure
     """
-    retcode = None
-    p = sp.Popen(["sbatch", script_name], stdout=sp.PIPE, stderr=sp.PIPE)
-    out, _ = p.communicate()
-    out = str(out, encoding='utf-8')
-    ret = p.returncode
-    if ret == 0:
-        out = int(out.split()[-1])
-    return ret, out
+    args = [sbatch_cmd, *(extra_args or []), str(script_name)]
+    proc = sp.run(args, capture_output=True, text=True, cwd=cwd)
+    output = proc.stdout
+    if proc.returncode == 0:
+        output = int(output.split()[-1])
+    return proc.returncode, output

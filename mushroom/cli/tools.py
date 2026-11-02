@@ -141,7 +141,7 @@ def fiteos(input_file, nfu, v0, e0, eosname, ivcol, iecol):
 def quickgrace(ctx, data_files, title, xlabel, xrange, ylabel, linewidth, color, yrange, symbol,
                xscale, yscale, output, delimiter, no_label, ix, xy, xyz, sort, leg_comment,
                leg_add_fn, leg_fn_only, leg_explicit):
-    """draw grace plot quickly from data files, using np.loadtxt
+    r"""draw grace plot quickly from data files, using np.loadtxt
 
     Column index starts from 0. Allow dataset separated by empty lines.
     Support multiple data files.

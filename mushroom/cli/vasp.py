@@ -68,7 +68,7 @@ def band(ctx, eigenval, poscar, output, data_only, removek, fig_ext, energy_rang
         try:
             emin, emax = decode_float_ends(energy_range)
         except ValueError as err:
-            raise ValueError("invalid energy range", energy_range) from err
+            raise ValueError(f'invalid energy range: {energy_range}') from err
     ax.set_xlim(0.0, kp.x[-1] + 0.0001)
     ax.set_ylim(ymin=emin, ymax=emax)
     ax.y.set_major(major=4)
@@ -83,7 +83,7 @@ def band(ctx, eigenval, poscar, output, data_only, removek, fig_ext, energy_rang
 @vasp.command()
 @click.option("-f", "pchg", default="CHGCAR", help="path to the CHGCAR file")
 def chg(pchg):
-    """analyse VASP CHG/CHGCAR file
+    r"""analyse VASP CHG/CHGCAR file
 
     The command will do the following:
 
@@ -104,9 +104,11 @@ def _plot_pdos(graph, dos, aps, spin=None, colors=None):
     """plot projected density of states and export to pdos.dat
 
     Args:
-        graph (Graph)
-        dos (DensityOfStates)
-        aps (str) : atom-projector
+        spin: spin-channel index to plot
+        colors: colors for the plotted groups
+        graph (Graph): Grace graph receiving the datasets
+        dos (DensityOfStates): density-of-states object to plot
+        aps (str): atom-projector
     """
     from mushroom.core.data import export_2d_data
     from mushroom.core.dos import split_ap
@@ -174,7 +176,7 @@ def dos_(ctx, doscar, vasprunxml, output, poscar, energy_range, aps, fig_ext):
             ax.set_xlim(xmin=emin, xmax=emax)
             ax.tight_graph(yscale=1.1, xscale=None)
         except ValueError as err:
-            raise ValueError("invalid energy range", energy_range) from err
+            raise ValueError(f'invalid energy range: {energy_range}') from err
     else:
         ax.tight_graph(yscale=1.1)
 
@@ -216,14 +218,14 @@ def _plot_pwav(graph, x, bs, apbs, spin, scale, colors=None, prop_area=False):
     """plot partial waves and export to pwav.dat
 
     Args:
-        graph (Graph)
-        x (1d array)
-        bs (BandStructure)
-        apbs (list)
-        spin (int)
-        scale (float)
-        colors (list)
-        prop_area (bool)
+        graph (Graph): Grace graph receiving the datasets
+        x (1d array): abscissa values
+        bs (BandStructure): band structure to analyze or plot
+        apbs (list): atom, projector and band selections for each group
+        spin (int): spin-channel index to plot
+        scale (float): multiplicative scaling factor
+        colors (list): colors for the plotted groups
+        prop_area (bool): make symbol area, rather than its diameter, proportional to the weight
     """
     import numpy as np
 
@@ -312,7 +314,7 @@ def pwav(procar, poscar, ksymbols, output, removek, prop_area, apbs, scale, spin
             ax.set_ylim(ymin=emin, ymax=emax)
             ax.tight_graph(xscale=None, yscale=None)
         except ValueError as err:
-            raise ValueError("invalid energy range", energy_range) from err
+            raise ValueError(f'invalid energy range: {energy_range}') from err
     else:
         ax.tight_graph(xscale=None, yscale=1.2)
 

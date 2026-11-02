@@ -8,6 +8,7 @@ import sys
 import click
 
 from mushroom.cli._utils import Group, check_exclusive, multi_option, opt_casename, opt_dirpath, opt_trans
+from typing import Optional
 
 # same as mushroom.gap.Eps.known_kind, which is not imported here to keep the entry fast
 _EPS_KINDS = ("eps", "inv", "invm1")
@@ -87,7 +88,7 @@ def _obtain_degw_by_eqpev(peqpev: str, shift: float = 0.0):
 
 
 # pylint: disable=R0914
-def _write_degw_data(ene, degw, band_st: int = 0, ap=None, ibands=None, qtl=None, output: str = None):
+def _write_degw_data(ene, degw, band_st: int = 0, ap=None, ibands=None, qtl=None, output: Optional[str] = None):
     """write degw data"""
     import numpy as np
 
@@ -246,7 +247,7 @@ def eps_(ctx, epsfile, kind, nbyte_recl, iomega, plot, show, data, compare_eps):
             _print_eps_omega(eps, i)
 
 
-def _plot_vmat(vmat, compare_vmat=None, maxsize: int = None, center_zero: bool = False):
+def _plot_vmat(vmat, compare_vmat=None, maxsize: Optional[int] = None, center_zero: bool = False):
     """plot Coulomb matrix"""
     import matplotlib.pyplot as plt
     import numpy as np

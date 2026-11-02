@@ -5,9 +5,10 @@ import re
 import tempfile
 import unittest as ut
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import click
+import numpy as np
 from click.testing import CliRunner
 
 from mushroom.cli import main
@@ -15,6 +16,7 @@ from mushroom.cli._utils import expand_multi_values, fill_optional_values
 from mushroom.cli.cell import _READERS, _WRITERS
 from mushroom.cli.gap import _EPS_KINDS
 from mushroom.cli.tools import _AVAILABLE_EOS
+from mushroom.cli.w2k import _plot_pwav
 from mushroom.core.eos import available_eos
 from mushroom.gap import Eps
 from mushroom.io import CellIO
@@ -274,6 +276,28 @@ class test_w2k_commands(ut.TestCase):
             self.assertTrue(Path("plotpdos.agr").exists())
             self.assertEqual(Path("pdos.dat").read_text().count("#atom-projector"), 2)
 
+    def test_band_invalid_energy_range(self):
+        with self.runner.isolated_filesystem():
+            self.copy_case()
+            result = self.runner.invoke(main, ["w2k", "band", "-e", "bad"])
+            self.assertIsInstance(result.exception, ValueError)
+            self.assertIn("invalid energy range: bad", str(result.exception))
+
+    def test_plot_pwav_scales_symbols(self):
+        """symbol size follows weight, or its square root with prop_area"""
+        pwav = np.array([[[4.0, 9.0]]])
+        eigen = np.array([[[1.0, 2.0]]])
+        bs = MagicMock()
+        bs.get_pwav.return_value = pwav
+        bs.get_eigen.return_value = eigen
+        for prop_area, expected in [(False, [[8.0], [18.0]]), (True, [[4.0], [6.0]])]:
+            graph = MagicMock()
+            _plot_pwav(graph, [0.0], bs, ["Si:s:1"], 0, 0.5, 2.0, colors=["red"], prop_area=prop_area)
+            args, kwargs = graph.plot.call_args
+            np.testing.assert_allclose(args[1], [[0.5], [1.5]])
+            np.testing.assert_allclose(kwargs["size"], expected)
+            self.assertEqual((kwargs["color"], kwargs["label"]), ("red", "Si-s"))
+
     def test_dos_requires_dosfile(self):
         result = self.runner.invoke(main, ["w2k", "dos"])
         self.assertEqual(result.exit_code, 2)
@@ -306,6 +330,47 @@ class test_gap_commands(ut.TestCase):
             peps = str(TEST_DATA / "diamond.eps-q1")
             self.invoke("eps", peps, "-n", "4", "-w", "1", "--plot", "--diff", peps)
             self.assertTrue(Path("eps_iq_1_iomega_1.png").exists())
+
+    def test_analyze_eqpev_from_case(self):
+        with self.runner.isolated_filesystem():
+            Path("diamond.struct").write_bytes((TEST_DATA / "1.struct").read_bytes())
+            for src, dst in [("diamond_1.eqpeV_GW", "diamond.eqpeV_GW"),
+                             ("diamond_2.eqpeV_GW0", "diamond.eqpeV_GW0")]:
+                Path(dst).write_bytes((TEST_DATA / src).read_bytes())
+            self.assertIn("G0W0 band structure", self.invoke("analyze-eqpev").output)
+            self.assertIn("KS band structure", self.invoke("analyze-eqpev", "-g", "ks").output)
+            self.assertIn("GW0 band structure", self.invoke("analyze-eqpev", "-g", "gw0").output)
+
+    def test_degw_of_identical_energy_files(self):
+        """the correction between a file and itself is zero"""
+        penergy = str(TEST_DATA / "1.energy")
+        with self.runner.isolated_filesystem():
+            self.invoke("degw", "--diff", penergy, penergy, "-b", "1", "-o", "d.dat")
+            rows = [l.split() for l in Path("d.dat").read_text().splitlines()
+                    if l.strip() and not l.startswith("#")]
+            self.assertTrue(rows)
+            self.assertTrue(all(float(r[1]) == 0.0 for r in rows))
+
+    def test_degw_rejects_different_kpoints(self):
+        with self.runner.isolated_filesystem():
+            result = self.runner.invoke(main, ["gap", "degw", "--diff", str(TEST_DATA / "1.energy"),
+                                               str(TEST_DATA / "2.energy")])
+            self.assertIsInstance(result.exception, ValueError)
+
+    def test_degw_ap_requires_qtl(self):
+        with self.runner.isolated_filesystem():
+            result = self.runner.invoke(main, ["gap", "degw", "-e", str(TEST_DATA / "diamond_1.eqpeV_GW"),
+                                               "--ap", "C:s"])
+            self.assertIn("qtl must be parsed", str(result.exception))
+
+    def test_vmat_plot(self):
+        pvmat = str(TEST_DATA / "1_diamond_q1.vmat")
+        with self.runner.isolated_filesystem():
+            self.invoke("vmat", pvmat, "--plot", "--cz", "-s", "10")
+            self.assertTrue(Path("vmat.png").exists())
+            self.assertTrue(Path("first_nega_eigvec.png").exists())
+            self.invoke("vmat", pvmat, "--plot", "--diff", pvmat, "-s", "-10")
+            self.assertTrue(Path("diff_vmat.png").exists())
 
     def test_degw_requires_input(self):
         self.assertEqual(self.runner.invoke(main, ["gap", "degw"]).exit_code, 2)

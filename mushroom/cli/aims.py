@@ -50,10 +50,10 @@ def append_basis(ctx, control_file, directory, species_defaults, elements, pgeom
 
     try:
         directory = get_basis_directory_from_alias(directory)
-    except ValueError:
+    except ValueError as err:
         basis_avail = search_basis_directories(species_defaults)
         if directory not in basis_avail:
-            raise ValueError("Basis {} is not available".format(directory))
+            raise ValueError("Basis {} is not available".format(directory)) from err
 
     print("Appending elements {} from {} to {}".format(elements, directory, control_file))
     sl = readlines_species_defaults(directory, *elements, species_defaults=species_defaults)
@@ -250,7 +250,7 @@ def band(ctx, **kwargs):
         try:
             emin, emax = decode_float_ends(args.energy_range)
         except ValueError as err:
-            raise ValueError("invalid energy range", args.energy_range) from err
+            raise ValueError(f'invalid energy range: {args.energy_range}') from err
     else:
         emin = -20
         emax = 20
@@ -339,8 +339,8 @@ def _handle_elem_tag_pair(elem_tag_pair):
     etv = elem_tag_pair.split(':', maxsplit=1)
     try:
         e, tv = etv
-    except ValueError:
-        raise ValueError(f"invalid elem:tag:value pair: {elem_tag_pair}")
+    except ValueError as err:
+        raise ValueError(f"invalid elem:tag:value pair: {elem_tag_pair}") from err
     t, v = _handle_tag_pair(tv)
     return e, t, v
 

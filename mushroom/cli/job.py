@@ -5,11 +5,11 @@ Modules heavier than click are imported inside the commands to keep the entry fa
 """
 import os
 import pathlib
-import subprocess as sp
 
 import click
 
 from mushroom.cli._utils import Group, multi_option
+from typing import Optional
 
 SUBMITTED_STAMP = ".submitted"
 
@@ -57,7 +57,7 @@ def _create_sbatch_script_object(script_path, opts_extra):
     return ss
 
 
-def _generate_sbatch_args(script_name: str, dep: str = None, dep_job_id: int = None,
+def _generate_sbatch_args(script_name: str, dep: Optional[str] = None, dep_job_id: Optional[int] = None,
                           sbatch_cmd: str = "sbatch"):
     """generate the arguments of submission command"""
     args = [sbatch_cmd,]
@@ -94,7 +94,7 @@ def submit(sbatch_script, dry, max_jobs, dep, dep_jobid, only, prefix, pat, cmd,
     """Copy calculation script and submit"""
     from mushroom.aims.analyse import is_finished_aimsdir
     from mushroom.core.ioutils import conv_integers_to_series
-    from mushroom.hpc import _logger, is_slurm_enabled
+    from mushroom.hpc import _logger, is_slurm_enabled, sbatch_submit
 
     # exit when it is not on an HPC and is not a dry run
     if not is_slurm_enabled() and not dry:
@@ -108,7 +108,6 @@ def submit(sbatch_script, dry, max_jobs, dep, dep_jobid, only, prefix, pat, cmd,
     ss = _create_sbatch_script_object(script_path, sbatch_opts_extra)
 
     script_name = script_path.name
-    cwd = pathlib.Path(".").absolute()
     all_dirs = _generate_dir_list(pat, only)
 
     jobids_submitted = []
@@ -136,29 +135,23 @@ def submit(sbatch_script, dry, max_jobs, dep, dep_jobid, only, prefix, pat, cmd,
         ss.write(d / script_name)
         os.chmod(d / script_name, 0o775)
 
-        os.chdir(d.absolute())
         if not dry:
             sbatch_args = _generate_sbatch_args(script_name, dep, dep_jobid, sbatch_cmd=cmd)
             _logger.debug("Running subprocess: %s", " ".join(sbatch_args))
-            p = sp.Popen(sbatch_args, stdout=sp.PIPE, stderr=sp.PIPE)
-            out, _ = p.communicate()
-            out = str(out, encoding='utf-8')
-            ret = p.returncode
+            ret, jobid = sbatch_submit(script_name, sbatch_cmd=cmd, extra_args=sbatch_args[1:-1], cwd=d)
             if ret == 0:
-                jobid = int(out.split()[-1])
                 dep_jobid = jobid
                 jobids_submitted.append(jobid)
                 print("Submitted copied {} at directory {}, jobid {}".format(script_name, d, jobid))
                 submitted += 1
                 # create an empty stamp to mark already submitted
-                pathlib.Path(SUBMITTED_STAMP).touch()
+                submitted_stampfile.touch()
             else:
                 print("Failed to submit {} at directory {}".format(script_name, d))
                 failed += 1
         else:
             print("Entered {}, exiting as dry-run".format(d))
             skipped += 1
-        os.chdir(cwd)
 
     if submitted >= max_jobs:
         print("Submitted {} jobs, maxmimal at single run, now take a break".format(submitted))

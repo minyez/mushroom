@@ -81,6 +81,7 @@ class MultiValueCommand(click.Command):
     """command that supports :class:`MultiValueOption` and :class:`OptionalValueOption`"""
 
     def parse_args(self, ctx, args):
+        """parse options while allowing the configured variable-length option values"""
         flags = set()
         consts = {}
         for param in self.params:
@@ -94,6 +95,7 @@ class MultiValueCommand(click.Command):
 
 class Group(click.Group):
     """group whose commands support the options in this module"""
+
     command_class = MultiValueCommand
 
 

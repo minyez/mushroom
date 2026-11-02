@@ -33,7 +33,7 @@ def rsync_and_untar(tarball: pathlib.PosixPath, remote_ip: str, dirpath: str,
             print("running commands:", " ".join(cmds))
         sp.call(cmds)
     except sp.CalledProcessError:
-        warnings.warn("fail to rsync {} to {}:{}/".format(tarball, remote_ip, dirpath))
+        warnings.warn("fail to rsync {} to {}:{}/".format(tarball, remote_ip, dirpath), stacklevel=2)
         return
 
     try:
@@ -45,7 +45,7 @@ def rsync_and_untar(tarball: pathlib.PosixPath, remote_ip: str, dirpath: str,
             print("running commands:", " ".join(cmds))
         sp.call(cmds)
     except sp.CalledProcessError:
-        warnings.warn("fail to extract {} at {}:{}".format(tarball.name, remote_ip, dirpath))
+        warnings.warn("fail to extract {} at {}:{}".format(tarball.name, remote_ip, dirpath), stacklevel=2)
     print("Done rsyncing", str(tarball), "to", "{}:{}".format(remote_ip, dirpath))
 
 
@@ -58,7 +58,7 @@ def rsync_rc(remote_ip: str, verbose: bool = False):
             print("running commands:", " ".join(cmds))
         sp.call(cmds)
     except sp.CalledProcessError:
-        warnings.warn("fail to rsync home rcfile to {}:~/".format(remote_ip))
+        warnings.warn("fail to rsync home rcfile to {}:~/".format(remote_ip), stacklevel=2)
     print("Done rsyncing homerc to", "{}:~/.mushroomrc".format(remote_ip))
 
 

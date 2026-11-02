@@ -49,13 +49,15 @@ def _plot_pwav(graph, x, bs, apbs, spin, ref, scale, colors=None, prop_area=Fals
     """plot partial waves
 
     Args:
-        graph (Graph)
-        x (1d array)
-        bs (BandStructure)
-        spin (int)
-        scale (float)
-        colors (list)
-        prop_area (bool)
+        ref: energy reference subtracted from the eigenvalues
+        apbs: atom, projector and band selections for each group
+        graph (Graph): Grace graph receiving the datasets
+        x (1d array): abscissa values
+        bs (BandStructure): band structure to analyze or plot
+        spin (int): spin-channel index to plot
+        scale (float): multiplicative scaling factor
+        colors (list): colors for the plotted groups
+        prop_area (bool): make symbol area, rather than its diameter, proportional to the weight
     """
     import numpy as np
 
@@ -136,7 +138,7 @@ def band(ctx, casename, dirpath, energyfile, ksymbols, output, removek, fig_ext,
             ax.set_ylim(ymin=emin, ymax=emax)
             ax.tight_graph(xscale=None, yscale=None)
         except ValueError as err:
-            raise ValueError("invalid energy range", energy_range) from err
+            raise ValueError(f'invalid energy range: {energy_range}') from err
     else:
         ax.tight_graph(xscale=None)
 
@@ -152,9 +154,11 @@ def _plot_pdos(graph, dos, aps, spin=None, colors=None):
     """plot projected density of states and export to pdos.dat
 
     Args:
-        graph (Graph)
-        dos (DensityOfStates)
-        aps (str) : atom-projector
+        spin: spin-channel index to plot
+        colors: colors for the plotted groups
+        graph (Graph): Grace graph receiving the datasets
+        dos (DensityOfStates): density-of-states object to plot
+        aps (str): atom-projector
     """
     from mushroom.core.data import export_2d_data
     from mushroom.core.dos import split_ap
@@ -209,7 +213,7 @@ def dos_(casename, unit, dosfiles, dirpath, output, energy_range, aps, fig_ext):
             ax.set_xlim(xmin=emin, xmax=emax)
             ax.tight_graph(yscale=1.1, xscale=None)
         except ValueError as err:
-            raise ValueError("invalid energy range", energy_range) from err
+            raise ValueError(f'invalid energy range: {energy_range}') from err
     else:
         ax.tight_graph(yscale=1.1)
 
