@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """plane-wave basis related functionality"""
 from itertools import product
-from typing import Sequence
+from collections.abc import Sequence
 import numpy as np
 
 from mushroom.core.constants import ANG2AU, EV2HA, PI
@@ -9,6 +9,7 @@ from mushroom.core.typehint import Latt3T3, RealVec3D, IntVec3D
 from mushroom.core.unit import LengthUnit, EnergyUnit
 from mushroom.core.crystutils import get_recp_latt
 from mushroom.core.logger import loggers
+from typing import Optional
 
 _logger = loggers['pw']
 
@@ -17,11 +18,12 @@ class PWBasis(LengthUnit, EnergyUnit):
     """plane-wave basis
 
     Args:
-        cutoff (float) : cut-off energy
-        latt (Latt3T3) : real-space lattice vectors
+        cutoff (float): cut-off energy
+        latt (Latt3T3): real-space lattice vectors
         eunit, lunit (str): unit of cutoff and lattice vectors input
         order_kind
     """
+
     known_order_kind = (None, "vasp")
 
     def __init__(self,
@@ -29,7 +31,7 @@ class PWBasis(LengthUnit, EnergyUnit):
                  latt: Latt3T3,
                  eunit: str = "ry",
                  lunit: str = "au",
-                 order_kind: str = None):
+                 order_kind: Optional[str] = None):
         LengthUnit.__init__(self, lunit=lunit)
         EnergyUnit.__init__(self, eunit=eunit)
         self.latt = np.array(latt)
@@ -84,13 +86,13 @@ class PWBasis(LengthUnit, EnergyUnit):
             self.latt = self.latt * coef
             self._lunit = new
 
-    def get_ipw(self, kpt: RealVec3D, order_kind: str = None, symmetrize: bool = False):
+    def get_ipw(self, kpt: RealVec3D, order_kind: Optional[str] = None, symmetrize: bool = False):
         """get index of planewave basis at kpoint ``kpt``
 
         Args:
+            symmetrize: reduce plane waves using inversion symmetry
             kpt (ndarray, (3,)): the kpoint vector in the reciprocal lattice unit
-            order_kind (str)
-            is_real (bool): if wave function to expand is real.
+            order_kind (str): plane-wave ordering convention; None uses the object's convention
         """
         try:
             np.add(kpt, np.zeros(3))
@@ -125,8 +127,8 @@ def estimate_npw(encut: float, vol: float) -> int:
     """estimate the number of plane waves within a kinetic energy cutoff
 
     Args:
-        encut (float) : the cutoff in eV
-        vol (float) : volume of the cell in Angstrom^3
+        encut (float): the cutoff in eV
+        vol (float): volume of the cell in Angstrom^3
 
     Returns:
         int
@@ -146,9 +148,8 @@ def fold_small_G_semisphere(ipw: Sequence[IntVec3D], kpt: RealVec3D):
     if kpt is Gamma point, those Gx<0 are folded
 
     Args:
-        ipw (ndarray)
-        kpt (ndarray)
-
+        ipw (ndarray): integer reciprocal-lattice coefficients of shape (npw, 3)
+        kpt (ndarray): fractional reciprocal coordinates of the k-point
     Returns:
         tuple, each member (index of nega_G, index of correspond_posi_G)
     """

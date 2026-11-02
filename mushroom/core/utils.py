@@ -53,8 +53,7 @@ def get_current_timestamp(with_weekday: bool = False,
 
 def raise_no_module(mod: Union[None, ModuleType], modname: str,
                     msg: Union[str, None] = None):
-    """Raise if a module is not found (set to None) when it is required
-    """
+    """Raise if a module is not found (set to None) when it is required"""
     if mod is None:
         if msg is None:
             raise ModuleNotFoundError("require {}".format(modname))

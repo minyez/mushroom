@@ -3,7 +3,6 @@
 """utilities related to k-mesh"""
 from itertools import product
 from collections.abc import Iterable
-from typing import List, Tuple
 import numpy as np
 try:
     import spglib
@@ -25,9 +24,13 @@ def check_on_line_segment(x_0, x_st, x_ed, atol=1e-5):
     """Check if point x_0 lies on the line segment specified by points x_st and x_ed
 
     Args:
+        x_st: start of the line segment
+        x_ed: end of the line segment
+        x_0: point to test
+        atol: absolute coordinate tolerance for the segment check
         x_0, x_st, x_ed (1d-array-like)
 
-    Return:
+    Returns:
         True if x_0 lies between x_st and x_ed, otherwise False
     """
     x0st = np.subtract(x_0, x_st)
@@ -124,7 +127,7 @@ class KPathLinearizer:
         Args:
             kpts (2d-array, shape N*3): k-points in fractional coordinates
 
-        Return:
+        Returns:
             a list of float lists or None
         """
         if self._x is None:
@@ -161,6 +164,7 @@ class MPGrid:
         shift (ndarry)
         sort (bool)
     """
+
     _dtype = 'float64'
 
     def __init__(self, nk1: int, nk2: int, nk3: int, spgcell=None,
@@ -180,15 +184,13 @@ class MPGrid:
 
     @property
     def grids(self):
-        """array, integer grids of kmesh
-        """
+        """array, integer grids of kmesh"""
         return uniform_int_kmesh(self._kdivs[0], self._kdivs[1], self._kdivs[2],
                                  shift=self._shift, sort=self._require_sort)
 
     @property
     def kpts(self):
-        """array, reciprocal coordinates of mesh points
-        """
+        """array, reciprocal coordinates of mesh points"""
         return np.divide(self.grids, self._kdivs)
 
     @property
@@ -212,7 +214,7 @@ def find_k_segments(kpts):
     Usually, the number of kpoints on one line segments is no less than 3.
 
     Args:
-        kvec (array-like): the kpoint vectors to analysis, shape, (n,3)
+        kpts (array-like): the kpoint vectors to analysis, shape, (n,3)
 
     Returns:
         list, with tuple as members. Each tuple has 2 int members,
@@ -259,6 +261,10 @@ def uniform_int_kmesh(nk1: int, nk2: int, nk3: int,
     """generate a uniform or homogeneous kpoint mesh
 
     Args:
+        sort: sort the returned vectors using the requested convention
+        nk3: number of mesh points along the third reciprocal vector
+        nk2: number of mesh points along the second reciprocal vector
+        nk1: number of mesh points along the first reciprocal vector
         nk1, nk2, nk3 (int): the number of division on each reciprocal vector
         shift (Iterable): containing 3 integers
 
@@ -281,6 +287,5 @@ def uniform_int_kmesh(nk1: int, nk2: int, nk3: int,
         raise ValueError("expected Iterable for shift, got %s" % type(shift)) from err
 
 
-def join_ksymbol_strings(ksymbols_segments: List[Tuple[str, str]]) -> List[str]:
-    """
-    """
+def join_ksymbol_strings(ksymbols_segments: list[tuple[str, str]]) -> list[str]:
+    """reserved interface for joining adjacent k-point label segments"""

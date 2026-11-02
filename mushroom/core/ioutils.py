@@ -2,16 +2,18 @@
 # pylint: disable=C0209
 """this module defines some common used utilities for file and string I/O"""
 import os
-import fnmatch
 import pathlib
 import re
 import logging
 from contextlib import contextmanager
 from io import TextIOWrapper, StringIO
-from collections import OrderedDict
+from collections import deque
+from itertools import groupby, islice
+from difflib import SequenceMatcher
 from collections.abc import Iterable, Callable
-from sys import stdout
-from typing import List, Union, Sequence, Tuple, Any, Set
+import sys
+from typing import Union, Any, Optional
+from collections.abc import Sequence
 
 # make it work as a standalone module
 try:
@@ -33,82 +35,74 @@ del create_logger
 # pylint: disable=R0912,R0914,R0915
 def grep(pattern, filename, is_binary: bool = False, error_not_found: bool = False,
          from_behind: bool = False, return_group: Union[bool, int, Sequence[int]] = False,
-         maxcounts: int = None, maxdepth: int = None, return_linenum: bool = False) -> List:
+         maxcounts: Optional[int] = None, maxdepth: Optional[int] = None, return_linenum: bool = False) -> list:
     """emulate command line grep with re package
 
     Args:
-        pattern (str or re.Pattern object) : pattern to match in the line
-        filename (str, file-like, Iterable of str) :
+        pattern (str or re.Pattern object): pattern to match in the line
+        filename (str, file-like, Iterable of str):
             str: filename to search
             file-like: handle of file
             Iterable: contents of a file from readlines()
-        is_binary (bool)
+        is_binary (bool): read bytes; the regular-expression pattern must also use bytes
         from_behind (bool): search from behind
         error_not_found (bool): raise when no match is found
-        maxcounts (int) : maximal times of matching
-        maxdepth (int) : end of line to search
-        return_group (bool): return re.Match object
+        maxcounts (int): maximal times of matching
+        maxdepth (int): end of line to search
+        return_group (bool, int or sequence[int]): False returns full lines; True returns match objects.
+            An integer selects a regex group (including group 0), and a sequence selects a tuple of groups.
         return_linenum (bool): return both the matched lines and their indices in the contents
 
-    Returns
-        one list if return_linenum is False, re.Match object if return_group is True
-            otherwise the string of the matched line
-        otherwise another list of integers will be returned as well
+    Returns:
+        list or tuple: matched lines, match objects or selected groups according
+        to return_group. With return_linenum, also return their zero-based line
+        indices in the original input. A missing path returns None unless
+        error_not_found is True.
     """
-    def _ln_modifier(index, size):
-        ln = index
-        if from_behind:
-            ln = size - 1 - index
-        return ln
     pattern = re.compile(pattern)
+    matched, line_nums = [], []
+
+    def search(lines):
+        indexed = enumerate(lines)
+        if from_behind:
+            # Keep original indices while retaining only the requested tail.
+            indexed = reversed(deque(indexed, maxlen=maxdepth))
+        elif maxdepth is not None:
+            indexed = islice(indexed, maxdepth)
+        if maxcounts is not None and maxcounts <= 0:
+            return
+        for i, line in indexed:
+            newline = b"\n" if isinstance(line, bytes) else "\n"
+            match = pattern.search(line.rstrip(newline))
+            if match is None:
+                continue
+            line_nums.append(i)
+            if return_group is False:
+                matched.append(line)
+            elif return_group is True:
+                matched.append(match)
+            elif isinstance(return_group, int):
+                matched.append(match.group(return_group))
+            else:
+                matched.append(tuple(match.group(g) for g in return_group))
+            if maxcounts is not None and len(matched) >= maxcounts:
+                break
+
     if isinstance(filename, (str, os.PathLike)):
         filename = pathlib.Path(filename)
         if not filename.is_file():
             if error_not_found:
-                raise FileNotFoundError("{} is not a file".format(filename))
+                raise FileNotFoundError(f"{filename} is not a file")
             return None
-        mode = 'r' + 'b' * int(is_binary)
-        f = filename.open(mode=mode, encoding='utf-8')
-        container = f.readlines()
-        f.close()
-        del f
+        options = {} if is_binary else {"encoding": "utf-8", "errors": "replace"}
+        with filename.open("rb" if is_binary else "r", **options) as handle:
+            search(handle)
     elif isinstance(filename, (TextIOWrapper, StringIO)):
-        container = filename.readlines()
+        search(filename.readlines())
     elif isinstance(filename, Iterable):
-        container = filename
+        search(filename)
     else:
-        raise TypeError("expect str, file-like object or Iterable, got", type(filename))
-    line_nums = []
-    matched = []
-    n = 0
-    size = len(container)
-    if maxcounts is None:
-        maxcounts = size
-    if maxdepth is None:
-        maxdepth = size
-    # FIXME: any side effect when parsing a Iterable?
-    if from_behind:
-        container = reversed(container)
-    for i, l in enumerate(container):
-        m = pattern.search(l.strip('\n'))
-        if m is not None:
-            _logger.debug("grep matched %s", m.group())
-            line_nums.append(_ln_modifier(i, size))
-            if return_group:
-                if return_group is True:
-                    matched.append(m)
-                elif isinstance(return_group, int):
-                    matched.append(m.group(return_group))
-                else:
-                    matched.append(tuple(map(m.group, return_group)))
-            else:
-                matched.append(l)
-            n += 1
-            if n >= maxcounts:
-                break
-        if i + 1 >= maxdepth:
-            break
-
+        raise TypeError(f"expect str, file-like object or Iterable, got {type(filename)}")
     if return_linenum:
         return matched, line_nums
     return matched
@@ -124,11 +118,8 @@ def get_dirpath(path):
         str: the absolute path of parent directory, if filepath represents a file,
             otherwise the path of the directory
     """
-
-    p = os.path.abspath(path)
-    if os.path.isdir(p):
-        p += "/"
-    return os.path.dirname(p)
+    p = pathlib.Path(os.path.abspath(path))
+    return str(p if p.is_dir() else p.parent)
 
 
 def get_file_ext(path: Union[str, os.PathLike, TextIOWrapper], greedy: bool = True) -> str:
@@ -140,8 +131,8 @@ def get_file_ext(path: Union[str, os.PathLike, TextIOWrapper], greedy: bool = Tr
 
     Args:
         path (PathLike): the path of the file
-        greedy (bool): greedy searching the extension.
-            If False, the largest extension will be returned.
+        greedy (bool): True returns the final extension (gz for archive.tar.gz);
+            False returns everything after the first dot (tar.gz).
     """
     if isinstance(path, TextIOWrapper):
         path = pathlib.Path(path.name)
@@ -150,13 +141,7 @@ def get_file_ext(path: Union[str, os.PathLike, TextIOWrapper], greedy: bool = Tr
         return None
     if greedy:
         return path.suffix[1:]
-    name = path.name
-    m = re.search(r'\.', name)
-    if m is None:
-        end = len(name)
-    else:
-        end = m.end()
-    return name[end:]
+    return path.name.partition(".")[2]
 
 
 def get_filename_wo_ext(path: Union[str, os.PathLike], dirname=False) -> str:
@@ -164,23 +149,23 @@ def get_filename_wo_ext(path: Union[str, os.PathLike], dirname=False) -> str:
 
     Args:
         path (str): the path of file
-        dirname (bool): if dirname if included
+        dirname (bool): keep the directory part of the supplied path
+
+    Symbolic links are not followed. A path without a file name, such as ".",
+    is resolved first and the name of that directory is used.
     """
     path = pathlib.Path(path)
-    if dirname:
-        fn = path.name
-    else:
-        fn = path.resolve().name
-    return os.path.splitext(fn)[0]
+    if path.name in ("", ".."):
+        path = path.resolve()
+    return str(path.with_name(path.stem)) if dirname else path.stem
 
 
 def get_cwd_name():
-    """Get the name of current working directory
-    """
-    return os.path.basename(os.getcwd())
+    """Get the name of current working directory"""
+    return pathlib.Path.cwd().name
 
 
-def get_matched_files(regex: str = None, dirpath=".", relative=False) -> tuple:
+def get_matched_files(regex: Optional[str] = None, dirpath=".", relative=False) -> tuple:
     """Get the path of the files whose name matches a regex
 
     Directories are excluded and only files will be returned.
@@ -197,16 +182,18 @@ def get_matched_files(regex: str = None, dirpath=".", relative=False) -> tuple:
     """
     # check the exisitence of path
     fns = []
-    cwd = pathlib.Path('.').resolve()
+    cwd = pathlib.Path.cwd()
     dirpath = pathlib.Path(dirpath)
     if not dirpath.is_file():
         for f in dirpath.glob("*"):
+            if not f.is_file():
+                continue
             if regex is not None:
                 if re.search(regex, f.name) is None:
                     continue
             fns.append(f.resolve())
     if relative:
-        return tuple(str(f.relative_to(cwd)) for f in fns)
+        return tuple(os.path.relpath(f, cwd) for f in fns)
     return tuple(str(f) for f in fns)
 
 
@@ -215,7 +202,7 @@ def trim_after(string: str, regex: str, include_pattern=False) -> str:
 
     If fail to match any pattern, the original string is returned
 
-    The matched pattern is trimed as well.
+    The matched pattern is removed unless include_pattern is True.
 
     Args:
         string (str): the string to trim
@@ -238,28 +225,27 @@ def trim_comment(string: str, comment_regex=r'[\#\!]') -> str:
 
 def readlines_remove_comment(filename, comment_regex=r'[\#\!]',
                              keep_empty_lines=True, trim_space=False):
-    """read lines of a file
+    r"""read lines of a file
 
     Args:
-        filename (path-like, StringIO)
+        filename (path-like, StringIO): input path or readable text stream
         comment_regex (regex): regular expression parsed to ``trim_comment``
         keep_empty_lines (bool): exclude empty lines after comments are trimmed
         trim_space (bool): trim spaces including whitespace, tab, etc
 
     Returns:
-        list, each member being a line without trailing \\n"""
+        list, each member being a line without trailing \\n
+    """
     lines = []
     tc = "\n"
     if trim_space:
         tc = None
     with open_textio(filename) as h:
-        l = h.readline()
-        while l:
+        for l in h:
             _l = l.strip(tc)
             _l = trim_after(_l, comment_regex)
             if _l.strip() or keep_empty_lines:
                 lines.append(_l)
-            l = h.readline()
     return lines
 
 
@@ -289,103 +275,14 @@ def trim_both_sides(string: str, regex_left: str, regex_right: str, include_patt
     of the matched pattern, then match regex_right and trim the characters after.
 
     Args:
-        regex_left (regex):
-        regex_right (regex):
+        string: string to trim
+        regex_left (regex): regular expression marking the left boundary
+        regex_right (regex): regular expression marking the right boundary
         include_pattern (bool): if the matched pattern is included
         in the return string
     """
     string = trim_before(string, regex_left, include_pattern=include_pattern)
     return trim_after(string, regex_right, include_pattern=include_pattern)
-
-
-# def check_duplicates_in_tag_tuple(tagtuple) -> int:
-#     """Check if there is duplicate in a tag tuple, case sensitive
-#
-#     Args:
-#         tagTuple (tuple) : the tag tuple to check
-#     """
-#     dup = -1
-#     for i, k in enumerate(tagtuple):
-#         if k in tagtuple[:i]:
-#             dup = i
-#             break
-#     return dup
-
-
-# def data_normalization(data, scale=1.0, normByPeak=True):
-#     '''Normalize the 1D data.
-
-#     Args:
-#         data (iterable): the container of 1D data
-#         normByPeak (bool) : when set True, the normalization factor will be
-#             the peak absolute value. Otherwise, the sum of absolute values
-#             will be used as normalization factor.
-
-#     Returns:
-#         numpy array, the normalized data
-#     '''
-#     import numpy as np
-#     assert len(np.shape(data)) == 1
-#     assert isinstance(normByPeak, bool)
-
-#     _a = []
-#     try:
-#         _a = np.array(data, dtype="float64")
-#     except ValueError:
-#         raise ValueError("the data cannot be converted.")
-
-#     _sum = np.sum(np.abs(_a)) / scale
-#     _max = np.max(np.abs(_a)) / scale
-#     if normByPeak:
-#         return _a / _max
-#     return _a / _sum
-
-
-# def find_data_extreme(data):
-#     '''Find the point at which the data reaches extrema
-
-#     Returns:
-#         dict, with two keys, "min" and "max".
-#         Either key has a 2-member tuple with its first the min/max value
-#         and second the coordinate where it reaches the extreme
-#     '''
-#     pass
-
-def find_files(rootdir, pat):
-    """find the files under directory `dir` matching pattern ``pat``"""
-    for root, dirs, files in os.walk(rootdir):
-        for basename in files:
-            if fnmatch.fnmatch(basename, pat):
-                filename = os.path.join(root, basename)
-                yield filename
-
-
-def find_vol_dirs(path=".", voldir_pat=None, separator="_", index=1):
-    """Find names of directories corresponding to calculation with lattice of different volumes
-
-    Args:
-        path (str): the path to search directories within. Default is CWD.
-        voldir_pat (regex): the pattern of the names of volume directories
-            If not specified, use "V_x.xx" where x is 0-9
-        separator (str)
-        index (int)
-
-    Returns:
-        list of strings
-    """
-    p = voldir_pat
-    if p is None:
-        p = r"^V_\d.\d+"
-    dirs = []
-    for d in os.listdir(path):
-        if re.match(p, d):
-            dirs.append(d)
-
-    def __sort_vol(voldir_str):
-        return float(voldir_str.split(separator)[index])
-
-    dirs = sorted(dirs, key=__sort_vol)
-    return dirs
 
 
 def conv_string(string, conv2, *indices, sep=None, strips=None):
@@ -403,7 +300,8 @@ def conv_string(string, conv2, *indices, sep=None, strips=None):
     Returns:
         ``conv2``, or list of ``conv2`` type
     """
-    assert conv2 in [str, int, float, bool]
+    if not (conv2 in [str, int, float, bool]):
+        raise ValueError('conversion type must be str, int, float or bool')
     str_tmp = string.strip()
     if sep is not None:
         str_list = re.split(sep, str_tmp)
@@ -425,9 +323,9 @@ def conv_string(string, conv2, *indices, sep=None, strips=None):
                 "T": True,
                 ".TRUE.": True,
                 ".T.": True,
-                "FALSE": True,
-                "F": True,
-                ".FALSE.": True,
+                "FALSE": False,
+                "F": False,
+                ".FALSE.": False,
                 ".F.": False,
             }.get(x.upper(), None)
     else:
@@ -441,26 +339,30 @@ def conv_string(string, conv2, *indices, sep=None, strips=None):
     return list(map(convfunc, conv_strs))
 
 
-def get_first_last_line(filePath, encoding=stdout.encoding):
-    """Return the first and the last lines of file
-
-    The existence of filePath should be check beforehand.
+def get_first_last_line(filePath, encoding="utf-8"):
+    """return the unstripped first and last lines, or two empty strings for an empty file
 
     Args:
-        filePath (str): the path of the file
-        encoding (str): the encoding of the file. Default stdout.encoding
+        filePath (path-like): file to read
+        encoding (str): text encoding, default UTF-8
 
-    Returns
-        two strings (unstripped)
+    Returns:
+        tuple[str, str]: first and last lines, including their line endings
+
+    Only the two lines are decoded and the file is read backward from its end,
+    so a large file or undecodable bytes between the lines are not a problem.
     """
-    with open(filePath, "rb") as f:
-        first = f.readline()  # Read the first line.
-        f.seek(-2, os.SEEK_END)  # Jump to the second last byte.
-        while f.read(1) != b"\n":  # Until EOL is found...
-            # ...jump back the read byte plus one more.
-            f.seek(-2, os.SEEK_CUR)
-        last = f.readline()  # Read last line.
-    # encode string
+    with open(filePath, "rb") as handle:
+        first = handle.readline()
+        pos = handle.seek(0, os.SEEK_END)
+        tail = b""
+        # the newline ending the last line does not count as its start
+        while pos > len(first) and b"\n" not in tail[:-1]:
+            size = min(4096, pos - len(first))
+            pos -= size
+            handle.seek(pos)
+            tail = handle.read(size) + tail
+    last = tail[tail.rfind(b"\n", 0, max(len(tail) - 1, 0)) + 1:] or first
     return str(first, encoding), str(last, encoding)
 
 
@@ -475,9 +377,9 @@ def get_str_indices(container, string):
         list
     """
     if not isinstance(container, Iterable):
-        raise ValueError("expected Iterable, but got", type(container))
+        raise ValueError(f'expected Iterable, but got: {type(container)}')
     if not isinstance(string, str):
-        raise ValueError("expected str, but got", type(string))
+        raise ValueError(f'expected str, but got: {type(string)}')
     return [i for i, s in enumerate(container) if s == string]
 
 
@@ -512,7 +414,7 @@ def get_str_indices_by_iden(container, iden=None):
             elif isinstance(i, str):
                 ret.extend(get_str_indices(container, i))
     if ret:
-        return list(OrderedDict.fromkeys(ret).keys())
+        return list(dict.fromkeys(ret))
     return ret
 
 
@@ -541,31 +443,27 @@ def get_prj_indices(prjs, prj):
             ret.extend(get_str_indices_by_iden(prjs, iden))
     if not ret:
         raise ValueError("projector {} is not found in {}".format(prj, list(prjs)))
-    return list(OrderedDict.fromkeys(ret).keys())
+    return list(dict.fromkeys(ret))
 
 
 def print_file_or_iowrapper(*s, f=None, mode='w', encoding='utf-8', **kwargs):
     """print string s to file handler f
+
     Args:
-        s (str) :
-        f (str or TextIOWrapper) : the filename or file object where
+        encoding: encoding used when opening an output path
+        *s (str): values forwarded to print
+        f (str or TextIOWrapper): the filename or file object where
             the string is exported. If not set, stdout will be used.
-        mode (s) : only used when s is str
+        mode (s): only used when s is str
         kwargs: keyword arguments parsed to ``print``
     """
-    if f is None:
-        h = stdout
-    elif isinstance(f, (str, os.PathLike)):
-        h = open(f, mode=mode, encoding=encoding)
-    else:
-        h = f
-
-    print(*s, file=h, **kwargs)
-
     if isinstance(f, (str, os.PathLike)):
-        h.close()
-    elif isinstance(f, StringIO):
-        h.seek(0)
+        with open(f, mode=mode, encoding=encoding) as handle:
+            print(*s, file=handle, **kwargs)
+    else:
+        print(*s, file=sys.stdout if f is None else f, **kwargs)
+        if isinstance(f, StringIO):
+            f.seek(0)
 
 
 def readtext_split_emptyline(fn):
@@ -574,35 +472,21 @@ def readtext_split_emptyline(fn):
     Args:
         fn (PathLike or TextIOWrapper): filepath or a file object which supports readlines
 
-    Return:
+    Returns:
         list of strings
     """
-    strings = []
-    with open_textio(fn, 'r') as h:
-        lines = h.readlines()
-    # only one line, manually check it
-    if len(lines) == 1:
-        if lines[0].strip() != "":
-            return lines
-        return strings
-    # find index of empty line
-    # -1 refers to the dummy line before the first
-    indices_empty = [-1,] + [i for i, line in enumerate(lines) if line.strip() == ""] + [len(lines),]
-    n = len(indices_empty)
-    for i in range(n - 1):
-        st = indices_empty[i]
-        ed = indices_empty[i + 1]
-        if ed - st > 1:
-            strings.append("".join(lines[st + 1:ed]))
-    return strings
+    with open_textio(fn, 'r') as handle:
+        return ["".join(lines) for nonempty, lines in groupby(handle, key=lambda line: bool(line.strip()))
+                if nonempty]
 
 
-def cycler(i: int, lt: Union[List, Tuple], return_int=False):
+def cycler(i: int, lt: Union[list, tuple], return_int=False):
     """cycle the index according to the length of list/tuple
 
     Args:
-        i (int)
-        lt (list or tuple)
+        return_int: return the wrapped index instead of the selected element
+        i (int): index to cycle
+        lt (list or tuple): sequence whose elements are cycled
     """
     i = i % len(lt)
     if return_int:
@@ -610,12 +494,12 @@ def cycler(i: int, lt: Union[List, Tuple], return_int=False):
     return lt[i]
 
 
-def split_comma(s, convert: Callable = None) -> List:
-    """"split a comma-separated string (without whitespace)
+def split_comma(s, convert: Optional[Callable] = None) -> list:
+    """split a comma-separated string (without whitespace)
 
     Args:
-        s (str)
-        convert (callable) : type to convert.
+        s (str): string to convert
+        convert (callable): type to convert.
             If set, will attempt to convert each splitted string to type `convert`.
             If failed, it will be returned as str.
     """
@@ -633,14 +517,13 @@ def split_comma(s, convert: Callable = None) -> List:
     return container
 
 
-def _decode_num_ends(s: str, t, m_minus=True) -> List:
+def _decode_num_ends(s: str, t, m_minus=True) -> list:
     """internal function for decode string representing integer/float ends
 
-
     Args:
-        s (str) : string like '8.5:10.2', '-10.2:8', 'm9~'
+        s (str): string like '8.5:10.2', '-10.2:8', 'm9~'
         t : ``float`` or ``int``
-        m_minus (bool) : m before the number will be converted to minus.
+        m_minus (bool): m before the number will be converted to minus.
             useful when parsing range from command line arguments.
             If set False, ValueError will be raised if m is matched
 
@@ -655,13 +538,13 @@ def _decode_num_ends(s: str, t, m_minus=True) -> List:
     try:
         t_str = t_strs[t]
         ends_pattern = ends_patterns[t]
-    except KeyError:
-        raise ValueError("Unsupported type for number ends decoding")
+    except KeyError as err:
+        raise ValueError("Unsupported type for number ends decoding") from err
     matched = ends_pattern.fullmatch(s)
     _logger.debug("decoding %s ends: %s, matched? %r", t_str, s, matched)
     if matched:
         is_start_minus, start, is_end_minus, end = map(matched.group, range(1, 5))
-        if not m_minus and (is_start_minus or is_start_minus):
+        if not m_minus and (is_start_minus or is_end_minus):
             raise ValueError("m mark is not turned on. Use m_minus=True")
         if start is not None:
             start = t(start) * {None: 1}.get(is_start_minus, -1)
@@ -671,13 +554,12 @@ def _decode_num_ends(s: str, t, m_minus=True) -> List:
     raise ValueError("invalid {} ends string {}".format(t_str, s))
 
 
-def decode_int_ends(s: str, m_minus=True) -> List:
+def decode_int_ends(s: str, m_minus=True) -> list:
     """split and convert a string standing for two ends of an integer range to two numbers
 
-
     Args:
-        s (str) : string like '8:10', '-10:8', 'm9~'
-        m_minus (bool) : m before the number will be converted to minus.
+        s (str): string like '8:10', '-10:8', 'm9~'
+        m_minus (bool): m before the number will be converted to minus.
             useful when parsing range from command line arguments.
             If set False, ValueError will be raised if m is matched
 
@@ -687,13 +569,12 @@ def decode_int_ends(s: str, m_minus=True) -> List:
     return _decode_num_ends(s, int, m_minus)
 
 
-def decode_float_ends(s: str, m_minus=True) -> List:
+def decode_float_ends(s: str, m_minus=True) -> list:
     """split and convert a string standing for two ends of a float range to two numbers
 
-
     Args:
-        s (str) : string like '8.5:10.2', '-10.2:8', 'm9~'
-        m_minus (bool) : m before the number will be converted to minus.
+        s (str): string like '8.5:10.2', '-10.2:8', 'm9~'
+        m_minus (bool): m before the number will be converted to minus.
             useful when parsing range from command line arguments.
             If set False, ValueError will be raised if m is matched
 
@@ -703,13 +584,13 @@ def decode_float_ends(s: str, m_minus=True) -> List:
     return _decode_num_ends(s, float, m_minus)
 
 
-def decode_int_range(s: str) -> List:
+def decode_int_range(s: str) -> list:
     """decode a int range of a string into a list of string
 
     Both endpoints are included.
 
     Args:
-        s (str)
+        s (str): string to convert
     """
     int_range = re.compile(r"([\w]+)?([+-]?[\d]+)~([+-]?[\d]+)")
     decoded = []
@@ -726,38 +607,7 @@ def decode_int_range(s: str) -> List:
     return decoded
 
 
-def fortran_write(fortran_format: str, *args, file=stdout):
-    """write out arguments in a Fortran format (without parentheses)
-
-    Args:
-        fortran_format (str)
-        file (file-like object)
-    """
-    python_format = fortran_format
-    try:
-        print(python_format.format(*args), file=file)
-    except ValueError as err:
-        info = "unbalanced Fortran format string ({}) and number of arguments {}".format(fortran_format, len(args))
-        raise ValueError(info) from err
-    raise NotImplementedError
-
-
-def fortran_read(fstring: str, fortran_format: str):
-    """read in data according to Fortran format string (without parentheses)
-
-    This emulation is implemented by using ``re``
-
-    Args:
-        fstring (str) : string to decode as Fortran
-        fortran_format (str): Fortran format string
-
-    Returns:
-        list
-    """
-    raise NotImplementedError
-
-
-def get_banner(msg: str, char: str = "#", spacing: int = 4, prefix: str = None):
+def get_banner(msg: str, char: str = "#", spacing: int = 4, prefix: Optional[str] = None):
     """get banner string"""
     msg = msg.strip()
     len_msg = len(msg)
@@ -769,14 +619,9 @@ def get_banner(msg: str, char: str = "#", spacing: int = 4, prefix: str = None):
     return "\n".join(prefix + x for x in banner_list)
 
 
-def get_similar_str(s: str, slist: List[str]) -> str:
+def get_similar_str(s: str, slist: list[str]) -> str:
     """get the string in ``slist`` most similar to ``s``"""
-    from difflib import SequenceMatcher
-
-    similar_ratios = [SequenceMatcher(None, s, x).ratio() for x in slist]
-    if len(similar_ratios) > 0:
-        return slist[similar_ratios.index(max(similar_ratios))]
-    return None
+    return max(slist, key=lambda x: SequenceMatcher(None, s, x).ratio(), default=None)
 
 
 def str2bool(s: Any) -> Any:
@@ -803,10 +648,9 @@ def bool2str(b: Any, fortran_flavor: bool = False, uppercase: bool = False) -> A
     """Return a bool string according to input s
 
     Args:
-        s (any type): if s is a bool, convert to it to a corresponding string and return
-        fortran_flavor (bool)
-        uppercase (bool)
-
+        b (any type): if b is a bool, convert to it to a corresponding string and return
+        fortran_flavor (bool): surround the logical value with dots
+        uppercase (bool): use uppercase logical strings
     Returns:
         Any type
     """
@@ -827,24 +671,24 @@ def bool2str(b: Any, fortran_flavor: bool = False, uppercase: bool = False) -> A
 def open_textio(f: Union[str, os.PathLike, StringIO, TextIOWrapper], mode: str = 'r', encoding: str = 'utf-8'):
     """open, and read/write text from a filename(str)/path/TextIOWrapper/StringIO
 
-    Note that whatever instance f is, it will be closed when exiting ``with``.
+    Only files opened here are closed on exit. Borrowed streams remain open;
+    StringIO objects are rewound for reuse.
 
     Args:
         f (str, PathLike, TextIOWrapper, StringIO): file-like object to input and output
-        mode and encoding (str): specify the mode and encoding to process the file.
-            used only when f is str or PathLike, not applicable to StringIO or TextIOWrapper.
+        mode (str): mode used when opening a path
+        encoding (str): encoding used when opening a path
     """
-    if isinstance(f, (str, os.PathLike)):
+    owned = isinstance(f, (str, os.PathLike))
+    if owned:
         f = open(f, mode=mode, encoding=encoding)
     try:
         yield f
     finally:
-        # rewind StringIO for future use
-        if isinstance(f, StringIO):
-            f.seek(0)
-        # otherwise is a file, we need to close it
-        else:
+        if owned:
             f.close()
+        elif isinstance(f, StringIO) and not f.closed:
+            f.seek(0)
 
 
 def block_banner(info: str, width: int = 80, fence: str = "=", fill: str = " ") -> str:
@@ -877,42 +721,21 @@ def one_line_center_banner(info: str, width: int = 80, fill: str = "=") -> str:
     return "{} {} {}".format(*slist)
 
 
-def conv_integers_to_series(container_int: Union[List[int], Tuple[int], Set[int]], joint: str = "-") -> str:
+def conv_integers_to_series(container_int: Union[list[int], tuple[int], set[int]], joint: str = "-") -> list[str]:
     """Convert a list/tuple/set of integers to an integer series.
 
     Args:
+        joint: string joining the inclusive endpoints of each series
         container_int (list/tuple/set of integer): a container of integers.
             Duplicate will be discarded.
 
     Returns:
-        str
+        list[str], one string per consecutive series
     """
     if any(not isinstance(x, int) for x in container_int):
         raise ValueError("all members must be integers")
-    set_int = sorted(set(container_int))
     slist = []
-    n_int = len(set_int)
-
-    consecutive = 0
-    for i, x in enumerate(set_int):
-        if i == 0:
-            begin = x
-            last = x
-            consecutive = 0
-        if x == last + 1:
-            consecutive += 1
-        elif x > last + 1:
-            if consecutive == 0:
-                slist.append(str(last))
-            else:
-                slist.append(joint.join([str(begin), str(last)]))
-            begin = x
-            consecutive = 0
-        if i == n_int - 1:
-            if consecutive == 0:
-                slist.append(str(x))
-            else:
-                slist.append(joint.join([str(begin), str(x)]))
-        last = x
-
+    for _, group in groupby(enumerate(sorted(set(container_int))), key=lambda item: item[1] - item[0]):
+        values = [value for _, value in group]
+        slist.append(str(values[0]) if len(values) == 1 else joint.join(map(str, (values[0], values[-1]))))
     return slist

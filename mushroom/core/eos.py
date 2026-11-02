@@ -14,7 +14,7 @@ Rules of parameters:
     in order, then follows: B' (bp).
 """
 import numpy as np
-from typing import List
+from typing import Optional
 try:
     from scipy.optimize import curve_fit
 except ImportError:
@@ -68,16 +68,17 @@ def get_eos(name: str):
 
 
 def fit_eos(name, vols, enes,
-            initial_guess: List[float] = None,
-            vfit: List[float] = None):
+            initial_guess: Optional[list[float]] = None,
+            vfit: Optional[list[float]] = None):
     """Fit equation-of-state with input volume and energies
 
     Args:
-        name (str)
+        vols: input volumes; use the same volume unit for vfit
+        enes: energies corresponding to vols; the fit preserves the supplied energy unit
+        name (str): name identifying the requested object
         vols, enes (1-d array)
-        initial_guess (tuple/list)
-        vfit (1-d array)
-
+        initial_guess (tuple/list): initial equation-of-state fit parameters
+        vfit (1-d array): volumes at which to evaluate the fitted equation of state
     Returns:
         tuple (popt), float (r2), 1-d array (e) if vfit is None, otherwise
         tuple (popt), float (r2), 1-d array (e), 1-d array (vfit)

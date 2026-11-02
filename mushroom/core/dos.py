@@ -7,6 +7,7 @@ from mushroom.core.data import export_2d_data
 from mushroom.core.ioutils import (get_prj_indices, get_str_indices_by_iden,
                                    split_comma)
 from mushroom.core.logger import loggers
+from typing import Optional
 
 __all__ = [
     "DensityOfStates",
@@ -32,37 +33,30 @@ class DosError(Exception):
 
 
 class DensityOfStates(EnergyUnit):
-    """class for analyzing density of states (DOS) data
-
-    The energy grids of DOS and total DOS are required.
-    The energy grids should be 1d array-like object, with ``nedos`` as length.
-    The shape of total DOS should be (nspins, nedos)
+    """analyze total and projected densities of states
 
     Args:
-        egrid (1d-array-like) : energy grids
-        tdos (2d-array-like) : total density of states, (nspins, nedos).
-        efermi (float) : fermi energy
+        egrid (array-like): energy grid, shape (nedos,), in unit
+        tdos (array-like): total DOS, shape (nspins, nedos), in inverse energy units
+        efermi (float): Fermi energy in unit
+        pdos (array-like): projected DOS, shape (nspins, nedos, natms, nprjs)
+        atms (sequence[str]): labels for the atom axis of pdos
+        prjs (sequence[str]): labels for the projector axis of pdos
+        unit (str): energy unit, ev, ry or au
+        nelect (float): electron count used to estimate the Fermi energy
 
-    Optional args:
-        unit ('ev','ry','au'): the unit of the energy grid points, in lower case.
-        projection (dict): keyword arguments to parse local or projected DOS.
-            Generally, three keys are required, "atms", "prjs" and "pdos".
-            At initialization, pdos is necessary, but atms and prjs may not be parsed.
-            They can be parsed later by simply setting self.atms and self.prjs.
+    Raises:
+        DosError: if the total DOS and energy-grid dimensions disagree
     """
+
     _dtype = 'float64'
 
     def __init__(self, egrid, tdos, efermi=None, pdos=None, atms=None, prjs=None,
                  unit='ev', nelect=None):
-        try:
-            shape_e = np.shape(egrid)
-            shape_tdos = np.shape(tdos)
-            assert len(shape_e) == 1
-            assert len(shape_tdos) == 2
-            assert shape_tdos[1] == shape_e[0]
-        except AssertionError as err:
-            info = 'Inconsistent shape, egrid {} vs tdos {}'.format(shape_e, shape_tdos)
-            raise DosError(info) from err
+        shape_e = np.shape(egrid)
+        shape_tdos = np.shape(tdos)
+        if len(shape_e) != 1 or len(shape_tdos) != 2 or shape_tdos[1] != shape_e[0]:
+            raise DosError('Inconsistent shape, egrid {} vs tdos {}'.format(shape_e, shape_tdos))
 
         EnergyUnit.__init__(self, eunit=unit)
         self._egrid = np.array(egrid, dtype=self._dtype)
@@ -87,6 +81,9 @@ class DensityOfStates(EnergyUnit):
         """parse the projected DOS information
 
         Args:
+            prjs: projector labels corresponding to the projected DOS projector axis
+            pdos: projected DOS of shape (nspins, nedos, natms, nprjs)
+            atms: atom labels corresponding to the projected DOS atom axis
             keyword argument:
         """
         if pdos is None:
@@ -203,10 +200,10 @@ class DensityOfStates(EnergyUnit):
         """get the partial dos
 
         Args:
-            ispin (int) : 0 for spin-up and 1 for spin-down.
+            ispin (int): 0 for spin-up and 1 for spin-down.
                 Total dos will be returned otherwise or nspins=1
-            atm (int, str, Sequence) : atomic identifier, either index or symbol
-            prj (int, str, Sequence) : projector identifier, either index or name
+            atm (int, str, Sequence): atomic identifier, either index or symbol
+            prj (int, str, Sequence): projector identifier, either index or name
 
         Returns:
             1-d array
@@ -258,11 +255,11 @@ class DensityOfStates(EnergyUnit):
             raise ValueError("parse prjs first for projector string")
         return get_prj_indices(self._prjs, prj)
 
-    def get_tdos(self, ispin: int = None, reverse_spindn: bool = False):
+    def get_tdos(self, ispin: Optional[int] = None, reverse_spindn: bool = False):
         """get the total dos data
 
         Args:
-            ispin (int) : the spin channel, can be 0 or 1.
+            ispin (int): the spin channel, can be 0 or 1.
                 Left as None to return all spin channels.
                 Total dos summed from both spin channel (nspins=2) will be returned,
                 if ispin is negative.
@@ -292,12 +289,13 @@ class DensityOfStates(EnergyUnit):
         The data are separated by `sep`
 
         Args:
+            reverse_spindn: negate spin-down DOS for plotting
+            ispin: spin-channel index
             ispin, atms, prjs: see `get_tdos` method
             form (str or list/tuple): format string
-            transpose (bool) : True for array (egrid, dos1, dos2)
+            transpose (bool): True for array (egrid, dos1, dos2)
                 False for (xa, xb, xc).
-            sep (str):
-
+            sep (str): separator between exported values
         Returns:
             list of string. each string is one line as
 
@@ -341,7 +339,7 @@ def split_ap(ap: str):
         list, list
     """
     if " " in ap:
-        raise ValueError("whitespace is not allowed in atom-projector string, got", ap)
+        raise ValueError(f'whitespace is not allowed in atom-projector string, got: {ap}')
     try:
         a, p = ap.split(":")
     except ValueError as err:

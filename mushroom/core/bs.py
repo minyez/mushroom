@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-"""Module that defines class and utilities for band structure
-"""
+"""Module that defines class and utilities for band structure"""
 import re
 from collections.abc import Iterable
 from itertools import permutations
-from typing import Sequence, Union
+from typing import Union, Optional
+from collections.abc import Sequence
 from copy import deepcopy
-from numbers import Real, Number
+from numbers import Real
 
 try:
     import numpy as np
@@ -52,44 +52,31 @@ class BandStructureError(Exception):
 
 
 class BandStructure(EnergyUnit):
-    """Base class for analyzing band structure data.
-
-    The eigenvalues should be parsed in a shape of
-    (nspins, nkpts, nbands).
-    The dimensions are automatically checked.
-    Exception will be raised if their shapes are inconsistent.
-
-    Optional keyword arguments, if parsed, should have consistent
-    shape with the required arguments.
-    Exception will be raised if their shapes are inconsistent.
-
-    If no occ is parsed and efermi is parsed, the occupation number
-    will be calculated according to zero-temperature occupation,
-    i.e. occupied (1.0) if eigen < efermi
+    """analyze band energies, occupations and optional projector weights
 
     Args:
-        eigen (array-like) : the energy (eigenvalues) of all bands to be considered
+        eigen (array-like): energies, shape (nspins, nkpts, nbands), in unit
+        occ (array-like): occupations with the same shape as eigen; if absent,
+            efermi can define zero-temperature occupations (one below or at efermi)
+        weight (array-like): k-point weights of shape (nkpts,); defaults to equal weights
+        unit (str): energy unit, ev, ry or au
+        efermi (float): Fermi energy in unit; otherwise inferred from occupied states
+        pwav (array-like): dimensionless projector weights, shape
+            (nspins, nkpts, nbands, natms, nprjs)
+        atms (sequence[str]): labels for the atom axis of pwav
+        prjs (sequence[str]): labels for the projector axis of pwav
+        use_occ_only (bool): identify band edges from occupations alone instead
+            of also considering the energy ordering
 
-    Optional args:
-        occ (array-like) : the occupation numbers of all bands
-        weight (array-like) : the weights of each kpoint, 1-d array,
-            either integer weight or scaled weight. default to 1.0
-        unit ('ev','ry','au'): the unit of the eigenvalues
-        efermi (float): the Fermi level.
-            If not parsed, the valence band maximum will be used.
-        pwav (array-like): wave projection information
-        atms, prjs (list): specifies the names of atoms and projectors in wave projection
-        use_occ_only (bool): By default, both eigenvalues and occupation numbers will be
-            used to find the band edges.
-            if True, only the occupation number will be used.
-
-    Attributes:
+    Raises:
+        BandStructureError: if the array dimensions are inconsistent
     """
+
     _dtype = "float64"
     # pylint: disable=R0912,R0915
 
-    def __init__(self, eigen, occ=None, weight=None, unit: str = 'ev', efermi: float = None,
-                 pwav=None, atms: Sequence[str] = None, prjs: Sequence[str] = None,
+    def __init__(self, eigen, occ=None, weight=None, unit: str = 'ev', efermi: Optional[float] = None,
+                 pwav=None, atms: Optional[Sequence[str]] = None, prjs: Optional[Sequence[str]] = None,
                  use_occ_only: bool = False):
         shape_e = np.shape(eigen)
         _logger.debug("shape of eigen: %r", shape_e)
@@ -185,6 +172,7 @@ class BandStructure(EnergyUnit):
         """set occupation numbers
 
         Args:
+            allow_reset: allow replacing occupations already stored in the object
             occ (ndarray): occupation numbers, (nspins, nkpts, nbands)
         """
         if self._occ is not None and not allow_reset:
@@ -222,7 +210,8 @@ class BandStructure(EnergyUnit):
         occ[:, :, :n_states] = 1.0
         self._set_occupations(occ, allow_reset=allow_reset)
 
-    def reset_occupations(self, occ=None, efermi=None, n_states: int = None, unit: str = "ev"):
+    def reset_occupations(self, occ=None, efermi=None, n_states: Optional[int] = None, unit: str = "ev"):
+        """replace occupations using explicit values, a Fermi energy, or occupied-state count"""
         if occ is not None:
             self._set_occupations(occ, True)
         elif efermi is not None:
@@ -235,7 +224,7 @@ class BandStructure(EnergyUnit):
                 "occ, efermi, nelec are None. Please specify one of them.")
 
     def get_band_indices(self, *bands):
-        '''Filter the band indices in ``bands``.
+        """Filter the band indices in ``bands``.
 
         If no indices is specified, return all available band indices.
 
@@ -246,19 +235,18 @@ class BandStructure(EnergyUnit):
 
         Returns:
             list
-        '''
+        """
         b = []
         for ib in bands:
             b.append(self._convert_band_iden(ib))
         return b
 
-    def prune_bands(self, remove_from_start: int = None, remove_from_end: int = None):
+    def prune_bands(self, remove_from_start: Optional[int] = None, remove_from_end: Optional[int] = None):
         """Remove unwanted bands from beginning or from the end
 
         Args:
-            remove_from_start (int)
-            remove_from_end (int)
-
+            remove_from_start (int): number of lowest bands to remove
+            remove_from_end (int): number of highest bands to remove
         Returns:
             None
         """
@@ -287,9 +275,11 @@ class BandStructure(EnergyUnit):
 
     def _convert_band_iden(self, band_iden: Union[int, str]) -> int:
         """convert a string of band identifier, like "vbm", "cbm-2", "vbm+3"
+
         to the correpsonding band index.
 
         Args:
+            band_iden: band index or a string relative to the valence or conduction edge
             band_str (int, str)
 
         Returns:
@@ -342,60 +332,59 @@ class BandStructure(EnergyUnit):
 
     @property
     def eigen(self):
-        '''Array. Eigenvalues, (nspins, nkpts, nbands)'''
+        """Array. Eigenvalues, (nspins, nkpts, nbands)"""
         return self._eigen
 
     @property
     def occ(self):
-        '''Array. Occupation numbers, (nspins, nkpts, nbands)'''
+        """Array. Occupation numbers, (nspins, nkpts, nbands)"""
         return self._occ
 
     @property
     def weight(self):
-        '''Array. kpoints weight (int like), (nkpts, )'''
+        """Array. kpoints weight (int like), (nkpts, )"""
         return self._weight
 
     @property
     def efermi(self):
-        '''float. The energy of Fermi level.
+        """float. The energy of Fermi level.
 
         If fermi energy was not manually set and occ is available, it will be computed
         as the valence band maximum of first spin channel.
 
         None, if neither occupation nor explicit fermi energy was parsed
-        '''
+        """
         if self._efermi is None:
             return self.vbm
         return self._efermi
 
     @property
     def nelect(self):
-        '''Float. Total number of electrons'''
+        """Float. Total number of electrons"""
         return self._nelect
 
     @property
     def nspins(self):
-        '''Int. number of spin channels'''
+        """Int. number of spin channels"""
         return self._nspins
 
     @property
     def nkpts(self):
-        '''Int. number of kpoints'''
+        """Int. number of kpoints"""
         return self._nkpts
 
     @property
     def nbands(self):
-        '''Int. number of bands'''
+        """Int. number of bands"""
         return self._nbands
 
     @property
     def nstates(self):
-        '''Int. number of bands'''
+        """Int. number of bands"""
         return self._nbands
 
-    def parse_proj(self, pwav=None, atms: Sequence[str] = None, prjs: Sequence[str] = None):
-        """Parse the partial wave information
-        """
+    def parse_proj(self, pwav=None, atms: Optional[Sequence[str]] = None, prjs: Optional[Sequence[str]] = None):
+        """Parse the partial wave information"""
         if pwav is None:
             _logger.warning("no partial wave info parsed. skip")
             return
@@ -477,7 +466,7 @@ class BandStructure(EnergyUnit):
     # pylint: disable=R0912,R0915
     # TODO: issue exists in finding VBM/CBM when there is nan
     def compute_band_edges(self, reload: bool = False):
-        '''compute the band edges on each spin-kpt channel, using occupation number
+        """compute the band edges on each spin-kpt channel, using occupation number
 
         Note:
             When nbands is too small and all bands are found to be valence bands,
@@ -494,8 +483,8 @@ class BandStructure(EnergyUnit):
             set ``use_occ_only`` to True when creating the BandStructure object.
 
         Args:
-            reload (bool) : redo the calculation of band edges
-        '''
+            reload (bool): redo the calculation of band edges
+        """
         if self._occ is None:
             raise BandStructureError(
                 "need occupation number before computing band edges!")
@@ -676,7 +665,7 @@ class BandStructure(EnergyUnit):
         return type(self)(eigen, self.occ, self.weight, self.unit, self._efermi,
                           self._pwav, self._atms, self._prjs)
 
-    def _lazy_bandedge_return(self, attr: str = None):
+    def _lazy_bandedge_return(self, attr: Optional[str] = None):
         """lazy return of attribute related to band edges
 
         Args:
@@ -692,8 +681,7 @@ class BandStructure(EnergyUnit):
         return v
 
     def is_metal(self):
-        """bool. True if the bandstructure belongs to a metal, False otherwise
-        """
+        """bool. True if the bandstructure belongs to a metal, False otherwise"""
         return self._lazy_bandedge_return("_is_metal")
 
     @property
@@ -871,15 +859,19 @@ class BandStructure(EnergyUnit):
         return tuple((vb, cb))
 
     def get_transition(self,
-                       ivk: int = None,
-                       ick: int = None,
-                       ivb: Union[int, str] = None,
-                       icb: Union[int, str] = None,
+                       ivk: Optional[int] = None,
+                       ick: Optional[int] = None,
+                       ivb: Optional[Union[int, str]] = None,
+                       icb: Optional[Union[int, str]] = None,
                        ispin: int = 0,
                        return_index: bool = False):
         """get the transition energy between particular transition in a spin channel
 
         Args:
+            ivk: zero-based valence k-point index
+            ivb: valence-band index or band-edge identifier
+            ick: zero-based conduction k-point index
+            icb: conduction-band index or band-edge identifier
             ivk,ick (int): the kpoint index of valence and conduction band
             ivb,icb (int,str): the band index of valence and conduction band
             ispin (int): the spin channel
@@ -909,12 +901,13 @@ class BandStructure(EnergyUnit):
         return np.dot(self.direct_gaps(), self._weight) / np.sum(self._weight)
 
     # * Projection related functions
-    def effective_gap(self, ivb: int = None, icb: int = None,
+    def effective_gap(self, ivb: Optional[int] = None, icb: Optional[int] = None,
                       atm_vbm: AtmPrjToken = None,
                       prj_vbm: AtmPrjToken = None,
                       atm_cbm: AtmPrjToken = None,
                       prj_cbm: AtmPrjToken = None):
-        '''Compute the effective band gap between ``ivb`` and ``icb``,
+        """Compute the effective band gap between ``ivb`` and ``icb``,
+
         the responsible transition of which associates projector `proj_vbm` on `atom_vbm` in VB
         and `proj_cbm` on atom `atom_cbm` in CB.
 
@@ -931,7 +924,7 @@ class BandStructure(EnergyUnit):
 
         Note:
             Spin-polarization is not considered in retriving projection coefficients.
-        '''
+        """
         try:
             vb_coefs = self.get_pwav(atm_vbm, prj_vbm)
             cb_coefs = self.get_pwav(atm_cbm, prj_cbm)
@@ -973,8 +966,8 @@ class BandStructure(EnergyUnit):
         """get particular partial wave for projectors `proj` on atoms `atom`
 
         Args:
-            atm (int, str, or their Sequence)
-            prj (int, str, or their Sequence)
+            atm (int, str, or their Sequence): atom index, name, or selection of atoms
+            prj (int, str, or their Sequence): projector index, name, shell, or selection of projectors
             indices (int, str, or their Sequence): indices of band.
                 None to include all bands.
 
@@ -1129,9 +1122,12 @@ class BandStructure(EnergyUnit):
     # pylint: disable=R0914
     def get_dos(self, emin=None, emax=None, nedos=3000, smearing="Gaussian", sigma=0.05):
         """Generate a DensityOfStates object on a energy grid by smearing the band structure
+
         with particular smearing scheme
 
         Args:
+            emin: lower energy limit in the band's current energy unit
+            emax: upper energy limit in the band's current energy unit
             emin, emax (float): the minimum and maximum of energy grid.
                 If not specified, the minium and maximum value of the eigenvalues
                 will be used, respectively.
@@ -1189,15 +1185,20 @@ def random_band_structure(nspins: int = 1, nkpts: int = 1, nbands: int = 2,
                           natms: int = 1, nprjs: int = 1,
                           has_proj: bool = False, is_metal: bool = False) -> BandStructure:
     """Return a BandStructure object with fake band energies, occupations and
+
     projections
 
     Note:
         For test use only.
 
-    TODO:
-        randomize a kpath
+    TODO:         randomize a kpath
 
     Args:
+        nspins: number of spin channels
+        nprjs: number of projectors per atom
+        nkpts: number of k-points
+        nbands: number of bands
+        natms: number of atoms
         nspins, nkpts, nbands, natoms, nprojs (int):
             the dimensions of eigenvalues, occupation numbers and projections.
         has_proj (bool): if fake projection information is generated
@@ -1267,8 +1268,7 @@ def split_apb(apb: str):
         list, list, list
     """
     if " " in apb:
-        raise ValueError(
-            "whitespace is not allowed in atom-projector-band string, got", apb)
+        raise ValueError(f'whitespace is not allowed in atom-projector-band string, got: {apb}')
     try:
         a, p, b = apb.split(":")
     except ValueError as err:
@@ -1286,9 +1286,10 @@ def display_band_analysis(bs: BandStructure,
     """display analysis of band structure
 
     Args:
-        bs (BandStructure) : BandStructure object to analyze
+        unit: energy unit, ev or au/ha as supported by the called reader
+        bs (BandStructure): BandStructure object to analyze
         kpts : kpoints list
-        value_only (bool) : only show the value of gap, no kpoints or other explanation.
+        value_only (bool): only show the value of gap, no kpoints or other explanation.
             In this case gaps will be printed in the order of fundamental gap,
             direct gap at VBM and direct gap at CBM
         silent (bool): silent the output.
@@ -1371,10 +1372,10 @@ def display_band_analysis(bs: BandStructure,
 
 
 def _decode_itrans_string(s):
-    """
+    """decode a transition specification into k-point and band indices
 
     Args:
-        s (list of str): either "ivk:ick", "ivck:ivb:icb" or "ivk:ick:ivb:icb"
+    s (list of str): either "ivk:ick", "ivck:ivb:icb" or "ivk:ick:ivb:icb"
     """
     itrans = [x.strip() for x in s.split(":")]
 
@@ -1413,6 +1414,11 @@ def display_transition_energies(trans: Sequence[str],
     """display the transitions
 
     Args:
+        value_only: omit explanatory labels from the printed values
+        unit: energy unit, ev or au/ha as supported by the called reader
+        silent: return the formatted result without printing it
+        kpts: k-point coordinates of shape (nkpts, 3)
+        bs: band structure to analyze or plot
         trans (list of str): either "ivk:ick", "ivck:ivb:icb" or "ivk:ick:ivb:icb"
     """
     if bs.nspins != 1:
@@ -1463,17 +1469,16 @@ def display_transition_energies(trans: Sequence[str],
 
 
 def resolve_band_crossing(kx, bands, occ=None, pwav=None,
-                          deriv_thres: float = None, inplace: bool = False):
+                          deriv_thres: Optional[float] = None, inplace: bool = False):
     """Resolve the crossing between two bands to make each band smooth.
 
     Args:
-        kx (array-like)
-        bands (2-dim ndarray)
-        deriv_thres (float)
-        occ (2-dim ndarray)
-        pwav (4-dim ndarray)
-        inplace (bool)
-
+        kx (array-like): abscissa along the k-path, shape (nkpts,)
+        bands (2-dim ndarray): band energies of shape (nkpts, nbands)
+        deriv_thres (float): threshold for the derivative mismatch used to detect crossings
+        occ (2-dim ndarray): occupations with the same shape as the band energies
+        pwav (4-dim ndarray): projector weights reordered together with the bands
+        inplace (bool): modify the supplied arrays instead of copies
     Returns:
         2-dim ndarray (bands) if occ and pwav are None, otherwise
         2-dim ndarray (bands), 2-dim ndarray (occ) and 4-dim ndarray (pwav).

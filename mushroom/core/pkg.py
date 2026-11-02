@@ -3,8 +3,6 @@
 import pathlib
 from io import TextIOWrapper
 from os import PathLike
-from os.path import splitext, basename
-from re import match
 from typing import Union
 from mushroom.core.ioutils import get_file_ext, grep
 from mushroom.core.logger import loggers
@@ -34,7 +32,7 @@ def detect(path: Union[str, PathLike], fail_with_ext: bool = False) -> str:
         path (str or os.PathLike): path to the file
         fail_with_ext (bool): if set True, extension name will be returned if no package is detected
     """
-    fail = {True: get_file_ext(path)}.get(fail_with_ext, None)
+    fail = get_file_ext(path) if fail_with_ext else None
     for func in [detect_matchfn, detect_matchhead, detect_matchtail]:
         pkg = func(path)
         if pkg is not None:
@@ -102,7 +100,7 @@ def detect_matchfn(path: Union[str, PathLike, TextIOWrapper], fail_with_ext: boo
     if isinstance(path, TextIOWrapper):
         path = path.name
     path = pathlib.Path(path)
-    fail = {True: get_file_ext(path)}.get(fail_with_ext, None)
+    fail = get_file_ext(path) if fail_with_ext else None
     if path.is_dir():
         return None
     full = path.name
@@ -111,13 +109,12 @@ def detect_matchfn(path: Union[str, PathLike, TextIOWrapper], fail_with_ext: boo
         _logger.debug(detected_str, full, pkg)
         return pkg
     # try match the prefix of the filename
-    name = basename(path)
+    name = path.name
     for p, pkg in _package_specific_prefix.items():
-        if match(r'^' + p, name) is not None:
+        if name.startswith(p):
             _logger.debug(detected_str, full, pkg)
             return pkg
-    name, ext = splitext(full)
-    ext = ext[1:]
+    ext = path.suffix[1:]
     pkg = _package_specific_exts.get(ext, None)
     if pkg is not None:
         _logger.debug(detected_str, full, pkg)

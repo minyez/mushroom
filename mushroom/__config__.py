@@ -2,6 +2,7 @@
 """Extract configurations from rc files"""
 import os
 import sys
+from pathlib import Path
 import importlib.util
 from importlib.machinery import SourceFileLoader
 
@@ -11,17 +12,15 @@ from mushroom import __NAME__
 fn = __NAME__ + "rc"
 dotfn = "." + fn
 config_files = [
-    os.path.join(os.environ["HOME"], "." + __NAME__, fn),
-    os.path.join(os.environ["HOME"], dotfn),
+    os.path.join(str(Path.home()), "." + __NAME__, fn),
+    os.path.join(str(Path.home()), dotfn),
     dotfn,
 ]
 
 module_name = __NAME__ + ".__config__"
-found_config = False
 
 for config_file in config_files:
     if os.path.isfile(config_file):
-        found_config = True
         loader = SourceFileLoader(module_name, config_file)
         spec = importlib.util.spec_from_loader(module_name, loader)
         if spec is not None:

@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
-"""mushroom, a Multi-fUnctional, Simple and Helpful Research tOOlkit for Material science
-"""
+"""mushroom, a Multi-fUnctional, Simple and Helpful Research tOOlkit for Material science"""
 
 __NAME__ = "mushroom"
 __version__ = "0.1.0"

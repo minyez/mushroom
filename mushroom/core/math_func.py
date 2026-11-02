@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """math functions"""
 from numbers import Real, Number
-from typing import Sequence, Tuple, Union
+from typing import Union
+from collections.abc import Sequence
 
 import numpy as np
 try:
@@ -51,6 +52,10 @@ def sph_harm(l: Sequence[int], m: Sequence[int], theta: Sequence[float], phi: Se
     """wrapper of scipy.special.sph_harm
 
     Args:
+        theta: polar angle in radians
+        phi: azimuthal angle in radians
+        m: magnetic quantum number
+        l: angular momentum quantum number
         l,m (int): angular and azimuthal angular momentum quanta
         theta, phi (array): polar and azimuthal angles
     """
@@ -65,6 +70,8 @@ def sph_harm_xyz(l: Sequence[int], m: Sequence[int], xyz: Sequence[RealVec3D]):
     """compute spherical harmonics with Cartisian coordiantes
 
     Args:
+        m: magnetic quantum number
+        l: angular momentum quantum number
         xyz (array-like,(n,3)): Cartisian coordinates
         theta, phi (array): polar and azimuthal angles
     """
@@ -80,6 +87,8 @@ def rising_factor(N: Real, k: Real):
     (N)_k = Gamma(N+k)/Gamma(N)
 
     Args:
+        k: number of factors in the rising factorial
+        N: number of factors
         N, k (Real)
     """
     from scipy import special
@@ -105,23 +114,28 @@ def general_comb(N: Real, k: Real):
 
 
 def hyp2f2_1f1_series(a1: int, a2: int, b1: int, b2: int, x: Sequence[Real], scale=1.0):
-    '''compute generalized hypergeometric function 2F2 from finite series of 1F1
+    r"""compute generalized hypergeometric function 2F2 from finite series of 1F1
 
-    2F2(a1,a2;b1,b2;x) = \\sum_n (a1)_n(a2)_n/(b1)_n(b2)_n * x^n/n!
+    The series is::
 
-    2F2 is computed from a finite sum of Kummer's confluent hypergeometric function 1F1.
-    This is only possible when b2>a2.
+        2F2(a1,a2;b1,b2;x) = \\sum_n (a1)_n(a2)_n/(b1)_n(b2)_n * x^n/n!
 
-    2F2(a1,a2;b1,b2;x) = exp(x)\\sum^{b-d}_{n=0} (b-d,n)(a+n-1,n)/(c+n-1,n)/(d+n-1,n)
-                         1F1(a1+n;b1+n;-x) x^n/n!
-                       = \\sum^{b-d}_{n=0} (b-d,n)(a+n-1,n)/(c+n-1,n)/(d+n-1,n)
-                         1F1(b1-a1;b1+n;x) x^n/n!
+        2F2 is computed from a finite sum of Kummer's confluent hypergeometric function 1F1.
+        This finite series requires a2 - b2 to be a nonnegative integer.
+
+        2F2(a1,a2;b1,b2;x) = exp(x)\\sum^{b-d}_{n=0} (b-d,n)(a+n-1,n)/(c+n-1,n)/(d+n-1,n)
+                             1F1(a1+n;b1+n;-x) x^n/n!
+                           = \\sum^{b-d}_{n=0} (b-d,n)(a+n-1,n)/(c+n-1,n)/(d+n-1,n)
+                             1F1(b1-a1;b1+n;x) x^n/n!
 
     Args:
-        a1, a2, b1, b2 (int)
-        x (1d-array)
-        scale (float or 1d-array)
-    '''
+        b2: denominator parameter of the generalized hypergeometric function
+        b1: denominator parameter of the generalized hypergeometric function
+        a2: numerator parameter of the generalized hypergeometric function
+        a1: numerator parameter of the generalized hypergeometric function
+        x (1d-array): abscissa values
+        scale (float or 1d-array): multiplicative factor applied to the hypergeometric result
+    """
     from scipy import special
     upper = a2 - b2
     if upper < 0:
@@ -144,25 +158,22 @@ def hyp2f2_1f1_series(a1: int, a2: int, b1: int, b2: int, x: Sequence[Real], sca
 
 
 class Smearing:
-    """class with different smearing schemes implemented as static method
-    """
+    """class with different smearing schemes implemented as static method"""
 
     @staticmethod
     def gaussian(x, x0, sigma):
-        """Gaussian smearing
-        """
+        """Gaussian smearing"""
         return (np.exp(-np.subtract(x, x0)**2 / sigma**2 / 2.0) / sigma / np.sqrt(2.0 * PI))
 
     @staticmethod
     def lorentzian(x, x0, gamma):
-        """Gaussian smearing
-        """
+        """Gaussian smearing"""
         return gamma / (np.subtract(x, x0)**2 + gamma**2) / PI
 
 
 def _linspace_1d(start: Number, end: Number, n: int,
                  startpoint: bool = True,
-                 endpoint: bool = True) -> Tuple[Number]:
+                 endpoint: bool = True) -> tuple[Number]:
     npts_inbetween = n - int(startpoint) - int(endpoint)
     step = (end - start) / (npts_inbetween + 1)
     if not startpoint:
@@ -171,11 +182,11 @@ def _linspace_1d(start: Number, end: Number, n: int,
 
 
 def linspace(
-        start: Union[Number, Tuple[Number]],
-        end: Union[Number, Tuple[Number]],
+        start: Union[Number, tuple[Number]],
+        end: Union[Number, tuple[Number]],
         n: int,
         startpoint: bool = True,
-        endpoint: bool = True) -> Union[Tuple[Tuple[Number]], Tuple[Number]]:
+        endpoint: bool = True) -> Union[tuple[tuple[Number]], tuple[Number]]:
     """get grid points which is linearly distributed between starting and ending point
 
     Args:

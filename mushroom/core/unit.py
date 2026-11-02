@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Objects to manipulate units of physical quantities"""
 from mushroom.core.constants import ANG2AU, EV2HA, EV2RY, RY2HA
+from typing import Optional
 
 
 class UnitError(Exception):
@@ -24,7 +25,7 @@ class EnergyUnit:
         ('ry', 'ha'): RY2HA,
     }
 
-    def __init__(self, eunit: str = None):
+    def __init__(self, eunit: Optional[str] = None):
         if eunit is None:
             self._eunit = self._defaul_eu
         else:
@@ -64,7 +65,7 @@ class LengthUnit:
         ('ang', 'bohr'): ANG2AU,
     }
 
-    def __init__(self, lunit: str = None):
+    def __init__(self, lunit: Optional[str] = None):
         if lunit is None:
             self._lunit = self._default_lu
         else:

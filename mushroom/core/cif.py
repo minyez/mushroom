@@ -3,7 +3,6 @@
 # pylint: disable=C0209,W1514
 import os
 import re
-from typing import List
 from io import StringIO
 
 import numpy as np
@@ -17,8 +16,7 @@ _logger = loggers["cif"]
 
 
 class CifFile:
-    """
-    Object to handle the file conforming the format of crystallographic information file (CIF)
+    """Object to handle the file conforming the format of crystallographic information file (CIF)
 
     This includes parsing loops and values by reading file (read class method)
     and dump data to file (write method)
@@ -28,7 +26,7 @@ class CifFile:
     Data are stored in items, standing individually or in loop.
     The item name must starts with an underscore.
 
-    The loop starts with a single 'loop_', followed by names of containing items, each as a line.
+    The loop starts with a single ``loop_``, followed by names of containing items, each as a line.
     The first line that does not start with an underscore is treated
     as the start of the data entries. The data entries stops at a new line, loop or item.
 
@@ -62,7 +60,7 @@ class CifFile:
             print(self.export(), file=_h)
 
     @classmethod
-    def build(cls, name: str, items: dict, loops: List[dict]):
+    def build(cls, name: str, items: dict, loops: list[dict]):
         """create a CIF object containing single data block
 
         See CifBlk object for the arguments
@@ -84,16 +82,16 @@ class CifFile:
 
 
 class CifBlk:
-    """Object to handle CIF data block
+    """store a CIF data block with scalar items and loops
 
-    Each block is a dict, containing three keys:
-        name: a string, charactering the data block
-        items: a dict, the simple key-value pair in CIF
-        loops: a list, each member is a dict containing "keys" (a list) and "values" (list of lists)
-            the member of values list is one entry containing data corresponding to "keys".
+    Args:
+        name (str): name following the ``data_`` prefix
+        items (dict): scalar keyword-value pairs
+        loops (list[dict]): loop records with keys and values entries;
+            each row in values contains one value per keyword in keys
     """
 
-    def __init__(self, name: str, items: dict, loops: List[dict]):
+    def __init__(self, name: str, items: dict, loops: list[dict]):
         self._name = name
         self._items = items
         self._loops = loops
@@ -160,7 +158,8 @@ class CifBlk:
             # if the first column is a keyword ("_"), remove it since we only need value
             if _l.startswith("_"):
                 _, _l = _l.split(maxsplit=1)
-            assert _l.startswith(";")
+            if not (_l.startswith(";")):
+                raise ValueError(f"multi-line value must start with ';': {_l}")
             _l = "\"" + _l.lstrip(";")
             if len(_l) > 1:
                 _l = _l + " "
@@ -174,7 +173,7 @@ class CifBlk:
             _lines[-1] = "\"" + _lines[-1].lstrip(";")
             return ed, "".join(_lines)
 
-        name = lines[0].lstrip('data_')
+        name = lines[0].removeprefix('data_')
         items = {}
         loops = []
         i = 1
@@ -372,6 +371,7 @@ class Cif:
 
     def get_all_atoms(self):
         """return the symbols and positions of all atoms
+
         by performing symmetry operations on all inequivalent atoms
 
         Returns:
@@ -387,10 +387,8 @@ class Cif:
             if self.natm_ineq:
                 _logger.debug("natoms of each inequiv type: %r", self.natm_ineq)
                 if sum(self.natm_ineq) != len(atms):
-                    raise ValueError(
-                        "inconsistent number of atoms and entries after symmetry operations:",
-                        sum(self.natm_ineq), len(atms)
-                    )
+                    raise ValueError("inconsistent number of atoms and entries after symmetry operations: "
+                                     f"{sum(self.natm_ineq)} vs {len(atms)}")
             else:
                 _logger.debug("no multiplicity info in cif, skip consistency check")
             self.atms = atms
@@ -418,6 +416,7 @@ class Cif:
 
 def decode_equiv_pos_string(s):
     """Convert a string representing symmetry operation in CIF file
+
     to a rotation matrix R and a translation vector t
 
     The relation between original and transformed fractional coordinate, x and x',

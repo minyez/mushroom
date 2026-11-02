@@ -702,9 +702,8 @@ class test_nondiagonal_supercell(ut.TestCase):
 
 class test_spglib_convert(ut.TestCase):
 
+    @ut.skipUnless(spglib is not None, "spglib is not installed")
     def test_primitize(self):
-        if spglib is None:
-            return
         c = Cell.diamond("C")
         cprim = c.primitize()
         self.assertEqual(2, cprim.natm)

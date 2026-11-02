@@ -61,10 +61,9 @@ class test_math_func(ut.TestCase):
         self.assertAlmostEqual(0.32569524293385786878,
                                sph_harm_xyz(6, 2, [1, 0, 0]))
 
+    @ut.skipUnless(special is not None, "scipy is not installed")
     def test_hyp2f2_1f1_series_negax(self):
         """test computing hypergeometric function 2F2 from sum of 1F1 series"""
-        if special is None:
-            return
         x = np.array([-1.0, -2.0, -3.0])
         hyp2f2s = {
             (0.5, 3.0, 1.5, 3.0):
@@ -83,10 +82,9 @@ class test_math_func(ut.TestCase):
             print(value, hyp2f2)
             self.assertTrue(np.allclose(hyp2f2, value))
 
+    @ut.skipUnless(special is not None, "scipy is not installed")
     def test_rising_fator(self):
         """test rising factor"""
-        if special is None:
-            return
         N = [2, 3, 4, 5]
         rfs = {
             0: [1.0, 1.0, 1.0, 1.0],
@@ -97,10 +95,9 @@ class test_math_func(ut.TestCase):
             rf = rising_factor(N, k)
             self.assertTrue(np.allclose(rf, value))
 
+    @ut.skipUnless(special is not None, "scipy is not installed")
     def test_general_comb(self):
         """test general combination number"""
-        if special is None:
-            return
         N = [2, 3, 4, 5, 6]
         values = {
             0: [

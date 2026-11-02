@@ -17,8 +17,8 @@ def set_np_linewidth_ratio(ratio: float = 0.75, thres: int = 100):
     """set the array print linewidth to a ratio of terminal columns
 
     Args:
-        ratio (float)
-        thres (int)
+        ratio (float): fraction of the terminal width used for NumPy output
+        thres (int): threshold used by the operation
     """
     if term_columns > thres:
         np.set_printoptions(linewidth=int(term_columns * ratio))

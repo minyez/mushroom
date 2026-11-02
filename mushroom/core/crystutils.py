@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """Utilities for processing crystall-related quantities"""
 from copy import deepcopy
-from typing import List, Iterable, Tuple, Union
+from typing import Union
+from collections.abc import Iterable
 try:
     import numpy as np
 except ImportError:
@@ -41,10 +42,16 @@ def get_latt_vecs_from_latt_consts(a: float, b: float, c: float,
         a1_y = a1_z = a2_z = 0
 
     Args:
+        gamma: angle between a and b in degrees
+        c: lattice constant along this axis, in the selected length unit
+        beta: angle between a and c in degrees
+        b: lattice constant along this axis, in the selected length unit
+        alpha: angle between b and c in degrees
+        a: lattice constant along this axis, in the selected length unit
         a, b, c (float): length of lattice vectors (>0)
         alpha, beta, gamma (float): angles between lattice vectors in degree.
             90. is used for each as default.
-        decmials (int): round the calculated vectors, parsed to numpy ``around`` function
+        decimals (int): round the calculated vectors, parsed to numpy ``around`` function
     """
     from numpy import cos, sin
 
@@ -68,7 +75,7 @@ def get_latt_vecs_from_latt_consts(a: float, b: float, c: float,
     return np.round([a1, a2, a3], decimals=decimals)
 
 
-def get_latt_consts_from_latt_vecs(latt) -> Tuple[float]:
+def get_latt_consts_from_latt_vecs(latt) -> tuple[float]:
     """Convert lattice vectors in right-hand system to lattice constants
 
     Args:
@@ -77,9 +84,7 @@ def get_latt_consts_from_latt_vecs(latt) -> Tuple[float]:
     Returns:
         6 floats, a, b, c, alpha, beta, gamma (in degree)
     """
-    try:
-        assert np.shape(latt) == (3, 3)
-    except AssertionError:
+    if np.shape(latt) != (3, 3):
         raise ValueError("Invalid lattice vectors")
     a = np.array(latt)
     alen = np.linalg.norm(a, axis=1)
@@ -98,10 +103,11 @@ def get_all_atoms_from_symops(atms_ineq: Iterable[str], posi_ineq, symops: dict,
                               left_mult: bool = True, latt: Latt3T3 = None,
                               unit: str = "ang", iden_thres: float = 1e-5):
     """Get atomic symbols and positions of all atoms in the cell
+
     by performing symmetry operations on inequivalent atoms
 
     Args:
-        atms_ineq (list of str):
+        atms_ineq (list of str): element symbols of the symmetry-inequivalent atoms
         posi_ineq (array-like): positions in direct coordinate
         symops (dict): dictionary containing symmetry operations
         left_mult (bool):
@@ -109,7 +115,7 @@ def get_all_atoms_from_symops(atms_ineq: Iterable[str], posi_ineq, symops: dict,
             False: x'^T = x^T R + t^T
         latt (ndarray, (3,3)): lattice vectors, default using a diagonal
         unit (str): length unit
-        iden_thres (float) : threshold in unit for equalize two atoms
+        iden_thres (float): threshold in unit for equalize two atoms
     """
     if len(atms_ineq) != len(posi_ineq):
         raise ValueError("inequivalent atoms and positions are inconsistent")
@@ -126,8 +132,8 @@ def get_all_atoms_from_symops(atms_ineq: Iterable[str], posi_ineq, symops: dict,
     try:
         _logger.debug("# of symops: %r", len(symops["translations"]))
         rots, trans = symops["rotations"], symops["translations"]
-    except KeyError:
-        raise KeyError("symops must contain keys `rotations` and `translations`")
+    except KeyError as err:
+        raise KeyError("symops must contain keys `rotations` and `translations`") from err
     for r, t in zip(rots, trans):
         if not left_mult:
             r = np.transpose(r)
@@ -153,7 +159,8 @@ def get_all_atoms_from_symops(atms_ineq: Iterable[str], posi_ineq, symops: dict,
 
 # pylint: disable=C0301
 def periodic_duplicates_in_cell(direct_coord):
-    '''Return the coordinates and numbers of the duplicates of an atom
+    """Return the coordinates and numbers of the duplicates of an atom
+
     in a cell due to lattice translation symmetry
 
     Args:
@@ -162,8 +169,7 @@ def periodic_duplicates_in_cell(direct_coord):
     Note:
         The function works only when each component belongs to [0,1)
 
-    TODO:
-        Generalize this function to mirrors in n-th lattice shell
+    TODO:         Generalize this function to mirrors in n-th lattice shell
 
     Returns:
         tuple : the coordinates of all the atom duplicates due to transilational symmetry
@@ -174,10 +180,12 @@ def periodic_duplicates_in_cell(direct_coord):
     (([0, 0, 0], [1.0, 0, 0], [0, 1.0, 0], [1.0, 1.0, 0], [0, 0, 1.0], [1.0, 0, 1.0], [0, 1.0, 1.0], [1.0, 1.0, 1.0]), 8)
     >>> periodic_duplicates_in_cell([0,0.4,0])
     (([0, 0.4, 0], [1.0, 0.4, 0], [0, 0.4, 1.0], [1.0, 0.4, 1.0]), 4)
-    '''
+    """
     _pos = np.array(direct_coord, dtype="float64")
-    assert np.shape(_pos) == (3,)
-    assert all(_pos - 1.0 < 0)
+    if not (np.shape(_pos) == (3,)):
+        raise ValueError('position must contain three coordinates')
+    if not (all(_pos - 1.0 < 0)):
+        raise ValueError('fractional coordinates must be less than one')
     _dupcs = []
     _dupcs.append(direct_coord)
     # non-zero component
@@ -192,13 +200,14 @@ def periodic_duplicates_in_cell(direct_coord):
     return tuple(_dupcs), _n
 
 
-def atms_from_sym_nat(sym: Iterable[str], nat: Iterable[int]) -> List[str]:
+def atms_from_sym_nat(sym: Iterable[str], nat: Iterable[int]) -> list[str]:
     """Generate ``atom`` list for ``Cell`` initilization from list of atomic symbols
+
     and number of atoms
 
     Args :
-        sym (list of str) : atomic symbols
-        nat (list of int) : number of atoms for each symbol
+        sym (list of str): atomic symbols
+        nat (list of int): number of atoms for each symbol
 
     Returns :
         a list of str, containing symbol of each atom in the cell
@@ -222,7 +231,7 @@ def sym_nat_from_atms(atms: Iterable[str]):
     The order of appearence of the element is conserved in the output.
 
     Args :
-        atms (list of str) : symbols of each atom in the cell
+        atms (list of str): symbols of each atom in the cell
 
     Returns :
         list of str : atomic symbols
@@ -243,10 +252,11 @@ def sym_nat_from_atms(atms: Iterable[str]):
     return syms, [nat_dict[at] for at in syms]
 
 
-def select_dyn_flag_from_axis(axis, relax: bool = False) -> List[bool]:
+def select_dyn_flag_from_axis(axis, relax: bool = False) -> list[bool]:
     """Generate selective dynamic flags, i.e. [bool, bool, bool]
 
     Args:
+        axis: axis index 1, 2 or 3; 0 selects all axes
         relax (bool): if True, the flag for axis will be set as True.
             Otherwise False
     """
@@ -272,8 +282,7 @@ def axis_list(axis) -> tuple:
     """Generate axis indices from ``axis``
 
     Args:
-        axis (int or list of int)
-
+        axis (int or list of int): axis index 1, 2 or 3; 0 selects all axes
     Returns:
         tuple
     """
@@ -286,11 +295,7 @@ def axis_list(axis) -> tuple:
     elif isinstance(axis, (list, tuple)):
         _aSet = list(set(axis))
         for _a in _aSet:
-            try:
-                assert isinstance(_a, int)
-            except AssertionError:
-                pass
-            else:
+            if isinstance(_a, int):
                 if _a == 0:
                     _aList = [1, 2, 3]
                     break
@@ -307,7 +312,7 @@ SPGNUMBER2NAME = {
 }
 
 
-def get_density(latt: Latt3T3, atms: List[Union[int, str]], latt_unit: str = "ang") -> Tuple[float, float]:
+def get_density(latt: Latt3T3, atms: list[Union[int, str]], latt_unit: str = "ang") -> tuple[float, float]:
     """get the number and mass density of the crystal
 
     Args:

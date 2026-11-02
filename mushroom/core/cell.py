@@ -7,8 +7,10 @@ import os
 from io import StringIO
 from collections import OrderedDict
 from copy import deepcopy
+from contextlib import contextmanager
 from numbers import Real
-from typing import List, Sequence, Union, Iterable
+from typing import Union, Optional
+from collections.abc import Sequence, Iterable
 from itertools import product
 
 try:
@@ -47,8 +49,7 @@ __all__ = [
 
 
 class CellError(Exception):
-    """Exception in cell module
-    """
+    """Exception in cell module"""
 
 
 _logger = loggers["cell"]
@@ -58,25 +59,25 @@ class Cell(LengthUnit):
     """Cell structure class
 
     Args:
-        latt (array-like) : The lattice vectors
-        atoms (list of str) : The list of strings of type for each atom
+        latt (array-like): The lattice vectors
+        atoms (list of str): The list of strings of type for each atom
         corresponding to the member in pos
-        pos (array-like) : The internal coordinates of atoms
+        pos (array-like): The internal coordinates of atoms
         unit (str): the unit, in lower case, either "ang" (default) or "au".
         coord_sys (str or iterable): Coordinate system for the internal positions,
             either "D" (Direct, default) or "C" (Cartesian).
             When str is parsed, all atom position will be treated in this coordiante.
             When an iterable is parsed, the coordinate system which most atoms have
             will be used, and the atoms with the other system will be converted.
-        all_relax (bool) : default selective dynamics option for atoms.
+        all_relax (bool): default selective dynamics option for atoms.
             Set True (default) to allow all DOFs to relax
-        select_dyn (dict) : a dictionary with key-value pair as ``int: [bool, bool, bool]``,
+        select_dyn (dict): a dictionary with key-value pair as ``int: [bool, bool, bool]``,
             which controls the selective dynamic option for atom with the particular index
             (starting from 0). Default is an empty ``dict``
         comment (str): message about the cell, e.g. theory level, experimental conditions
         reference (str): the reference where the lattice structure is derived.
 
-When other keyword are parsed, they will be filtered out and no exception will be raised
+    When other keyword are parsed, they will be filtered out and no exception will be raised
 
     Examples:
     >>> Cell([[5.0, 0.0, 0.0], [0.0, 5.0, 0.0], [0.0, 0.0, 5.0]], ["C"], [[0.0, 0.0, 0.0]])
@@ -91,8 +92,8 @@ When other keyword are parsed, they will be filtered out and no exception will b
     def __init__(self, latt: Latt3T3, atms: Sequence[str], posi: Sequence[RealVec3D],
                  unit: str = 'ang', sort_atms: bool = True,
                  coord_sys: Union[str, Iterable] = 'D',
-                 select_dyn: dict = None, all_relax: bool = True,
-                 reference: str = None, comment: str = None, **kwargs):
+                 select_dyn: Optional[dict] = None, all_relax: bool = True,
+                 reference: Optional[str] = None, comment: Optional[str] = None, **kwargs):
 
         self.comment = "Default Cell class"
         if comment is not None:
@@ -103,9 +104,9 @@ When other keyword are parsed, they will be filtered out and no exception will b
         try:
             self._latt = np.array(latt, dtype=self._dtype)
             self._posi = np.array(posi, dtype=self._dtype)
-        except ValueError:
+        except ValueError as err:
             raise self._err(
-                "Fail to create latt and posi array. Please check.")
+                "Fail to create latt and posi array. Please check.") from err
         self._atms = [a.capitalize() for a in atms]
         _logger.debug("cell._atms %r\nconverted from atms %r", self._atms, atms)
         self._check_input_consistency()
@@ -114,12 +115,14 @@ When other keyword are parsed, they will be filtered out and no exception will b
         # TODO: allow input coord_sys for each atom
         if isinstance(coord_sys, str):
             self._coord_sys = coord_sys.upper()
-            assert self._coord_sys in ["C", "D"]
+            if not (self._coord_sys in ["C", "D"]):
+                raise ValueError('coordinate system must be C or D')
         elif isinstance(coord_sys, Iterable):
             if len(coord_sys) != self.natm:
                 raise ValueError("numbers of specified coord system is incompatible with natms")
             coord_sys = [x.upper() for x in coord_sys]
-            assert all(x in ["C", "D"] for x in coord_sys)
+            if not (all(x in ["C", "D"] for x in coord_sys)):
+                raise ValueError('each coordinate system must be C or D')
             self._coord_sys = "C"
             _conv = self._latt
             if coord_sys.count("D") > self.natm // 2:
@@ -180,23 +183,24 @@ When other keyword are parsed, they will be filtered out and no exception will b
         return self.__str__()
 
     def copy(self):
+        """return an independent deep copy of this cell"""
         return deepcopy(self)
 
     def get_cell(self):
-        '''Purge out the cell, atoms and pos.
+        """Purge out the cell, atoms and pos.
 
         ``cell``, ``atoms`` and ``pos`` are the minimal for constructing ``Cell``
         and its subclasses.
         They can also be used to build sysmetry operations with spglib utilities.
-        '''
+        """
         return self._latt, self._atms, self._posi
 
     def get_kwargs(self) -> dict:
-        '''return all kwargs useful to constract program-dependent cell input from ``Cell`` instance
+        """return all kwargs useful to constract program-dependent cell input from ``Cell`` instance
 
         Returns :
             dictionary that can be parsed to ``create_from_cell`` class method.
-        '''
+        """
         d = {
             "unit": self._lunit,
             "coord_sys": self._coord_sys,
@@ -208,20 +212,12 @@ When other keyword are parsed, they will be filtered out and no exception will b
         return d
 
     def get_reference(self) -> str:
-        """Return the reference of the structure
-        """
+        """Return the reference of the structure"""
         return self._reference
 
     def _check_input_consistency(self):
-        try:
-            _logger.debug("check consistency")
-            _logger.debug("> latt: %r", self._latt)
-            _logger.debug("> atms: %r", self._atms)
-            _logger.debug("> posi: %r", self._posi)
-            assert np.shape(self._latt) == (3, 3)
-            assert self.natm > 0
-            assert np.shape(self._posi) == (self.natm, 3)
-        except AssertionError:
+        _logger.debug("check consistency: latt=%r, atms=%r, posi=%r", self._latt, self._atms, self._posi)
+        if np.shape(self._latt) != (3, 3) or self.natm <= 0 or np.shape(self._posi) != (self.natm, 3):
             raise self._err("Invalid cell setup")
         # check left-handed system.
         # FIXME there may be inconsistencies in mushroom output
@@ -243,12 +239,8 @@ When other keyword are parsed, they will be filtered out and no exception will b
         # same atom, no need to switch
         if iat1 == iat2:
             return
-        try:
-            assert iat1 in range(self.natm)
-            assert iat2 in range(self.natm)
-        except AssertionError:
-            raise self._err(
-                "atoms indices out-of-bound {} and {}".format(iat1, iat2))
+        if iat1 not in range(self.natm) or iat2 not in range(self.natm):
+            raise self._err("atoms indices out-of-bound {} and {}".format(iat1, iat2))
 
         self._posi[[iat1, iat2]] = self._posi[[iat2, iat1]]
         self._atms[iat1], self._atms[iat2] = self._atms[iat2], self._atms[iat1]
@@ -261,13 +253,13 @@ When other keyword are parsed, they will be filtered out and no exception will b
             self._select_dyn.update({iat1: sfd2})
 
     def move_atoms_to_first_lattice(self):
-        '''Move all atoms into the lattice (0,0,0).
+        """Move all atoms into the lattice (0,0,0).
 
         For Cartisian system, the move is achieved by first
         converting to and then back from direct system.
         By this process, each component of the coordinate (in direct system)
         belongs to [0,1)
-        '''
+        """
         if self.coord_sys == "D":
             self._posi = self._posi - np.floor(self._posi)
         elif self.coord_sys == "C":
@@ -283,6 +275,10 @@ When other keyword are parsed, they will be filtered out and no exception will b
         The origin, i.e. R = 0, is not included when ia == ib
 
         Args:
+            sort: sort the returned vectors using the requested convention
+            return_iR_Rablen: also return lattice indices and interatomic distances
+            ib: zero-based index of the second atom
+            ia: zero-based index of the first atom
             rcut (float): cutoff for Rab
             ia, ib (int): index of atom
             axis (int or tuple of int): searching axis. Default to search 3 axis, i.e. axis=(0, 1, 2)
@@ -325,6 +321,8 @@ When other keyword are parsed, they will be filtered out and no exception will b
         When q is close to 0, G=0 is excluded from the list
 
         Args:
+            sort: sort the returned vectors using the requested convention
+            return_iG_Gpqlen: also return reciprocal indices and vector lengths
             gcut (float): cutoff for Rab
             q (array-like,(3,)): q point coordinate
             axis (float tuple): searching axis. Default to search 3 axis, i.e. axis=(0, 1, 2)
@@ -364,9 +362,10 @@ When other keyword are parsed, they will be filtered out and no exception will b
         Note that this is equivalent to ``cell[csymbol]``, given cell an instance of ``Cell``.
 
         Args:
-            csymbol (str) : chemical-symbol-like identifier
+            csymbol (str): chemical-symbol-like identifier
         """
-        assert isinstance(csymbol, str)
+        if not (isinstance(csymbol, str)):
+            raise ValueError('chemical symbol must be a string')
         return get_str_indices(self.atms, csymbol)
 
     # * Sorting method
@@ -443,11 +442,8 @@ When other keyword are parsed, they will be filtered out and no exception will b
             axis (1,2,3)
             reverse (bool)
         """
-        try:
-            assert axis in range(1, 4)
-            assert isinstance(reverse, bool)
-        except AssertionError:
-            raise self._err()
+        if axis not in range(1, 4) or not isinstance(reverse, bool):
+            raise self._err("axis must be 1, 2 or 3 and reverse must be boolean")
         keys = self.posi[:, axis - 1]
         for at in self.atom_types:
             ind = self.get_sym_index(at)
@@ -455,25 +451,22 @@ When other keyword are parsed, they will be filtered out and no exception will b
 
     # * Cell manipulation
     def scale(self, scale: float):
-        """Scale the lattice, i.e. increase the lattice by ``scale`` time
-        """
-        try:
-            assert isinstance(scale, Real)
-            assert scale > 0.0
-        except AssertionError as err:
-            raise self._err("scale must be positive real") from err
+        """Scale the lattice, i.e. increase the lattice by ``scale`` time"""
+        if not isinstance(scale, Real) or scale <= 0.0:
+            raise self._err("scale must be positive real")
         self._latt = self._latt * scale
         if self._coord_sys == "C":
             self._posi = self._posi * scale
 
     def add_atom(self, atom: str, coord: RealVec3D,
-                 select_dyn: bool = None, sort_atms: bool = True):
+                 select_dyn: Optional[bool] = None, sort_atms: bool = True):
         """Add an atom with coordinate and selective dynamic flags
 
         Args:
+            sort_atms: sort atoms by species after insertion
             atom (str): the chemical symbol of the atom to add
             coord (array-like): the coordinate of atom in ``Cell`` coordinate system
-            select_dyn (list of 3 bools):
+            select_dyn (list of 3 bools): three selective-dynamics flags for the added atom
         """
         if not isinstance(atom, str):
             raise CellError("atom should be string, received {}".format(type(atom)))
@@ -626,15 +619,16 @@ When other keyword are parsed, they will be filtered out and no exception will b
         return symops
 
     def primitize(self):
-        """get the primitized cell
-        """
+        """get the primitized cell"""
         return self.__spglib_convert("find_primitive")
 
     def standardize(self, to_primitive: bool = False, no_idealize: bool = False, **kwargs):
         """standardize a crystal structure
 
         Args:
-            to_primitive (bool)
+            no_idealize: preserve the input metric instead of idealizing the standardized cell
+            **kwargs: additional keyword arguments passed to the underlying operation
+            to_primitive (bool): return a primitive standardized cell
         """
         return self.__spglib_convert("standardize_cell",
                                      to_primitive=to_primitive,
@@ -646,15 +640,14 @@ When other keyword are parsed, they will be filtered out and no exception will b
         raise NotImplementedError
 
     def __move_all(self, shift):
-        '''Move all atoms by a shift
-        '''
-        assert np.shape(shift) == (3,)
+        """Move all atoms by a shift"""
+        if not (np.shape(shift) == (3,)):
+            raise ValueError('shift must contain three coordinates')
         np.add(self._posi, shift, out=self._posi)
 
     @property
     def center(self):
-        """Calculate the center of all atoms in the cell
-        """
+        """Calculate the center of all atoms in the cell"""
         assert self.coord_sys == "D"
         _posSum = np.zeros(3, dtype=self._dtype)
         _n = 0
@@ -671,14 +664,13 @@ When other keyword are parsed, they will be filtered out and no exception will b
         return _posSum / self.natm
 
     def centering(self, axis: int = 0):
-        '''Centering the atoms along axes. Mainly use for slab model.
+        """Centering the atoms along axes. Mainly use for slab model.
 
-        TODO:
-            For now not work when there is atom at origin along the axis
+        TODO: For now not work when there is atom at origin along the axis
 
         Args:
-            axis (int or iterable of int) : the axes along which the atoms will be centered.
-        '''
+            axis (int or iterable of int): the axes along which the atoms will be centered.
+        """
         _alist = axis_list(axis)
         _was_cart = self.coord_sys == "C"
         if _was_cart:
@@ -708,8 +700,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
 
     @property
     def a(self):
-        '''Lattice vectors
-        '''
+        """Lattice vectors"""
         return self._latt
 
     @property
@@ -719,8 +710,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
 
     @property
     def latt_consts(self):
-        '''Lattice constant of the cell, i.e., a, b, c, alpha, beta, gamma (in degree)
-        '''
+        """Lattice constant of the cell, i.e., a, b, c, alpha, beta, gamma (in degree)"""
         return get_latt_consts_from_latt_vecs(self._latt)
 
     @property
@@ -730,7 +720,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
 
     @property
     def atms(self):
-        '''list.'''
+        """list."""
         return self._atms
 
     @property
@@ -773,42 +763,40 @@ When other keyword are parsed, they will be filtered out and no exception will b
 
     @property
     def atom_types(self):
-        """All atom types in the cell
-        """
+        """All atom types in the cell"""
         _d = OrderedDict.fromkeys(self._atms)
         return list(_d.keys())
 
-    def get_atm_indices(self, symbol: str) -> List[int]:
+    def get_atm_indices(self, symbol: str) -> list[int]:
         """get the indices of atom ``symbol`` in the atoms list
 
         Args:
-            symbol (str)
+            symbol (str): element symbol to select
         """
         return list(i for i, a in enumerate(self._atms) if a == symbol)
 
-    def get_atm_posi(self, symbol: str) -> List:
+    def get_atm_posi(self, symbol: str) -> list:
         """get the positions of atom ``symbol`` in the atoms list
 
         Args:
-            symbol (str)
+            symbol (str): element symbol to select
         """
         return self._posi[tuple(i for i, a in enumerate(self._atms) if a == symbol), :]
 
     @property
     def type_mapping(self):
-        """Map index (int) to atom type (str)
-        """
+        """Map index (int) to atom type (str)"""
         _ats = self.atom_types
         _dict = {}
         for i, _at in enumerate(_ats):
             _dict.update({i: _at})
         return _dict
 
-    def type_index(self, start: int = 0) -> List[int]:
+    def type_index(self, start: int = 0) -> list[int]:
         """Indices of atomic type of all atoms
 
         Args:
-            start (int) : index of the first atomic type
+            start (int): index of the first atomic type
         """
         _ats = self.atom_types
         _dict = {}
@@ -827,64 +815,54 @@ When other keyword are parsed, they will be filtered out and no exception will b
 
     @property
     def vol(self) -> float:
-        """Volume of the cell
-        """
+        """Volume of the cell"""
         return abs(self._cross_prod)
 
     @property
     def natm(self) -> int:
-        """Int. Total number of atoms
-        """
+        """Int. Total number of atoms"""
         return len(self._atms)
 
     @property
     def use_select_dyn(self) -> bool:
-        """Bool. If use selective dynamics
-        """
+        """Bool. If use selective dynamics"""
         if self._all_relax and not bool(self._select_dyn):
             return False
         return True
 
     @property
     def recp_latt_2pi(self):
-        """Reciprocal lattice vectors in 2Pi unit^-1
-        """
+        """Reciprocal lattice vectors in 2Pi unit^-1"""
         return self.recp_latt / 2.0E0 / PI
 
     @property
     def b_2pi(self):
-        """Alias to ``recp_latt_2pi``
-        """
+        """Alias to ``recp_latt_2pi``"""
         return self.recp_latt_2pi
 
     @property
     def recp_latt(self):
-        """Reciprocal lattice vectors in unit^-1
-        """
+        """Reciprocal lattice vectors in unit^-1"""
         return get_recp_latt(self._latt)
 
     @property
     def b(self):
-        """Alias of ``recp_latt``
-        """
+        """Alias of ``recp_latt``"""
         return self.recp_latt
 
     @property
     def blen(self):
-        """Length of reciprocal lattice vector in unit^-1
-        """
+        """Length of reciprocal lattice vector in unit^-1"""
         return np.linalg.norm(self.b, axis=1)
 
     # * selective dynamics related
     def fix_all(self):
-        """Fix all atoms.
-        """
+        """Fix all atoms."""
         self._select_dyn = {}
         self._all_relax = False
 
     def relax_all(self):
-        """Relax all atoms.
-        """
+        """Relax all atoms."""
         self._select_dyn = {}
         self._all_relax = True
 
@@ -905,13 +883,13 @@ When other keyword are parsed, they will be filtered out and no exception will b
             self._set_select_dyn(new)
 
     def set_relax(self, *iats, axis: int = 0):
-        '''Relax the atoms with index in iats
+        """Relax the atoms with index in iats
 
         Args:
             iats (list of int): the indices of atoms to relax
             axis (int or list): the axes along which the position of atom is relaxed
                 It can be 0|1|2|3, or a list with all its members 1|2|3
-        '''
+        """
         if len(iats) != 0:
             _new = {}
             for _ia in iats:
@@ -921,13 +899,11 @@ When other keyword are parsed, they will be filtered out and no exception will b
             self._set_select_dyn(_new)
 
     def relax_from_top(self, n: int, axis: int = 3):
-        """Set all atoms fixed, and relax the n atoms from top along axis
-        """
+        """Set all atoms fixed, and relax the n atoms from top along axis"""
         raise NotImplementedError
 
     def fix_from_center(self, n: int, axis: int = 3):
-        """Set all atoms relaxed, and fix the n atoms from the middle along axis
-        """
+        """Set all atoms relaxed, and fix the n atoms from the middle along axis"""
         raise NotImplementedError
 
     def _set_select_dyn(self, flags: dict):
@@ -935,25 +911,21 @@ When other keyword are parsed, they will be filtered out and no exception will b
         if not isinstance(flags, dict):
             raise self._err("need dictionary to set selective dynamics")
         for flag in flags.values():
-            try:
-                assert isinstance(flag, list)
-                assert len(flag) == 3
-                assert all([isinstance(_x, bool) for _x in flag])
-            except AssertionError:
+            if not isinstance(flag, list) or len(flag) != 3 or not all(isinstance(x, bool) for x in flag):
                 raise self._err("Bad flag for selective dynamics")
         self._select_dyn.update(flags)
 
     def sd_flag(self, ia: int = -1):
-        '''Return the selective dynamic flag (bool) of an atom
+        """Return the selective dynamic flag (bool) of an atom
 
         Args:
-            ia (int) : index of atom
+            ia (int): index of atom
 
         Returns:
             3-member list, if ia is in range(natm),
             otherwise natm-member list, each member a 3-member list
             as the flag for that atom
-        '''
+        """
         if ia in self._select_dyn:
             flag = self._select_dyn[ia]
         elif ia in range(self.natm):
@@ -966,11 +938,11 @@ When other keyword are parsed, they will be filtered out and no exception will b
         return flag
 
     def get_spglib_input(self):
-        '''Return the input necessary for spglib to get symmetry
+        """Return the input necessary for spglib to get symmetry
 
         Returns:
             cell (3,3), pos (n,3), index of atom type (n), with n = self.natm
-        '''
+        """
         posi = self.posi
         if self.coord_sys == "C":
             posi = np.matmul(posi, np.linalg.inv(self.latt))
@@ -982,23 +954,44 @@ When other keyword are parsed, they will be filtered out and no exception will b
         """Export cell to file in the format `output_format`
 
         Args:
-            output_format (str)
-            filename (str or file handler) : Set None to stdout
-            scale (float)
+            output_format (str): structure format identifier
+            filename (str or file handler): Set None to stdout
+            scale (float): multiplicative scaling factor
         """
         print_file_or_iowrapper(self.export(output_format, scale=scale), f=filename)
+
+    @contextmanager
+    def temporary_representation(self, unit=None, coord_sys=None):
+        """temporarily convert coordinates and restore the exact original representation
+
+        Args:
+            unit (str): temporary length unit, or None to keep the current unit
+            coord_sys (str): temporary coordinate system, C or D, or None
+
+        Yields:
+            Cell: this cell, restored even if conversion or export fails
+        """
+        state = self._lunit, self._coord_sys, self._latt, self._posi
+        try:
+            if unit is not None:
+                self.unit = unit
+            if coord_sys is not None:
+                self.coord_sys = coord_sys
+            yield self
+        finally:
+            self._lunit, self._coord_sys, self._latt, self._posi = state
 
     def export(self, output_format: str, scale: float = 1.0) -> str:
         """Export cell to file in the format `output_format`
 
         Args:
-            output_format (str)
-            scale (float)
+            output_format (str): structure format identifier
+            scale (float): multiplicative scaling factor
         """
         o = output_format.lower()
         e = self.exporters.get(o, None)
         if e is None:
-            raise ValueError("Unsupported export:", output_format)
+            raise ValueError(f"Unsupported export: {output_format}")
         return e(scale=scale)
 
     def export_abacus(self, scale: float = 1.0):
@@ -1060,60 +1053,53 @@ When other keyword are parsed, they will be filtered out and no exception will b
         return "\n".join(slist)
 
     def export_qe(self, scale: float = 1.0) -> str:
-        """Export in Quantum Espresso format
-        """
-        cs = self.coord_sys
-        self.coord_sys = "D"
-        slist = ["&SYSTEM",
-                 "  ibrav = 0,",
-                 "  nat = {:d},".format(self.natm),
-                 "  ntyp = {:d},".format(len(self.atom_types)),
-                 "/"]
-        slist.append("ATOMIC_SPECIES")
-        for symbol in self.atom_types:
-            slist.append("  {s:<2s}  {m:f}  {s:s}.upf".format(s=symbol, m=get_atomic_mass(symbol)))
-        slist.append("CELL_PARAMETERS {}".format(self.unit))
-        for i in range(3):
-            slist.append(" {:19.16f} {:19.16f} {:19.16f}".format(*(self.latt[i, :] * scale)))
-        slist.append("ATOMIC_POSITIONS crystal")
-        for atm, pos in zip(self.atms, self.posi):
-            # high precision for correct symmetry
-            slist.append("  {:<2s} {:19.16f} {:19.16f} {:19.16f}".format(atm, *pos))
-        unit = "angstrom"
-        if self.unit in ["au", "bohr"]:
-            unit = "bohr"
-        self.coord_sys = cs
-        return "\n".join(slist)
+        """Export in Quantum Espresso format"""
+        with self.temporary_representation():
+            self.coord_sys = "D"
+            slist = ["&SYSTEM",
+                     "  ibrav = 0,",
+                     "  nat = {:d},".format(self.natm),
+                     "  ntyp = {:d},".format(len(self.atom_types)),
+                     "/"]
+            slist.append("ATOMIC_SPECIES")
+            for symbol in self.atom_types:
+                slist.append("  {s:<2s}  {m:f}  {s:s}.upf".format(s=symbol, m=get_atomic_mass(symbol)))
+            unit = "angstrom" if self.unit == "ang" else "bohr"
+            slist.append("CELL_PARAMETERS {}".format(unit))
+            for i in range(3):
+                slist.append(" {:19.16f} {:19.16f} {:19.16f}".format(*(self.latt[i, :] * scale)))
+            slist.append("ATOMIC_POSITIONS crystal")
+            for atm, pos in zip(self.atms, self.posi):
+                # high precision for correct symmetry
+                slist.append("  {:<2s} {:19.16f} {:19.16f} {:19.16f}".format(atm, *pos))
+            return "\n".join(slist)
 
     def export_qe_alat(self, scale: float = 1.0) -> str:
         """Export in Quantum Espresso format, using celldm and alat
 
         Note that since only using celldm, the unit is fixed to bohr
         """
-        cs = self.coord_sys
-        unit = self.unit
-        # since using celldm, unit must be fixed to Bohr
-        self.unit = "bohr"
-        self.coord_sys = "D"
-        slist = [
-            "&SYSTEM", "  ibrav = 0,",
-            "  celldm(1)= {:f},".format(self.alen[0] * scale),
-            "  nat = {:d},".format(self.natm),
-            "  ntyp = {:d},".format(len(self.atom_types)), "/"
-        ]
-        slist.append("ATOMIC_SPECIES")
-        for symbol in self.atom_types:
-            slist.append("  {s:<2s}  {m:f}  {s:s}.upf".format(s=symbol, m=get_atomic_mass(symbol)))
-        slist.append("CELL_PARAMETERS alat")
-        for i in range(3):
-            slist.append(" {:19.16f} {:19.16f} {:19.16f}".format(*(self.latt[i, :] / self.alen[0])))
-        slist.append("ATOMIC_POSITIONS crystal")
-        for atm, pos in zip(self.atms, self.posi):
-            # high precision for correct symmetry
-            slist.append("  {:<2s} {:19.16f} {:19.16f} {:19.16f}".format(atm, *pos))
-        self.unit = unit
-        self.coord_sys = cs
-        return "\n".join(slist)
+        with self.temporary_representation():
+            # since using celldm, unit must be fixed to Bohr
+            self.unit = "bohr"
+            self.coord_sys = "D"
+            slist = [
+                "&SYSTEM", "  ibrav = 0,",
+                "  celldm(1)= {:f},".format(self.alen[0] * scale),
+                "  nat = {:d},".format(self.natm),
+                "  ntyp = {:d},".format(len(self.atom_types)), "/"
+            ]
+            slist.append("ATOMIC_SPECIES")
+            for symbol in self.atom_types:
+                slist.append("  {s:<2s}  {m:f}  {s:s}.upf".format(s=symbol, m=get_atomic_mass(symbol)))
+            slist.append("CELL_PARAMETERS alat")
+            for i in range(3):
+                slist.append(" {:19.16f} {:19.16f} {:19.16f}".format(*(self.latt[i, :] / self.alen[0])))
+            slist.append("ATOMIC_POSITIONS crystal")
+            for atm, pos in zip(self.atms, self.posi):
+                # high precision for correct symmetry
+                slist.append("  {:<2s} {:19.16f} {:19.16f} {:19.16f}".format(atm, *pos))
+            return "\n".join(slist)
 
     def export_abi(self, scale: float = 1.0) -> str:
         """Export in ABINIT format.
@@ -1121,104 +1107,97 @@ When other keyword are parsed, they will be filtered out and no exception will b
         Support direct coordinates only.
 
         Args:
-            scale (float)
-
-        TODO:
-            selective dynamic flags
+            scale (float): multiplicative scaling factor
+        TODO: selective dynamic flags
         """
-        syms, nats = sym_nat_from_atms(self._atms)
-        ret = ["#" + self.comment,
-               "acell 3*{:f} {:s}".format(scale, {"ang": "angstrom"}.get(self.unit, "")),
-               "natom {:d}".format(self.natm),
-               "ntypat {:d}".format(len(syms)),
-               ]
-        # lattice vector
-        form = "rprim\n" + " {:12.8f} {:12.8f} {:12.8f}\n" * 3
-        ret.append(form[:-1].format(*self._latt.flatten()))
-        # nuclear charge of each atom type
-        form = "znucl " + " {:d}" * len(syms)
-        ret.append(form.format(*map(get_atomic_number, syms)))
-        # type of each atom
-        form = "typat" + " {:d}" * self.natm
-        ret.append(form.format(*self.type_index(start=1)))
-        # coordinates of each atom
-        cwas = self.coord_sys
-        self.coord_sys = "D"
-        form = "xred\n" + " {:12.8f} {:12.8f} {:12.8f}\n" * self.natm
-        ret.append(form[:-1].format(*self._posi.flatten()))
-        if cwas == "C":
-            self.coord_sys = "C"
-        return "\n".join(ret)
+        with self.temporary_representation():
+            syms, nats = sym_nat_from_atms(self._atms)
+            ret = ["#" + self.comment,
+                   "acell 3*{:f} {:s}".format(scale, {"ang": "angstrom"}.get(self.unit, "")),
+                   "natom {:d}".format(self.natm),
+                   "ntypat {:d}".format(len(syms)),
+                   ]
+            # lattice vector
+            form = "rprim\n" + " {:12.8f} {:12.8f} {:12.8f}\n" * 3
+            ret.append(form[:-1].format(*self._latt.flatten()))
+            # nuclear charge of each atom type
+            form = "znucl " + " {:d}" * len(syms)
+            ret.append(form.format(*map(get_atomic_number, syms)))
+            # type of each atom
+            form = "typat" + " {:d}" * self.natm
+            ret.append(form.format(*self.type_index(start=1)))
+            # coordinates of each atom
+            self.coord_sys = "D"
+            form = "xred\n" + " {:12.8f} {:12.8f} {:12.8f}\n" * self.natm
+            ret.append(form[:-1].format(*self._posi.flatten()))
+            return "\n".join(ret)
 
     def export_vasp(self, scale: float = 1.0) -> str:
         """Export in VASP POSCAR format"""
-        # list containting strings to return
-        ret = []
-        # convert to ang, as vasp use ang only
-        uwas = self.unit
-        self.unit = "ang"
+        with self.temporary_representation():
+            # list containting strings to return
+            ret = []
+            # convert to ang, as vasp use ang only
+            self.unit = "ang"
 
-        syms, nats = sym_nat_from_atms(self._atms)
-        if self._reference is None:
-            ret.append("{}".format(self.comment))
-        else:
-            ret.append("{} (Ref: {})".format(self.comment, self._reference))
-        ret.append("{:8.6f}".format(scale))
-        for i in range(3):
-            ret.append("  %12.8f  %12.8f  %12.8f"
-                       % (self._latt[i, 0], self._latt[i, 1], self._latt[i, 2]))
-        if not syms[0].startswith("Unk"):
-            ret.append(' '.join(syms))
-        ret.append(' '.join([str(x) for x in nats]))
-
-        if self.use_select_dyn:
-            ret.append("Selective Dynamics")
-        ret.append({"D": "Direct", "C": "Cart"}[self._coord_sys])
-
-        for i in range(self.natm):
-            dyn = []
-            if self.use_select_dyn:
-                dyn = self.sd_flag(ia=i)
-            ainfo = []
+            syms, nats = sym_nat_from_atms(self._atms)
+            if self._reference is None:
+                ret.append("{}".format(self.comment))
+            else:
+                ret.append("{} (Ref: {})".format(self.comment, self._reference))
+            ret.append("{:8.6f}".format(scale))
+            for i in range(3):
+                ret.append("  %12.8f  %12.8f  %12.8f"
+                           % (self._latt[i, 0], self._latt[i, 1], self._latt[i, 2]))
             if not syms[0].startswith("Unk"):
-                ainfo = ['#{}'.format(self._atms[i])]
-            aflag = [{True: "T", False: "F"}[d] for d in dyn] + ainfo
-            ret.append("%15.9f %15.9f %15.9f " % (
-                self._posi[i, 0], self._posi[i, 1], self._posi[i, 2]) + ' '.join(aflag))
-        # convert back to the original length unit
-        self.unit = uwas
-        return '\n'.join(ret)
+                ret.append(' '.join(syms))
+            ret.append(' '.join([str(x) for x in nats]))
+
+            if self.use_select_dyn:
+                ret.append("Selective Dynamics")
+            ret.append({"D": "Direct", "C": "Cart"}[self._coord_sys])
+
+            for i in range(self.natm):
+                dyn = []
+                if self.use_select_dyn:
+                    dyn = self.sd_flag(ia=i)
+                ainfo = []
+                if not syms[0].startswith("Unk"):
+                    ainfo = ['#{}'.format(self._atms[i])]
+                aflag = [{True: "T", False: "F"}[d] for d in dyn] + ainfo
+                ret.append("%15.9f %15.9f %15.9f " % (
+                    self._posi[i, 0], self._posi[i, 1], self._posi[i, 2]) + ' '.join(aflag))
+            # convert back to the original length unit
+            return '\n'.join(ret)
 
     def export_aims(self, scale: float = 1.0) -> str:
         """Export in fhi-aims format"""
-        _logger.info("exporting to aims ...")
-        latt = self._latt * scale
-        was_unit = self.unit
-        _logger.debug("converting unit to ang ...")
-        _logger.debug("cell before convert %s", self)
-        self.unit = "ang"
-        _logger.debug("cell after convert %s", self)
-        atom_tag = "atom_frac"
-        if self.coord_sys == "C":
-            atom_tag = "atom"
+        with self.temporary_representation():
+            _logger.info("exporting to aims ...")
+            _logger.debug("converting unit to ang ...")
+            _logger.debug("cell before convert %s", self)
+            self.unit = "ang"
+            _logger.debug("cell after convert %s", self)
+            atom_tag = "atom_frac"
+            if self.coord_sys == "C":
+                atom_tag = "atom"
 
-        ret = []
-        # Header
-        ret.append("# {}".format(self.comment))
-        if self.get_reference() is not None:
-            ret.append("# reference: {}#".format(self.get_reference()))
-        # Lattice vectors
-        for l in self.latt:
-            ret.append("lattice_vector {:15.9f} {:15.9f} {:15.9f}".format(*l))
-        # Atom positions
-        for posi, atm in zip(self.posi, self.atms):
-            # aims usually doesn't have arabic number in atom symbols,
-            # so we prune it before export (by a very naive way)
-            atm_prune_ara = atm.strip(" 0123456789")
-            ret.append("{} {:15.9f} {:15.9f} {:15.9f} {}".format(atom_tag, *posi, atm_prune_ara))
-        self.unit = was_unit
-        _logger.debug("converted string list to return\n%r", ret)
-        return '\n'.join(ret)
+            ret = []
+            # Header
+            ret.append("# {}".format(self.comment))
+            if self.get_reference() is not None:
+                ret.append("# reference: {}#".format(self.get_reference()))
+            # Lattice vectors
+            for l in self.latt:
+                ret.append("lattice_vector {:15.9f} {:15.9f} {:15.9f}".format(*l))
+            # Atom positions
+            for posi, atm in zip(self.posi, self.atms):
+                # aims usually doesn't have arabic number in atom symbols,
+                # so we prune it before export (by a very naive way)
+                atm_prune_ara = atm.strip(" 0123456789")
+                ret.append("{} {:15.9f} {:15.9f} {:15.9f} {}".format(atom_tag, *posi, atm_prune_ara))
+            _logger.debug("converted string list to return\n%r", ret)
+            return '\n'.join(ret)
 
     def export_json(self, scale: float = 1.0) -> str:
         """Export in JSON format"""
@@ -1240,8 +1219,9 @@ When other keyword are parsed, they will be filtered out and no exception will b
         """read file at path and return a Cell instance
 
         Args:
-            path (str)
-            form (str) : should be in avail_readers
+            format: input format identifier, or None for automatic detection
+            path (str): path of the structure file
+            format (str): should be in avail_readers
         """
         path = str(path)
         _logger.info("Reading %s", path)
@@ -1261,8 +1241,8 @@ When other keyword are parsed, they will be filtered out and no exception will b
             if not format:
                 raise ValueError("fail to get format from extension of file {}".format(path))
             return readers[format](path)
-        except KeyError:
-            raise CellError("Unsupported reader format: {}".format(format))
+        except KeyError as err:
+            raise CellError("Unsupported reader format: {}".format(format)) from err
 
     @classmethod
     def read_aims(cls, pgeo="geometry.in"):
@@ -1300,7 +1280,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
         """initialize the cell by reading an ABACUS STRU file
 
         Args:
-            pstru (Path-like or StringIO): path to the aims geometry file, default to STRU
+            pstru (Path-like or StringIO): path to the ABACUS structure file, default to STRU
         """
         with open(pstru, 'r') as h:
             lines = h.readlines()
@@ -1358,8 +1338,8 @@ When other keyword are parsed, they will be filtered out and no exception will b
         with open(pjson, 'r') as h:
             try:
                 js = json.load(h)
-            except json.JSONDecodeError:
-                raise CellError("invalid JSON file for cell: {}".format(pjson))
+            except json.JSONDecodeError as err:
+                raise CellError("invalid JSON file for cell: {}".format(pjson)) from err
         pargs = []
         factories = {
             "bravais_oP": (cls.bravais_oP, ("atom", "a", "b", "c")),
@@ -1392,8 +1372,8 @@ When other keyword are parsed, they will be filtered out and no exception will b
                     for x in req_pa:
                         pargs.append(js.pop(x))
                     return m(*pargs, **js)
-                except KeyError:
-                    raise CellError("Required key not found in JSON: {}".format(x))
+                except KeyError as err:
+                    raise CellError("Required key not found in JSON: {}".format(x)) from err
             raise CellError("Factory method unavailable: {}".format(fac))
 
         for arg in ["latt", "atms", "posi"]:
@@ -1405,8 +1385,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
 
     @classmethod
     def read_cif(cls, pcif: Path):
-        """Read from Cif file and return a instance by use of PyCIFRW
-        """
+        """Read from Cif file and return a instance by use of PyCIFRW"""
         from mushroom.core.cif import Cif
 
         cif = Cif(pcif)
@@ -1420,9 +1399,10 @@ When other keyword are parsed, they will be filtered out and no exception will b
     # pylint: disable=R0912,R0914,R0915
     @classmethod
     def decode_vasp(cls, s: str):
-        """
+        """decode a POSCAR string into lattice, species and coordinate data
+
         Args:
-            s (str) : the content of vasp POSCAR as a string
+        s (str): the content of vasp POSCAR as a string
         """
 
     @classmethod
@@ -1430,7 +1410,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
         """Create Cell instance by reading from vasp POSCAR file
 
         Args:
-            pvasp (str) : path to vasp POSCAR file, default to POSCAR at cwd
+            pvasp (str): path to vasp POSCAR file, default to POSCAR at cwd
         """
         def _raise_errline(cond, i=None, s="input"):
             if cond:
@@ -1509,7 +1489,8 @@ When other keyword are parsed, they will be filtered out and no exception will b
     # * Factory methods
     @classmethod
     def _bravais_o(cls, kind: str, atom: str, a: float, b: float, c: float, **kwargs):
-        assert kind in ["P", "I", "F"]
+        if not (kind in ["P", "I", "F"]):
+            raise ValueError('lattice kind must be P, I or F')
         latt = [[a, 0.0, 0.0], [0.0, b, 0.0], [0.0, 0.0, c]]
         if kind == "P":
             atms = [atom, ]
@@ -1526,13 +1507,16 @@ When other keyword are parsed, they will be filtered out and no exception will b
 
     @classmethod
     def bravais_oP(cls, atom, a: float = 1.0, b: float = 2.0, c: float = 3.0, **kwargs):
-        '''Generate a simple orthorhombic Bravais lattice
+        """Generate a simple orthorhombic Bravais lattice
 
         Args:
-            atom (str) : the chemical symbol of atom
-            a,b,c (float) : the lattice constants (a,b,c)
+            c: lattice constant along this axis, in the selected length unit
+            b: lattice constant along this axis, in the selected length unit
+            a: lattice constant along this axis, in the selected length unit
+            atom (str): the chemical symbol of atom
+            a,b,c (float): the lattice constants (a,b,c)
             kwargs: keyword argument for ``Cell`` except ``coord_sys``
-        '''
+        """
         if "comment" not in kwargs:
             kwargs.update(
                 {"comment": "Simple orthorhombic lattice {}".format(atom)})
@@ -1540,13 +1524,16 @@ When other keyword are parsed, they will be filtered out and no exception will b
 
     @classmethod
     def bravais_oI(cls, atom: str, a: float = 1.0, b: float = 2.0, c: float = 3.0, **kwargs):
-        '''Generate a body-centered orthorhombic Bravais lattice
+        """Generate a body-centered orthorhombic Bravais lattice
 
         Args:
-            atom (str) : the chemical symbol of atom
-            a,b,c (float) : the lattice constants (a,b,c)
+            c: lattice constant along this axis, in the selected length unit
+            b: lattice constant along this axis, in the selected length unit
+            a: lattice constant along this axis, in the selected length unit
+            atom (str): the chemical symbol of atom
+            a,b,c (float): the lattice constants (a,b,c)
             kwargs: keyword argument for ``Cell`` except ``coord_sys``
-        '''
+        """
         if "comment" not in kwargs:
             kwargs.update(
                 {"comment": "Body-centered orthorhombic lattice {}".format(atom)})
@@ -1554,13 +1541,16 @@ When other keyword are parsed, they will be filtered out and no exception will b
 
     @classmethod
     def bravais_oF(cls, atom: str, a: float = 1.0, b: float = 2.0, c: float = 3.0, **kwargs):
-        '''Generate a face-centered orthorhombic Bravais lattice
+        """Generate a face-centered orthorhombic Bravais lattice
 
         Args:
-            atom (str) : the chemical symbol of atom
-            a,b,c (float) : the lattice constants (a,b,c)
+            c: lattice constant along this axis, in the selected length unit
+            b: lattice constant along this axis, in the selected length unit
+            a: lattice constant along this axis, in the selected length unit
+            atom (str): the chemical symbol of atom
+            a,b,c (float): the lattice constants (a,b,c)
             kwargs: keyword argument for ``Cell`` except ``coord_sys``
-        '''
+        """
         if "comment" not in kwargs:
             kwargs.update(
                 {"comment": "Face-centered orthorhombic lattice {}".format(atom)})
@@ -1568,13 +1558,13 @@ When other keyword are parsed, they will be filtered out and no exception will b
 
     @classmethod
     def bravais_cP(cls, atom: str, a: float = 1.0, **kwargs):
-        '''Generate a simple cubic Bravais lattice, space group 221
+        """Generate a simple cubic Bravais lattice, space group 221
 
         Args:
-            atom (str) : the chemical symbol of atom
-            a (float) : the lattice constant (a)
+            atom (str): the chemical symbol of atom
+            a (float): the lattice constant (a)
             kwargs: keyword argument for ``Cell`` except ``coord_sys``
-        '''
+        """
         latt = [[a, 0.0, 0.0], [0.0, a, 0.0], [0.0, 0.0, a]]
         atms = [atom,]
         posi = [[0.0, 0.0, 0.0]]
@@ -1585,14 +1575,14 @@ When other keyword are parsed, they will be filtered out and no exception will b
 
     @classmethod
     def bravais_cI(cls, atom: str, a: float = 1.0, primitive: bool = False, **kwargs):
-        '''Generate a body-centered cubic Bravais lattice
+        """Generate a body-centered cubic Bravais lattice
 
         Args:
-            atom (str) : the chemical symbol of atom
-            a (float) : the lattice constant (a)
-            primitive (bool) : if set True, the primitive cell will be generated
+            atom (str): the chemical symbol of atom
+            a (float): the lattice constant (a)
+            primitive (bool): if set True, the primitive cell will be generated
             kwargs: keyword argument for ``Cell`` except ``coord_sys``
-        '''
+        """
         if primitive:
             latt = [[-a / 2.0, a / 2.0, a / 2.0],
                     [a / 2.0, -a / 2.0, a / 2.0],
@@ -1610,14 +1600,14 @@ When other keyword are parsed, they will be filtered out and no exception will b
 
     @classmethod
     def bravais_cF(cls, atom: str, a: float = 1.0, primitive: bool = False, **kwargs):
-        '''Generate a face-centered cubic Bravais lattice
+        """Generate a face-centered cubic Bravais lattice
 
         Args:
-            atom (str) : the chemical symbol of atom
-            a (float) : the lattice constant (a)
-            primitive (bool) : if set True, the primitive cell will be generated
+            atom (str): the chemical symbol of atom
+            a (float): the lattice constant (a)
+            primitive (bool): if set True, the primitive cell will be generated
             kwargs: keyword argument for ``Cell`` except ``coord_sys``
-        '''
+        """
         if primitive:
             latt = [[0.0, a / 2.0, a / 2.0],
                     [a / 2.0, 0.0, a / 2.0],
@@ -1637,16 +1627,16 @@ When other keyword are parsed, they will be filtered out and no exception will b
     @classmethod
     def perovskite(cls, atom1: str = "Ca", atom2: str = "Ti", atom3: str = "O",
                    a: float = 1.0, **kwargs):
-        '''Generate a perovskit lattice
+        """Generate a perovskit lattice
 
         Args:
-            atom1 (str) : the chemical symbol of atom at vertices of cubic cell
-            atom2 (str) : the chemical symbol of atom at center of cubic cell
-            atom3 (str) : the chemical symbol of atom at faces of cubic cell
-            a (float) : the lattice constant (a)
-            primitive (bool) : if set True, the primitive cell will be generated
+            atom1 (str): the chemical symbol of atom at vertices of cubic cell
+            atom2 (str): the chemical symbol of atom at center of cubic cell
+            atom3 (str): the chemical symbol of atom at faces of cubic cell
+            a (float): the lattice constant (a)
+            primitive (bool): if set True, the primitive cell will be generated
             kwargs: keyword argument for ``Cell`` except ``coord_sys``
-        '''
+        """
         latt = [[a, 0.0, 0.0], [0.0, a, 0.0], [0.0, 0.0, a]]
         atms = [atom1, atom2, ] + [atom3, ] * 3
         posi = [[0.0, 0.0, 0.0], [0.5, 0.5, 0.5], [
@@ -1661,7 +1651,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
     def zincblende(cls, atom1: str = "Zn", atom2: str = "O",
                    a: float = 1.0,
                    primitive: bool = False, **kwargs):
-        '''Generate a zincblende lattice (space group 216)
+        """Generate a zincblende lattice (space group 216)
 
         ``atom1`` are placed at vertex and ``atom2`` at tetrahedron interstitial
 
@@ -1671,7 +1661,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
             a (float): the lattice constant of the conventional cell.
             primitive (bool): if set True, the primitive cell will be generated.
             kwargs: keyword argument for ``Cell`` except ``coord_sys``
-        '''
+        """
         if primitive:
             latt = [[0.0, a / 2.0, a / 2.0],
                     [a / 2.0, 0.0, a / 2.0],
@@ -1699,7 +1689,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
     def rocksalt(cls, atom1: str = "Na", atom2: str = "Cl",
                  a: float = 1.0,
                  primitive: bool = False, **kwargs):
-        '''Generate a rocksalt lattice
+        """Generate a rocksalt lattice
 
         ``atom1`` are placed at vertex and ``atom2`` at tetrahedron interstitial
 
@@ -1709,7 +1699,7 @@ When other keyword are parsed, they will be filtered out and no exception will b
             a (float): the lattice constant of the conventional cell.
             primitive (bool): if set True, the primitive cell will be generated.
             kwargs: keyword argument for ``Cell`` except ``coord_sys``
-        '''
+        """
         if primitive:
             latt = [[0.0, a / 2.0, a / 2.0],
                     [a / 2.0, 0.0, a / 2.0],
@@ -1737,30 +1727,32 @@ When other keyword are parsed, they will be filtered out and no exception will b
     def diamond(cls, atom: str = "C",
                 a: float = 3.5668,
                 primitive: bool = False, **kwargs):
-        '''Generate a diamond lattice (space group 227)
+        """Generate a diamond lattice (space group 227)
 
         Args:
             atom (str): symbol of the atom
             a (float): the lattice constant of the conventional cell.
             primitive (bool): if set True, the primitive cell will be generated.
             kwargs: keyword argument for ``Cell`` except ``coord_sys``
-        '''
+        """
         if "comment" not in kwargs:
             kwargs.update({"comment": "Diamond {}".format(atom)})
         return cls.zincblende(atom, atom, a=a, primitive=primitive, **kwargs)
 
     @classmethod
     def wurtzite(cls, atom1: str = "Zn", atom2: str = "O",
-                 a: float = 3.250, c: float = None, u: float = None, **kwargs):
-        '''Generate a wurtzite lattice (space group 186)
+                 a: float = 3.250, c: Optional[float] = None, u: Optional[float] = None, **kwargs):
+        """Generate a wurtzite lattice (space group 186)
 
         Args:
+            c: lattice constant along this axis, in the selected length unit
+            a: lattice constant along this axis, in the selected length unit
             atom1 (str): symbol of atom at vertices of lattice
             atom2 (str): symbol of atom at edges of lattice
             a, c (float): the lattice constant of the cell.
             u (float): internal coordinate, > 0.25
             kwargs: keyword argument for ``Cell`` except ``coord_sys``
-        '''
+        """
         a = abs(a)
         halfa = a / 2.0
         if c is None:
@@ -1781,18 +1773,18 @@ When other keyword are parsed, they will be filtered out and no exception will b
     @classmethod
     def rutile(cls, atom1: str = "Ti", atom2: str = "O",
                a: float = 1.0, c: float = 2.0, u: float = 0.31, **kwargs):
-        '''Generate a rutile lattice (space group 136)
+        """Generate a rutile lattice (space group 136)
 
         Args:
+            c: lattice constant along this axis, in the selected length unit
+            a: lattice constant along this axis, in the selected length unit
             atom1 (str): symbol of atom at vertex and center of lattice
             atom2 (str): symbol of atom at face of lattice
             a,c (float): the lattice constant of the cell.
             u (float): the internal coordinate
             kwargs: keyword argument for ``Cell`` except ``coord_sys``
-        '''
-        try:
-            assert 0.0 < u < 1.0
-        except AssertionError:
+        """
+        if not 0.0 < u < 1.0:
             raise cls._err(
                 "Internal coordinate should be in (0,1), get {}".format(u))
         _a = abs(a)
@@ -1814,21 +1806,22 @@ When other keyword are parsed, they will be filtered out and no exception will b
     def anatase(cls, atom1: str = "Ti", atom2: str = "O",
                 a: float = 3.7845, c: float = 9.5143, u: float = 0.2199,
                 primitive: bool = False, **kwargs):
-        '''Generate an anatase lattice (space group 141).
+        """Generate an anatase lattice (space group 141).
 
         Note:
             This cell is not standardized.
 
         Args:
+            primitive: return the primitive cell
+            c: lattice constant along this axis, in the selected length unit
+            a: lattice constant along this axis, in the selected length unit
             atom1 (str): symbol of atom at vertex
             atom2 (str): symbol of atom at face of lattice
             a,c (float): the lattice constant of the conventional cell.
             u (float): the internal coordinate, i.e. distance between two atoms in terms of c
             kwargs: keyword argument for ``Cell`` except ``coord_sys``
-        '''
-        try:
-            assert 0.0 < u < 1.0
-        except AssertionError:
+        """
+        if not 0.0 < u < 1.0:
             raise cls._err(
                 "Internal coordinate should be in (0,1), get {}".format(u))
         _a = abs(a)
@@ -1868,14 +1861,20 @@ When other keyword are parsed, they will be filtered out and no exception will b
     def delafossite(cls, atom1: str = "Cu", atom2: str = "Al", atom3: str = "O",
                     a: float = 2.858, c: float = 16.958, u: float = 0.1099,
                     primitive: bool = False, **kwargs):
-        '''Generate a standardized delafossite lattice (space group 166).
+        """Generate a standardized delafossite lattice (space group 166).
 
         Args:
+            primitive: return the primitive cell
+            c: lattice constant along this axis, in the selected length unit
+            atom3: symbol of the third species
+            atom2: symbol of the second species
+            atom1: symbol of the first species
+            a: lattice constant along this axis, in the selected length unit
             atom1, atom2, atom3 (str): symbol of atoms
             a, c (float): the lattice constant of the conventional cell.
             u (float): the internal coordinate
             kwargs: keyword argument for ``Cell`` except ``coord_sys``
-        '''
+        """
         ha = a / 2
         if primitive:
             # obtained from spglib primitize
@@ -1942,15 +1941,20 @@ When other keyword are parsed, they will be filtered out and no exception will b
     def marcasite(cls, atom1: str = "Fe", atom2: str = "S",
                   a: float = 4.4450, b: float = 5.4151, c: float = 3.3922,
                   v: float = 0.2066, w: float = 0.3750, **kwargs):
-        '''Generate a standardized marcasite lattice (space group 58).
+        """Generate a standardized marcasite lattice (space group 58).
 
         Args:
+            w: second fractional internal coordinate of the anion
+            v: first fractional internal coordinate of the anion
+            c: lattice constant along this axis, in the selected length unit
+            b: lattice constant along this axis, in the selected length unit
+            a: lattice constant along this axis, in the selected length unit
             atom1 (str): symbol of atom at vertex and body-center
             atom2 (str): symbol of the other atom
             a, b, c (float): the lattice constants of the cell.
             v, w(float): the internal coordinates
             kwargs: keyword argument for ``Cell`` except ``coord_sys``
-        '''
+        """
         latt = [[a, 0.0, 0.0], [0.0, b, 0.0], [0.0, 0.0, c]]
         atms = [atom1, ] * 2 + [atom2, ] * 4
         posi = [[0.0, 0.0, 0.0],
@@ -1968,15 +1972,18 @@ When other keyword are parsed, they will be filtered out and no exception will b
     def MX2(cls, atom1: str = "Mo", atom2: str = "S",
             a: float = 3.22, c: float = 12.36, d: float = 2.31, kind: str = "2H",
             **kwargs):
-        '''Generate a standardized  lattice (space group 58).
+        """Generate a standardized  lattice (space group 58).
 
         Args:
+            kind: structure or data variant selected by this routine
+            c: lattice constant along this axis, in the selected length unit
+            a: lattice constant along this axis, in the selected length unit
             atom1 (str): symbol of the M atom
             atom2 (str): symbol of the X atom
             a, c (float): the lattice constants of the cell.
             d (float): bond length of M-X
             kwargs: keyword argument for ``Cell`` except ``coord_sys``
-        '''
+        """
         if kind == "2H":
             d_frac = np.sqrt(d ** 2 - a ** 2 / 3.0e0) / c
             ha = 0.5e0 * a

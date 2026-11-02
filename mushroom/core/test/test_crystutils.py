@@ -51,8 +51,8 @@ class test_cell_utils(ut.TestCase):
         self.assertEqual(8, n)
         self.assertTupleEqual(([0, 0, 0], [1.0, 0, 0], [0, 1.0, 0], [1.0, 1.0, 0], [0, 0, 1.0],
                                [1.0, 0, 1.0], [0, 1.0, 1.0], [1.0, 1.0, 1.0]), dupcs)
-        self.assertRaises(AssertionError, periodic_duplicates_in_cell, [1.0, 0.0, 0.0])
-        self.assertRaises(AssertionError, periodic_duplicates_in_cell, [1.1, 0.0, 0.0])
+        self.assertRaises(ValueError, periodic_duplicates_in_cell, [1.0, 0.0, 0.0])
+        self.assertRaises(ValueError, periodic_duplicates_in_cell, [1.1, 0.0, 0.0])
 
     def test_axis_list(self):
         """get axis list corresponding to axis token"""

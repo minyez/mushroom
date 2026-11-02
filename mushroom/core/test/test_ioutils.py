@@ -55,7 +55,7 @@ class test_string_decoding(ut.TestCase):
     def test_conv_string(self):
         string = "1; ABC=5. "
         # unsupported conversion type
-        self.assertRaises(AssertionError, conv_string, string, list, 0)
+        self.assertRaises(ValueError, conv_string, string, list, 0)
         # single value
         self.assertEqual(1, conv_string(string, int, 0, strips=";"))
         # multiple values

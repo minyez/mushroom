@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """helper function in dealing with data, digits and mathematics"""
 import re
-from typing import List
+from typing import Optional
 import numpy as np
 
 from mushroom.core.ioutils import trim_after
@@ -27,7 +27,7 @@ def conv_estimate_number(s: str, reserved: bool = False) -> float:
             e.g. string like '3.87(6)' will be converted to 3.876.
             Otherwise it will be discarded.
 
-    Retuns:
+    Returns:
         float
     """
     if reserved:
@@ -35,11 +35,11 @@ def conv_estimate_number(s: str, reserved: bool = False) -> float:
     return float(trim_after(s, r"\("))
 
 
-def get_divisors(n: int) -> List[int]:
+def get_divisors(n: int) -> list[int]:
     """get all divisors of integer n, including itself and excluding 1
 
     Args:
-        n (int)
+        n (int): positive integer to factor
     """
     divs = []
 
@@ -53,8 +53,7 @@ def get_mutual_primes(n):
     """find all mutual primer of integer n that are smaller than n
 
     Args:
-        n (int)
-
+        n (int): positive integer to factor
     Examples:
     >>> get_mutual_primes(10)
     [1, 3, 7, 9]
@@ -77,10 +76,10 @@ def closest_frac(decimal: float, maxn=100, thres=None, ret=1):
     """find the closest fraction number of decimal
 
     Args:
-        decimal (float)
-        maxn (int)
-        thres (float)
-
+        ret: return selector: string, value, numerator/denominator, or tuple with error
+        decimal (float): number to approximate by a fraction
+        maxn (int): exclusive upper bound on the trial denominator
+        thres (float): threshold used by the operation
     Returns:
         If such fraction is found, depending on ``ret``, returns
 
@@ -101,9 +100,6 @@ def closest_frac(decimal: float, maxn=100, thres=None, ret=1):
 
     f = decimal
     int_part = 0
-    err = 1.0
-    num = 0
-    den = 0
     int_part = int(np.floor(f))
     f -= int_part
 
@@ -122,22 +118,19 @@ def closest_frac(decimal: float, maxn=100, thres=None, ret=1):
             diff = abs(__v - f)
             if diff < thres:
                 return _select_return(_nu + int_part * _de, _de, diff, ret)
-            if diff < err:
-                num = _nu
-                den = _de
-    raise ValueError
+    raise ValueError(f"cannot approximate {decimal} with denominator below {maxn}")
 
 
 def fraction(s: str) -> float:
     """compute the value of a string of fraction, e.g. '1/2'
 
     Args:
-        s (str)
-
+        s (str): string to convert
     Returns:
         float
     """
-    assert s.count('/') == 1
+    if not (s.count('/') == 1):
+        raise ValueError('fraction must contain exactly one slash')
     nu, de = s.split('/')
     return float(nu) / float(de)
 
@@ -146,10 +139,10 @@ class Data:
     """Object for storage and extraction of data
 
     Args:
-        x, y, z (array-like) : positional, data columns in order
-        datatype (str) : the data type. See datatypes
+        x, y, z (array-like): positional, data columns in order
+        datatype (str): the data type. See datatypes
         label (str)
-        comment (str) : extra comment for the data
+        comment (str): extra comment for the data
         error should be parsed by using keywords arguments, supported are
             dx
             dxl (l means lower)
@@ -174,10 +167,11 @@ class Data:
     Private methods:
 
     Constants:
-        DATATYPES (dict) : available datatypes
+        DATATYPES (dict): available datatypes
             key is the acronym of the data type
             value a list, optional arguments for left-and-right errors
     """
+
     extra_data = ['dx', 'dxl', 'dy', 'dyl', 'size']
     DATATYPES = {
         'xy': (2, []),
@@ -195,7 +189,7 @@ class Data:
     }
     available_types = tuple(DATATYPES.keys())
 
-    def __init__(self, *xyz, datatype: str = None, label: str = None, comment: str = None,
+    def __init__(self, *xyz, datatype: Optional[str] = None, label: Optional[str] = None, comment: Optional[str] = None,
                  **extras):
         datatype, self._extra_cols = Data._check_data_type(*xyz, datatype=datatype, **extras)
         if datatype == "xyz":
@@ -216,13 +210,11 @@ class Data:
         self.datatype = datatype
 
     def xmin(self) -> float:
-        """get the min value of abscissa
-        """
+        """get the min value of abscissa"""
         return self.x.min()
 
     def xmax(self) -> float:
-        """get the max value of abscissa
-        """
+        """get the max value of abscissa"""
         return self.x.max()
 
     def max(self) -> float:
@@ -256,7 +248,9 @@ class Data:
                 (z1, z2, z3, ...)
 
         Args:
-            transpose (bool) : if True, the output will be
+            scale: multiplicative scaling factor
+            data_cols: indices of the data columns to select
+            transpose (bool): if True, the output will be
                 (x1, y1, z1),
                 (x2, y2, z2),
                 ...
@@ -266,7 +260,7 @@ class Data:
             d = d.transpose()
         return d * scale
 
-    def _export(self, data_cols, form=None, transpose=False, sep=None, filter_nan: bool = True) -> List[str]:
+    def _export(self, data_cols, form=None, transpose=False, sep=None, filter_nan: bool = True) -> list[str]:
         """export data/error to a list, each member as a line of string for data
 
         Default output will be one line for each data type, i.e.
@@ -283,19 +277,20 @@ class Data:
             ...
 
         Args:
-            transpose (bool)
-            sep (str)
-            form (formatting string or its list/tuple) : formatting string
+            filter_nan: omit rows containing NaN values
+            data_cols: indices of the data columns to select
+            transpose (bool): transpose the data before formatting
+            sep (str): separator between exported values
+            form (formatting string or its list/tuple): formatting string
                 default to use float
                 if a str is parsed, this format apply to all data columns
                 if Iterable, each form will be parsed respectively.
         """
-        slist = []
         # check if format string is valid
         if form is not None and isinstance(form, (tuple, list)):
             if len(form) != len(data_cols):
                 msg = "format string does not conform data columns"
-                raise ValueError(msg, form, len(data_cols))
+                raise ValueError(f'{msg}: {form}, {len(data_cols)}')
 
         data_all = self._get(data_cols)
         return export_2d_data(data_all, transpose=transpose, form=form, sep=sep, filter_nan_row=filter_nan)
@@ -309,7 +304,7 @@ class Data:
             ...
 
         Args:
-            transpose (bool) : if True, the output will be
+            transpose (bool): if True, the output will be
                 x-array,
                 y-array,
                 ...
@@ -324,7 +319,7 @@ class Data:
             (xel2, xer2, yel2, yer2, ...),
 
         Args:
-            transpose (bool) : if True, the output will be
+            transpose (bool): if True, the output will be
                 xel1, xel2, xel3, ...
                 xer1, xer2, xer3, ...
                 yel1, yel2, yel3, ...
@@ -343,46 +338,49 @@ class Data:
                 ...
 
         Args:
-            transpose (bool) : if True, the output will be
+            transpose (bool): if True, the output will be
                 (x1, y1, z1, xel1, xer1, yel1, yer1, ...),
                 (x2, y2, z2, xel2, xer2, yel2, yer2, ...),
         """
         return self._get(self._data_cols + self._extra_cols, transpose=transpose)
 
-    def export_data(self, form=None, transpose=False, sep=None) -> List[str]:
+    def export_data(self, form=None, transpose=False, sep=None) -> list[str]:
         """Export the data as a list of strings
 
         See get for the meaning of transpose
 
         Args:
-            sep (str)
-            form (formatting string or its list/tuple) : formatting string
+            transpose: transpose the data before formatting
+            sep (str): separator between exported values
+            form (formatting string or its list/tuple): formatting string
                 if a str is parsed, this format apply to all data columns
                 if Iterable, each form will be parsed respectively.
         """
         return self._export(self._data_cols, form=form, transpose=transpose, sep=sep)
 
-    def export_extra(self, form=None, transpose=False, sep=None) -> List[str]:
+    def export_extra(self, form=None, transpose=False, sep=None) -> list[str]:
         """Export extra data as a list of strings
 
         See get_extra for the meaning of transpose
 
         Args:
-            sep(str)
-            form (formatting string or its list/tuple) : formatting string
+            transpose: transpose the data before formatting
+            sep(str): separator between exported values
+            form (formatting string or its list/tuple): formatting string
                 if a str is parsed, this format apply to all data columns
                 if Iterable, each form will be parsed respectively.
         """
         return self._export(self._extra_cols, form=form, transpose=transpose, sep=sep)
 
-    def export(self, form=None, transpose=False, sep=None) -> List[str]:
+    def export(self, form=None, transpose=False, sep=None) -> list[str]:
         """Export both data and extras as a list of strings
 
         See get_all for the meaning of transpose
 
         Args:
-            sep (str)
-            form (formatting string or its list/tuple) : formatting string
+            transpose: transpose the data before formatting
+            sep (str): separator between exported values
+            form (formatting string or its list/tuple): formatting string
                 if a str is parsed, this format apply to all data columns
                 if Iterable, each form will be parsed respectively.
         """
@@ -395,12 +393,14 @@ class Data:
         """confirm the data type of input. Valid types are declared in Data.DATATYPES
 
         Args:
+            *xyz: coordinate arrays for the dataset
+            **extras: additional arrays required by the selected dataset type
             *xyz (array-like):
-            datatype (str) : data type of . None for automatic detect
+            datatype (str): data type of . None for automatic detect
             extras for parsing extra data such as error
-                d(x,y,z) (float) : error. when the according l exists, it becomes the upper error
-                d(x,y,z)l (float) : lower error
-                size (float) : size of marker
+                d(x,y,z) (float): error. when the according l exists, it becomes the upper error
+                d(x,y,z)l (float): lower error
+                size (float): size of marker
 
         Returns:
             str, list
@@ -435,31 +435,30 @@ class Data:
         if t in cls.available_types:
             required_n, extra_cols = cls.DATATYPES[t]
             if required_n != nd:
-                raise ValueError("Inconsistent xyz data and specified datatype ", datatype)
+                raise ValueError(f"Inconsistent xyz data and specified datatype: {datatype}")
             find_all = all([required_e in extras for required_e in extra_cols])
             if not find_all:
-                raise ValueError("Inconsistent extra data and specified datatype ", datatype)
+                raise ValueError(f"Inconsistent extra data and specified datatype: {datatype}")
             _logger.debug("confirmed datatype %s", t)
         else:
-            raise ValueError("Unsupported datatype", datatype)
+            raise ValueError(f'Unsupported datatype: {datatype}')
         # some error is parsed
         return t, extra_cols
 
 
 def export_2d_data(data,
-                   form: str = None,
+                   form: Optional[str] = None,
                    transpose: bool = False,
-                   sep: str = None,
-                   filter_nan_row: bool = True) -> List[str]:
+                   sep: Optional[str] = None,
+                   filter_nan_row: bool = True) -> list[str]:
     """print the 2-dimension data into list of strings
 
     Args:
         data (2d array): each row has the same format
         form (str or tuple/list): format string of each row of data.
-        transpose (bool) : if set True, the same column will be printed as one line
-        sep (str)
-        filter_nan_row (bool)
-
+        transpose (bool): if set True, the same column will be printed as one line
+        sep (str): separator between exported values
+        filter_nan_row (bool): omit rows containing NaN values
     """
     slist = []
     if form is None:

@@ -36,9 +36,8 @@ def get_atomic_number(e: Union[str, int], allow_int: bool = True):
 
     Args:
         e (str or int): the symbol or atomic number of element
-            if e is a int, it will check the validity of the number.
-            if e is a str, it will first remove any space and numbers within,
-                then capitalize it before search
+            Integer values must be valid table indices; booleans are rejected.
+            Strings have spaces and digits removed and are capitalized before lookup.
         allow_int (bool): allow parsing e as int for validity check
 
     Returns:
@@ -46,9 +45,9 @@ def get_atomic_number(e: Union[str, int], allow_int: bool = True):
     """
     an = None
     if isinstance(e, int):
-        if not allow_int:
+        if not allow_int or isinstance(e, bool):
             raise ValueError("symbol must be str, not int")
-        if e < len(element_symbols):
+        if 0 <= e < len(element_symbols):
             an = e
     if isinstance(e, str):
         e = sub(r"[\d ]", "", e)
@@ -98,12 +97,11 @@ def get_atomic_weight(e: Union[str, int]):
 
     Args:
         e (str or int): the symbol or atomic number of element
-            if e is a int, it will check the validity of the number.
-            if e is a str, it will first remove any space and numbers within,
-                then capitalize it before search
+            Integer values must be valid table indices; booleans are rejected.
+            Strings have spaces and digits removed and are capitalized before lookup.
 
     Returns:
-        float, atomic number of the element
+        float: atomic weight in unified atomic mass units
     """
     an = get_atomic_number(e)
     return atomic_weights[an]
@@ -113,87 +111,6 @@ def get_atomic_weight(e: Union[str, int]):
 get_atomic_mass = get_atomic_weight
 # ====================================================
 
-# def common_molar_mass_calculator(chemFormula):
-#     '''calculate molar weight for a chemical formula
-
-#     Args:
-#         chemFormula (str) : Chemical formula of compound. Parentheses are not supported.
-#     '''
-
-#     _at, _natomList, _compo = common_read_chemical_formula(chemFormula, debug=False)
-
-#     _molarMass = 0.0
-
-#     for _i, _nat in enumerate(_natomList):
-#         _atomNum = periodicTable.index(_at[_i])
-#         _molarMass += atomWeight[_atomNum] * _nat
-
-#     return _molarMass
-
-# # ====================================================
-
-# def common_read_chemical_formula(chemFormula, debug=False):
-
-#     '''Read the chemical formula
-
-#     Args:
-#         chemFormula (str) : the chemical formula of the system which reflects the total numbers of each element
-#             in the molecule or the unit cell of crystal.
-#         debug (bool) : the flag to switch on debug mode.
-
-#     Returns:
-#         atomType (list of str) : the types of elements in the system.
-#         natomList (list of int) : the numbers of atoms for each type of element correspondent to the atomType.
-#         compositions (int) : the number of compositions in the system.
-#     '''
-
-#     atomType = []
-#     natomList = []
-
-#     _lenSymbol = 0
-#     _natom = 0
-#     _symbol = ''
-#     _strNatom = ''
-
-#     for i, _charEle in enumerate(chemFormula):
-#         if _charEle in string.ascii_letters:
-#             # If an uppercase is met, save the last element if _symbol is not empty
-#             # and start a new element
-#             if _charEle in string.ascii_uppercase:
-#                 if len(_symbol) > 0:
-#                     # check if the symbol is a valid element symbol
-#                     if _symbol in periodicTable:
-#                         atomType.append(_symbol)
-#                         natomList.append(int(_strNatom))
-#                     else:
-#                         raise ValueError("Invalid element symbol not found in the periodic table.")
-#                     # clear the natom and length counter
-#                     _lenSymbol = 0
-#                     _strNatom = ''
-
-#                 _symbol = _charEle
-
-#             elif _charEle in string.ascii_lowercase:
-#                 _symbol += _charEle
-#             _lenSymbol += 1
-#             # no chemical symbol has a length larger than 2
-#             assert _lenSymbol <= 2
-#         elif _charEle in string.digits:
-#             _strNatom += _charEle
-#         else:
-#             raise TypeError("Invalid character for chemical formula.")
-
-#         # save the last element
-#         if i == (len(chemFormula)-1):
-#             atomType.append(_symbol)
-#             natomList.append(int(_strNatom))
-
-#     compositions = len(atomType)
-
-#     if debug:
-#         print(atomType, natomList)
-
-#     return atomType, natomList, compositions
 
 l_channels = ['s', 'p', 'd', 'f', 'g', 'h', 'i', 'j', 'k']
 l_int = {v: i for i, v in enumerate(l_channels)}
