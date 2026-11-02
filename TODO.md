@@ -27,6 +27,10 @@
   - [x] `DensityOfStates` object
 - io helper functions `ioutils`
 
+`Cif` 类在读取 SpringerMaterials、ICSD 上下载的部分 CIF 文件时曾报错：
+
+- [x] Cu2O 52043
+
 ### 数据库管理模块 `db`
 
 - [ ] 支持文件夹条目下文件拷贝类型筛选, 避免拷贝不必要的文件
@@ -77,18 +81,6 @@ XML reader for
 - [ ] calculators of relativistic potential
 
 ### GPAW `gpaw`
-
-### 爬虫相关
-
-#### SpringerMaterials
-
-`Cif` 类在读取 SpringerMaterials, ICSD 上下载的部分 cif 文件时报错. 包括
-
-- [x] Cu2O 52043
-
-#### MaterialsProject
-
-Require `pymatgen`
 
 ## Visualization
 
