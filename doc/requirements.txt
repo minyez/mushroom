@@ -2,3 +2,7 @@ furo
 myst-parser
 sphinx-copybutton
 sphinx-design
+numpy
+scipy
+spglib>=2.5.0
+click>=8.0

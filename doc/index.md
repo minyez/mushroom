@@ -15,4 +15,6 @@ This is just a contrived name for yet another analysis tool for scientific compu
 
 getstarted
 customize
+contributing
+api
 ```

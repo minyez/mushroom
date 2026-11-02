@@ -1,3 +1,9 @@
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from mushroom import __version__
+
 # Configuration file for the Sphinx documentation builder.
 #
 # For the full list of built-in configuration values, see the documentation:
@@ -9,7 +15,7 @@
 project = 'mushroom'
 copyright = '2024, Min-Ye Zhang'
 author = 'Min-Ye Zhang'
-release = '0.2.0'
+release = __version__
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -17,6 +23,7 @@ release = '0.2.0'
 extensions = [
     # Sphinx's own extensions
     "sphinx.ext.autodoc",
+    "sphinx.ext.napoleon",
     "sphinx.ext.extlinks",
     "sphinx.ext.intersphinx",
     "sphinx.ext.mathjax",
@@ -66,3 +73,5 @@ html_theme = 'furo'
 html_static_path = ['_static']
 
 html_title = "mushroom"
+
+napoleon_google_docstring = True

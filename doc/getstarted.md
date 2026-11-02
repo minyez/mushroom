@@ -4,6 +4,7 @@
 
 The following packages are required for normal use
 - Python >= 3.9
+- Click >= 8.0 (for the command line interface)
 - NumPy
 - SciPy (for special functions)
 - Spglib >= 2.5.0 (for symmtery detection)
@@ -25,13 +26,15 @@ if you use conda.
 
 There are also optional depedencies
 
-- lxml and BeautifulSoup4 (for XML and HTML parser)
-- argcomplete (for completing scripts arguments from command line)
 - matplotlib (for some scripts and utilites under `visual/pyplot` module)
 
 They are declared in `requirements_optional.txt` and can be installed like above.
 
 ## Installation
+
+Install the package and unified command with `python -m pip install .`.
+Use `python -m pip install ".[plot]"` to include plotting support.
+The source-tree setup below remains supported, including all legacy `m_*` scripts.
 
 You need to adjust `PYTHONPATH` and `PATH` environment variables to use Mushroom python package and scripts in `scripts`
 Assume that Mushroom is cloned to `path/to/mushroom`.
