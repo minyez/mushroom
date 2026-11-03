@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Module that defines class and utilities for band structure"""
 import re
+from dataclasses import dataclass
 from collections.abc import Iterable
 from itertools import permutations
 from typing import Union, Optional
@@ -19,8 +20,8 @@ from mushroom.core.ioutils import get_prj_indices, get_str_indices_by_iden, spli
 from mushroom.core.typehint import Key
 
 __all__ = [
-    "BandStructure", "get_energy_reference",
-    "split_apb",
+    "BandPathData", "BandStructure", "get_energy_reference",
+    "split_apb", "qp_correction", "fit_qp_correction", "effective_mass",
 ]
 
 # eigen, occ (array): shape (nspins, nkpt, nbands)
@@ -167,6 +168,29 @@ class BandStructure(EnergyUnit):
         self._nprjs = 0
         if pwav is not None:
             self.parse_proj(pwav=pwav, atms=atms, prjs=prjs)
+
+    def to_dict(self) -> dict:
+        """Return constructor data, including explicit inferred occupations."""
+        return dict(eigen=self.eigen.copy(), occ=None if self.occ is None else self.occ.copy(),
+                    weight=self.weight.copy(), unit=self.unit, efermi=self._efermi,
+                    pwav=None if self.pwav is None else self.pwav.copy(),
+                    atms=self.atms, prjs=self.prjs, use_occ_only=self._band_edges_use_occ_only)
+
+    @classmethod
+    def from_dict(cls, data):
+        """Construct a band structure from constructor data."""
+        return cls(**data)
+
+    def save(self, path):
+        """Save a NumPy-only archive: eigen, occ, weight, pwav and JSON __meta__."""
+        from mushroom.core.serialization import save_npz
+        save_npz(path, "BandStructure", self.to_dict(), ("eigen", "occ", "weight", "pwav"))
+
+    @classmethod
+    def load(cls, path):
+        """Read an archive with NumPy alone, without allowing pickle."""
+        from mushroom.core.serialization import load_npz
+        return cls.from_dict(load_npz(path, "BandStructure"))
 
     def _set_occupations(self, occ, allow_reset: bool = False):
         """set occupation numbers
@@ -1613,10 +1637,148 @@ def get_energy_reference(bs: BandStructure, ref: Union[str, float, None] = None)
             raise ValueError("Fermi energy is not available")
         return float(value)
     if isinstance(ref, str):
-        if re.fullmatch(r"vbm_\d+", ref):
+        if re.fullmatch(r"vbm_-?\d+", ref):
             return float(bs.vbm_sp_kp[0, int(ref[4:])])
-        if re.fullmatch(r"\d+:\d+:.+", ref):
+        if re.fullmatch(r"-?\d+:-?\d+:.+", ref):
             ispin, ik, ib = ref.split(":")
             return float(bs.get_eigen(ib)[int(ispin), int(ik), 0])
     raise ValueError("Invalid reference {!r}; use none, a real number, vbm, cbm, "
                      "ef/efermi/fermi, vbm_<ik>, or is:ik:ib".format(ref))
+
+
+@dataclass
+class BandPathData:
+    """Band structure and fractional path with reciprocal vectors in 2pi/Angstrom."""
+
+    bs: BandStructure
+    kpts: np.ndarray
+    recp_latt: Optional[np.ndarray] = None
+    ksymbols: Optional[list[str]] = None
+    code: str = ""
+    source: str = ""
+
+    def kpath(self, unify_x: bool = False):
+        """Construct the linearized path, retaining plain special-point symbols."""
+        from mushroom.core.kpoints import KPathLinearizer
+        kp = KPathLinearizer(self.kpts, self.recp_latt, unify_x=unify_x)
+        kp.ksymbols = self.ksymbols
+        return kp
+
+    def save(self, path):
+        """Save NumPy-only band arrays plus kpts, recp_latt and JSON __meta__."""
+        from mushroom.core.serialization import save_npz
+        data = self.bs.to_dict()
+        data.update(kpts=self.kpts, recp_latt=self.recp_latt, ksymbols=self.ksymbols,
+                    code=self.code, source=self.source)
+        save_npz(path, "BandPathData", data, ("eigen", "occ", "weight", "pwav", "kpts", "recp_latt"))
+
+    @classmethod
+    def load(cls, path):
+        """Read a path archive without pickle or optional plotting packages."""
+        from mushroom.core.serialization import load_npz
+        data = load_npz(path, "BandPathData")
+        path_data = {key: data.pop(key) for key in ("kpts", "recp_latt", "ksymbols", "code", "source")
+                     if key in data}
+        return cls(BandStructure.from_dict(data), **path_data)
+
+
+def qp_correction(bs_ks, bs_qp, ref=None):
+    """Return flat KS energies, QP shifts in eV, and KS occupation masks.
+
+    Optional ``band_start`` attributes specify zero-based absolute band origins.
+    Without these, both arrays must start at the same band, as returned by
+    ``read_qp_pair``. A numeric reference is in the KS object's original unit.
+    Input objects are not modified.
+    """
+    if (bs_ks.nspins, bs_ks.nkpts) != (bs_qp.nspins, bs_qp.nkpts):
+        raise ValueError('KS and QP spin/k-point dimensions must agree')
+    if bs_ks.occ is None:
+        raise ValueError('KS occupations are required')
+    starts = [getattr(b, 'band_start', 0) for b in (bs_ks, bs_qp)]
+    start = max(starts)
+    end = min(s + b.nbands for s, b in zip(starts, (bs_ks, bs_qp)))
+    if end <= start:
+        raise ValueError('KS and QP band windows do not overlap')
+    ks_slice, qp_slice = [slice(start - s, end - s) for s in starts]
+    factor = bs_ks._get_eunit_conversion('ev')
+    reference = get_energy_reference(bs_ks, ref) * factor
+    eks = bs_ks.eigen[:, :, ks_slice] * factor
+    eqp = bs_qp.eigen[:, :, qp_slice] * bs_qp._get_eunit_conversion('ev')
+    return ((eks - reference).ravel(), (eqp - eks).ravel(),
+            (bs_ks.occ[:, :, ks_slice] > .5).ravel())
+
+
+def fit_qp_correction(e_ks, de, occupied) -> dict:
+    """Fit separate linear occupied and empty QP shifts, including R squared."""
+    e_ks, de, occupied = np.asarray(e_ks), np.asarray(de), np.asarray(occupied, dtype=bool)
+    if e_ks.shape != de.shape or de.shape != occupied.shape:
+        raise ValueError('Energy, shift and occupation arrays must have equal shape')
+    result = {}
+    for key, mask in [('vb', occupied), ('cb', ~occupied)]:
+        x, y = e_ks[mask], de[mask]
+        if len(x) < 2 or np.ptp(x) == 0:
+            result[key] = None
+            continue
+        slope, intercept = np.polyfit(x, y, 1)
+        residual = np.sum((y - (slope * x + intercept)) ** 2)
+        variance = np.sum((y - y.mean()) ** 2)
+        r2 = 1. - residual / variance if variance > 0 else 1.
+        result[key] = dict(slope=float(slope), intercept=float(intercept), r2=float(r2))
+    return result
+
+
+def _mass_extremum(bs, ib, ispin):
+    """Select the occupied maximum or empty minimum for one band."""
+    if bs.occ is None:
+        raise ValueError('Occupations are required to select an extremum automatically')
+    energy = bs.eigen[ispin, :, ib]
+    return int(np.argmax(energy) if np.mean(bs.occ[ispin, :, ib]) > .5 else np.argmin(energy))
+
+
+def effective_mass(bs, kp, ib, ik, *, ispin=0, npoints=5, side='both') -> dict:
+    """Fit signed effective masses in electron masses on each path segment.
+
+    Energies are converted to eV and Cartesian distances must be in inverse
+    Angstrom including 2pi. Valence maxima give negative masses (no absolute
+    value is taken). Each side includes ``ik`` and at most ``npoints`` points;
+    fits never cross a special point. Fewer than three distinct points give
+    None. Direction labels are available when ``kp.ksymbols`` is populated.
+    """
+    from mushroom.core.constants import HBAR2_OVER_2ME_EV_ANG2
+    if not kp._use_cartesian:
+        raise ValueError('Effective mass requires a reciprocal lattice in inverse Angstrom including 2pi')
+    if side not in ('left', 'right', 'both'):
+        raise ValueError('side must be left, right or both')
+    if ispin not in range(bs.nspins) or kp._nkpts != bs.nkpts:
+        raise ValueError('Inconsistent spin or k-point dimensions')
+    if npoints < 1:
+        raise ValueError('npoints must be positive')
+    ib = bs._convert_band_iden(ib)
+    if not -bs.nbands <= ib < bs.nbands:
+        raise ValueError('Band index out of range')
+    energy = bs.eigen[ispin, :, ib] * bs._get_eunit_conversion('ev')
+    if ik is None:
+        ik = _mass_extremum(bs, ib, ispin)
+    if ik not in range(bs.nkpts):
+        raise ValueError('k-point index out of range')
+    result = dict(left=None, right=None, left_label=None, right_label=None)
+    symbols = getattr(kp, 'ksymbols', None)
+    for direction in ('left', 'right') if side == 'both' else [side]:
+        segments = [(st, ed) for st, ed in kp._ksegs
+                    if (st < ik <= ed if direction == 'left' else st <= ik < ed)]
+        if not segments:
+            continue
+        st, ed = segments[0]
+        if direction == 'left':
+            indices = np.arange(max(st, ik - npoints + 1), ik + 1)
+        else:
+            indices = np.arange(ik, min(ed + 1, ik + npoints))
+        x = np.linalg.norm(kp._kpts[indices] - kp._kpts[ik], axis=1)
+        if len(np.unique(x)) >= 3:
+            c2 = np.polyfit(x, energy[indices], 2)[0]
+            result[direction] = float(HBAR2_OVER_2ME_EV_ANG2 / c2) if abs(c2) > 1e-14 else None
+        if symbols and len(symbols) == len(kp.special_x):
+            start = symbols[int(np.argmin(abs(kp.special_x - kp.x[st])))].split('|')[-1]
+            end = symbols[int(np.argmin(abs(kp.special_x - kp.x[ed])))].split('|')[0]
+            result[direction + '_label'] = '{}→{}'.format(start, end)
+    return result

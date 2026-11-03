@@ -22,9 +22,13 @@
 
 - band structure analysis `bs`
   - [x] `BandStructure` object
+  - [x] 公共能量零点、能带路径与无 pickle 的 NumPy 序列化
+  - [x] 准粒子修正拟合与沿路径的有符号有效质量
   - [ ] resolve band entanglement
 - density of states analysis `dos`
   - [x] `DensityOfStates` object
+  - [x] DOS 序列化与独立的数据导出
+- [x] 统一读取、双后端自旋作图与跨目录结果汇总
 - io helper functions `ioutils`
 
 `Cif` 类在读取 SpringerMaterials、ICSD 上下载的部分 CIF 文件时曾报错：

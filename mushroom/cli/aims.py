@@ -235,13 +235,8 @@ def band(ctx, **kwargs):
             "Number of k segments different from number of symbols! Contact developer")
 
     # check non-continuous special kx
-    x_break = []
-    ksym_break = []
-    if ksymbols is not None:
-        for x, ksym in zip(kp.special_x, ksymbols):
-            if "|" in ksym:
-                x_break.append(x)
-                ksym_break.append(ksym)
+    from mushroom.core.kpoints import split_kpath_breaks
+    x_break, ksym_break = split_kpath_breaks(kp.special_x, ksymbols)
 
     if args.energy_range is not None:
         try:

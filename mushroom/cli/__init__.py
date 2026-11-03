@@ -9,7 +9,9 @@ import click
 
 from mushroom import __version__
 from mushroom.cli.aims import aims
+from mushroom.cli.band import band, dos, qp_corr, emass
 from mushroom.cli.cell import cell
+from mushroom.cli.collect import collect
 from mushroom.cli.detect import detect
 from mushroom.cli.gap import gap
 from mushroom.cli.job import job
@@ -26,7 +28,7 @@ def main():
     """mushroom, a Multi-fUnctional, Simple and Helpful Research tOOlkit for Material science"""
 
 
-for _command in (aims, cell, detect, fiteos, gap, job, kpt, librpa, quickgrace, vasp, w2k):
+for _command in (aims, band, dos, qp_corr, emass, collect, cell, detect, fiteos, gap, job, kpt, librpa, quickgrace, vasp, w2k):
     main.add_command(_command)
 
 

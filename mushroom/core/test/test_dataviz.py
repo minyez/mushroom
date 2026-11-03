@@ -13,7 +13,7 @@ class test_references(ut.TestCase):
         for ref, expected in [(None, 0), ("none", 0), (0, 0), (2.3, 2.3),
                               ("vbm", 0), ("cbm", 2), ("ef", 1), ("efermi", 1),
                               ("fermi", 1), ("vbm_0", -1), ("0:1:cbm+1", 5),
-                              ("0:0:1", -1)]:
+                              ("0:0:1", -1), ("vbm_-1", 0), ("0:-1:cbm", 3)]:
             self.assertEqual(get_energy_reference(bs, ref), expected)
         with self.assertRaisesRegex(ValueError, "is:ik:ib"):
             get_energy_reference(bs, "bad")

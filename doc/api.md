@@ -197,3 +197,24 @@ Array dimensions and physical units are documented by each reader. Optional depe
 .. automodule:: mushroom.hpc
    :members:
 ```
+
+## visual.axes
+
+```{eval-rst}
+.. automodule:: mushroom.visual.axes
+   :members:
+```
+
+## visual.dosplot
+
+```{eval-rst}
+.. automodule:: mushroom.visual.dosplot
+   :members:
+```
+
+## collect
+
+```{eval-rst}
+.. automodule:: mushroom.collect
+   :members:
+```

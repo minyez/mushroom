@@ -464,6 +464,19 @@ class StdOut:
                 if l.startswith("  | Chemical Potential"):
                     self._chemical_potential = float(l.split()[-2])
 
+    def get_total_energy(self):
+        """Return the final DFT/Hartree-Fock total energy in eV, or None."""
+        with open(self._path, encoding='utf-8') as handle:
+            matches = re.findall(r"\| Total energy of the DFT / Hartree-Fock s\.c\.f\. calculation"
+                                 r"\s*:\s*([-+\d.Ee]+)\s+eV", handle.read())
+        return float(matches[-1]) if matches else None
+
+    def get_homo_lumo_gap(self):
+        """Return the final estimated HOMO-LUMO gap in eV, or None."""
+        with open(self._path, encoding='utf-8') as handle:
+            matches = re.findall(r"ESTIMATED overall HOMO-LUMO gap:\s*([-+\d.Ee]+)\s+eV", handle.read())
+        return float(matches[-1]) if matches else None
+
     def get_chemical_potential(self):
         """Get chemical potential when SCF is converged"""
         return self._chemical_potential
@@ -603,7 +616,7 @@ class StdOut:
 
         Args:
             **kwargs: additional keyword arguments passed to the underlying operation
-            kind (str): the key of QP energies, default to "eqp".
+            kind (str): the key of QP energies, default to "qp" (alias "eqp").
                 use "exx" or "hf" to get the EXX band structure, and
                 use "eps" to get the KS band structure,
 

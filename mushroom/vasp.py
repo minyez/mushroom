@@ -35,7 +35,7 @@ __all__ = [
     "read_ibzkpt",
     "Incar",
     "Outcar",
-    "KPoints",
+    "KPoints", "read_kpath_symbols",
     "backup_results",
     "clean_results",
     "warn_changed",
@@ -1222,3 +1222,20 @@ def get_bandstructure_outcar_wannier(path_outcar):
     kpts = np.array(kpts)
 
     return BandStructure(ene, occ=occ, efermi=efermi), kpts
+
+
+def read_kpath_symbols(path="KPOINTS"):
+    """Read plain endpoint labels from line-mode KPOINTS, or return None."""
+    kpoints = KPoints.read(path)
+    if kpoints._kpaths is None:
+        return None
+    symbols = []
+    for _, _, start, end in kpoints._kpaths:
+        if start is None or end is None:
+            return None
+        if not symbols:
+            symbols.append(start)
+        elif symbols[-1] != start:
+            symbols[-1] += "|" + start
+        symbols.append(end)
+    return symbols

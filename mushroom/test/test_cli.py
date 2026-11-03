@@ -16,7 +16,9 @@ from mushroom.cli._utils import expand_multi_values, fill_optional_values
 from mushroom.cli.cell import _READERS, _WRITERS
 from mushroom.cli.gap import _EPS_KINDS
 from mushroom.cli.tools import _AVAILABLE_EOS
-from mushroom.cli.w2k import _plot_pwav
+from mushroom.visual.bandplot import plot_fatband
+from mushroom.visual.axes import GraceAxes
+from types import SimpleNamespace
 from mushroom.core.eos import available_eos
 from mushroom.gap import Eps
 from mushroom.io import CellIO
@@ -292,11 +294,12 @@ class test_w2k_commands(ut.TestCase):
         bs.get_eigen.return_value = eigen
         for prop_area, expected in [(False, [[8.0], [18.0]]), (True, [[4.0], [6.0]])]:
             graph = MagicMock()
-            _plot_pwav(graph, [0.0], bs, ["Si:s:1"], 0, 0.5, 2.0, colors=["red"], prop_area=prop_area)
-            args, kwargs = graph.plot.call_args
-            np.testing.assert_allclose(args[1], [[0.5], [1.5]])
-            np.testing.assert_allclose(kwargs["size"], expected)
-            self.assertEqual((kwargs["color"], kwargs["label"]), ("red", "Si-s"))
+            plot_fatband(GraceAxes(graph), bs, SimpleNamespace(x=[0.0]), ["Si:s:1"],
+                         spin=0, ref=0.5, scale=2.0, colors=["red"], prop_area=prop_area)
+            calls = graph.plot.call_args_list
+            np.testing.assert_allclose([c.args[1] for c in calls], [[0.5], [1.5]])
+            np.testing.assert_allclose([c.kwargs["size"] for c in calls], expected)
+            self.assertEqual((calls[0].kwargs["color"], calls[0].kwargs["label"]), ("red", "Si-s"))
 
     def test_dos_requires_dosfile(self):
         result = self.runner.invoke(main, ["w2k", "dos"])

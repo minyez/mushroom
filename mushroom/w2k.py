@@ -25,7 +25,7 @@ from mushroom.workflow import run_command
 
 __all__ = [
     "Struct",
-    "read_energy",
+    "read_energy", "read_band_path", "read_scf_summary",
     "KList",
     "InTetra",
     "In1",
@@ -879,7 +879,8 @@ def read_energy(penergy: str, penergy_dn: Optional[str] = None, efermi=None):
     if penergy_dn is not None:
         _, linenums = grep(_energy_kpt_line, penergy_dn, error_not_found=True,
                            return_linenum=True)
-        eigen.append(_read_one_energy_file(h, linenums, nbands_min))
+        with open(penergy_dn, "r") as h:
+            eigen.append(_read_one_energy_file(h, linenums, nbands_min))
     # always Rydberg unit
     return BandStructure(eigen, weight=weights, unit='ry', efermi=efermi), natm_ineq, np.array(kpts), symbols
 
@@ -1114,3 +1115,61 @@ def read_dos(pdos1: Path,
                            pdos=pdos,
                            atms=atms,
                            prjs=prjs)
+
+
+def read_band_path(dirpath=".", casename=None, energyfile=None, efermi=None):
+    """Read a WIEN2k band path with reciprocal vectors in inverse Angstrom."""
+    from mushroom.core.bs import BandPathData
+
+    pstruct, penergy = get_inputs("struct", "energy", casename=casename, dirpath=dirpath)
+    if energyfile is not None:
+        penergy = str(energyfile)
+    pdn = None
+    if not pathlib.Path(penergy).exists() and pathlib.Path(penergy + "up").exists():
+        penergy += "up"
+    if penergy.endswith("up") and pathlib.Path(penergy[:-2] + "dn").exists():
+        pdn = penergy[:-2] + "dn"
+    struct = Struct.read(pstruct)
+    cell = struct.get_cell()
+    cell.unit = "ang"
+    bs, _, kpts, symbols = read_energy(penergy, pdn, efermi=efermi)
+    labels = [s.capitalize() for _, s in symbols] or None
+    return BandPathData(bs, kpts, cell.b, labels, "w2k",
+                        ";".join(str(x) for x in (pstruct, penergy, pdn) if x))
+
+
+def read_scf_summary(pscf) -> dict:
+    """Read final SCF energy, gap and Fermi energy in eV.
+
+    This parser has not yet been validated against a real case.scf fixture.
+    WIEN2k 19.2 run_lapw writes completion to case.dayfile, not case.scf.
+    Completion therefore requires its final convergence flags and normal stop.
+    """
+    from mushroom.core.constants import RY2EV
+    path = pathlib.Path(pscf)
+    text = path.read_text()
+    result = dict(energy=None, gap=None, efermi=None, status='unfinished')
+    errors = []
+    for key, tag in [('energy', 'ENE'), ('efermi', 'FER')]:
+        lines = re.findall(r'^:' + tag + r'[^\n]*', text, re.M)
+        if lines:
+            try:
+                result[key] = float(lines[-1].split()[-1]) * RY2EV
+            except ValueError as err:
+                errors.append('{}: {}'.format(key, err))
+    gaps = re.findall(r'^:GAP[^\n]*?:\s*([-+\d.Ee]+)\s+Ry', text, re.M)
+    if gaps:
+        try:
+            result['gap'] = float(gaps[-1]) * RY2EV
+        except ValueError as err:
+            errors.append('gap: {}'.format(err))
+    if errors:
+        result['error'] = '; '.join(errors)
+        _logger.warning('%s: %s', path, result['error'])
+    dayfile = path.with_suffix('.dayfile')
+    if dayfile.is_file():
+        day = dayfile.read_text()
+        flags = re.findall(r'ec cc and fc_conv\s+(\d)\s+(\d)\s+(\d)', day)
+        if flags and flags[-1] == ('1', '1', '1') and day.rstrip().endswith('>   stop'):
+            result['status'] = 'finished'
+    return result

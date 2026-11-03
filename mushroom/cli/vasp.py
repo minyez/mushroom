@@ -19,6 +19,7 @@ def vasp():
 
 
 @vasp.command()
+@click.option("--spin", type=click.Choice(["up", "dn", "both"]), default="both")
 @click.option("-v", "eigenval", default="EIGENVAL", help="EIGENVAL file to read band data")
 @_opt_poscar
 @click.option("-o", "output", default="plotband.agr", help="path of agr file to export")
@@ -34,7 +35,7 @@ def vasp():
                        help="Read symbols of high symmetry points from KPOINTS file")
 @click.pass_context
 def band(ctx, eigenval, poscar, output, data_only, removek, fig_ext, energy_range,
-         fermi_zero, vbm_zero, ksymbols, ksymbols_kf):
+         fermi_zero, vbm_zero, ksymbols, ksymbols_kf, spin):
     """draw band structure from vasp output and export to an XmGrace plot."""
     from mushroom.core.bs import display_band_analysis
     from mushroom.core.cell import Cell
@@ -54,14 +55,16 @@ def band(ctx, eigenval, poscar, output, data_only, removek, fig_ext, energy_rang
     display_band_analysis(bs, kpts)
     if data_only:
         return
-    ref = 0.0
-    if vbm_zero:
-        ref = bs.vbm
-    if fermi_zero:
-        ref = bs.efermi
+    from mushroom.core.bs import get_energy_reference
+    from mushroom.visual.bandplot import plot_band
+    ref = get_energy_reference(bs, 'ef' if fermi_zero else ('vbm' if vbm_zero else None))
     kp = KPathLinearizer(kpts, c.b)
-    ax.plot(kp.x, bs.eigen[0, :, :].transpose() - ref, color="k", symbol="none")
+    plot_band(ax, bs, kp, ref=ref, spin={'up': 0, 'dn': 1, 'both': None}[spin],
+              set_xaxis=False, set_ylabel=False, zero_line=False)
     ax.x.set_major(grid=True, color="grey", lw=3, ls="dashed")
+    if ksymbols_kf:
+        from mushroom.vasp import read_kpath_symbols
+        ksymbols = read_kpath_symbols(ksymbols_kf)
     ax.x.set_spec(kp.special_x, labels=get_ksymbols(ksymbols))
     emin, emax = -6, 6
     if energy_range is not None:
@@ -100,46 +103,6 @@ def chg(pchg):
         print(density.export_cube(), file=h)
 
 
-def _plot_pdos(graph, dos, aps, spin=None, colors=None):
-    """plot projected density of states and export to pdos.dat
-
-    Args:
-        spin: spin-channel index to plot
-        colors: colors for the plotted groups
-        graph (Graph): Grace graph receiving the datasets
-        dos (DensityOfStates): density-of-states object to plot
-        aps (str): atom-projector
-    """
-    from mushroom.core.data import export_2d_data
-    from mushroom.core.dos import split_ap
-    from mushroom.visual.graceplot import prefer_gracecolors
-
-    if colors is None:
-        colors = prefer_gracecolors
-    with open('pdos.dat', 'w') as pdos_dat:
-        print("#fermi-energy: {}".format(dos.efermi), file=pdos_dat)
-        egrid = dos.egrid
-        for i, ap in enumerate(aps):
-            atms, prjs = split_ap(ap)
-            pdos = dos.get_pdos(ispin=spin, atm=atms, prj=prjs)
-            graph.plot(egrid - dos.efermi, pdos, color=colors[i % len(colors)], symbol="none",
-                       label="-".join(str(x) for x in ap.split(":")))
-            print("#atom-projector:{}".format(ap), file=pdos_dat)
-            print("\n".join(export_2d_data([egrid, pdos], transpose=True)),
-                  file=pdos_dat, end="\n\n")
-
-
-def _plot_tdos(graph, dos):
-    """plot total density of states and export to tdos.dat"""
-    from mushroom.core.data import export_2d_data
-
-    graph.plot(dos.egrid - dos.efermi, dos.get_tdos(ispin=-1), color="k", symbol="none", label="Total")
-    with open('tdos.dat', 'w') as tdos_dat:
-        print("#fermi-energy: {}".format(dos.efermi), file=tdos_dat)
-        print("\n".join(export_2d_data([dos.egrid, dos.get_tdos(ispin=-1)], transpose=True)),
-              file=tdos_dat)
-
-
 @vasp.command("dos")
 @click.option("-d", "doscar", default="DOSCAR", help="DOSCAR file to read")
 @click.option("-x", "vasprunxml", default=None, help="vasprun.xml file")
@@ -169,7 +132,10 @@ def dos_(ctx, doscar, vasprunxml, output, poscar, energy_range, aps, fig_ext):
     else:
         raise NotImplementedError
     p, ax = Plot.subplots()
-    _plot_tdos(ax, dos)
+    from mushroom.visual.dosplot import plot_dos, export_tdos_data, export_pdos_data
+    plot_dos(ax, dos, spin=-1)
+    with open('tdos.dat', 'w') as handle:
+        handle.write('\n'.join(export_tdos_data(dos)) + '\n')
     if energy_range is not None:
         try:
             emin, emax = decode_float_ends(energy_range)
@@ -190,7 +156,9 @@ def dos_(ctx, doscar, vasprunxml, output, poscar, energy_range, aps, fig_ext):
     if read_pdos:
         c = Cell.read(poscar)
         dos.atms = c.atms
-        _plot_pdos(ax, dos, aps)
+        plot_dos(ax, dos, aps=aps, show_total=False, spin=-1)
+        with open('pdos.dat', 'w') as handle:
+            handle.write('\n'.join(export_pdos_data(dos, aps)) + '\n')
 
     p.write(file=output)
     if fig_ext is not None:
@@ -214,46 +182,6 @@ def gap(eigenval, removek, trans, debug):
 
 
 # pylint: disable=R0914
-def _plot_pwav(graph, x, bs, apbs, spin, scale, colors=None, prop_area=False):
-    """plot partial waves and export to pwav.dat
-
-    Args:
-        graph (Graph): Grace graph receiving the datasets
-        x (1d array): abscissa values
-        bs (BandStructure): band structure to analyze or plot
-        apbs (list): atom, projector and band selections for each group
-        spin (int): spin-channel index to plot
-        scale (float): multiplicative scaling factor
-        colors (list): colors for the plotted groups
-        prop_area (bool): make symbol area, rather than its diameter, proportional to the weight
-    """
-    import numpy as np
-
-    from mushroom.core.bs import split_apb
-    from mushroom.core.data import export_2d_data
-    from mushroom.visual.graceplot import prefer_gracecolors
-
-    if colors is None:
-        colors = prefer_gracecolors
-    with open('pwav.dat', 'w') as pwav_dat:
-        for i, apb in enumerate(apbs):
-            atms, prjs, bands = split_apb(apb)
-            pwav = bs.get_pwav(atms, prjs, bands)[spin, :, :]
-            eigen = bs.get_eigen(bands)[spin, :, :] - bs.efermi
-            kwargs = {
-                "datatype": "xysize",
-                "color": colors[i % len(colors)],
-                "label": "-".join(str(x) for x in apb.split(":")[:2]),
-                "ls": "none",
-            }
-            if prop_area:
-                graph.plot(x, eigen.transpose(), size=np.sqrt(pwav.transpose()) * scale, **kwargs)
-            else:
-                graph.plot(x, eigen.transpose(), size=pwav.transpose() * scale, **kwargs)
-            print("#atom-projector-band:{}".format(apb), file=pwav_dat)
-            print("\n".join(export_2d_data(pwav)), file=pwav_dat, end="\n\n")
-
-
 @vasp.command()
 @click.option("-p", "procar", default="PROCAR", help="PROCAR file to read band data")
 @_opt_poscar
@@ -305,7 +233,10 @@ def pwav(procar, poscar, ksymbols, output, removek, prop_area, apbs, scale, spin
     ax.axhline(0.0, ls="dashed")
 
     if apbs:
-        _plot_pwav(ax, kp.x, bs, apbs, spin, scale_plot, prop_area=prop_area)
+        from mushroom.visual.bandplot import plot_fatband, export_fatband_data
+        plot_fatband(ax, bs, kp, apbs, spin=spin, ref='ef', scale=scale_plot, prop_area=prop_area)
+        with open('pwav.dat', 'w') as handle:
+            handle.write('\n'.join(export_fatband_data(bs, apbs, spin)) + '\n')
 
     # set limits
     if energy_range is not None:

@@ -19,67 +19,12 @@ def w2k():
 # pylint: disable=R0914
 def _get_bs_kpath(casename, dirpath, energyfile, efermi, unify_x=False):
     """return BandStructure and KPathLinearizer objects"""
-    from mushroom.core.ioutils import greeks
-    from mushroom.core.kpoints import KPathLinearizer
-    from mushroom.w2k import Struct, get_inputs, read_energy
-
-    pstruct, penergy, _ = get_inputs("struct", "energy", "in1", casename=casename,
-                                     dirpath=dirpath, relative="CWD")
-    if energyfile is not None:
-        penergy = energyfile
-    struct = Struct.read(pstruct)
-    cell = struct.get_cell()
-    # set to angstrom unit for standard and possible comparison with VASP/GPAW/abinit results
-    cell.unit = "ang"
-    bs, _, kpts, symbols = read_energy(penergy, efermi=efermi)
-    kp = KPathLinearizer(kpts, recp_latt=cell.b, unify_x=unify_x)
-    # convert greek letters to latex for grace encoding
-    ksymbols = []
-    if symbols:
-        for _, s in symbols:
-            sc = s.capitalize()
-            if sc in greeks:
-                ksymbols.append("\\" + sc)
-            else:
-                ksymbols.append(sc)
-    return bs, kp, [x[:2].strip() for x in struct.atms_types], ksymbols
-
-
-def _plot_pwav(graph, x, bs, apbs, spin, ref, scale, colors=None, prop_area=False):
-    """plot partial waves
-
-    Args:
-        ref: energy reference subtracted from the eigenvalues
-        apbs: atom, projector and band selections for each group
-        graph (Graph): Grace graph receiving the datasets
-        x (1d array): abscissa values
-        bs (BandStructure): band structure to analyze or plot
-        spin (int): spin-channel index to plot
-        scale (float): multiplicative scaling factor
-        colors (list): colors for the plotted groups
-        prop_area (bool): make symbol area, rather than its diameter, proportional to the weight
-    """
-    import numpy as np
-
-    from mushroom.core.bs import split_apb
-    from mushroom.visual.graceplot import prefer_gracecolors
-
-    if colors is None:
-        colors = prefer_gracecolors
-    for i, apb in enumerate(apbs):
-        atms, prjs, bands = split_apb(apb)
-        pwav = bs.get_pwav(atms, prjs, bands)[spin, :, :]
-        eigen = bs.get_eigen(bands)[spin, :, :] - ref
-        kwargs = {
-            "datatype": "xysize",
-            "color": colors[i % len(colors)],
-            "label": "-".join(str(x) for x in apb.split(":")[:2]),
-            "ls": "none",
-        }
-        if prop_area:
-            graph.plot(x, eigen.transpose(), size=np.sqrt(pwav.transpose()) * scale, **kwargs)
-        else:
-            graph.plot(x, eigen.transpose(), size=pwav.transpose() * scale, **kwargs)
+    from mushroom.w2k import Struct, get_inputs, read_band_path
+    from mushroom.core.kpoints import format_ksymbols
+    data = read_band_path(dirpath, casename, energyfile, efermi)
+    struct = Struct.read(get_inputs("struct", casename=casename, dirpath=dirpath)[0])
+    return (data.bs, data.kpath(unify_x), [x[:2].strip() for x in struct.atms_types],
+            format_ksymbols(data.ksymbols, "grace") or [])
 
 
 @w2k.command()
@@ -118,19 +63,19 @@ def band(ctx, casename, dirpath, energyfile, ksymbols, output, removek, fig_ext,
         bs.parse_proj(pwav, atms, prjs)
     p, ax = Plot.subplots()
     bs.unit = "ev"
-    ref = 0.0
-    if fermi_zero:
-        ref = bs.efermi
-    if vbm_zero:
-        ref = bs.vbm
-    ax.plot(kp.x, bs.eigen[0, :, :].transpose() - ref, color="k", symbol="none")
+    from mushroom.core.bs import get_energy_reference
+    from mushroom.visual.bandplot import plot_band, plot_fatband, export_fatband_data
+    ref = get_energy_reference(bs, 'ef' if fermi_zero else ('vbm' if vbm_zero else None))
+    plot_band(ax, bs, kp, ref=ref, set_xaxis=False, set_ylabel=False, zero_line=False)
     ax.x.set_major(grid=True, color="grey", lw=3, ls="dashed")
     # try to use symbols found in the energy file if not specified
     ax.x.set_spec(kp.special_x, labels=get_ksymbols(ksymbols) or symbols or None)
     ax.set_xlim(0.0, kp.x[-1] + 0.0001)
     scale_plot = (kp.x[-1] - kp.x[0]) / len(kp.x) * 36.0 * scale
     if apbs:
-        _plot_pwav(ax, kp.x, bs, apbs, spin, ref, scale_plot, prop_area=prop_area)
+        plot_fatband(ax, bs, kp, apbs, spin=spin, ref=ref, scale=scale_plot, prop_area=prop_area)
+        with open('pwav.dat', 'w') as handle:
+            handle.write('\n'.join(export_fatband_data(bs, apbs, spin)) + '\n')
 
     if energy_range is not None:
         try:
@@ -148,34 +93,6 @@ def band(ctx, casename, dirpath, energyfile, ksymbols, output, removek, fig_ext,
     p.write(file=output)
     if fig_ext is not None:
         p.savefig(get_filename_wo_ext(output) + "." + fig_ext)
-
-
-def _plot_pdos(graph, dos, aps, spin=None, colors=None):
-    """plot projected density of states and export to pdos.dat
-
-    Args:
-        spin: spin-channel index to plot
-        colors: colors for the plotted groups
-        graph (Graph): Grace graph receiving the datasets
-        dos (DensityOfStates): density-of-states object to plot
-        aps (str): atom-projector
-    """
-    from mushroom.core.data import export_2d_data
-    from mushroom.core.dos import split_ap
-    from mushroom.visual.graceplot import prefer_gracecolors
-
-    if colors is None:
-        colors = prefer_gracecolors
-    with open('pdos.dat', 'w') as pdos_dat:
-        egrid = dos.egrid
-        for i, ap in enumerate(aps):
-            atms, prjs = split_ap(ap)
-            pdos = dos.get_pdos(ispin=spin, atm=atms, prj=prjs)
-            graph.plot(egrid - dos.efermi, pdos, color=colors[i % len(colors)], symbol="none",
-                       label="-".join(str(x) for x in ap.split(":")))
-            print("#atom-projector:{}".format(ap), file=pdos_dat)
-            print("\n".join(export_2d_data([egrid, pdos], transpose=True)),
-                  file=pdos_dat, end="\n\n")
 
 
 @w2k.command("dos")
@@ -228,7 +145,11 @@ def dos_(casename, unit, dosfiles, dirpath, output, energy_range, aps, fig_ext):
         dos.atms = [x[:2].strip() for x in struct.atms_types]
         _logger.info("available atms: %r", dos.atms)
         _logger.info("available prjs: %r", dos.prjs)
-        _plot_pdos(ax, dos, aps)
+        from mushroom.visual.dosplot import plot_dos, export_pdos_data
+        plot_dos(ax, dos, aps=aps, show_total=False, spin=-1)
+        with open('pdos.dat', 'w') as handle:
+            # This legacy command historically omitted the Fermi header.
+            handle.write('\n'.join(export_pdos_data(dos, aps)[1:]) + '\n')
 
     p.write(file=output)
     if fig_ext is not None:

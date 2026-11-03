@@ -32,8 +32,8 @@ def read_band_output(
         unit: str = 'ev', **kwargs) -> tuple[BandStructure, list[RealVec3D]]:
     """read band output files and return a Band structure
 
-    Note that all band energies are treated in the same spin channel,
-    the resulting ``BandStructure`` object always has nspins=1
+    With ``bfiles_spin``, spin-up and spin-down energies occupy separate
+    channels (nspins=2); otherwise the result has nspins=1.
 
     Args:
         **kwargs: additional keyword arguments passed to the underlying operation
@@ -203,8 +203,8 @@ def read_band_mulliken_output(
         unit: str = 'ev') -> tuple[BandStructure, list[RealVec3D]]:
     """read band mulliken output files and return a Band structure object
 
-    Note that all band energies are treated in the same spin channel,
-    the resulting ``BandStructure`` object always has nspins=1
+    With ``bfiles_spin``, spin-up and spin-down energies occupy separate
+    channels (nspins=2); otherwise the result has nspins=1.
 
     Args:
         *bfiles (str): band-output files in path order

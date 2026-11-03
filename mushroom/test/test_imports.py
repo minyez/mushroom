@@ -24,6 +24,15 @@ def walk(package):
         if info.ispkg:
             walk(module)
 walk(mushroom)
+for name in ('mushroom.io', 'mushroom.collect', 'mushroom.visual.bandplot', 'mushroom.visual.dosplot'):
+    importlib.import_module(name)
+if sys.argv[1] == 'matplotlib':
+    from mushroom.core.bs import BandStructure
+    from mushroom.core.kpoints import KPathLinearizer
+    from mushroom.visual.graceplot import Plot
+    from mushroom.visual.bandplot import plot_band
+    bs = BandStructure([[[-1., 2.], [-2., 3.]]], efermi=0.)
+    plot_band(Plot.subplots()[1], bs, KPathLinearizer([[0, 0, 0], [.5, 0, 0]]))
 '''
         root = Path(__file__).resolve().parents[2]
         for missing in ['click', 'matplotlib', 'spglib', 'scipy']:

@@ -77,6 +77,28 @@ class DensityOfStates(EnergyUnit):
         if pdos is not None:
             self.parse_proj(pdos=pdos, atms=atms, prjs=prjs)
 
+    def to_dict(self) -> dict:
+        """Return all data needed to reconstruct the density of states."""
+        return dict(egrid=self.egrid.copy(), tdos=self.tdos.copy(), efermi=self.efermi,
+                    pdos=None if self.pdos is None else self.pdos.copy(),
+                    atms=self.atms, prjs=self.prjs, unit=self.unit)
+
+    @classmethod
+    def from_dict(cls, data):
+        """Construct a density of states from constructor data."""
+        return cls(**data)
+
+    def save(self, path):
+        """Save a NumPy-only archive: egrid, tdos, pdos and JSON __meta__."""
+        from mushroom.core.serialization import save_npz
+        save_npz(path, "DensityOfStates", self.to_dict(), ("egrid", "tdos", "pdos"))
+
+    @classmethod
+    def load(cls, path):
+        """Read an archive without pickle or optional plotting packages."""
+        from mushroom.core.serialization import load_npz
+        return cls.from_dict(load_npz(path, "DensityOfStates"))
+
     def parse_proj(self, pdos=None, atms=None, prjs=None):
         """parse the projected DOS information
 

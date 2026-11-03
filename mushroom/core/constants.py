@@ -53,3 +53,6 @@ EV_PER_ANG_CUB2GPA = E * 1.0e21
 INV_KBYTE = 1.0 / 1024
 INV_MEGABYTE = INV_KBYTE ** 2
 INV_GIGABYTE = INV_KBYTE ** 3
+
+# Free-electron parabolic dispersion coefficient, in eV Angstrom squared.
+HBAR2_OVER_2ME_EV_ANG2 = HBAR ** 2 / (2 * ME) / E * 1.0e20
