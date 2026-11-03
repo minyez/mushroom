@@ -14,7 +14,7 @@ from mushroom.w2k import Struct
 _logger = loggers["io"]
 
 __all__ = [
-    "CellIO", "read_band", "read_dos", "read_qp_pair",
+    "CellIO", "detect_code", "read_band", "read_dos", "read_qp_pair",
 ]
 
 
@@ -133,9 +133,22 @@ def read_elsi_to_csc(fn, verbose=False):
     return sp.csc_matrix((values, row_idx, col_ptr), shape=(n_basis, n_basis))
 
 
-def _detect_band_code(path, code=None):
-    """Identify a calculation, refusing tied directory signatures."""
+def detect_code(path, code=None):
+    """Identify a native calculation from its filename or directory signatures.
+
+    Args:
+        path (path-like): Native output file or calculation directory.
+        code (str or None): Explicit program identifier; when supplied, return
+            its lowercase form without inspecting the path.
+
+    Returns:
+        str: Program identifier, such as vasp, aims, w2k, librpa or gap.
+
+    Raises:
+        ValueError: If detection fails or the highest directory scores are tied.
+    """
     from pathlib import Path
+
     from mushroom.detect import detect_codes
     path = Path(path)
     if code is not None:
@@ -164,17 +177,39 @@ def _detect_band_code(path, code=None):
 
 def read_band(path, code: Optional[str] = None, kind: str = "ks",
               projections: bool = False, **kwargs):
-    """Read band data and path from a calculation or a NumPy path archive.
+    """Read band data and a path from native output or a NumPy archive.
 
-    Reciprocal vectors use inverse Angstrom and include 2pi. Program readers
-    are imported only when needed; no plotting or CLI dependency is required.
+    Program readers are imported when needed; no plotting or CLI dependency
+    is required. Archives contain NumPy arrays and JSON metadata without pickle.
+
+    Args:
+        path (path-like): Native file, calculation directory or BandPathData npz.
+        code (str or None): Program identifier; None uses detect_code.
+        kind (str): Energy kind: ks, gw, qp or exx as supported by the reader.
+        projections (bool): Request projector weights (VASP PROCAR or aims Mulliken).
+        **kwargs: Native reader options, including casename for WIEN2k. unit
+            selects the returned energy unit. efermi is in the native energy unit:
+            aims shifts printed energies and retains printed occupations; other
+            readers reset occupations at this threshold. Archives load as saved.
+
+    Returns:
+        BandPathData: Energies shaped (nspins, nkpts, nbands), fractional kpts
+        shaped (nkpts, 3), and optional reciprocal vectors shaped (3, 3) as rows
+        in inverse Angstrom including 2pi.
+
+    Raises:
+        ValueError: If detection is ambiguous, kind is invalid, or archive metadata
+            is incompatible.
+        FileNotFoundError: If required native files are absent.
+        NotImplementedError: If the program has no band reader.
     """
     from pathlib import Path
+
     from mushroom.core.bs import BandPathData
     path = Path(path)
     if path.suffix == ".npz":
         return BandPathData.load(path)
-    code = _detect_band_code(path, code)
+    code = detect_code(path, code)
     directory = path if path.is_dir() else path.parent
     recp = symbols = None
     source = []
@@ -185,10 +220,10 @@ def read_band(path, code: Optional[str] = None, kind: str = "ks",
         from mushroom.vasp import read_eigen, read_procar, read_kpath_symbols
         if kind != "ks":
             raise ValueError("vasp band supports kind='ks' only")
-        projections = projections or (not path.is_dir() and path.name.startswith('PROCAR'))
+        projections = projections or (not path.is_dir() and path.name.startswith("PROCAR"))
         filename = directory / ("PROCAR" if projections else "EIGENVAL") if path.is_dir() else path
-        if projections and not path.is_dir() and not path.name.startswith('PROCAR'):
-            filename = directory / 'PROCAR'
+        if projections and not path.is_dir() and not path.name.startswith("PROCAR"):
+            filename = directory / "PROCAR"
         if projections:
             bs, kpts = read_procar(filename, **kwargs)
         else:
@@ -220,9 +255,7 @@ def read_band(path, code: Optional[str] = None, kind: str = "ks",
         if not files:
             raise FileNotFoundError("No {}1*.out in {}".format(prefix, directory))
         reader = read_band_mulliken_output if projections else read_band_output
-        bs, kpts = reader(*files, bfiles_spin=down or None, **kwargs)
-        if efermi is not None:
-            bs._eigen += efermi
+        bs, kpts = reader(*files, bfiles_spin=down or None, efermi=efermi, **kwargs)
         source.extend(files + down)
         if (directory / "control.in").is_file():
             symbols = get_path_ksymbols(Control.read(directory / "control.in").get_output("band", []))
@@ -232,11 +265,13 @@ def read_band(path, code: Optional[str] = None, kind: str = "ks",
         from mushroom.w2k import read_band_path
         if kind != "ks":
             raise ValueError("w2k band supports kind='ks' only")
-        casename = kwargs.pop('casename', None)
+        casename = kwargs.pop("casename", None)
         if casename is None and not path.is_dir():
-            casename = path.name.split('.energy')[0]
+            casename = path.name.split(".energy")[0]
         result = read_band_path(directory, casename=casename, energyfile=None if path.is_dir() else path,
                                 efermi=efermi, **kwargs)
+        if efermi is not None:
+            result.bs.reset_occupations(efermi=efermi, unit=result.bs.unit)
         if unit is not None:
             result.bs.unit = unit
         return result
@@ -255,21 +290,68 @@ def read_band(path, code: Optional[str] = None, kind: str = "ks",
     if cell is not None:
         cell.unit = "ang"
         recp = cell.b
-    if efermi is not None:
-        bs._efermi = efermi
+    if efermi is not None and code != "aims":
+        bs.reset_occupations(efermi=efermi, unit=bs.unit)
     if unit is not None:
         bs.unit = unit
     return BandPathData(bs, np.asarray(kpts), recp, symbols, code, ";".join(map(str, source)))
 
 
-def read_dos(path, code: Optional[str] = None, sigma: float = 0.05, **kwargs):
-    """Read a DOS archive/output, or broaden band eigenvalues with ``sigma``."""
+def _w2k_dos_files(directory, casename):
+    """Select one case's non-spin eV DOS files in numeric channel order."""
+    import re
     from pathlib import Path
+
+    directory = Path(directory)
+    pattern = re.compile(re.escape(casename) + r"\.dos(\d+)ev")
+    files = []
+    spin_files = False
+    for path in directory.iterdir():
+        if not path.is_file():
+            continue
+        match = pattern.fullmatch(path.name)
+        if match:
+            files.append((int(match.group(1)), path))
+        elif re.fullmatch(re.escape(casename) + r"\.dos\d+ev(?:up|dn)", path.name):
+            spin_files = True
+    if files:
+        return [path for _, path in sorted(files)]
+    if spin_files:
+        raise NotImplementedError("Spin-resolved WIEN2k DOS requires explicit file paths; "
+                                  "specify one spin channel by file path")
+    raise FileNotFoundError("No {}.dos{{n}}ev files in {}".format(casename, directory))
+
+
+def read_dos(path, code: Optional[str] = None, sigma: float = 0.05, **kwargs):
+    """Read a DOS archive/output or broaden eigenvalues into a DOS.
+
+    Args:
+        path (path-like): Native file, calculation directory or DensityOfStates npz.
+            WIEN2k directories select only case.dos{n}ev in numeric order.
+        code (str or None): Program identifier; None uses detect_code.
+        sigma (float): Gaussian broadening width in the band reader's energy unit
+            (eV by default); used only when generating DOS from bands.
+        **kwargs: Options passed to the native DOS or band reader, including
+            casename for WIEN2k. Archives load as saved.
+
+    Returns:
+        DensityOfStates: Energy grid (nedos,), total DOS (nspins, nedos), and
+        optional projected DOS (nspins, nedos, natms, nprjs). DOS is per energy
+        unit of the returned object.
+
+    Raises:
+        ValueError: If program detection or archive metadata is invalid.
+        FileNotFoundError: If required files or non-spin eV DOS files are absent.
+        NotImplementedError: If a WIEN2k directory contains only spin DOS files;
+            supply an explicit file path for one channel.
+    """
+    from pathlib import Path
+
     from mushroom.core.dos import DensityOfStates
     path = Path(path)
     if path.suffix == ".npz":
         return DensityOfStates.load(path)
-    code = _detect_band_code(path, code)
+    code = detect_code(path, code)
     directory = path if path.is_dir() else path.parent
     if code == "vasp":
         from mushroom.vasp import read_doscar
@@ -284,10 +366,9 @@ def read_dos(path, code: Optional[str] = None, sigma: float = 0.05, **kwargs):
     if code == "w2k":
         from mushroom.w2k import read_dos as read_w2k_dos, get_inputs
         casename = kwargs.pop("casename", None)
-        struct = Struct.read(get_inputs("struct", dirpath=directory, casename=casename)[0])
-        files = sorted(directory.glob("*.dos*")) if path.is_dir() else [path]
-        if not files:
-            raise FileNotFoundError("No DOS files in {}".format(directory))
+        structfile = Path(get_inputs("struct", dirpath=directory, casename=casename)[0])
+        struct = Struct.read(structfile)
+        files = _w2k_dos_files(directory, structfile.stem) if path.is_dir() else [path]
         dos = read_w2k_dos(*files, mults=struct.mults, **kwargs)
         if dos.has_pdos():
             dos.atms = [x[:2].strip() for x in struct.atms_types]
@@ -297,30 +378,45 @@ def read_dos(path, code: Optional[str] = None, sigma: float = 0.05, **kwargs):
 
 
 def read_qp_pair(path, code: Optional[str] = None):
-    """Read KS/QP energies from the same printed band window."""
+    """Read KS and QP energies from the same printed band window.
+
+    Args:
+        path (path-like): Native output file or calculation directory.
+        code (str or None): aims, librpa, gap or vasp; None uses detect_code.
+
+    Returns:
+        tuple of BandStructure: KS and QP objects with energies shaped
+        (nspins, nkpts, nbands), both starting at the same band. Each object's
+        unit describes its energies; qp_correction converts them to eV.
+
+    Raises:
+        ValueError: If detection is ambiguous or a GAP directory has multiple
+            eqpeV files (or none).
+        FileNotFoundError: If the requested native output is absent.
+        NotImplementedError: If the program has no QP pair reader.
+    """
     from pathlib import Path
     path = Path(path)
-    code = _detect_band_code(path, code)
-    if code == 'aims':
+    code = detect_code(path, code)
+    if code == "aims":
         from mushroom.aims.stdout import StdOut
-        output = StdOut(path / 'aims.out' if path.is_dir() else path)
-        return output.get_QP_bandstructure('eps')[0], output.get_QP_bandstructure('qp')[0]
-    if code == 'librpa':
+        output = StdOut(path / "aims.out" if path.is_dir() else path)
+        return output.get_QP_bandstructure("eps")[0], output.get_QP_bandstructure("qp")[0]
+    if code == "librpa":
         from mushroom.librpa import read_quasi_particle_energies_stdout as read
-        filename = path / 'librpa.out' if path.is_dir() else path
-        return read(filename, kind='ks')[0], read(filename, kind='qp')[0]
-    if code == 'gap':
+        filename = path / "librpa.out" if path.is_dir() else path
+        return read(filename, kind="ks")[0], read(filename, kind="qp")[0]
+    if code == "gap":
         from mushroom.gap import Eqpev
-        files = sorted(path.glob('*.eqpeV*')) if path.is_dir() else [path]
+        files = sorted(path.glob("*.eqpeV*")) if path.is_dir() else [path]
         if len(files) != 1:
-            raise ValueError('Specify exactly one GAP eqpeV file')
-        eqp = Eqpev(files[0], casename=files[0].name.split('.')[0])
+            raise ValueError("Specify exactly one GAP eqpeV file")
+        eqp = Eqpev(files[0], casename=files[0].name.split(".")[0])
         ks, qp = eqp.get_KS_bandstructure(), eqp.get_QP_bandstructure()
-        ks.band_start = qp.band_start = int(eqp.ibandsgw[0]) - 1
         return ks, qp
-    if code == 'vasp':
+    if code == "vasp":
         from mushroom.vasp import get_qp_energies_from_outcar as read
-        filename = path / 'OUTCAR' if path.is_dir() else path
+        filename = path / "OUTCAR" if path.is_dir() else path
         # Each call returns (BandStructure, kpts); it does not return both energies.
         return read(filename, qp_iteration=0, extract_KS=True)[0], read(filename)[0]
-    raise NotImplementedError('QP pairs support aims, librpa, gap and vasp; got ' + code)
+    raise NotImplementedError("QP pairs support aims, librpa, gap and vasp; got " + code)

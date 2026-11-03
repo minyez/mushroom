@@ -200,7 +200,8 @@ def read_band_mulliken_output(
         bfiles_spin: Optional[Iterable[Union[str, os.PathLike]]] = None,
         filter_k_before: int = 0,
         filter_k_behind: Optional[int] = None,
-        unit: str = 'ev') -> tuple[BandStructure, list[RealVec3D]]:
+        unit: str = "ev",
+        efermi: Optional[float] = None) -> tuple[BandStructure, list[RealVec3D]]:
     """read band mulliken output files and return a Band structure object
 
     With ``bfiles_spin``, spin-up and spin-down energies occupy separate
@@ -212,6 +213,8 @@ def read_band_mulliken_output(
         filter_k_before (int): number of initial k-points to omit
         filter_k_behind (int): exclusive upper k-point index; None keeps the remaining points
         unit (str): unit of energies, default to ev
+        efermi (float): Fermi reference in the energy unit; shift printed energies
+            by this value while retaining printed occupations, or None for no shift.
 
     Returns:
         BandStructure, k-points
@@ -258,7 +261,9 @@ def read_band_mulliken_output(
     else:
         prjs = l_channels[:nprjs]
 
-    return BandStructure(ene, occ, pwav=mlk, unit=unit,
+    if efermi is not None:
+        ene += efermi
+    return BandStructure(ene, occ, pwav=mlk, unit=unit, efermi=efermi,
                          atms=list(range(natms)),
                          prjs=prjs), kpts
 

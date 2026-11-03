@@ -1225,7 +1225,19 @@ def get_bandstructure_outcar_wannier(path_outcar):
 
 
 def read_kpath_symbols(path="KPOINTS"):
-    """Read plain endpoint labels from line-mode KPOINTS, or return None."""
+    """Read plain endpoint labels from line-mode KPOINTS.
+
+    Args:
+        path (path-like): VASP KPOINTS file.
+
+    Returns:
+        list of str or None: Ordered endpoint labels, joining discontinuities
+        with a vertical bar. None for non-line-mode input or missing labels.
+
+    Raises:
+        OSError: If the file cannot be read.
+        ValueError: If KPOINTS data cannot be parsed.
+    """
     kpoints = KPoints.read(path)
     if kpoints._kpaths is None:
         return None

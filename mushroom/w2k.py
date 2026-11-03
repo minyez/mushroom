@@ -1118,7 +1118,23 @@ def read_dos(pdos1: Path,
 
 
 def read_band_path(dirpath=".", casename=None, energyfile=None, efermi=None):
-    """Read a WIEN2k band path with reciprocal vectors in inverse Angstrom."""
+    """Read a WIEN2k band path with reciprocal vectors in inverse Angstrom.
+
+    Args:
+        dirpath (path-like): Calculation directory.
+        casename (str or None): WIEN2k prefix; None detects it from input files.
+        energyfile (path-like or None): Override the selected case.energy file.
+            A matching down-spin channel is included when reading an up-spin file.
+        efermi (float or None): Fermi energy in Ry; None reads it from energy output.
+
+    Returns:
+        BandPathData: Bands in Ry, fractional kpts (nkpts, 3), reciprocal vectors
+        (3, 3) as rows in inverse Angstrom including 2pi, and plain endpoint labels.
+
+    Raises:
+        FileNotFoundError: If required structure or energy files are absent.
+        ValueError: If native inputs cannot be parsed.
+    """
     from mushroom.core.bs import BandPathData
 
     pstruct, penergy = get_inputs("struct", "energy", casename=casename, dirpath=dirpath)
@@ -1144,32 +1160,42 @@ def read_scf_summary(pscf) -> dict:
     This parser has not yet been validated against a real case.scf fixture.
     WIEN2k 19.2 run_lapw writes completion to case.dayfile, not case.scf.
     Completion therefore requires its final convergence flags and normal stop.
+
+    Args:
+        pscf (path-like): WIEN2k case.scf; the adjacent case.dayfile is read if present.
+
+    Returns:
+        dict: energy, gap and efermi in eV, or None when unavailable; status is
+        finished or unfinished. Malformed energy fields are recorded in error.
+
+    Raises:
+        OSError: If an existing input file cannot be read.
     """
     from mushroom.core.constants import RY2EV
     path = pathlib.Path(pscf)
     text = path.read_text()
-    result = dict(energy=None, gap=None, efermi=None, status='unfinished')
+    result = dict(energy=None, gap=None, efermi=None, status="unfinished")
     errors = []
-    for key, tag in [('energy', 'ENE'), ('efermi', 'FER')]:
-        lines = re.findall(r'^:' + tag + r'[^\n]*', text, re.M)
+    for key, tag in [("energy", "ENE"), ("efermi", "FER")]:
+        lines = re.findall(r"^:" + tag + r"[^\n]*", text, re.M)
         if lines:
             try:
                 result[key] = float(lines[-1].split()[-1]) * RY2EV
             except ValueError as err:
-                errors.append('{}: {}'.format(key, err))
-    gaps = re.findall(r'^:GAP[^\n]*?:\s*([-+\d.Ee]+)\s+Ry', text, re.M)
+                errors.append("{}: {}".format(key, err))
+    gaps = re.findall(r"^:GAP[^\n]*?:\s*([-+\d.Ee]+)\s+Ry", text, re.M)
     if gaps:
         try:
-            result['gap'] = float(gaps[-1]) * RY2EV
+            result["gap"] = float(gaps[-1]) * RY2EV
         except ValueError as err:
-            errors.append('gap: {}'.format(err))
+            errors.append("gap: {}".format(err))
     if errors:
-        result['error'] = '; '.join(errors)
-        _logger.warning('%s: %s', path, result['error'])
-    dayfile = path.with_suffix('.dayfile')
+        result["error"] = "; ".join(errors)
+        _logger.warning("%s: %s", path, result["error"])
+    dayfile = path.with_suffix(".dayfile")
     if dayfile.is_file():
         day = dayfile.read_text()
-        flags = re.findall(r'ec cc and fc_conv\s+(\d)\s+(\d)\s+(\d)', day)
-        if flags and flags[-1] == ('1', '1', '1') and day.rstrip().endswith('>   stop'):
-            result['status'] = 'finished'
+        flags = re.findall(r"ec cc and fc_conv\s+(\d)\s+(\d)\s+(\d)", day)
+        if flags and flags[-1] == ("1", "1", "1") and day.rstrip().endswith(">   stop"):
+            result["status"] = "finished"
     return result

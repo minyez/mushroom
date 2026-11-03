@@ -65,7 +65,7 @@ def band(ctx, casename, dirpath, energyfile, ksymbols, output, removek, fig_ext,
     bs.unit = "ev"
     from mushroom.core.bs import get_energy_reference
     from mushroom.visual.bandplot import plot_band, plot_fatband, export_fatband_data
-    ref = get_energy_reference(bs, 'ef' if fermi_zero else ('vbm' if vbm_zero else None))
+    ref = get_energy_reference(bs, "ef" if fermi_zero else ("vbm" if vbm_zero else None))
     plot_band(ax, bs, kp, ref=ref, set_xaxis=False, set_ylabel=False, zero_line=False)
     ax.x.set_major(grid=True, color="grey", lw=3, ls="dashed")
     # try to use symbols found in the energy file if not specified
@@ -74,8 +74,8 @@ def band(ctx, casename, dirpath, energyfile, ksymbols, output, removek, fig_ext,
     scale_plot = (kp.x[-1] - kp.x[0]) / len(kp.x) * 36.0 * scale
     if apbs:
         plot_fatband(ax, bs, kp, apbs, spin=spin, ref=ref, scale=scale_plot, prop_area=prop_area)
-        with open('pwav.dat', 'w') as handle:
-            handle.write('\n'.join(export_fatband_data(bs, apbs, spin)) + '\n')
+        with open("pwav.dat", "w") as handle:
+            handle.write("\n".join(export_fatband_data(bs, apbs, spin)) + "\n")
 
     if energy_range is not None:
         try:
@@ -147,9 +147,9 @@ def dos_(casename, unit, dosfiles, dirpath, output, energy_range, aps, fig_ext):
         _logger.info("available prjs: %r", dos.prjs)
         from mushroom.visual.dosplot import plot_dos, export_pdos_data
         plot_dos(ax, dos, aps=aps, show_total=False, spin=-1)
-        with open('pdos.dat', 'w') as handle:
+        with open("pdos.dat", "w") as handle:
             # This legacy command historically omitted the Fermi header.
-            handle.write('\n'.join(export_pdos_data(dos, aps)[1:]) + '\n')
+            handle.write("\n".join(export_pdos_data(dos, aps)[1:]) + "\n")
 
     p.write(file=output)
     if fig_ext is not None:

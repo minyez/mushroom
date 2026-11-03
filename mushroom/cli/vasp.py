@@ -19,7 +19,7 @@ def vasp():
 
 
 @vasp.command()
-@click.option("--spin", type=click.Choice(["up", "dn", "both"]), default="both")
+@click.option("--spin", type=click.Choice(["up", "dn", "both"]), default="both", help="Spin channel to plot")
 @click.option("-v", "eigenval", default="EIGENVAL", help="EIGENVAL file to read band data")
 @_opt_poscar
 @click.option("-o", "output", default="plotband.agr", help="path of agr file to export")
@@ -57,9 +57,9 @@ def band(ctx, eigenval, poscar, output, data_only, removek, fig_ext, energy_rang
         return
     from mushroom.core.bs import get_energy_reference
     from mushroom.visual.bandplot import plot_band
-    ref = get_energy_reference(bs, 'ef' if fermi_zero else ('vbm' if vbm_zero else None))
+    ref = get_energy_reference(bs, "ef" if fermi_zero else ("vbm" if vbm_zero else None))
     kp = KPathLinearizer(kpts, c.b)
-    plot_band(ax, bs, kp, ref=ref, spin={'up': 0, 'dn': 1, 'both': None}[spin],
+    plot_band(ax, bs, kp, ref=ref, spin={"up": 0, "dn": 1, "both": None}[spin],
               set_xaxis=False, set_ylabel=False, zero_line=False)
     ax.x.set_major(grid=True, color="grey", lw=3, ls="dashed")
     if ksymbols_kf:
@@ -134,8 +134,8 @@ def dos_(ctx, doscar, vasprunxml, output, poscar, energy_range, aps, fig_ext):
     p, ax = Plot.subplots()
     from mushroom.visual.dosplot import plot_dos, export_tdos_data, export_pdos_data
     plot_dos(ax, dos, spin=-1)
-    with open('tdos.dat', 'w') as handle:
-        handle.write('\n'.join(export_tdos_data(dos)) + '\n')
+    with open("tdos.dat", "w") as handle:
+        handle.write("\n".join(export_tdos_data(dos)) + "\n")
     if energy_range is not None:
         try:
             emin, emax = decode_float_ends(energy_range)
@@ -157,8 +157,8 @@ def dos_(ctx, doscar, vasprunxml, output, poscar, energy_range, aps, fig_ext):
         c = Cell.read(poscar)
         dos.atms = c.atms
         plot_dos(ax, dos, aps=aps, show_total=False, spin=-1)
-        with open('pdos.dat', 'w') as handle:
-            handle.write('\n'.join(export_pdos_data(dos, aps)) + '\n')
+        with open("pdos.dat", "w") as handle:
+            handle.write("\n".join(export_pdos_data(dos, aps)) + "\n")
 
     p.write(file=output)
     if fig_ext is not None:
@@ -234,9 +234,9 @@ def pwav(procar, poscar, ksymbols, output, removek, prop_area, apbs, scale, spin
 
     if apbs:
         from mushroom.visual.bandplot import plot_fatband, export_fatband_data
-        plot_fatband(ax, bs, kp, apbs, spin=spin, ref='ef', scale=scale_plot, prop_area=prop_area)
-        with open('pwav.dat', 'w') as handle:
-            handle.write('\n'.join(export_fatband_data(bs, apbs, spin)) + '\n')
+        plot_fatband(ax, bs, kp, apbs, spin=spin, ref="ef", scale=scale_plot, prop_area=prop_area)
+        with open("pwav.dat", "w") as handle:
+            handle.write("\n".join(export_fatband_data(bs, apbs, spin)) + "\n")
 
     # set limits
     if energy_range is not None:

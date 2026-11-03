@@ -1,6 +1,8 @@
 """Tests for program-independent band data helpers."""
 import unittest as ut
+
 import numpy as np
+
 from mushroom.core.bs import BandStructure, get_energy_reference
 from mushroom.core.kpoints import format_ksymbols, split_kpath_breaks
 

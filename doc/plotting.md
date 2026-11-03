@@ -89,9 +89,11 @@ mushroom emass calculation --band vbm cbm --k 20 -n 5
 Band paths can be directories, native files or `.npz`. Directory detection
 rejects ties; use `--code` to select the program. Supported native bands are
 VASP, FHI-aims, WIEN2k and LibRPA. QP pairs additionally support GAP eqpeV files.
-KS/QP arrays from `read_qp_pair` share the same printed band window. For other
-objects, `qp_correction` honors optional zero-based `band_start` attributes;
-without these, both arrays must start at the same band.
+KS/QP arrays from `read_qp_pair` share the same printed band window.
+`qp_correction` requires both arrays to start at the same band and compares
+the first `min(bs_ks.nbands, bs_qp.nbands)` bands.
+The public `mushroom.io.detect_code(path, code=None)` identifies native files
+or calculation directories; an explicit code overrides detection.
 
 Collection records individual failures in the `error` field and continues.
 Energy deltas use the last row as reference and are reported in meV. Energies

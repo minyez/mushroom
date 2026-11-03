@@ -3153,6 +3153,17 @@ class Plot:
         for g in self._graphs:
             g.set_ylim(ymin=ymin, ymax=ymax)
 
+    def set_timestamp(self, text):
+        """Set the timestamp text exported to a Grace file.
+
+        Args:
+            text (str): Timestamp text; use an empty string for reproducible files.
+
+        Returns:
+            None: The timestamp text is updated in place.
+        """
+        self._timestamp._set(**{"def": text})
+
     def write(self, file: Union[str, TextIOWrapper, PathLike] = sys.stdout,
               mode: str = 'w'):
         """write grace plot file to `fn`

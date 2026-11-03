@@ -78,24 +78,67 @@ class DensityOfStates(EnergyUnit):
             self.parse_proj(pdos=pdos, atms=atms, prjs=prjs)
 
     def to_dict(self) -> dict:
-        """Return all data needed to reconstruct the density of states."""
+        """Return constructor data with copied numeric arrays.
+
+        Returns:
+            dict: egrid (nedos,), tdos (nspins, nedos), and optional
+            pdos (nspins, nedos, natms, nprjs). Energies use unit; DOS is per unit.
+            Metadata includes efermi, unit and atom/projector labels; inferred
+            occupations are retained for bands.
+        """
         return dict(egrid=self.egrid.copy(), tdos=self.tdos.copy(), efermi=self.efermi,
                     pdos=None if self.pdos is None else self.pdos.copy(),
                     atms=self.atms, prjs=self.prjs, unit=self.unit)
 
     @classmethod
     def from_dict(cls, data):
-        """Construct a density of states from constructor data."""
+        """Construct a DensityOfStates from constructor data.
+
+        Args:
+            data (dict): Constructor arguments as returned by to_dict, including
+                arrays with their stored units and shapes.
+
+        Returns:
+            DensityOfStates: Reconstructed data object.
+
+        Raises:
+            ValueError: If arrays or metadata are inconsistent with the constructor.
+            TypeError: If constructor keys are invalid.
+        """
         return cls(**data)
 
     def save(self, path):
-        """Save a NumPy-only archive: egrid, tdos, pdos and JSON __meta__."""
+        """Save a NumPy-only archive with no pickle payloads.
+
+        Args:
+            path (path-like): Output npz archive. Array keys are egrid, tdos and pdos;
+                __meta__ stores scalar JSON metadata including the energy unit.
+                Array shapes follow to_dict; absent optional arrays are omitted.
+
+        Returns:
+            None: The compressed archive is written.
+
+        Raises:
+            OSError: If the archive cannot be written.
+            ValueError: If an array requires object dtype.
+        """
         from mushroom.core.serialization import save_npz
         save_npz(path, "DensityOfStates", self.to_dict(), ("egrid", "tdos", "pdos"))
 
     @classmethod
     def load(cls, path):
-        """Read an archive without pickle or optional plotting packages."""
+        """Read a portable archive without pickle or optional plotting packages.
+
+        Args:
+            path (path-like): Version-1 npz archive with arrays and scalar JSON __meta__.
+
+        Returns:
+            DensityOfStates: Restored arrays, units and metadata.
+
+        Raises:
+            ValueError: If the archive type/version is incompatible or arrays require pickle.
+            OSError: If the archive cannot be read.
+        """
         from mushroom.core.serialization import load_npz
         return cls.from_dict(load_npz(path, "DensityOfStates"))
 

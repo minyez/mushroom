@@ -170,7 +170,14 @@ class BandStructure(EnergyUnit):
             self.parse_proj(pwav=pwav, atms=atms, prjs=prjs)
 
     def to_dict(self) -> dict:
-        """Return constructor data, including explicit inferred occupations."""
+        """Return constructor data with copied numeric arrays.
+
+        Returns:
+            dict: eigen/occ (nspins, nkpts, nbands), weight (nkpts,), and optional
+            pwav (nspins, nkpts, nbands, natms, nprjs). Energies use unit.
+            Metadata includes efermi, unit and atom/projector labels; inferred
+            occupations are retained for bands.
+        """
         return dict(eigen=self.eigen.copy(), occ=None if self.occ is None else self.occ.copy(),
                     weight=self.weight.copy(), unit=self.unit, efermi=self._efermi,
                     pwav=None if self.pwav is None else self.pwav.copy(),
@@ -178,17 +185,53 @@ class BandStructure(EnergyUnit):
 
     @classmethod
     def from_dict(cls, data):
-        """Construct a band structure from constructor data."""
+        """Construct a BandStructure from constructor data.
+
+        Args:
+            data (dict): Constructor arguments as returned by to_dict, including
+                arrays with their stored units and shapes.
+
+        Returns:
+            BandStructure: Reconstructed data object.
+
+        Raises:
+            ValueError: If arrays or metadata are inconsistent with the constructor.
+            TypeError: If constructor keys are invalid.
+        """
         return cls(**data)
 
     def save(self, path):
-        """Save a NumPy-only archive: eigen, occ, weight, pwav and JSON __meta__."""
+        """Save a NumPy-only archive with no pickle payloads.
+
+        Args:
+            path (path-like): Output npz archive. Array keys are eigen, occ, weight and pwav;
+                __meta__ stores scalar JSON metadata including the energy unit.
+                Array shapes follow to_dict; absent optional arrays are omitted.
+
+        Returns:
+            None: The compressed archive is written.
+
+        Raises:
+            OSError: If the archive cannot be written.
+            ValueError: If an array requires object dtype.
+        """
         from mushroom.core.serialization import save_npz
         save_npz(path, "BandStructure", self.to_dict(), ("eigen", "occ", "weight", "pwav"))
 
     @classmethod
     def load(cls, path):
-        """Read an archive with NumPy alone, without allowing pickle."""
+        """Read a portable archive without pickle or optional plotting packages.
+
+        Args:
+            path (path-like): Version-1 npz archive with arrays and scalar JSON __meta__.
+
+        Returns:
+            BandStructure: Restored arrays, units and metadata.
+
+        Raises:
+            ValueError: If the archive type/version is incompatible or arrays require pickle.
+            OSError: If the archive cannot be read.
+        """
         from mushroom.core.serialization import load_npz
         return cls.from_dict(load_npz(path, "BandStructure"))
 
@@ -1622,7 +1665,21 @@ def resolve_band_crossing(kx, bands, occ=None, pwav=None,
 
 
 def get_energy_reference(bs: BandStructure, ref: Union[str, float, None] = None) -> float:
-    """Resolve an absolute energy reference in the units of ``bs``."""
+    """Resolve an absolute energy reference in the units of ``bs``.
+
+    Args:
+        bs (BandStructure): Energies shaped (nspins, nkpts, nbands).
+        ref (str or float or None): None/none for zero, a numeric energy in
+            bs.unit, vbm/cbm, ef/efermi/fermi, vbm_<ik>, or is:ik:ib.
+            Band identifiers such as cbm+1 are accepted in the last form.
+
+    Returns:
+        float: Absolute reference energy in bs.unit.
+
+    Raises:
+        ValueError: If the reference is invalid or Fermi energy is unavailable.
+        IndexError: If the selected spin or k-point index is out of range.
+    """
     if ref is None or isinstance(ref, Real):
         return 0.0 if ref is None else float(ref)
     if ref == "none":
@@ -1648,7 +1705,17 @@ def get_energy_reference(bs: BandStructure, ref: Union[str, float, None] = None)
 
 @dataclass
 class BandPathData:
-    """Band structure and fractional path with reciprocal vectors in 2pi/Angstrom."""
+    """Band structure together with the coordinates and labels of its path.
+
+    Args:
+        bs (BandStructure): Energies and optional occupations/projections.
+        kpts (ndarray): Fractional k-point coordinates, shape (nkpts, 3).
+        recp_latt (ndarray or None): Reciprocal vectors as rows, shape (3, 3),
+            in inverse Angstrom and including 2pi. None retains fractional distances.
+        ksymbols (list of str or None): Plain labels in special-point order.
+        code (str): Originating program identifier.
+        source (str): Semicolon-separated paths of files used by the reader.
+    """
 
     bs: BandStructure
     kpts: np.ndarray
@@ -1658,14 +1725,38 @@ class BandPathData:
     source: str = ""
 
     def kpath(self, unify_x: bool = False):
-        """Construct the linearized path, retaining plain special-point symbols."""
+        """Construct a path retaining plain special-point symbols.
+
+        Args:
+            unify_x (bool): Normalize the plotting abscissa to end at one;
+                physical coordinates used for effective masses are unchanged.
+
+        Returns:
+            KPathLinearizer: Path with kpts, reciprocal vectors and labels.
+
+        Raises:
+            ValueError: If kpts does not have shape (nkpts, 3).
+        """
         from mushroom.core.kpoints import KPathLinearizer
-        kp = KPathLinearizer(self.kpts, self.recp_latt, unify_x=unify_x)
-        kp.ksymbols = self.ksymbols
-        return kp
+        return KPathLinearizer(self.kpts, self.recp_latt, unify_x=unify_x, ksymbols=self.ksymbols)
 
     def save(self, path):
-        """Save NumPy-only band arrays plus kpts, recp_latt and JSON __meta__."""
+        """Save NumPy-only band arrays and path metadata without pickle.
+
+        Args:
+            path (path-like): Output npz. Keys eigen/occ have shape
+                (nspins, nkpts, nbands), weight (nkpts,), optional pwav
+                (nspins, nkpts, nbands, natms, nprjs), fractional kpts
+                (nkpts, 3) and optional recp_latt (3, 3) in inverse Angstrom
+                including 2pi. __meta__ holds JSON labels, code, source and units.
+
+        Returns:
+            None: The compressed archive is written.
+
+        Raises:
+            OSError: If the archive cannot be written.
+            ValueError: If an array has object dtype.
+        """
         from mushroom.core.serialization import save_npz
         data = self.bs.to_dict()
         data.update(kpts=self.kpts, recp_latt=self.recp_latt, ksymbols=self.ksymbols,
@@ -1674,7 +1765,18 @@ class BandPathData:
 
     @classmethod
     def load(cls, path):
-        """Read a path archive without pickle or optional plotting packages."""
+        """Read a path archive without pickle or optional plotting packages.
+
+        Args:
+            path (path-like): Version-1 BandPathData npz archive.
+
+        Returns:
+            BandPathData: Restored bands and path with saved shapes and units.
+
+        Raises:
+            ValueError: If the archive type/version is incompatible or arrays require pickle.
+            OSError: If the archive cannot be read.
+        """
         from mushroom.core.serialization import load_npz
         data = load_npz(path, "BandPathData")
         path_data = {key: data.pop(key) for key in ("kpts", "recp_latt", "ksymbols", "code", "source")
@@ -1683,38 +1785,60 @@ class BandPathData:
 
 
 def qp_correction(bs_ks, bs_qp, ref=None):
-    """Return flat KS energies, QP shifts in eV, and KS occupation masks.
+    """Return KS energies, QP shifts and KS occupation masks without modifying inputs.
 
-    Optional ``band_start`` attributes specify zero-based absolute band origins.
-    Without these, both arrays must start at the same band, as returned by
-    ``read_qp_pair``. A numeric reference is in the KS object's original unit.
-    Input objects are not modified.
+    Both arrays must start at the same band, as returned by ``read_qp_pair``.
+    Only the first min(bs_ks.nbands, bs_qp.nbands) bands are compared.
+
+    Args:
+        bs_ks (BandStructure): KS energies and occupations, shape (nspins, nkpts, nbands).
+        bs_qp (BandStructure): QP energies with the same spin and k-point dimensions.
+        ref (str or float or None): Reference accepted by get_energy_reference;
+            numeric values are in the original KS energy unit.
+
+    Returns:
+        tuple: Three flat arrays of length nspins * nkpts * min(nbands):
+        reference-shifted KS energies (eV), QP minus KS energies (eV), and
+        boolean KS occupations (occupation greater than 0.5).
+
+    Raises:
+        ValueError: If spin/k-point dimensions differ, KS occupations are absent,
+            or the energy reference is invalid.
     """
     if (bs_ks.nspins, bs_ks.nkpts) != (bs_qp.nspins, bs_qp.nkpts):
-        raise ValueError('KS and QP spin/k-point dimensions must agree')
+        raise ValueError("KS and QP spin/k-point dimensions must agree")
     if bs_ks.occ is None:
-        raise ValueError('KS occupations are required')
-    starts = [getattr(b, 'band_start', 0) for b in (bs_ks, bs_qp)]
-    start = max(starts)
-    end = min(s + b.nbands for s, b in zip(starts, (bs_ks, bs_qp)))
-    if end <= start:
-        raise ValueError('KS and QP band windows do not overlap')
-    ks_slice, qp_slice = [slice(start - s, end - s) for s in starts]
-    factor = bs_ks._get_eunit_conversion('ev')
+        raise ValueError("KS occupations are required")
+    nbands = min(bs_ks.nbands, bs_qp.nbands)
+    factor = bs_ks._get_eunit_conversion("ev")
     reference = get_energy_reference(bs_ks, ref) * factor
-    eks = bs_ks.eigen[:, :, ks_slice] * factor
-    eqp = bs_qp.eigen[:, :, qp_slice] * bs_qp._get_eunit_conversion('ev')
+    eks = bs_ks.eigen[:, :, :nbands] * factor
+    eqp = bs_qp.eigen[:, :, :nbands] * bs_qp._get_eunit_conversion("ev")
     return ((eks - reference).ravel(), (eqp - eks).ravel(),
-            (bs_ks.occ[:, :, ks_slice] > .5).ravel())
+            (bs_ks.occ[:, :, :nbands] > .5).ravel())
 
 
 def fit_qp_correction(e_ks, de, occupied) -> dict:
-    """Fit separate linear occupied and empty QP shifts, including R squared."""
+    """Fit separate linear occupied and empty QP shifts.
+
+    Args:
+        e_ks (array-like): KS energies in eV, shape (nstates,).
+        de (array-like): QP minus KS energies in eV, shape (nstates,).
+        occupied (array-like): Boolean KS occupations, shape (nstates,).
+
+    Returns:
+        dict: Keys vb and cb map to slope (dimensionless), intercept (eV), and
+        r2 (coefficient of determination). A group with fewer than two points
+        or no energy spread maps to None.
+
+    Raises:
+        ValueError: If the three array shapes differ.
+    """
     e_ks, de, occupied = np.asarray(e_ks), np.asarray(de), np.asarray(occupied, dtype=bool)
     if e_ks.shape != de.shape or de.shape != occupied.shape:
-        raise ValueError('Energy, shift and occupation arrays must have equal shape')
+        raise ValueError("Energy, shift and occupation arrays must have equal shape")
     result = {}
-    for key, mask in [('vb', occupied), ('cb', ~occupied)]:
+    for key, mask in [("vb", occupied), ("cb", ~occupied)]:
         x, y = e_ks[mask], de[mask]
         if len(x) < 2 or np.ptp(x) == 0:
             result[key] = None
@@ -1730,55 +1854,74 @@ def fit_qp_correction(e_ks, de, occupied) -> dict:
 def _mass_extremum(bs, ib, ispin):
     """Select the occupied maximum or empty minimum for one band."""
     if bs.occ is None:
-        raise ValueError('Occupations are required to select an extremum automatically')
+        raise ValueError("Occupations are required to select an extremum automatically")
     energy = bs.eigen[ispin, :, ib]
     return int(np.argmax(energy) if np.mean(bs.occ[ispin, :, ib]) > .5 else np.argmin(energy))
 
 
-def effective_mass(bs, kp, ib, ik, *, ispin=0, npoints=5, side='both') -> dict:
-    """Fit signed effective masses in electron masses on each path segment.
+def effective_mass(bs, kp, ib, ik, *, ispin=0, npoints=5, side="both") -> dict:
+    """Fit signed effective masses on each side without crossing special points.
 
-    Energies are converted to eV and Cartesian distances must be in inverse
-    Angstrom including 2pi. Valence maxima give negative masses (no absolute
-    value is taken). Each side includes ``ik`` and at most ``npoints`` points;
-    fits never cross a special point. Fewer than three distinct points give
-    None. Direction labels are available when ``kp.ksymbols`` is populated.
+    Valence maxima give negative masses; no absolute value is taken. Fewer
+    than three distinct distances on a side yield None for that side.
+
+    Args:
+        bs (BandStructure): Band energies, shape (nspins, nkpts, nbands).
+            Energies are converted to eV for fitting.
+        kp (KPathLinearizer): Path with Cartesian coordinates in inverse
+            Angstrom from reciprocal vectors including 2pi.
+        ib (int or str): Band index or identifier such as vbm, cbm or cbm+1.
+        ik (int or None): Zero-based k-point index. None selects the occupied
+            band maximum or empty band minimum using KS occupations.
+        ispin (int): Zero-based spin channel.
+        npoints (int): Maximum number of points per side, including ik.
+        side (str): left, right or both.
+
+    Returns:
+        dict: Actual k-point index ik; left/right masses in units of electron
+        mass (or None); left_label/right_label segment directions (or None).
+        Direction labels require kp.ksymbols; negligible curvature gives None.
+
+    Raises:
+        ValueError: If reciprocal coordinates, dimensions, indices, side or
+            point count are invalid, or automatic selection lacks occupations.
     """
     from mushroom.core.constants import HBAR2_OVER_2ME_EV_ANG2
-    if not kp._use_cartesian:
-        raise ValueError('Effective mass requires a reciprocal lattice in inverse Angstrom including 2pi')
-    if side not in ('left', 'right', 'both'):
-        raise ValueError('side must be left, right or both')
-    if ispin not in range(bs.nspins) or kp._nkpts != bs.nkpts:
-        raise ValueError('Inconsistent spin or k-point dimensions')
+    if not kp.is_cartesian:
+        raise ValueError("Effective mass requires a reciprocal lattice in inverse Angstrom including 2pi")
+    if side not in ("left", "right", "both"):
+        raise ValueError("side must be left, right or both")
+    if ispin not in range(bs.nspins) or kp.nkpts != bs.nkpts:
+        raise ValueError("Inconsistent spin or k-point dimensions")
     if npoints < 1:
-        raise ValueError('npoints must be positive')
+        raise ValueError("npoints must be positive")
     ib = bs._convert_band_iden(ib)
     if not -bs.nbands <= ib < bs.nbands:
-        raise ValueError('Band index out of range')
-    energy = bs.eigen[ispin, :, ib] * bs._get_eunit_conversion('ev')
+        raise ValueError("Band index out of range")
+    energy = bs.eigen[ispin, :, ib] * bs._get_eunit_conversion("ev")
     if ik is None:
         ik = _mass_extremum(bs, ib, ispin)
     if ik not in range(bs.nkpts):
-        raise ValueError('k-point index out of range')
-    result = dict(left=None, right=None, left_label=None, right_label=None)
-    symbols = getattr(kp, 'ksymbols', None)
-    for direction in ('left', 'right') if side == 'both' else [side]:
-        segments = [(st, ed) for st, ed in kp._ksegs
-                    if (st < ik <= ed if direction == 'left' else st <= ik < ed)]
+        raise ValueError("k-point index out of range")
+    result = dict(ik=ik, left=None, right=None, left_label=None, right_label=None)
+    symbols = kp.ksymbols
+    kpts = kp.kpts
+    for direction in ("left", "right") if side == "both" else [side]:
+        segments = [(st, ed) for st, ed in kp.segments
+                    if (st < ik <= ed if direction == "left" else st <= ik < ed)]
         if not segments:
             continue
         st, ed = segments[0]
-        if direction == 'left':
+        if direction == "left":
             indices = np.arange(max(st, ik - npoints + 1), ik + 1)
         else:
             indices = np.arange(ik, min(ed + 1, ik + npoints))
-        x = np.linalg.norm(kp._kpts[indices] - kp._kpts[ik], axis=1)
+        x = np.linalg.norm(kpts[indices] - kpts[ik], axis=1)
         if len(np.unique(x)) >= 3:
             c2 = np.polyfit(x, energy[indices], 2)[0]
             result[direction] = float(HBAR2_OVER_2ME_EV_ANG2 / c2) if abs(c2) > 1e-14 else None
         if symbols and len(symbols) == len(kp.special_x):
-            start = symbols[int(np.argmin(abs(kp.special_x - kp.x[st])))].split('|')[-1]
-            end = symbols[int(np.argmin(abs(kp.special_x - kp.x[ed])))].split('|')[0]
-            result[direction + '_label'] = '{}→{}'.format(start, end)
+            start = symbols[int(np.argmin(abs(kp.special_x - kp.x[st])))].split("|")[-1]
+            end = symbols[int(np.argmin(abs(kp.special_x - kp.x[ed])))].split("|")[0]
+            result[direction + "_label"] = "{}→{}".format(start, end)
     return result

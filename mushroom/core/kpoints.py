@@ -41,17 +41,24 @@ def check_on_line_segment(x_0, x_st, x_ed, atol=1e-5):
 
 
 class KPathLinearizer:
-    """object to manipulate path in reciprocal k space
-
-    Special kpoints are recognized automatically.
+    """Manipulate a reciprocal-space path and identify its straight segments.
 
     Args:
-        kpts (list): the fractional coordinates of k points
-        recp_latt (3x3 array): the reciprocal lattice vectors, [b1, b2, b3].
-            If parsed, it will be used to convert the kpts to Cartisian coordiantes.
+        kpts (array-like): Fractional k-point coordinates, shape (nkpts, 3).
+        recp_latt (array-like or None): Reciprocal vectors as rows, shape (3, 3).
+            If supplied, coordinates are converted to Cartesian form in these
+            vectors' units. For effective masses use inverse Angstrom including 2pi.
+        unify_x (bool): Normalize the plotting abscissa to end at one. Physical
+            coordinates returned by kpts are unaffected.
+        ksymbols (sequence of str or None): Plain special-point labels in path
+            order, stored as an immutable tuple and exposed as a read-only property.
+
+    Raises:
+        ValueError: If kpts does not have shape (nkpts, 3).
     """
 
-    def __init__(self, kpts, recp_latt=None, unify_x: bool = False):
+    def __init__(self, kpts, recp_latt=None, unify_x: bool = False, ksymbols=None):
+        self._ksymbols = None if ksymbols is None else tuple(ksymbols)
         self._use_cartesian = False
         self._recp_latt = None
         self._nkpts = len(kpts)
@@ -70,6 +77,31 @@ class KPathLinearizer:
         self._xmax_non_unifty = None
         self._find_ksegs()
         _logger.debug("Found segments: %r", self._ksegs)
+
+    @property
+    def ksymbols(self):
+        """Plain special-point labels as a tuple, or None."""
+        return self._ksymbols
+
+    @property
+    def is_cartesian(self):
+        """Whether coordinates were converted with a reciprocal lattice."""
+        return self._use_cartesian
+
+    @property
+    def segments(self):
+        """Inclusive start/end index pairs as an immutable tuple."""
+        return tuple(tuple(segment) for segment in self._ksegs)
+
+    @property
+    def kpts(self):
+        """Copy of (nkpts, 3) coordinates, Cartesian when is_cartesian is true."""
+        return self._kpts.copy()
+
+    @property
+    def nkpts(self):
+        """Number of points along the path."""
+        return self._nkpts
 
     def _find_ksegs(self):
         self._ksegs = find_k_segments(self._kpts)
@@ -292,7 +324,19 @@ def join_ksymbol_strings(ksymbols_segments: list[tuple[str, str]]) -> list[str]:
 
 
 def format_ksymbols(symbols, engine: str):
-    """Format plain k-point symbols for matplotlib or Grace."""
+    """Format plain k-point symbols for matplotlib or Grace.
+
+    Args:
+        symbols (sequence of str or None): Special-point labels, including Greek
+            names and discontinuous junctions such as K|U. None is preserved.
+        engine (str): plt or grace.
+
+    Returns:
+        list of str or None: Backend-formatted labels in the original order.
+
+    Raises:
+        ValueError: If engine is unknown and symbols is not None.
+    """
     from mushroom.core.ioutils import greeks
 
     if symbols is None:
@@ -317,6 +361,16 @@ def format_ksymbols(symbols, engine: str):
 
 
 def split_kpath_breaks(special_x, symbols) -> tuple[list[float], list[str]]:
-    """Return positions and labels for discontinuous path junctions."""
+    """Return positions and labels for discontinuous path junctions.
+
+    Args:
+        special_x (sequence of float): Special-point abscissae, shape (nspecial,),
+            in the path's plotting units (possibly normalized).
+        symbols (sequence of str or None): Corresponding labels; a vertical bar
+            denotes a discontinuous junction. None produces empty outputs.
+
+    Returns:
+        tuple: Lists of abscissae and labels containing a vertical bar.
+    """
     pairs = [] if symbols is None else [(x, s) for x, s in zip(special_x, symbols) if "|" in s]
     return [x for x, _ in pairs], [s for _, s in pairs]

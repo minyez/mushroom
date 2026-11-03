@@ -465,15 +465,29 @@ class StdOut:
                     self._chemical_potential = float(l.split()[-2])
 
     def get_total_energy(self):
-        """Return the final DFT/Hartree-Fock total energy in eV, or None."""
-        with open(self._path, encoding='utf-8') as handle:
+        """Return the final DFT/Hartree-Fock total energy.
+
+        Returns:
+            float or None: Last reported total energy in eV; None if absent.
+
+        Raises:
+            OSError: If the output file cannot be read.
+        """
+        with open(self._path, encoding="utf-8") as handle:
             matches = re.findall(r"\| Total energy of the DFT / Hartree-Fock s\.c\.f\. calculation"
                                  r"\s*:\s*([-+\d.Ee]+)\s+eV", handle.read())
         return float(matches[-1]) if matches else None
 
     def get_homo_lumo_gap(self):
-        """Return the final estimated HOMO-LUMO gap in eV, or None."""
-        with open(self._path, encoding='utf-8') as handle:
+        """Return the final estimated HOMO-LUMO gap.
+
+        Returns:
+            float or None: Last reported gap in eV; None if absent.
+
+        Raises:
+            OSError: If the output file cannot be read.
+        """
+        with open(self._path, encoding="utf-8") as handle:
             matches = re.findall(r"ESTIMATED overall HOMO-LUMO gap:\s*([-+\d.Ee]+)\s+eV", handle.read())
         return float(matches[-1]) if matches else None
 
