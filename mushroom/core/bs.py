@@ -19,7 +19,7 @@ from mushroom.core.ioutils import get_prj_indices, get_str_indices_by_iden, spli
 from mushroom.core.typehint import Key
 
 __all__ = [
-    "BandStructure",
+    "BandStructure", "get_energy_reference",
     "split_apb",
 ]
 
@@ -1595,3 +1595,28 @@ def resolve_band_crossing(kx, bands, occ=None, pwav=None,
     if occ is None and pwav is None:
         return bands_res
     return bands_res, occ, pwav
+
+
+def get_energy_reference(bs: BandStructure, ref: Union[str, float, None] = None) -> float:
+    """Resolve an absolute energy reference in the units of ``bs``."""
+    if ref is None or isinstance(ref, Real):
+        return 0.0 if ref is None else float(ref)
+    if ref == "none":
+        return 0.0
+    if ref in ("vbm", "cbm"):
+        return float(getattr(bs, ref))
+    if ref in ("ef", "efermi", "fermi"):
+        if bs._efermi is None and bs.occ is None:
+            raise ValueError("Fermi energy is not available")
+        value = bs.efermi
+        if value is None:
+            raise ValueError("Fermi energy is not available")
+        return float(value)
+    if isinstance(ref, str):
+        if re.fullmatch(r"vbm_\d+", ref):
+            return float(bs.vbm_sp_kp[0, int(ref[4:])])
+        if re.fullmatch(r"\d+:\d+:.+", ref):
+            ispin, ik, ib = ref.split(":")
+            return float(bs.get_eigen(ib)[int(ispin), int(ik), 0])
+    raise ValueError("Invalid reference {!r}; use none, a real number, vbm, cbm, "
+                     "ef/efermi/fermi, vbm_<ik>, or is:ik:ib".format(ref))

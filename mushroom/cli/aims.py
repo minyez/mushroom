@@ -73,17 +73,14 @@ def append_basis(ctx, control_file, directory, species_defaults, elements, pgeom
 
 def _get_reference(bs, vbm_zero, cbm_zero, fermi_zero, isikib_zero):
     """get the energy reference of a band structure"""
-    ref = 0.0
-    if vbm_zero:
-        ref = bs.vbm
-    if cbm_zero:
-        ref = bs.cbm
-    if fermi_zero:
-        ref = bs.efermi
-    if isikib_zero:
-        ispin, ikpt, ib = isikib_zero.split(":")
-        ref = bs.get_eigen(ib)[int(ispin), int(ikpt), 0]
-    return ref
+    from mushroom.core.bs import get_energy_reference
+
+    ref = None
+    for enabled, value in ((vbm_zero, "vbm"), (cbm_zero, "cbm"),
+                           (fermi_zero, "ef"), (isikib_zero, isikib_zero)):
+        if enabled:
+            ref = value
+    return get_energy_reference(bs, ref)
 
 
 @aims.command()

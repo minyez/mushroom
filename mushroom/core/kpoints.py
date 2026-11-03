@@ -13,7 +13,7 @@ from mushroom.core.logger import loggers
 from mushroom.core.utils import raise_no_module
 
 __all__ = [
-    "KPathLinearizer",
+    "KPathLinearizer", "format_ksymbols", "split_kpath_breaks",
     "MPGrid",
 ]
 
@@ -289,3 +289,34 @@ def uniform_int_kmesh(nk1: int, nk2: int, nk3: int,
 
 def join_ksymbol_strings(ksymbols_segments: list[tuple[str, str]]) -> list[str]:
     """reserved interface for joining adjacent k-point label segments"""
+
+
+def format_ksymbols(symbols, engine: str):
+    """Format plain k-point symbols for matplotlib or Grace."""
+    from mushroom.core.ioutils import greeks
+
+    if symbols is None:
+        return None
+    if engine not in ("plt", "grace"):
+        raise ValueError("Unknown engine: {}".format(engine))
+    result = []
+    for symbol in symbols:
+        if "$" in symbol:
+            result.append(symbol)
+            continue
+        parts = []
+        for part in symbol.split("|"):
+            name = part.lstrip("\\").capitalize()
+            if name in greeks:
+                part = "\\" + name
+                if engine == "plt":
+                    part = "$" + part + "$"
+            parts.append(part)
+        result.append("|".join(parts))
+    return result
+
+
+def split_kpath_breaks(special_x, symbols) -> tuple[list[float], list[str]]:
+    """Return positions and labels for discontinuous path junctions."""
+    pairs = [] if symbols is None else [(x, s) for x, s in zip(special_x, symbols) if "|" in s]
+    return [x for x, _ in pairs], [s for _, s in pairs]
